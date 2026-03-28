@@ -1,7 +1,7 @@
 export interface MonitorItem {
   id: string;
   name: string;
-  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER" | "WHOIS";
+  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER" | "WHOIS" | "FTP" | "IMAP" | "POP3" | "CT_LOG";
   target: string;
   intervalSec: number;
   enabled: boolean;
@@ -32,6 +32,20 @@ export interface MonitorItem {
   scheduleStartHour?: number | null;
   scheduleEndHour?: number | null;
   shareToken?: string | null;
+  pinned?: boolean;
+  timeoutMs?: number | null;
+  /** Geo region tags for simulated multi-region monitoring */
+  geoRegions?: string[];
+  /** JSONPath to extract a numeric metric from response body (HTTP/BROWSER only) */
+  metricPath?: string | null;
+  /** Human-readable label for the captured metric */
+  metricName?: string | null;
+  /** Optional unit label for the captured metric */
+  metricUnit?: string | null;
+  /** Alert yellow when captured metric value drops below this minimum */
+  metricAlertMin?: number | null;
+  /** Alert yellow when captured metric value exceeds this maximum */
+  metricAlertMax?: number | null;
 }
 
 export interface SloReport {
@@ -115,6 +129,18 @@ export interface MonitorRun {
   timings?: RunTimings | null;
   /** Security headers audit result. Only populated when checkSecurityHeaders=true on HTTP monitors. */
   securityAuditJson?: unknown | null;
+  /** UTF-8 byte length of the response body. Only for HTTP/BROWSER monitors. */
+  responseSizeBytes?: number | null;
+  /** Redirect chain captured during HTTP check (array of URLs). */
+  redirectChain?: string[] | null;
+  /** Header assertion failures — populated when headerAssertions are configured and at least one fails */
+  headerAssertionsFailed?: Array<{
+    header: string;
+    op: string;
+    expected?: string;
+    actual?: string | null;
+    message: string;
+  }> | null;
 }
 
 export type UptimePeriod = "1d" | "7d" | "30d" | "90d";

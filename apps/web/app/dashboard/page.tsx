@@ -2,7 +2,8 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { Activity, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Clock, LayoutDashboard, LayoutGrid, List, Maximize2, Minimize2, Pause, Play, Plus, RefreshCw, RotateCcw, TrendingUp, GitBranch, PackageCheck, Zap, Shield, AlertTriangle } from "lucide-react";
+import { Activity, AlertCircle, CheckCircle2, ChevronDown, ChevronUp, Clock, LayoutDashboard, LayoutGrid, List, Maximize2, Minimize2, Pause, Play, Plus, RefreshCw, RotateCcw, TrendingUp, GitBranch, PackageCheck, Zap, Shield, AlertTriangle, Tv } from "lucide-react";
+import Link from "next/link";
 import { api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -21,7 +22,7 @@ import { ProductTour, type TourStep } from "../../components/product-tour";
 import { brand } from "../../lib/brand";
 
 const VERSION_TYPES = new Set(["GIT_RELEASE", "DOCKER_IMAGE"]);
-const UPTIME_TYPES = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "BROWSER"]);
+const UPTIME_TYPES = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "BROWSER", "FTP", "IMAP", "POP3"]);
 
 const DASHBOARD_TOUR_STEPS: TourStep[] = [
   {
@@ -455,6 +456,14 @@ export default function DashboardPage() {
             <LayoutDashboard className="w-3 h-3" />
             Customize
           </button>
+          <Link
+            href="/dashboard/wallboard"
+            title="NOC Wallboard"
+            className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-accent/50 transition-colors"
+          >
+            <Tv className="w-3.5 h-3.5" />
+            Wallboard
+          </Link>
           <button
             onClick={toggleFullscreen}
             title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
@@ -1068,7 +1077,7 @@ export default function DashboardPage() {
 
 function computeStats(monitorsData: Monitor[], runsData: MonitorRun[], versionSummaryItems: VersionSummaryItem[] = []): DashboardStats {
   const VERSION_TYPES = new Set(["GIT_RELEASE", "DOCKER_IMAGE"]);
-  const UPTIME_TYPES = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "BROWSER"]);
+  const UPTIME_TYPES = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "BROWSER", "FTP", "IMAP", "POP3"]);
 
   const uptimeMonitors = monitorsData.filter((m) => UPTIME_TYPES.has(m.type));
   const versionMonitors = monitorsData.filter((m) => VERSION_TYPES.has(m.type));

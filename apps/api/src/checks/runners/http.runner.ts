@@ -297,6 +297,108 @@ async function runTimedRequestWithRedirects(
   throw new Error(`Too many redirects (>${maxRedirects}) from ${url}`);
 }
 
+/**
+ * Performs a pre-authentication step: POSTs credentials to a login endpoint and
+ * extracts a session cookie or bearer token to use in the main request.
+ *
+ * @param preAuthUrl - Login endpoint URL (e.g. https://app.example.com/api/auth/login)
+ * @param preAuthBody - JSON string or object for the POST body
+ * @param preAuthExtractCookie - Cookie name to extract from Set-Cookie header
+ * @param preAuthExtractToken - Dot-path (e.g. "data.token") to extract bearer from JSON response body
+ * @param timeoutMs - Timeout in ms for the auth request
+ * @returns { cookie, bearerToken } — at most one will be set
+ */
+async function runPreAuth(
+  preAuthUrl: string,
+  preAuthBody: string,
+  preAuthExtractCookie: string | undefined,
+  preAuthExtractToken: string | undefined,
+  timeoutMs: number,
+): Promise<{ cookie: string | null; bearerToken: string | null; error: string | null }> {
+  try {
+    const result = await runTimedRequest(preAuthUrl, {
+      method: 'POST',
+      timeoutMs,
+      headers: { 'Content-Type': 'application/json', 'User-Agent': 'PulseDock/1.0' },
+      body: preAuthBody,
+    });
+
+    let cookie: string | null = null;
+    let bearerToken: string | null = null;
+
+    // Extract cookie from Set-Cookie header
+    if (preAuthExtractCookie) {
+      const setCookie = result.responseHeaders['set-cookie'] ?? '';
+      const allCookies = Array.isArray(setCookie) ? setCookie.join('; ') : String(setCookie);
+      const cookieRegex = new RegExp(`(?:^|;\\s*)${preAuthExtractCookie}=([^;]+)`, 'i');
+      const match = allCookies.match(cookieRegex);
+      if (match) cookie = `${preAuthExtractCookie}=${match[1]}`;
+    }
+
+    // Extract bearer token from response body via dot-path
+    if (preAuthExtractToken && result.body) {
+      try {
+        const parsed = JSON.parse(result.body) as unknown;
+        const extracted = extractByPath(parsed, preAuthExtractToken);
+        if (typeof extracted === 'string' && extracted.trim()) {
+          bearerToken = extracted.trim();
+        }
+      } catch {
+        // non-JSON response — token extraction fails silently, main check will fail auth
+      }
+    }
+
+    if (!cookie && !bearerToken) {
+      const hint = preAuthExtractCookie
+        ? `cookie "${preAuthExtractCookie}" not found in Set-Cookie`
+        : `token path "${preAuthExtractToken}" not found in response`;
+      return { cookie: null, bearerToken: null, error: `Pre-auth succeeded (HTTP ${result.statusCode}) but ${hint}` };
+    }
+
+    return { cookie, bearerToken, error: null };
+  } catch (err) {
+    return { cookie: null, bearerToken: null, error: `Pre-auth request failed: ${err instanceof Error ? err.message : String(err)}` };
+  }
+}
+
+// ─── Header Assertions ───────────────────────────────────────────────────────
+
+export interface HeaderAssertion {
+  header: string;
+  op: 'exists' | 'not-exists' | 'equals' | 'contains';
+  value?: string;
+}
+
+export interface HeaderAssertionFailure {
+  header: string;
+  op: string;
+  expected?: string;
+  actual?: string | null;
+  message: string;
+}
+
+export function evaluateHeaderAssertions(
+  headers: Record<string, string>,
+  assertions: Array<{ header: string; op: string; value?: string }>,
+): HeaderAssertionFailure[] {
+  const failures: HeaderAssertionFailure[] = [];
+  for (const assertion of assertions) {
+    const headerKey = assertion.header.toLowerCase();
+    const actual = headers[headerKey] ?? null;
+
+    if (assertion.op === 'exists' && !actual) {
+      failures.push({ header: assertion.header, op: assertion.op, actual, message: `Header "${assertion.header}" missing` });
+    } else if (assertion.op === 'not-exists' && actual) {
+      failures.push({ header: assertion.header, op: assertion.op, actual, message: `Header "${assertion.header}" present (expected absent)` });
+    } else if (assertion.op === 'equals' && actual !== assertion.value) {
+      failures.push({ header: assertion.header, op: assertion.op, expected: assertion.value, actual, message: `Header "${assertion.header}" = "${actual}", expected "${assertion.value}"` });
+    } else if (assertion.op === 'contains' && (!actual || !actual.includes(assertion.value ?? ''))) {
+      failures.push({ header: assertion.header, op: assertion.op, expected: assertion.value, actual, message: `Header "${assertion.header}" = "${actual}", expected to contain "${assertion.value}"` });
+    }
+  }
+  return failures;
+}
+
 export async function runHttpCheck(
   url: string,
   timeoutMs = 5000,
@@ -321,7 +423,11 @@ export async function runHttpCheck(
     ? config['assertResponseHeader'].trim().toLowerCase() : undefined;
   const assertResponseHeaderValue = typeof config['assertResponseHeaderValue'] === 'string'
     ? config['assertResponseHeaderValue'] : undefined;
-  const needsBody = !!bodyContains || !!bodyJsonPath || detectContentChanges || checkResponseSize;
+  // ─── Custom Metric Capture ────────────────────────────────────────────────────
+  const metricPath = typeof config['metricPath'] === 'string' && config['metricPath'].trim() ? config['metricPath'].trim() : undefined;
+  const metricAlertMin = typeof config['metricAlertMin'] === 'number' ? config['metricAlertMin'] : undefined;
+  const metricAlertMax = typeof config['metricAlertMax'] === 'number' ? config['metricAlertMax'] : undefined;
+  const needsBody = !!bodyContains || !!bodyJsonPath || detectContentChanges || checkResponseSize || !!metricPath;
   const httpMethod = (typeof config['httpMethod'] === 'string' ? config['httpMethod'].toUpperCase() : 'GET');
   const safeMethod = ['GET', 'HEAD', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'].includes(httpMethod) ? httpMethod : 'GET';
   const requestHeaders: Record<string, string> = {};
@@ -334,6 +440,13 @@ export async function runHttpCheck(
   }
   const requestBody = typeof config['requestBody'] === 'string' ? config['requestBody'] : undefined;
   const checkSecurityHeaders = config['checkSecurityHeaders'] === true;
+
+  // ─── Multi-Header Assertions ─────────────────────────────────────────────────
+  const headerAssertions: Array<{ header: string; op: string; value?: string }> = Array.isArray(config['headerAssertions'])
+    ? (config['headerAssertions'] as Array<{ header: string; op: string; value?: string }>).filter(
+        (a) => a && typeof a.header === 'string' && typeof a.op === 'string',
+      )
+    : [];
 
   // ─── Header Tracking ──────────────────────────────────────────────────────────
   const trackedHeaderNames: string[] = typeof config['trackedHeaders'] === 'string' && config['trackedHeaders'].trim()
@@ -377,6 +490,34 @@ export async function runHttpCheck(
   const followRedirects = config['followRedirects'] !== false; // default: follow redirects
   const maxRedirects = typeof config['maxRedirects'] === 'number' ? Math.min(Math.max(0, config['maxRedirects']), 20) : 10;
 
+  // ─── Pre-Request Authentication Step ─────────────────────────────────────────
+  // When preAuthUrl is set, POST credentials first to obtain a session cookie or
+  // bearer token, then inject it into the main request automatically.
+  const preAuthUrl = typeof config['preAuthUrl'] === 'string' && config['preAuthUrl'].trim() ? config['preAuthUrl'].trim() : undefined;
+  if (preAuthUrl) {
+    const preAuthBody = typeof config['preAuthBody'] === 'string' ? config['preAuthBody']
+      : (config['preAuthBody'] && typeof config['preAuthBody'] === 'object' ? JSON.stringify(config['preAuthBody']) : '{}');
+    const preAuthExtractCookie = typeof config['preAuthExtractCookie'] === 'string' && config['preAuthExtractCookie'].trim()
+      ? config['preAuthExtractCookie'].trim() : undefined;
+    const preAuthExtractToken = typeof config['preAuthExtractToken'] === 'string' && config['preAuthExtractToken'].trim()
+      ? config['preAuthExtractToken'].trim() : undefined;
+
+    const { cookie, bearerToken, error } = await runPreAuth(
+      preAuthUrl, preAuthBody, preAuthExtractCookie, preAuthExtractToken, Math.min(timeoutMs, 10000),
+    );
+    if (error) {
+      return { ok: false, statusCode: 0, latencyMs: 0, message: `Pre-auth failed: ${error}`, level: 'red' as const };
+    }
+    if (cookie) {
+      // Merge with any existing Cookie header
+      const existing = requestHeaders['Cookie'] ?? requestHeaders['cookie'] ?? '';
+      requestHeaders['Cookie'] = existing ? `${existing}; ${cookie}` : cookie;
+    }
+    if (bearerToken) {
+      requestHeaders['Authorization'] = `Bearer ${bearerToken}`;
+    }
+  }
+
   try {
     const timedResult = followRedirects
       ? await runTimedRequestWithRedirects(effectiveUrl, {
@@ -396,10 +537,29 @@ export async function runHttpCheck(
     const securityAudit = checkSecurityHeaders ? auditSecurityHeaders(responseHeaders) : null;
     const responseBodyHash = detectContentChanges && body ? createHash('sha256').update(body).digest('hex').slice(0, 64) : null;
 
+    // ─── Response size (always captured for HTTP/BROWSER monitors) ────────────
+    const responseSizeBytes = body ? Buffer.byteLength(body, 'utf8') : 0;
+
     // ─── Capture tracked headers ──────────────────────────────────────────────
     const capturedHeaders: Record<string, string | null> | null = trackedHeaderNames.length > 0
       ? Object.fromEntries(trackedHeaderNames.map((h) => [h, responseHeaders[h] ?? null]))
       : null;
+
+    // ─── Custom Metric Extraction ─────────────────────────────────────────────
+    let capturedMetricValue: number | null = null;
+    if (metricPath && body) {
+      try {
+        const parsed = JSON.parse(body);
+        const normPath = metricPath.startsWith('$.') ? metricPath.slice(2) : metricPath.startsWith('$') ? metricPath.slice(1) : metricPath;
+        const extracted = extractByPath(parsed, normPath);
+        const numVal = Number(extracted);
+        if (!isNaN(numVal) && isFinite(numVal)) {
+          capturedMetricValue = numVal;
+        }
+      } catch {
+        // body is not JSON or path extraction failed — capturedMetricValue stays null
+      }
+    }
 
     let statusOk: boolean;
     if (expectedStatus !== undefined) {
@@ -457,6 +617,25 @@ export async function runHttpCheck(
       }
     }
 
+    // ─── Multi-Header Assertions ─────────────────────────────────────────────
+    if (headerAssertions.length > 0) {
+      const assertionFailures = evaluateHeaderAssertions(responseHeaders, headerAssertions);
+      if (assertionFailures.length > 0) {
+        const failMessages = assertionFailures.map((f) => f.message).join('; ');
+        return {
+          ok: false,
+          statusCode,
+          latencyMs,
+          message: `HTTP ${statusCode} — header assertion failed: ${failMessages}`,
+          level: 'yellow' as const,
+          timings,
+          securityHeadersAudit: securityAudit,
+          headerAssertionsFailed: assertionFailures,
+          ...(capturedHeaders ? { capturedHeaders } : {}),
+        };
+      }
+    }
+
     if (needsBody) {
       if (bodyContains) {
         const found = body.toLowerCase().includes(bodyContains.toLowerCase());
@@ -510,26 +689,27 @@ export async function runHttpCheck(
 
       // ─── Response size check ──────────────────────────────────────────────────
       if (checkResponseSize) {
-        const sizeBytes = Buffer.byteLength(body, 'utf8');
-        if (minResponseBodyBytes !== undefined && sizeBytes < minResponseBodyBytes) {
+        if (minResponseBodyBytes !== undefined && responseSizeBytes < minResponseBodyBytes) {
           return {
             ok: false,
             statusCode,
             latencyMs,
-            message: `Response too small — ${sizeBytes} bytes (min ${minResponseBodyBytes})`,
+            message: `Response too small — ${responseSizeBytes} bytes (min ${minResponseBodyBytes})`,
             level: 'yellow' as const,
             timings,
+            responseSizeBytes,
             ...(capturedHeaders ? { capturedHeaders } : {}),
           };
         }
-        if (maxResponseBodyBytes !== undefined && sizeBytes > maxResponseBodyBytes) {
+        if (maxResponseBodyBytes !== undefined && responseSizeBytes > maxResponseBodyBytes) {
           return {
             ok: false,
             statusCode,
             latencyMs,
-            message: `Response too large — ${sizeBytes} bytes (max ${maxResponseBodyBytes})`,
+            message: `Response too large — ${responseSizeBytes} bytes (max ${maxResponseBodyBytes})`,
             level: 'yellow' as const,
             timings,
+            responseSizeBytes,
             ...(capturedHeaders ? { capturedHeaders } : {}),
           };
         }
@@ -559,6 +739,8 @@ export async function runHttpCheck(
         timings,
         securityHeadersAudit: securityAudit,
         responseBodyHash,
+        responseSizeBytes,
+        ...(capturedMetricValue !== null ? { capturedMetricValue } : {}),
         ...(capturedHeaders ? { capturedHeaders } : {}),
       };
     }
@@ -573,8 +755,48 @@ export async function runHttpCheck(
         timings,
         securityHeadersAudit: securityAudit,
         responseBodyHash,
+        responseSizeBytes,
         ...(capturedHeaders ? { capturedHeaders } : {}),
       };
+    }
+
+    // ─── Metric alert check ───────────────────────────────────────────────────
+    if (capturedMetricValue !== null && metricPath) {
+      const metricName = typeof config['metricName'] === 'string' ? config['metricName'] : metricPath;
+      const metricUnit = typeof config['metricUnit'] === 'string' ? config['metricUnit'] : '';
+      const valueStr = `${capturedMetricValue}${metricUnit ? ' ' + metricUnit : ''}`;
+      if (metricAlertMin !== undefined && capturedMetricValue < metricAlertMin) {
+        return {
+          ok: true,
+          statusCode,
+          latencyMs,
+          message: `Degraded — ${metricName} = ${valueStr} (below min ${metricAlertMin})`,
+          level: 'yellow' as const,
+          timings,
+          securityHeadersAudit: securityAudit,
+          responseBodyHash,
+          responseSizeBytes,
+          capturedMetricValue,
+          ...(redirectChain.length > 0 ? { redirectChain } : {}),
+          ...(capturedHeaders ? { capturedHeaders } : {}),
+        };
+      }
+      if (metricAlertMax !== undefined && capturedMetricValue > metricAlertMax) {
+        return {
+          ok: true,
+          statusCode,
+          latencyMs,
+          message: `Degraded — ${metricName} = ${valueStr} (above max ${metricAlertMax})`,
+          level: 'yellow' as const,
+          timings,
+          securityHeadersAudit: securityAudit,
+          responseBodyHash,
+          responseSizeBytes,
+          capturedMetricValue,
+          ...(redirectChain.length > 0 ? { redirectChain } : {}),
+          ...(capturedHeaders ? { capturedHeaders } : {}),
+        };
+      }
     }
 
     // Compute message suffix for security audit grade and redirect info
@@ -592,6 +814,8 @@ export async function runHttpCheck(
       timings,
       securityHeadersAudit: securityAudit,
       responseBodyHash,
+      responseSizeBytes,
+      ...(capturedMetricValue !== null ? { capturedMetricValue } : {}),
       ...(redirectChain.length > 0 ? { redirectChain } : {}),
       ...(capturedHeaders ? { capturedHeaders } : {}),
     };

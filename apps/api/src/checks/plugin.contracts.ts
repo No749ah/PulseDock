@@ -70,6 +70,27 @@ export interface PluginExecutionResult {
    * Keys are lowercase header names, values are the header value or null if absent.
    */
   capturedHeaders?: Record<string, string | null> | null;
+  /**
+   * Byte length of the response body (UTF-8).
+   * Populated for HTTP/BROWSER monitors on every successful check.
+   */
+  responseSizeBytes?: number | null;
+  /**
+   * Numeric value extracted from the response body via the monitor's metricPath JSONPath.
+   * Only populated when metricPath is configured and the extraction succeeds.
+   */
+  capturedMetricValue?: number | null;
+  /**
+   * List of header assertion failures from the headerAssertions check.
+   * Only populated when headerAssertions are configured and at least one fails.
+   */
+  headerAssertionsFailed?: Array<{
+    header: string;
+    op: string;
+    expected?: string;
+    actual?: string | null;
+    message: string;
+  }> | null;
 }
 
 export interface PluginConfigField {

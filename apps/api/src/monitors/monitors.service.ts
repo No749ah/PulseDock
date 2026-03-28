@@ -117,6 +117,8 @@ export class MonitorsService {
       trackedHeaders: (m as typeof m & { trackedHeaders?: string | null }).trackedHeaders ?? null,
       headerBaseline: (m as typeof m & { headerBaseline?: unknown }).headerBaseline ?? null,
       headerBaselineSetAt: (m as typeof m & { headerBaselineSetAt?: Date | null }).headerBaselineSetAt?.toISOString() ?? null,
+      statusWebhookUrl: (m as typeof m & { statusWebhookUrl?: string | null }).statusWebhookUrl ?? null,
+      headerAssertions: (m as typeof m & { headerAssertions?: unknown }).headerAssertions ?? null,
       isAcknowledged: (m as typeof m & { acknowledgements?: unknown[] }).acknowledgements?.length > 0,
 
       createdAt: m.createdAt.toISOString(),
@@ -189,6 +191,11 @@ export class MonitorsService {
       trackedHeaders: (m as typeof m & { trackedHeaders?: string | null }).trackedHeaders ?? null,
       headerBaseline: (m as typeof m & { headerBaseline?: unknown }).headerBaseline ?? null,
       headerBaselineSetAt: (m as typeof m & { headerBaselineSetAt?: Date | null }).headerBaselineSetAt?.toISOString() ?? null,
+      statusWebhookUrl: (m as typeof m & { statusWebhookUrl?: string | null }).statusWebhookUrl ?? null,
+      headerAssertions: (m as typeof m & { headerAssertions?: unknown }).headerAssertions ?? null,
+      throttleMs: (m as typeof m & { throttleMs?: number | null }).throttleMs ?? null,
+      maxChecksPerHour: (m as typeof m & { maxChecksPerHour?: number | null }).maxChecksPerHour ?? null,
+      geoRegions: (m as typeof m & { geoRegions?: string[] }).geoRegions ?? [],
       createdAt: m.createdAt.toISOString(),
     };
   }
@@ -235,6 +242,17 @@ export class MonitorsService {
     sliLatencyWindow?: number;
     trackedHeaders?: string | null;
     rtoMinutes?: number | null;
+    statusWebhookSecret?: string | null;
+    statusWebhookUrl?: string | null;
+    throttleMs?: number;
+    maxChecksPerHour?: number;
+    geoRegions?: string[];
+    metricPath?: string | null;
+    metricName?: string | null;
+    metricUnit?: string | null;
+    metricAlertMin?: number | null;
+    metricAlertMax?: number | null;
+    headerAssertions?: Array<{ header: string; op: string; value?: string }> | null;
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -288,6 +306,17 @@ export class MonitorsService {
         scheduleEndHour: body.scheduleEndHour ?? 18,
         ...(body.trackedHeaders !== undefined ? { trackedHeaders: body.trackedHeaders ?? null } : {}),
         ...(body.rtoMinutes !== undefined ? { rtoMinutes: body.rtoMinutes ?? null } : {}),
+        ...(body.statusWebhookUrl !== undefined ? { statusWebhookUrl: body.statusWebhookUrl ?? null } : {}),
+        ...(body.statusWebhookSecret !== undefined ? { statusWebhookSecret: body.statusWebhookSecret ?? null } : {}),
+        ...(body.throttleMs !== undefined ? { throttleMs: body.throttleMs } : {}),
+        ...(body.maxChecksPerHour !== undefined ? { maxChecksPerHour: body.maxChecksPerHour } : {}),
+        ...(body.geoRegions !== undefined ? { geoRegions: body.geoRegions } : {}),
+        ...(body.metricPath !== undefined ? { metricPath: body.metricPath ?? null } : {}),
+        ...(body.metricName !== undefined ? { metricName: body.metricName ?? null } : {}),
+        ...(body.metricUnit !== undefined ? { metricUnit: body.metricUnit ?? null } : {}),
+        ...(body.metricAlertMin !== undefined ? { metricAlertMin: body.metricAlertMin ?? null } : {}),
+        ...(body.metricAlertMax !== undefined ? { metricAlertMax: body.metricAlertMax ?? null } : {}),
+        ...(body.headerAssertions !== undefined ? { headerAssertions: body.headerAssertions == null ? Prisma.JsonNull : (body.headerAssertions as unknown as Prisma.InputJsonValue) } : {}),
         monitorAlerts: {
           create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),
         },
@@ -349,6 +378,7 @@ export class MonitorsService {
       sliLatencyTarget: created.sliLatencyTarget ?? null,
       sliLatencyWindow: created.sliLatencyWindow,
       trackedHeaders: (created as typeof created & { trackedHeaders?: string | null }).trackedHeaders ?? null,
+      statusWebhookUrl: (created as typeof created & { statusWebhookUrl?: string | null }).statusWebhookUrl ?? null,
       createdAt: created.createdAt.toISOString(),
     };
 
@@ -401,6 +431,17 @@ export class MonitorsService {
     sliLatencyWindow?: number;
     trackedHeaders?: string | null;
     rtoMinutes?: number | null;
+    statusWebhookSecret?: string | null;
+    statusWebhookUrl?: string | null;
+    throttleMs?: number | null;
+    maxChecksPerHour?: number | null;
+    geoRegions?: string[];
+    metricPath?: string | null;
+    metricName?: string | null;
+    metricUnit?: string | null;
+    metricAlertMin?: number | null;
+    metricAlertMax?: number | null;
+    headerAssertions?: Array<{ header: string; op: string; value?: string }> | null;
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -460,6 +501,17 @@ export class MonitorsService {
         ...(body.sliLatencyWindow !== undefined ? { sliLatencyWindow: body.sliLatencyWindow } : {}),
         ...(body.trackedHeaders !== undefined ? { trackedHeaders: body.trackedHeaders ?? null } : {}),
         ...(body.rtoMinutes !== undefined ? { rtoMinutes: body.rtoMinutes ?? null } : {}),
+        ...(body.statusWebhookUrl !== undefined ? { statusWebhookUrl: body.statusWebhookUrl ?? null } : {}),
+        ...(body.statusWebhookSecret !== undefined ? { statusWebhookSecret: body.statusWebhookSecret ?? null } : {}),
+        ...(body.throttleMs !== undefined ? { throttleMs: body.throttleMs } : {}),
+        ...(body.maxChecksPerHour !== undefined ? { maxChecksPerHour: body.maxChecksPerHour } : {}),
+        ...(body.geoRegions !== undefined ? { geoRegions: body.geoRegions } : {}),
+        ...(body.metricPath !== undefined ? { metricPath: body.metricPath ?? null } : {}),
+        ...(body.metricName !== undefined ? { metricName: body.metricName ?? null } : {}),
+        ...(body.metricUnit !== undefined ? { metricUnit: body.metricUnit ?? null } : {}),
+        ...(body.metricAlertMin !== undefined ? { metricAlertMin: body.metricAlertMin ?? null } : {}),
+        ...(body.metricAlertMax !== undefined ? { metricAlertMax: body.metricAlertMax ?? null } : {}),
+        ...(body.headerAssertions !== undefined ? { headerAssertions: body.headerAssertions == null ? Prisma.JsonNull : (body.headerAssertions as unknown as Prisma.InputJsonValue) } : {}),
       },
     });
 
@@ -496,22 +548,30 @@ export class MonitorsService {
    * @param userId - The authenticated user's ID
    * @returns Export envelope with version, timestamp, and monitor list
    */
-  async exportMonitors(userId: string) {
-    const monitors = await this.list(userId);
-    return {
-      version: '1',
-      exportedAt: new Date().toISOString(),
-      monitors: monitors.map((m) => ({
-        name: m.name,
-        type: m.type,
-        target: m.target,
-        intervalSec: m.intervalSec,
-        timeoutMs: m.timeoutMs,
-        confirmations: m.confirmations,
-        config: m.config,
-        enabled: m.enabled,
-      })),
-    };
+  async exportMonitors(userId: string, opts?: { format?: 'json' | 'yaml'; ids?: string[]; includeAlertChannels?: boolean }) {
+    // Legacy: called without opts returns plain JSON object for backward compat
+    if (!opts || (!opts.format && !opts.ids && !opts.includeAlertChannels)) {
+      const monitors = await this.list(userId);
+      return {
+        version: '1',
+        exportedAt: new Date().toISOString(),
+        monitors: monitors.map((m) => ({
+          name: m.name,
+          type: m.type,
+          target: m.target,
+          intervalSec: m.intervalSec,
+          timeoutMs: m.timeoutMs,
+          confirmations: m.confirmations,
+          config: m.config,
+          enabled: m.enabled,
+        })),
+      };
+    }
+    return this.exportMonitorsConfig(userId, {
+      format: opts.format ?? 'json',
+      ids: opts.ids,
+      includeAlertChannels: opts.includeAlertChannels ?? false,
+    });
   }
 
   /**
@@ -686,7 +746,7 @@ export class MonitorsService {
    * @param action - One of: 'enable' | 'disable' | 'delete' | 'run'
    * @returns { ok, affected } with count of successfully processed monitors
    */
-  async bulkAction(userId: string, ids: string[], action: 'enable' | 'disable' | 'delete' | 'run' | 'add-tag' | 'remove-tag' | 'update-interval' | 'update-timeout' | 'update-confirmations', tagId?: string, value?: number) {
+  async bulkAction(userId: string, ids: string[], action: 'enable' | 'disable' | 'delete' | 'run' | 'add-tag' | 'remove-tag' | 'update-interval' | 'update-timeout' | 'update-confirmations' | 'pause', tagId?: string, value?: number) {
     if (!ids.length) return { ok: true, affected: 0 };
     // Verify ownership of all IDs first
     const monitors = await this.prisma.monitor.findMany({ where: { id: { in: ids }, userId } });
@@ -770,7 +830,93 @@ export class MonitorsService {
       return { ok: true, affected: ownedIds.length };
     }
 
+    // Bulk pause: value = duration in minutes (1-1440, default 60)
+    if (action === 'pause') {
+      const durationMin = value !== undefined ? Math.max(1, Math.min(1440, Math.round(value))) : 60;
+      const pausedUntil = new Date(Date.now() + durationMin * 60 * 1000);
+      await this.prisma.monitor.updateMany({ where: { id: { in: ownedIds }, userId }, data: { pausedUntil } });
+      await this.audit.log('monitor.bulk_pause', userId, userId, { ids: ownedIds, durationMin, pausedUntil: pausedUntil.toISOString() });
+      return { ok: true, affected: ownedIds.length };
+    }
+
     return { ok: false, affected: 0 };
+  }
+
+  /**
+   * Bulk edit multiple monitors at once — updates any combination of fields across all selected monitors.
+   * Only fields explicitly provided in the body are updated (undefined = skip).
+   * @param userId - The authenticated user's ID
+   * @param body - IDs + field overrides to apply
+   * @returns Count of affected monitors and list of errors per monitor ID
+   */
+  async bulkEdit(userId: string, body: {
+    ids: string[];
+    intervalSec?: number;
+    timeoutMs?: number;
+    confirmations?: number;
+    retryCount?: number;
+    flapDetectionEnabled?: boolean;
+    latencyAlertMs?: number | null;
+    slaTarget?: number | null;
+    enabled?: boolean;
+    folderId?: string | null;
+    alertChannelIds?: string[];
+  }): Promise<{ ok: boolean; affected: number; errors: Array<{ id: string; error: string }> }> {
+    if (!body.ids.length) return { ok: true, affected: 0, errors: [] };
+
+    // Verify ownership
+    const monitors = await this.prisma.monitor.findMany({ where: { id: { in: body.ids }, userId }, select: { id: true } });
+    const ownedIds = monitors.map((m) => m.id);
+    if (!ownedIds.length) return { ok: true, affected: 0, errors: [] };
+
+    // Build the update data — only include fields that were provided
+    const data: Record<string, unknown> = {};
+    if (body.intervalSec !== undefined) data.intervalSec = Math.max(10, Math.min(86400, body.intervalSec));
+    if (body.timeoutMs !== undefined) data.timeoutMs = Math.max(100, Math.min(60000, body.timeoutMs));
+    if (body.confirmations !== undefined) data.confirmations = Math.max(1, Math.min(10, body.confirmations));
+    if (body.retryCount !== undefined) data.retryCount = Math.max(0, Math.min(3, body.retryCount));
+    if (body.flapDetectionEnabled !== undefined) data.flapDetectionEnabled = body.flapDetectionEnabled;
+    if (body.latencyAlertMs !== undefined) data.latencyAlertMs = body.latencyAlertMs;
+    if (body.slaTarget !== undefined) data.slaTarget = body.slaTarget;
+    if (body.enabled !== undefined) data.enabled = body.enabled;
+    if (body.folderId !== undefined) data.folderId = body.folderId;
+
+    const errors: Array<{ id: string; error: string }> = [];
+
+    if (Object.keys(data).length > 0) {
+      await this.prisma.monitor.updateMany({
+        where: { id: { in: ownedIds }, userId },
+        data: data as Parameters<typeof this.prisma.monitor.updateMany>[0]['data'],
+      });
+    }
+
+    // Alert channels require per-monitor updates (replace existing assignments)
+    if (body.alertChannelIds !== undefined) {
+      for (const monitorId of ownedIds) {
+        try {
+          await this.prisma.monitorAlert.deleteMany({ where: { monitorId } });
+          if (body.alertChannelIds.length > 0) {
+            await this.prisma.monitorAlert.createMany({
+              data: body.alertChannelIds.map((alertChannelId) => ({ monitorId, alertChannelId })),
+            });
+          }
+        } catch (err) {
+          errors.push({ id: monitorId, error: err instanceof Error ? err.message : 'Failed to update alert channels' });
+        }
+      }
+    }
+
+    await this.audit.log('monitor.bulk_edit', userId, userId, {
+      ids: ownedIds,
+      fields: Object.keys(data),
+      alertChannelIds: body.alertChannelIds,
+    });
+
+    for (const monitorId of ownedIds) {
+      this.realtime.monitorUpdated(userId, { id: monitorId });
+    }
+
+    return { ok: true, affected: ownedIds.length, errors };
   }
 
   /**
@@ -1086,8 +1232,9 @@ export class MonitorsService {
       if (!isNaN(d.getTime())) where.checkedAt = { lt: d };
     }
 
-    if (opts?.status === 'ok') where.ok = true;
+    if (opts?.status === 'ok') { where.ok = true; (where as Record<string, unknown>)['level'] = 'green'; }
     else if (opts?.status === 'failed') where.ok = false;
+    else if (opts?.status === 'degraded') { where.ok = true; (where as Record<string, unknown>)['level'] = 'yellow'; }
 
     const runs = await this.prisma.monitorRun.findMany({
       where,
@@ -1111,9 +1258,12 @@ export class MonitorsService {
         responseBody: r.responseBody ?? null,
         timings: (r as typeof r & { timingsJson?: unknown }).timingsJson ?? null,
         securityAuditJson: (r as typeof r & { securityAuditJson?: unknown }).securityAuditJson ?? null,
+        responseSizeBytes: (r as typeof r & { responseSizeBytes?: number | null }).responseSizeBytes ?? null,
+        redirectChain: (r as typeof r & { redirectChain?: string[] }).redirectChain ?? [],
+        headerAssertionsFailed: (r as typeof r & { headerAssertionsFailed?: unknown }).headerAssertionsFailed ?? null,
       })),
       hasMore,
-      total: await this.prisma.monitorRun.count({ where: { userId, monitorId, ...(opts?.status === 'ok' ? { ok: true } : opts?.status === 'failed' ? { ok: false } : {}) } }),
+      total: await this.prisma.monitorRun.count({ where: { userId, monitorId, ...(opts?.status === 'ok' ? { ok: true, level: 'green' } : opts?.status === 'failed' ? { ok: false } : opts?.status === 'degraded' ? { ok: true, level: 'yellow' } : {}) } }),
       nextCursor: hasMore ? page[page.length - 1]?.checkedAt.toISOString() : null,
     };
   }
@@ -1136,11 +1286,12 @@ export class MonitorsService {
       take: 10_000,
     });
 
-    const header = ['id', 'checkedAt', 'ok', 'statusCode', 'latencyMs', 'level', 'message', 'dnsMs', 'tcpMs', 'tlsMs', 'ttfbMs', 'downloadMs', 'responseBody'].join(',');
+    const header = ['id', 'checkedAt', 'ok', 'statusCode', 'latencyMs', 'level', 'message', 'dnsMs', 'tcpMs', 'tlsMs', 'ttfbMs', 'downloadMs', 'responseSizeBytes', 'responseBody'].join(',');
     const rows = runs.map((r) => {
       const msg = (r.message ?? '').replace(/"/g, '""'); // escape quotes
       const body = (r.responseBody ?? '').replace(/"/g, '""');
       const timings = r.timingsJson as { dnsMs?: number | null; tcpMs?: number | null; tlsMs?: number | null; ttfbMs?: number | null; downloadMs?: number | null } | null;
+      const sizeBytes = (r as typeof r & { responseSizeBytes?: number | null }).responseSizeBytes ?? '';
       return [
         r.id,
         r.checkedAt.toISOString(),
@@ -1154,6 +1305,7 @@ export class MonitorsService {
         timings?.tlsMs ?? '',
         timings?.ttfbMs ?? '',
         timings?.downloadMs ?? '',
+        sizeBytes,
         body ? `"${body}"` : '',
       ].join(',');
     });
@@ -2812,4 +2964,1838 @@ export class MonitorsService {
     });
     return { pinned: updated.pinned };
   }
+
+  /**
+   * Returns a SSL / TLS certificate inventory for all SSL_CERT and HTTP monitors.
+   * Parses days-remaining from the latest run message for SSL_CERT monitors.
+   * HTTP monitors return certificate details live on the `/certificate` endpoint;
+   * here we only return their latest run status.
+   *
+   * @param userId - Owner's user ID
+   */
+  async getSslSummary(userId: string): Promise<{
+    total: number;
+    expired: number;
+    critical: number;
+    warning: number;
+    healthy: number;
+    certs: Array<{
+      monitorId: string;
+      name: string;
+      target: string;
+      type: string;
+      enabled: boolean;
+      folderId: string | null;
+      folderName: string | null;
+      status: string;
+      daysRemaining: number | null;
+      expiresAt: string | null;
+      lastCheckedAt: string | null;
+      lastMessage: string;
+      level: string;
+    }>;
+  }> {
+    // Fetch all SSL_CERT + HTTP monitors
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, type: { in: ['SSL_CERT', 'HTTP', 'BROWSER'] } },
+      select: {
+        id: true,
+        name: true,
+        target: true,
+        type: true,
+        enabled: true,
+        folderId: true,
+        folder: { select: { name: true } },
+        runs: {
+          orderBy: { checkedAt: 'desc' },
+          take: 1,
+          select: { level: true, message: true, checkedAt: true, ok: true },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    const daysRemainingRegex = /expires?\s+in\s+(\d+)\s*days?/i;
+    const expiresAtRegex = /\((\d{4}-\d{2}-\d{2})\)/;
+    const expiredRegex = /expired?\s+(\d+)\s*days?\s*ago/i;
+
+    const certs = monitors.map((m) => {
+      const latestRun = m.runs[0] ?? null;
+      const message = latestRun?.message ?? '';
+      const level = latestRun?.level ?? 'unknown';
+
+      let daysRemaining: number | null = null;
+      let expiresAt: string | null = null;
+
+      if (m.type === 'SSL_CERT') {
+        // Try to parse days from message like "SSL cert expires in 42 days (2025-12-31)"
+        const daysMatch = daysRemainingRegex.exec(message);
+        if (daysMatch) daysRemaining = parseInt(daysMatch[1], 10);
+
+        const expiredMatch = expiredRegex.exec(message);
+        if (expiredMatch) daysRemaining = -parseInt(expiredMatch[1], 10);
+
+        const dateMatch = expiresAtRegex.exec(message);
+        if (dateMatch) expiresAt = dateMatch[1];
+
+        // If level is red and no days parsed, assume expired/unknown
+        if (daysRemaining === null && level === 'red' && message.toLowerCase().includes('expir')) {
+          daysRemaining = 0;
+        }
+      }
+
+      return {
+        monitorId: m.id,
+        name: m.name,
+        target: m.target,
+        type: m.type,
+        enabled: m.enabled,
+        folderId: m.folderId,
+        folderName: m.folder?.name ?? null,
+        status: latestRun?.ok ? 'up' : latestRun ? 'down' : 'unknown',
+        daysRemaining,
+        expiresAt,
+        lastCheckedAt: latestRun?.checkedAt?.toISOString() ?? null,
+        lastMessage: message,
+        level,
+      };
+    });
+
+    // Sort: expired first, then by daysRemaining ascending (soonest first), then unknown, then HTTP without days
+    certs.sort((a, b) => {
+      const aHasDays = a.daysRemaining !== null;
+      const bHasDays = b.daysRemaining !== null;
+      if (aHasDays && bHasDays) return (a.daysRemaining ?? 0) - (b.daysRemaining ?? 0);
+      if (aHasDays) return -1;
+      if (bHasDays) return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    const sslCerts = certs.filter((c) => c.type === 'SSL_CERT');
+    const expired = sslCerts.filter((c) => c.daysRemaining !== null && c.daysRemaining < 0).length;
+    const critical = sslCerts.filter((c) => c.daysRemaining !== null && c.daysRemaining >= 0 && c.daysRemaining < 10).length;
+    const warning = sslCerts.filter((c) => c.daysRemaining !== null && c.daysRemaining >= 10 && c.daysRemaining <= 30).length;
+    const healthy = sslCerts.filter((c) => c.daysRemaining !== null && c.daysRemaining > 30).length;
+
+    return {
+      total: certs.length,
+      expired,
+      critical,
+      warning,
+      healthy,
+      certs,
+    };
+  }
+
+  // ─── Export / Import (GitOps) ─────────────────────────────────────────────
+
+  /**
+   * Exports monitor configurations as JSON or YAML (GitOps format).
+   */
+  async exportMonitorsConfig(userId: string, opts: { format: 'json' | 'yaml'; ids?: string[]; includeAlertChannels: boolean }) {
+    const where = opts.ids?.length ? { userId, id: { in: opts.ids } } : { userId };
+    const monitors = await this.prisma.monitor.findMany({
+      where,
+      include: {
+        monitorAlerts: { include: { alertChannel: { select: { name: true } } } },
+        monitorTags: { include: { tag: true } },
+        folder: { select: { name: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const exported = monitors.map(m => ({
+      name: m.name,
+      type: m.type,
+      target: m.target,
+      intervalSec: m.intervalSec,
+      enabled: m.enabled,
+      timeoutMs: m.timeoutMs,
+      retryCount: m.retryCount ?? 0,
+      confirmations: m.confirmations ?? 1,
+      tags: m.monitorTags.map((t: { tag: { name: string } }) => t.tag.name),
+      folder: m.folder?.name ?? null,
+      config: (m.configJson ?? {}) as Record<string, unknown>,
+      slaTarget: m.slaTarget ?? null,
+      ...(opts.includeAlertChannels && {
+        alertChannelNames: m.monitorAlerts.map((ma: { alertChannel: { name: string } }) => ma.alertChannel.name),
+      }),
+    }));
+
+    const payload = { version: '1', exportedAt: new Date().toISOString(), monitors: exported };
+    const dateStr = new Date().toISOString().split('T')[0];
+
+    if (opts.format === 'yaml') {
+      const yaml = await import('js-yaml');
+      return {
+        content: yaml.dump(payload),
+        contentType: 'application/yaml',
+        filename: `pulsedock-monitors-${dateStr}.yaml`,
+      };
+    }
+
+    return {
+      content: JSON.stringify(payload, null, 2),
+      contentType: 'application/json',
+      filename: `pulsedock-monitors-${dateStr}.json`,
+    };
+  }
+
+  /**
+   * Imports monitor configurations from a JSON or YAML config string.
+   */
+  async importMonitorsConfig(userId: string, opts: { format: 'json' | 'yaml'; content: string; dryRun?: boolean; overwriteExisting?: boolean }) {
+    let parsed: { version: string; monitors: unknown[] };
+
+    try {
+      if (opts.format === 'yaml') {
+        const yaml = await import('js-yaml');
+        parsed = yaml.load(opts.content) as typeof parsed;
+      } else {
+        parsed = JSON.parse(opts.content) as typeof parsed;
+      }
+    } catch {
+      throw new BadRequestException('Invalid config format — could not parse JSON/YAML');
+    }
+
+    if (!parsed?.monitors || !Array.isArray(parsed.monitors)) {
+      throw new BadRequestException('Invalid config: missing monitors array');
+    }
+
+    const results: { name: string; id?: string; action: 'created' | 'updated' | 'skipped' | 'error'; error?: string }[] = [];
+
+    for (const raw of parsed.monitors) {
+      const m = raw as Record<string, unknown>;
+      if (!m.name || !m.type || !m.target) {
+        results.push({ name: String(m.name ?? 'unknown'), action: 'error', error: 'Missing required fields: name, type, target' });
+        continue;
+      }
+
+      const existing = await this.prisma.monitor.findFirst({ where: { userId, name: String(m.name) } });
+
+      if (existing && !opts.overwriteExisting) {
+        results.push({ name: String(m.name), id: existing.id, action: 'skipped' });
+        continue;
+      }
+
+      if (opts.dryRun) {
+        results.push({ name: String(m.name), action: existing ? 'updated' : 'created' });
+        continue;
+      }
+
+      const data = {
+        userId,
+        name: String(m.name),
+        type: String(m.type) as MonitorType,
+        target: String(m.target),
+        intervalSec: Number(m.intervalSec ?? 60),
+        enabled: Boolean(m.enabled ?? true),
+        timeoutMs: Number(m.timeoutMs ?? 5000),
+        retryCount: Number(m.retryCount ?? 0),
+        confirmations: Number(m.confirmations ?? 1),
+        slaTarget: m.slaTarget ? Number(m.slaTarget) : null,
+        configJson: ((m.config as Record<string, unknown>) ?? {}) as Prisma.InputJsonValue,
+      };
+
+      try {
+        if (existing && opts.overwriteExisting) {
+          const updated = await this.prisma.monitor.update({ where: { id: existing.id }, data });
+          results.push({ name: String(m.name), id: updated.id, action: 'updated' });
+        } else {
+          const created = await this.prisma.monitor.create({ data });
+          results.push({ name: String(m.name), id: created.id, action: 'created' });
+        }
+      } catch (e) {
+        results.push({ name: String(m.name), action: 'error', error: e instanceof Error ? e.message : 'Unknown error' });
+      }
+    }
+
+    return {
+      created: results.filter(r => r.action === 'created').length,
+      updated: results.filter(r => r.action === 'updated').length,
+      skipped: results.filter(r => r.action === 'skipped').length,
+      errors: results.filter(r => r.action === 'error').map(r => `${r.name}: ${r.error}`),
+      monitors: results,
+    };
+  }
+
+  /**
+   * Returns redirect chain statistics for a monitor based on the last 100 runs.
+   */
+  async redirectChainStats(userId: string, monitorId: string): Promise<{
+    hasRedirects: boolean;
+    avgRedirects: number;
+    maxRedirects: number;
+    commonChains: Array<{ chain: string[]; count: number }>;
+  }> {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId },
+      orderBy: { checkedAt: 'desc' },
+      take: 100,
+      select: { redirectChain: true },
+    });
+
+    const withRedirects = runs.filter(r => (r as typeof r & { redirectChain: string[] }).redirectChain.length > 0);
+    if (withRedirects.length === 0) {
+      return { hasRedirects: false, avgRedirects: 0, maxRedirects: 0, commonChains: [] };
+    }
+
+    const counts: Record<string, { chain: string[]; count: number }> = {};
+    for (const r of withRedirects) {
+      const chain = (r as typeof r & { redirectChain: string[] }).redirectChain;
+      const key = JSON.stringify(chain);
+      if (!counts[key]) counts[key] = { chain, count: 0 };
+      counts[key].count++;
+    }
+
+    const commonChains = Object.values(counts)
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 5);
+
+    const totalRedirects = withRedirects.reduce((sum, r) => sum + (r as typeof r & { redirectChain: string[] }).redirectChain.length, 0);
+    const maxRedirects = withRedirects.reduce((max, r) => Math.max(max, (r as typeof r & { redirectChain: string[] }).redirectChain.length), 0);
+
+    return {
+      hasRedirects: true,
+      avgRedirects: Math.round((totalRedirects / withRedirects.length) * 10) / 10,
+      maxRedirects,
+      commonChains,
+    };
+  }
+
+  // ─── Monitor Health Score (v2: uptime/latency/incidents/flapping) ─────────
+
+  /**
+   * Computes a 0–100 health score for a single monitor.
+   * Components:
+   *   - Uptime (50 pts): based on last 24h uptime %
+   *   - Latency (30 pts): p95 latency vs 7d baseline
+   *   - Incidents (20 pts): deducted per active incident
+   *   - Flapping penalty (-15): if monitor.isFlapping
+   *
+   * Returns null score when no runs in last 24h.
+   */
+  async healthScore(
+    userId: string,
+    monitorId: string,
+  ): Promise<{
+    score: number | null;
+    breakdown: { uptime: number; latency: number; incidents: number; flapping: number; total: number } | null;
+  }> {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const runs24h = await this.prisma.monitorRun.findMany({
+      where: { monitorId, checkedAt: { gte: since24h } },
+      select: { ok: true, latencyMs: true },
+      orderBy: { checkedAt: 'desc' },
+    });
+
+    if (runs24h.length === 0) return { score: null, breakdown: null };
+
+    // Uptime component (50 pts max)
+    const okCount = runs24h.filter(r => r.ok).length;
+    const uptimePct = (okCount / runs24h.length) * 100;
+    const uptimeScore = Math.round((uptimePct / 100) * 50);
+
+    // Latency component (30 pts max)
+    const runs7d = await this.prisma.monitorRun.findMany({
+      where: { monitorId, checkedAt: { gte: since7d }, latencyMs: { not: null } },
+      select: { latencyMs: true },
+      orderBy: { checkedAt: 'desc' },
+      take: 500,
+    });
+
+    let latencyScore = 30;
+    if (runs7d.length >= 10) {
+      const latencies = runs7d.map(r => r.latencyMs!).sort((a, b) => a - b);
+      const p95Idx = Math.floor(latencies.length * 0.95);
+      const baselineP95 = latencies[p95Idx] ?? latencies[latencies.length - 1];
+
+      const recent = runs24h.filter(r => r.latencyMs != null).map(r => r.latencyMs!).sort((a, b) => a - b);
+      if (recent.length > 0) {
+        const recentP95Idx = Math.floor(recent.length * 0.95);
+        const recentP95 = recent[recentP95Idx] ?? recent[recent.length - 1];
+        if (baselineP95 > 0) {
+          const penalty = Math.floor(((recentP95 - baselineP95) / baselineP95) * 30);
+          latencyScore = Math.max(0, 30 - Math.max(0, penalty));
+        }
+      }
+    }
+
+    // Incident component (20 pts max)
+    const activeIncidents = await this.prisma.incident.count({
+      where: {
+        userId,
+        status: { not: 'RESOLVED' },
+        monitors: { some: { monitorId } },
+      },
+    });
+    const incidentScore = Math.max(0, 20 - activeIncidents * 10);
+
+    // Flapping penalty (-15 if flapping)
+    const flappingPenalty = monitor.isFlapping ? 15 : 0;
+
+    const total = Math.max(0, Math.min(100, uptimeScore + latencyScore + incidentScore - flappingPenalty));
+
+    return {
+      score: total,
+      breakdown: { uptime: uptimeScore, latency: latencyScore, incidents: incidentScore, flapping: flappingPenalty === 0 ? 0 : -flappingPenalty, total },
+    };
+  }
+
+  /**
+   * Batch health scores for all monitors belonging to a user.
+   * Skips the per-monitor latency computation for performance — gives full 30 pts.
+   */
+  async allHealthScores(userId: string): Promise<{ monitorId: string; score: number | null }[]> {
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId },
+      select: { id: true, isFlapping: true },
+    });
+
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const runStats = await this.prisma.monitorRun.groupBy({
+      by: ['monitorId'],
+      where: { userId, checkedAt: { gte: since24h } },
+      _count: { _all: true },
+    });
+
+    const okStats = await this.prisma.monitorRun.groupBy({
+      by: ['monitorId'],
+      where: { userId, checkedAt: { gte: since24h }, ok: true },
+      _count: { _all: true },
+    });
+
+    const activeIncidentsByMonitor = await this.prisma.incidentMonitor.groupBy({
+      by: ['monitorId'],
+      where: {
+        incident: { userId, status: { not: 'RESOLVED' } },
+      },
+      _count: { _all: true },
+    });
+
+    return monitors.map(m => {
+      const total = runStats.find(r => r.monitorId === m.id)?._count._all ?? 0;
+      if (total === 0) return { monitorId: m.id, score: null };
+
+      const ok = okStats.find(r => r.monitorId === m.id)?._count._all ?? 0;
+      const uptimeScore = Math.round((ok / total) * 50);
+      const incidentCount = activeIncidentsByMonitor.find(r => r.monitorId === m.id)?._count._all ?? 0;
+      const incidentScore = Math.max(0, 20 - incidentCount * 10);
+      const flappingPenalty = m.isFlapping ? 15 : 0;
+      // Latency: skip in batch for performance, give full 30 pts
+      const score = Math.max(0, Math.min(100, uptimeScore + 30 + incidentScore - flappingPenalty));
+      return { monitorId: m.id, score };
+    });
+  }
+
+  // ─── Uptime Heatmap ───────────────────────────────────────────────────────
+
+  /**
+   * Returns a per-monitor × per-day uptime heatmap for the last N days.
+   * Each cell has: uptimePct (0-100 | null), total checks, failed checks.
+   * Used by the /monitors/heatmap page.
+   */
+  async uptimeHeatmap(userId: string, days: number): Promise<{
+    monitors: Array<{
+      id: string;
+      name: string;
+      type: string;
+      folder: string | null;
+      days: Array<{ date: string; uptimePct: number | null; total: number; failed: number }>;
+    }>;
+    dates: string[];
+  }> {
+    const clampedDays = Math.min(90, Math.max(1, days));
+
+    // Load all uptime monitors for the user
+    const monitors = await this.prisma.monitor.findMany({
+      where: {
+        userId,
+        type: { in: ['HTTP', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING', 'SMTP', 'BROWSER'] },
+      },
+      select: { id: true, name: true, type: true, folder: { select: { name: true } } },
+      orderBy: [{ pinned: 'desc' }, { createdAt: 'asc' }],
+    });
+
+    // Build date list (oldest first, newest last)
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const since = new Date(today);
+    since.setUTCDate(today.getUTCDate() - clampedDays + 1);
+
+    const dates: string[] = [];
+    for (let i = 0; i < clampedDays; i++) {
+      const d = new Date(since);
+      d.setUTCDate(since.getUTCDate() + i);
+      dates.push(d.toISOString().slice(0, 10));
+    }
+
+    if (monitors.length === 0) {
+      return { monitors: [], dates };
+    }
+
+    const monitorIds = monitors.map(m => m.id);
+
+    // Single bulk query: all runs in the time window
+    const runs = await this.prisma.monitorRun.findMany({
+      where: {
+        userId,
+        monitorId: { in: monitorIds },
+        checkedAt: { gte: since },
+      },
+      select: { monitorId: true, checkedAt: true, level: true },
+    });
+
+    // Aggregate into monitorId → date → { total, failed }
+    const agg = new Map<string, Map<string, { total: number; failed: number }>>();
+    for (const run of runs) {
+      const dateStr = run.checkedAt.toISOString().slice(0, 10);
+      if (!agg.has(run.monitorId)) agg.set(run.monitorId, new Map());
+      const dayMap = agg.get(run.monitorId)!;
+      if (!dayMap.has(dateStr)) dayMap.set(dateStr, { total: 0, failed: 0 });
+      const cell = dayMap.get(dateStr)!;
+      cell.total++;
+      if (run.level !== 'green') cell.failed++;
+    }
+
+    const result = monitors.map(m => ({
+      id: m.id,
+      name: m.name,
+      type: m.type,
+      folder: m.folder?.name ?? null,
+      days: dates.map(date => {
+        const cell = agg.get(m.id)?.get(date);
+        if (!cell || cell.total === 0) return { date, uptimePct: null, total: 0, failed: 0 };
+        const uptimePct = Math.round(((cell.total - cell.failed) / cell.total) * 10000) / 100;
+        return { date, uptimePct, total: cell.total, failed: cell.failed };
+      }),
+    }));
+
+    return { monitors: result, dates };
+  }
+
+  // ─── Global Status Timeline ───────────────────────────────────────────────
+
+  /**
+   * Returns a multi-monitor status timeline for a given period.
+   * Each monitor has a list of segments: { start, end, level } computed from
+   * the status-transition history of its MonitorRuns.
+   *
+   * Used by the /monitors/timeline frontend page.
+   */
+  async statusTimeline(userId: string, hours: number): Promise<{
+    monitors: Array<{
+      id: string;
+      name: string;
+      type: string;
+      folder: string | null;
+      segments: Array<{ start: string; end: string; level: 'green' | 'yellow' | 'red' }>;
+      currentLevel: string;
+      uptimePct: number;
+    }>;
+    from: string;
+    to: string;
+    totalHours: number;
+  }> {
+    const clampedHours = Math.min(168, Math.max(1, hours)); // 1h–7d
+    const to = new Date();
+    const from = new Date(to.getTime() - clampedHours * 60 * 60 * 1000);
+
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        folder: { select: { name: true } },
+      },
+      orderBy: [{ pinned: 'desc' }, { createdAt: 'asc' }],
+    });
+
+    if (monitors.length === 0) {
+      return { monitors: [], from: from.toISOString(), to: to.toISOString(), totalHours: clampedHours };
+    }
+
+    const monitorIds = monitors.map(m => m.id);
+
+    // Load all runs within the window + a small lookback buffer for the preceding state
+    const bufferFrom = new Date(from.getTime() - 30 * 60 * 1000); // 30min lookback
+    const runs = await this.prisma.monitorRun.findMany({
+      where: {
+        monitorId: { in: monitorIds },
+        checkedAt: { gte: bufferFrom },
+      },
+      select: { monitorId: true, checkedAt: true, level: true },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    // Group by monitor
+    const runsByMonitor = new Map<string, Array<{ checkedAt: Date; level: string }>>();
+    for (const m of monitors) runsByMonitor.set(m.id, []);
+    for (const r of runs) {
+      runsByMonitor.get(r.monitorId)?.push({ checkedAt: r.checkedAt, level: r.level ?? 'green' });
+    }
+
+    const result = monitors.map(m => {
+      const monitorRuns = runsByMonitor.get(m.id) ?? [];
+
+      // Filter to only runs within window (use buffer runs to establish initial state)
+      const bufferRuns = monitorRuns.filter(r => r.checkedAt < from);
+      const windowRuns = monitorRuns.filter(r => r.checkedAt >= from);
+
+      // Determine starting state from most recent buffer run (or 'green' if none)
+      const initialLevel = bufferRuns.length > 0
+        ? (bufferRuns[bufferRuns.length - 1].level as 'green' | 'yellow' | 'red')
+        : 'green';
+
+      // Build segments from state transitions
+      const segments: Array<{ start: string; end: string; level: 'green' | 'yellow' | 'red' }> = [];
+
+      if (windowRuns.length === 0) {
+        // No data in window
+        segments.push({ start: from.toISOString(), end: to.toISOString(), level: initialLevel });
+      } else {
+        let segStart = from;
+        let currentLevel: 'green' | 'yellow' | 'red' = initialLevel;
+
+        for (const run of windowRuns) {
+          const runLevel = run.level as 'green' | 'yellow' | 'red';
+          if (runLevel !== currentLevel) {
+            segments.push({ start: segStart.toISOString(), end: run.checkedAt.toISOString(), level: currentLevel });
+            segStart = run.checkedAt;
+            currentLevel = runLevel;
+          }
+        }
+        // Final segment to end of window
+        segments.push({ start: segStart.toISOString(), end: to.toISOString(), level: currentLevel });
+      }
+
+      // Calculate uptime% from window runs
+      const windowTotal = windowRuns.length;
+      const windowOk = windowRuns.filter(r => r.level === 'green').length;
+      const uptimePct = windowTotal > 0 ? Math.round((windowOk / windowTotal) * 10000) / 100 : 100;
+      const currentLevel = windowRuns.length > 0
+        ? windowRuns[windowRuns.length - 1].level
+        : initialLevel;
+
+      return {
+        id: m.id,
+        name: m.name,
+        type: m.type,
+        folder: m.folder?.name ?? null,
+        segments,
+        currentLevel,
+        uptimePct,
+      };
+    });
+
+    return {
+      monitors: result,
+      from: from.toISOString(),
+      to: to.toISOString(),
+      totalHours: clampedHours,
+    };
+  }
+
+  // ─── CT Log History ──────────────────────────────────────────────────────
+
+  async ctLogHistory(userId: string, monitorId: string): Promise<{
+    entries: Array<{
+      checkedAt: Date;
+      newCertCount: number;
+      domains: string[];
+      message: string;
+      level: string;
+    }>;
+  }> {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId },
+      orderBy: { checkedAt: 'desc' },
+      take: 50,
+      select: { checkedAt: true, message: true, level: true },
+    });
+
+    return {
+      entries: runs.map((r) => {
+        const msg = r.message ?? '';
+        // Try to parse cert count from message: "N new certificate(s) found..."
+        const countMatch = msg.match(/^(\d+) new certificate/i);
+        const newCertCount = countMatch ? parseInt(countMatch[1], 10) : 0;
+
+        // Extract domain list from message: "...: domain1, domain2 (+N more)"
+        const domainsMatch = msg.match(/:\s+(.+?)(\s+\(\+\d+ more\))?$/);
+        const domains = domainsMatch
+          ? domainsMatch[1].split(',').map((d) => d.trim()).filter(Boolean)
+          : [];
+
+        return {
+          checkedAt: r.checkedAt,
+          message: msg,
+          newCertCount,
+          domains,
+          level: r.level ?? 'green',
+        };
+      }),
+    };
+  }
+
+  /**
+   * Returns effective check rate information for a monitor.
+   * Includes throttleMs, maxChecksPerHour, checksLastHour, and whether the monitor
+   * is currently throttled (checksLastHour >= maxChecksPerHour).
+   */
+  async checkRate(userId: string, monitorId: string): Promise<{
+    intervalSec: number;
+    throttleMs: number | null;
+    maxChecksPerHour: number | null;
+    checksLastHour: number;
+    effectiveChecksPerHour: number;
+    isThrottled: boolean;
+  }> {
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, userId },
+      select: {
+        intervalSec: true,
+        throttleMs: true,
+        maxChecksPerHour: true,
+      },
+    });
+
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const since = new Date(Date.now() - 60 * 60 * 1000);
+    const checksLastHour = await this.prisma.monitorRun.count({
+      where: { monitorId, checkedAt: { gte: since } },
+    });
+
+    const intervalBasedRate = Math.floor(3600 / monitor.intervalSec);
+    const effectiveChecksPerHour = monitor.maxChecksPerHour !== null
+      ? Math.min(intervalBasedRate, monitor.maxChecksPerHour)
+      : intervalBasedRate;
+
+    const isThrottled = monitor.maxChecksPerHour !== null
+      ? checksLastHour >= monitor.maxChecksPerHour
+      : false;
+
+    return {
+      intervalSec: monitor.intervalSec,
+      throttleMs: monitor.throttleMs,
+      maxChecksPerHour: monitor.maxChecksPerHour,
+      checksLastHour,
+      effectiveChecksPerHour,
+      isThrottled,
+    };
+  }
+
+  /**
+   * Analyzes monitoring configuration completeness.
+   * Returns per-monitor coverage gaps and an aggregate coverage score (0-100).
+   */
+  async monitorCoverage(userId: string): Promise<{
+    coverageScore: number;
+    totalMonitors: number;
+    monitorsWithAlerts: number;
+    monitorsWithSla: number;
+    monitorsWithDescription: number;
+    monitorsWithRunbook: number;
+    monitorsWithTags: number;
+    monitorsEnabled: number;
+    gaps: Array<{
+      id: string;
+      name: string;
+      type: string;
+      missingAlerts: boolean;
+      missingSla: boolean;
+      missingDescription: boolean;
+      missingRunbook: boolean;
+      missingTags: boolean;
+      coverageScore: number;
+    }>;
+    generatedAt: string;
+  }> {
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        enabled: true,
+        description: true,
+        runbookUrl: true,
+        slaTarget: true,
+        _count: { select: { monitorAlerts: true, monitorTags: true } },
+      },
+      orderBy: [{ pinned: 'desc' }, { name: 'asc' }],
+    });
+
+    if (monitors.length === 0) {
+      return {
+        coverageScore: 100,
+        totalMonitors: 0,
+        monitorsWithAlerts: 0,
+        monitorsWithSla: 0,
+        monitorsWithDescription: 0,
+        monitorsWithRunbook: 0,
+        monitorsWithTags: 0,
+        monitorsEnabled: 0,
+        gaps: [],
+        generatedAt: new Date().toISOString(),
+      };
+    }
+
+    // Coverage criteria weights (out of 5 points per monitor):
+    // - has alert channels: 2 pts (most critical)
+    // - has SLA target: 1 pt
+    // - has description: 1 pt
+    // - has runbook URL: 1 pt
+    const WEIGHTS = { alerts: 2, sla: 1, description: 1, runbook: 1 };
+    const MAX_SCORE = WEIGHTS.alerts + WEIGHTS.sla + WEIGHTS.description + WEIGHTS.runbook;
+
+    const gaps = monitors.map(m => {
+      const missingAlerts = m._count.monitorAlerts === 0;
+      const missingSla = m.slaTarget == null;
+      const missingDescription = !m.description?.trim();
+      const missingRunbook = !m.runbookUrl?.trim();
+      const missingTags = m._count.monitorTags === 0;
+
+      const pts =
+        (missingAlerts ? 0 : WEIGHTS.alerts) +
+        (missingSla ? 0 : WEIGHTS.sla) +
+        (missingDescription ? 0 : WEIGHTS.description) +
+        (missingRunbook ? 0 : WEIGHTS.runbook);
+      const coverageScore = Math.round((pts / MAX_SCORE) * 100);
+
+      return {
+        id: m.id,
+        name: m.name,
+        type: m.type,
+        missingAlerts,
+        missingSla,
+        missingDescription,
+        missingRunbook,
+        missingTags,
+        coverageScore,
+      };
+    });
+
+    const totalMonitors = monitors.length;
+    const monitorsWithAlerts = monitors.filter(m => m._count.monitorAlerts > 0).length;
+    const monitorsWithSla = monitors.filter(m => m.slaTarget != null).length;
+    const monitorsWithDescription = monitors.filter(m => m.description?.trim()).length;
+    const monitorsWithRunbook = monitors.filter(m => m.runbookUrl?.trim()).length;
+    const monitorsWithTags = monitors.filter(m => m._count.monitorTags > 0).length;
+    const monitorsEnabled = monitors.filter(m => m.enabled).length;
+
+    const avgCoverage = gaps.reduce((s, g) => s + g.coverageScore, 0) / totalMonitors;
+    const coverageScore = Math.round(avgCoverage);
+
+    return {
+      coverageScore,
+      totalMonitors,
+      monitorsWithAlerts,
+      monitorsWithSla,
+      monitorsWithDescription,
+      monitorsWithRunbook,
+      monitorsWithTags,
+      monitorsEnabled,
+      gaps: gaps.sort((a, b) => a.coverageScore - b.coverageScore), // worst first
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
+   * Week-over-week trend analysis for all monitors.
+   * Compares current 7 days vs prior 7 days: uptime% and avg latency.
+   * Returns trend direction: 'improving' | 'degrading' | 'stable' | 'new'
+   */
+  async monitorTrends(userId: string): Promise<{
+    monitors: Array<{
+      id: string;
+      name: string;
+      type: string;
+      enabled: boolean;
+      folder: string | null;
+      currentUptimePct: number | null;
+      previousUptimePct: number | null;
+      uptimeDelta: number | null;
+      uptimeTrend: 'improving' | 'degrading' | 'stable' | 'new';
+      currentAvgLatencyMs: number | null;
+      previousAvgLatencyMs: number | null;
+      latencyDeltaPct: number | null;
+      latencyTrend: 'improving' | 'degrading' | 'stable' | 'new';
+      currentChecks: number;
+      previousChecks: number;
+    }>;
+    generatedAt: string;
+  }> {
+    const now = new Date();
+    const currentStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const previousStart = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId },
+      select: { id: true, name: true, type: true, enabled: true, folderId: true, folder: { select: { name: true } } },
+      orderBy: { pinned: 'desc' },
+    });
+
+    if (monitors.length === 0) {
+      return { monitors: [], generatedAt: now.toISOString() };
+    }
+
+    const monitorIds = monitors.map(m => m.id);
+
+    // Fetch all runs for both periods in one query
+    const allRuns = await this.prisma.monitorRun.findMany({
+      where: {
+        monitorId: { in: monitorIds },
+        checkedAt: { gte: previousStart },
+      },
+      select: { monitorId: true, ok: true, latencyMs: true, checkedAt: true },
+    });
+
+    // Group by monitorId and period
+    const byMonitor = new Map<string, { current: typeof allRuns; previous: typeof allRuns }>();
+    for (const id of monitorIds) {
+      byMonitor.set(id, { current: [], previous: [] });
+    }
+    for (const run of allRuns) {
+      const bucket = byMonitor.get(run.monitorId);
+      if (!bucket) continue;
+      if (run.checkedAt >= currentStart) {
+        bucket.current.push(run);
+      } else {
+        bucket.previous.push(run);
+      }
+    }
+
+    const UPTIME_DELTA_THRESHOLD = 2; // pp — less than 2pp change = stable
+    const LATENCY_DELTA_THRESHOLD = 10; // % — less than 10% change = stable
+
+    const result = monitors.map(m => {
+      const { current, previous } = byMonitor.get(m.id) ?? { current: [], previous: [] };
+
+      const calcUptime = (runs: typeof allRuns) => {
+        if (runs.length === 0) return null;
+        return Math.round((runs.filter(r => r.ok).length / runs.length) * 1000) / 10;
+      };
+      const calcAvgLatency = (runs: typeof allRuns) => {
+        const withLatency = runs.filter(r => r.latencyMs != null);
+        if (withLatency.length === 0) return null;
+        return Math.round(withLatency.reduce((s, r) => s + r.latencyMs!, 0) / withLatency.length);
+      };
+
+      const currentUptimePct = calcUptime(current);
+      const previousUptimePct = calcUptime(previous);
+      const currentAvgLatencyMs = calcAvgLatency(current);
+      const previousAvgLatencyMs = calcAvgLatency(previous);
+
+      const uptimeDelta = (currentUptimePct != null && previousUptimePct != null)
+        ? Math.round((currentUptimePct - previousUptimePct) * 10) / 10
+        : null;
+
+      const latencyDeltaPct = (currentAvgLatencyMs != null && previousAvgLatencyMs != null && previousAvgLatencyMs > 0)
+        ? Math.round(((currentAvgLatencyMs - previousAvgLatencyMs) / previousAvgLatencyMs) * 1000) / 10
+        : null;
+
+      const uptimeTrend: 'improving' | 'degrading' | 'stable' | 'new' =
+        previous.length === 0 ? 'new' :
+        uptimeDelta == null ? 'stable' :
+        uptimeDelta > UPTIME_DELTA_THRESHOLD ? 'improving' :
+        uptimeDelta < -UPTIME_DELTA_THRESHOLD ? 'degrading' : 'stable';
+
+      const latencyTrend: 'improving' | 'degrading' | 'stable' | 'new' =
+        previous.length === 0 ? 'new' :
+        latencyDeltaPct == null ? 'stable' :
+        latencyDeltaPct < -LATENCY_DELTA_THRESHOLD ? 'improving' :  // lower latency = improving
+        latencyDeltaPct > LATENCY_DELTA_THRESHOLD ? 'degrading' : 'stable';
+
+      return {
+        id: m.id,
+        name: m.name,
+        type: m.type,
+        enabled: m.enabled,
+        folder: m.folder?.name ?? null,
+        currentUptimePct,
+        previousUptimePct,
+        uptimeDelta,
+        uptimeTrend,
+        currentAvgLatencyMs,
+        previousAvgLatencyMs,
+        latencyDeltaPct,
+        latencyTrend,
+        currentChecks: current.length,
+        previousChecks: previous.length,
+      };
+    });
+
+    return { monitors: result, generatedAt: now.toISOString() };
+  }
+
+  // ─── Geo-Distribution Stats ───────────────────────────────────────────────────────
+
+  async geoStats(
+    userId: string,
+    monitorId: string,
+    periodDays = 7,
+  ): Promise<{
+    regions: Array<{
+      region: string;
+      totalRuns: number;
+      okRuns: number;
+      uptimePct: number;
+      avgLatencyMs: number | null;
+      p95LatencyMs: number | null;
+    }>;
+    hasGeoData: boolean;
+  }> {
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, userId },
+    });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const since = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000);
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: {
+        monitorId,
+        checkedAt: { gte: since },
+        geoRegion: { not: null },
+      },
+      select: { ok: true, latencyMs: true, geoRegion: true },
+    });
+
+    if (runs.length === 0) {
+      return { regions: [], hasGeoData: false };
+    }
+
+    // Group by region
+    const regionMap = new Map<string, { ok: number; total: number; latencies: number[] }>();
+    for (const run of runs) {
+      const region = run.geoRegion!;
+      if (!regionMap.has(region)) regionMap.set(region, { ok: 0, total: 0, latencies: [] });
+      const entry = regionMap.get(region)!;
+      entry.total++;
+      if (run.ok) entry.ok++;
+      if (run.latencyMs !== null) entry.latencies.push(run.latencyMs);
+    }
+
+    const regions = Array.from(regionMap.entries()).map(([region, data]) => {
+      const uptimePct = data.total > 0 ? Math.round((data.ok / data.total) * 1000) / 10 : 0;
+      const avgLatencyMs = data.latencies.length > 0
+        ? Math.round(data.latencies.reduce((a, b) => a + b, 0) / data.latencies.length)
+        : null;
+
+      let p95LatencyMs: number | null = null;
+      if (data.latencies.length > 0) {
+        const sorted = [...data.latencies].sort((a, b) => a - b);
+        const p95Index = Math.ceil(sorted.length * 0.95) - 1;
+        p95LatencyMs = sorted[Math.max(0, p95Index)];
+      }
+
+      return { region, totalRuns: data.total, okRuns: data.ok, uptimePct, avgLatencyMs, p95LatencyMs };
+    });
+
+    return { regions, hasGeoData: true };
+  }
+
+  /**
+   * Returns per-day P50 / P95 / P99 latency and uptime% for the last N days.
+   * Useful for rendering a multi-line trend chart on the Performance tab.
+   * Days with zero successful latency data return null for all percentile fields.
+   *
+   * @param userId  - Owner's user ID
+   * @param monitorId - Target monitor
+   * @param days    - Number of days to look back (1–90, default 30)
+   */
+  async latencyHistory(userId: string, monitorId: string, days: number = 30): Promise<{
+    days: Array<{
+      date: string; // YYYY-MM-DD UTC
+      p50: number | null;
+      p95: number | null;
+      p99: number | null;
+      avgMs: number | null;
+      uptimePct: number | null;
+      totalChecks: number;
+    }>;
+  }> {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const clampedDays = Math.min(Math.max(1, days), 90);
+    const since = new Date(Date.now() - clampedDays * 24 * 60 * 60 * 1000);
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId, checkedAt: { gte: since } },
+      select: { ok: true, latencyMs: true, checkedAt: true },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    // Group by UTC date
+    const buckets = new Map<string, { latencies: number[]; ok: number; total: number }>();
+
+    // Pre-fill all days so we get entries even for days with no data
+    for (let i = 0; i < clampedDays; i++) {
+      const d = new Date(since.getTime() + i * 24 * 60 * 60 * 1000);
+      const key = d.toISOString().split('T')[0];
+      if (!buckets.has(key)) buckets.set(key, { latencies: [], ok: 0, total: 0 });
+    }
+
+    for (const run of runs) {
+      const key = run.checkedAt.toISOString().split('T')[0];
+      if (!buckets.has(key)) buckets.set(key, { latencies: [], ok: 0, total: 0 });
+      const b = buckets.get(key)!;
+      b.total++;
+      if (run.ok) b.ok++;
+      if (run.latencyMs !== null) b.latencies.push(run.latencyMs);
+    }
+
+    const pct = (arr: number[], p: number): number | null => {
+      if (arr.length === 0) return null;
+      const sorted = [...arr].sort((a, b) => a - b);
+      return sorted[Math.max(0, Math.ceil(sorted.length * (p / 100)) - 1)];
+    };
+
+    const result = Array.from(buckets.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, b]) => ({
+        date,
+        p50: pct(b.latencies, 50),
+        p95: pct(b.latencies, 95),
+        p99: pct(b.latencies, 99),
+        avgMs: b.latencies.length > 0
+          ? Math.round(b.latencies.reduce((s, v) => s + v, 0) / b.latencies.length)
+          : null,
+        uptimePct: b.total > 0 ? Math.round((b.ok / b.total) * 1000) / 10 : null,
+        totalChecks: b.total,
+      }));
+
+    return { days: result };
+  }
+
+  /**
+   * Analyzes failed MonitorRun records for a monitor and groups them into
+   * normalized error patterns (by stripping dynamic values like IPs, timestamps,
+   * HTTP status codes, UUIDs). Returns frequency, first/last seen, and a
+   * 7-bucket weekly trend for each distinct pattern.
+   *
+   * @param userId     - Owner's user ID
+   * @param monitorId  - Target monitor
+   * @param periodDays - Look-back window in days (1–365, default 30)
+   */
+  async failurePatterns(userId: string, monitorId: string, periodDays: number = 30): Promise<{
+    totalFailures: number;
+    uniquePatterns: number;
+    patterns: Array<{
+      pattern: string;
+      count: number;
+      percentage: number;
+      firstSeen: Date;
+      lastSeen: Date;
+      exampleMessage: string;
+      weeklyTrend: number[]; // 7 buckets, oldest→newest
+    }>;
+  }> {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const days = Math.min(Math.max(1, periodDays), 365);
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const failedRuns = await this.prisma.monitorRun.findMany({
+      where: { monitorId, ok: false, checkedAt: { gte: since } },
+      select: { message: true, checkedAt: true },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    if (failedRuns.length === 0) {
+      return { totalFailures: 0, uniquePatterns: 0, patterns: [] };
+    }
+
+    // ── Normalize message into a pattern ────────────────────────────────────
+    const normalize = (msg: string): string => {
+      return (msg ?? '')
+        .replace(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g, '<IP>') // IPv4
+        .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '<UUID>') // UUID
+        .replace(/\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/g, '<TS>') // ISO timestamps
+        .replace(/\b\d{10,13}\b/g, '<EPOCH>') // Unix epoch timestamps
+        .replace(/\bhttps?:\/\/[^\s"')]+/g, '<URL>') // URLs
+        .replace(/\bport \d+\b/gi, 'port <PORT>') // port numbers
+        .replace(/\b(status|code|http)\s*[:=]?\s*\d{3}\b/gi, (m) => m.replace(/\d{3}/, '<CODE>')) // HTTP codes
+        .replace(/in \d+(\.\d+)?ms/gi, 'in <MS>ms') // timing values
+        .replace(/\btimeout after \d+/gi, 'timeout after <N>') // timeout values
+        .replace(/\b\d{5,}\b/g, '<NUM>') // large numbers
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 200);
+    };
+
+    // ── Build pattern buckets ────────────────────────────────────────────────
+    const now = Date.now();
+    const weekMs = 7 * 24 * 60 * 60 * 1000;
+    const bucketCount = 7;
+    const bucketDurationMs = (days * 24 * 60 * 60 * 1000) / bucketCount;
+
+    const patternMap = new Map<string, {
+      count: number;
+      firstSeen: Date;
+      lastSeen: Date;
+      exampleMessage: string;
+      weekly: number[];
+    }>();
+
+    for (const run of failedRuns) {
+      const pattern = normalize(run.message ?? 'Unknown error');
+      const existing = patternMap.get(pattern);
+      const checkedMs = run.checkedAt.getTime();
+      const bucketIdx = Math.min(
+        bucketCount - 1,
+        Math.floor((checkedMs - since.getTime()) / bucketDurationMs),
+      );
+
+      if (!existing) {
+        patternMap.set(pattern, {
+          count: 1,
+          firstSeen: run.checkedAt,
+          lastSeen: run.checkedAt,
+          exampleMessage: run.message ?? 'Unknown error',
+          weekly: Array(bucketCount).fill(0).map((_, i) => (i === bucketIdx ? 1 : 0)),
+        });
+      } else {
+        existing.count++;
+        if (run.checkedAt < existing.firstSeen) existing.firstSeen = run.checkedAt;
+        if (run.checkedAt > existing.lastSeen) existing.lastSeen = run.checkedAt;
+        existing.weekly[bucketIdx]++;
+      }
+    }
+
+    const totalFailures = failedRuns.length;
+    const patterns = Array.from(patternMap.entries())
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 20)
+      .map(([pattern, data]) => ({
+        pattern,
+        count: data.count,
+        percentage: Math.round((data.count / totalFailures) * 1000) / 10,
+        firstSeen: data.firstSeen,
+        lastSeen: data.lastSeen,
+        exampleMessage: data.exampleMessage,
+        weeklyTrend: data.weekly,
+      }));
+
+    return { totalFailures, uniquePatterns: patternMap.size, patterns };
+  }
+
+  // ── Import from Docker Compose ──────────────────────────────────────────────
+
+  /**
+   * Parses a docker-compose YAML string and returns suggested monitors for each service.
+   * Does NOT persist anything — returns suggestions only.
+   */
+  importFromCompose(compose: string): SuggestedMonitor[] {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const yaml = require('js-yaml') as typeof import('js-yaml');
+
+    let parsed: unknown;
+    try {
+      parsed = yaml.load(compose);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new BadRequestException(`Invalid YAML: ${msg}`);
+    }
+
+    if (
+      !parsed ||
+      typeof parsed !== 'object' ||
+      !('services' in parsed) ||
+      typeof (parsed as Record<string, unknown>).services !== 'object'
+    ) {
+      return [];
+    }
+
+    const services = (parsed as { services: Record<string, unknown> }).services;
+    const suggestions: SuggestedMonitor[] = [];
+
+    for (const [serviceName, serviceDef] of Object.entries(services)) {
+      if (!serviceDef || typeof serviceDef !== 'object') continue;
+
+      const svc = serviceDef as {
+        image?: string;
+        ports?: Array<string | { published?: string | number; target?: string | number }>;
+      };
+
+      const image = (svc.image ?? '').toLowerCase();
+
+      // Parse port mappings → list of host ports
+      const hostPorts: number[] = [];
+      if (Array.isArray(svc.ports)) {
+        for (const p of svc.ports) {
+          if (typeof p === 'string') {
+            // "hostPort:containerPort" or just "containerPort"
+            const parts = p.split(':');
+            const hostPart = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+            const portNum = parseInt(hostPart.replace(/[^0-9]/g, ''), 10);
+            if (!isNaN(portNum)) hostPorts.push(portNum);
+          } else if (typeof p === 'object' && p !== null) {
+            const pub = p.published;
+            if (pub !== undefined) {
+              const portNum = typeof pub === 'number' ? pub : parseInt(String(pub), 10);
+              if (!isNaN(portNum)) hostPorts.push(portNum);
+            }
+          }
+        }
+      }
+
+      const firstPort = hostPorts[0];
+      const hasPort = (port: number) => hostPorts.includes(port);
+
+      // Helper: build HTTP target
+      const httpTarget = (port: number) => `http://localhost:${port}`;
+      // Helper: build TCP target
+      const tcpTarget = (port: number) => `localhost:${port}`;
+
+      // ── Image-based heuristics ───────────────────────────────────────────
+      if (/nginx|traefik|caddy|haproxy/.test(image)) {
+        const port = hasPort(443) ? 443 : hasPort(80) ? 80 : firstPort;
+        if (port !== undefined) {
+          const proto = port === 443 ? 'https' : 'http';
+          suggestions.push({
+            name: serviceName,
+            type: 'HTTP',
+            target: `${proto}://localhost:${port}`,
+            reason: `${image.match(/nginx|traefik|caddy|haproxy/)?.[0] ?? 'proxy'} image detected on port ${port}`,
+            intervalSec: 60,
+          });
+        }
+        continue;
+      }
+
+      if (/postgres/.test(image)) {
+        const port = firstPort ?? 5432;
+        suggestions.push({
+          name: serviceName,
+          type: 'TCP',
+          target: tcpTarget(port),
+          reason: `postgres image detected on port ${port}`,
+          intervalSec: 60,
+        });
+        continue;
+      }
+
+      if (/redis/.test(image)) {
+        const port = firstPort ?? 6379;
+        suggestions.push({
+          name: serviceName,
+          type: 'TCP',
+          target: tcpTarget(port),
+          reason: `redis image detected on port ${port}`,
+          intervalSec: 60,
+        });
+        continue;
+      }
+
+      if (/mysql|mariadb/.test(image)) {
+        const port = firstPort ?? 3306;
+        suggestions.push({
+          name: serviceName,
+          type: 'TCP',
+          target: tcpTarget(port),
+          reason: `${image.match(/mysql|mariadb/)?.[0] ?? 'mysql'} image detected on port ${port}`,
+          intervalSec: 60,
+        });
+        continue;
+      }
+
+      if (/mongo/.test(image)) {
+        const port = firstPort ?? 27017;
+        suggestions.push({
+          name: serviceName,
+          type: 'TCP',
+          target: tcpTarget(port),
+          reason: `mongo image detected on port ${port}`,
+          intervalSec: 60,
+        });
+        continue;
+      }
+
+      if (/rabbitmq/.test(image)) {
+        const tcpPort = firstPort ?? 5672;
+        suggestions.push({
+          name: serviceName,
+          type: 'TCP',
+          target: tcpTarget(tcpPort),
+          reason: `rabbitmq image detected on port ${tcpPort}`,
+          intervalSec: 60,
+        });
+        // Also suggest management UI if port 15672 is mapped
+        if (hasPort(15672)) {
+          suggestions.push({
+            name: `${serviceName}-management`,
+            type: 'HTTP',
+            target: httpTarget(15672),
+            reason: `rabbitmq management UI on port 15672`,
+            intervalSec: 60,
+          });
+        }
+        continue;
+      }
+
+      if (/elasticsearch/.test(image)) {
+        const port = firstPort ?? 9200;
+        suggestions.push({
+          name: serviceName,
+          type: 'HTTP',
+          target: httpTarget(port),
+          reason: `elasticsearch image detected on port ${port}`,
+          intervalSec: 60,
+        });
+        continue;
+      }
+
+      if (/grafana/.test(image)) {
+        const port = firstPort ?? 3000;
+        suggestions.push({
+          name: serviceName,
+          type: 'HTTP',
+          target: httpTarget(port),
+          reason: `grafana image detected on port ${port}`,
+          intervalSec: 60,
+        });
+        continue;
+      }
+
+      if (/prometheus/.test(image)) {
+        const port = firstPort ?? 9090;
+        suggestions.push({
+          name: serviceName,
+          type: 'HTTP',
+          target: httpTarget(port),
+          reason: `prometheus image detected on port ${port}`,
+          intervalSec: 60,
+        });
+        continue;
+      }
+
+      if (/minio/.test(image)) {
+        const port = hasPort(9001) ? 9001 : firstPort ?? 9000;
+        suggestions.push({
+          name: serviceName,
+          type: 'HTTP',
+          target: httpTarget(port),
+          reason: `minio image detected on port ${port}`,
+          intervalSec: 60,
+        });
+        continue;
+      }
+
+      // ── Port-based fallback heuristics ───────────────────────────────────
+      if (hasPort(80) || hasPort(443)) {
+        const port = hasPort(443) ? 443 : 80;
+        const proto = port === 443 ? 'https' : 'http';
+        suggestions.push({
+          name: serviceName,
+          type: 'HTTP',
+          target: `${proto}://localhost:${port}`,
+          reason: `port ${port} exposed (HTTP)`,
+          intervalSec: 60,
+        });
+        continue;
+      }
+
+      if (firstPort !== undefined) {
+        suggestions.push({
+          name: serviceName,
+          type: 'TCP',
+          target: tcpTarget(firstPort),
+          reason: `port ${firstPort} exposed`,
+          intervalSec: 60,
+        });
+        continue;
+      }
+
+      // No ports → skip
+    }
+
+    return suggestions;
+  }
+
+  // ─── Alert Rules Simulator ────────────────────────────────────────────────
+
+  async simulateAlerts(
+    userId: string,
+    monitorId: string,
+    config: {
+      confirmations?: number;
+      flapDetection?: boolean;
+      flapWindow?: number;
+      flapThreshold?: number;
+      scheduleStartHour?: number;
+      scheduleEndHour?: number;
+    },
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: {
+        monitorId,
+        checkedAt: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) },
+        userId,
+      },
+      orderBy: { checkedAt: 'asc' },
+      take: 10000,
+      select: { ok: true, checkedAt: true },
+    });
+
+    const result = simulateAlertRules(
+      runs.map((r) => ({ ok: r.ok, checkedAt: r.checkedAt.toISOString() })),
+      config,
+    );
+
+    return {
+      ...result,
+      currentConfig: {
+        confirmations: monitor.confirmations,
+        flapDetection: monitor.flapDetectionEnabled,
+        flapWindow: monitor.flapWindow,
+        flapThreshold: monitor.flapThreshold,
+      },
+    };
+  }
+
+  /**
+   * Returns the time-series history of captured metric values for a monitor.
+   * Only meaningful for HTTP/BROWSER monitors with metricPath configured.
+   * Returns up to `limit` data points (default 200) ordered by checkedAt desc.
+   */
+  async metricHistory(userId: string, monitorId: string, opts: { limit?: number; periodDays?: number } = {}): Promise<{
+    metricName: string | null;
+    metricUnit: string | null;
+    metricPath: string | null;
+    metricAlertMin: number | null;
+    metricAlertMax: number | null;
+    points: Array<{ checkedAt: string; value: number; level: string }>;
+    stats: { min: number | null; max: number | null; avg: number | null; latest: number | null; count: number };
+  }> {
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, userId },
+      select: { metricPath: true, metricName: true, metricUnit: true, metricAlertMin: true, metricAlertMax: true },
+    });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const { limit = 200, periodDays = 30 } = opts;
+    const since = new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000);
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId, checkedAt: { gte: since }, capturedMetricValue: { not: null } },
+      orderBy: { checkedAt: 'desc' },
+      take: limit,
+      select: { checkedAt: true, capturedMetricValue: true, level: true },
+    });
+
+    const points = runs
+      .filter((r): r is typeof r & { capturedMetricValue: number } => r.capturedMetricValue !== null)
+      .map((r) => ({ checkedAt: r.checkedAt.toISOString(), value: r.capturedMetricValue, level: r.level }));
+
+    const values = points.map((p) => p.value);
+    const stats = {
+      min: values.length > 0 ? Math.min(...values) : null,
+      max: values.length > 0 ? Math.max(...values) : null,
+      avg: values.length > 0 ? Math.round((values.reduce((a, b) => a + b, 0) / values.length) * 100) / 100 : null,
+      latest: points[0]?.value ?? null,
+      count: points.length,
+    };
+
+    return {
+      metricName: monitor.metricName,
+      metricUnit: monitor.metricUnit,
+      metricPath: monitor.metricPath,
+      metricAlertMin: monitor.metricAlertMin,
+      metricAlertMax: monitor.metricAlertMax,
+      points,
+      stats,
+    };
+  }
+
+  /**
+   * SLA compliance dashboard for all enabled monitors.
+   * Returns current-month uptime, error budget usage, and 3-month history.
+   */
+  async slaDashboard(userId: string) {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, enabled: true },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        folderId: true,
+        slaTarget: true,
+      },
+    });
+
+    // Helper: compute uptime % for a monitor in a given period
+    const computeUptime = async (
+      monitorId: string,
+      from: Date,
+      to: Date,
+    ): Promise<{ totalRuns: number; failedRuns: number; uptimePct: number }> => {
+      const runs = await this.prisma.monitorRun.findMany({
+        where: { monitorId, checkedAt: { gte: from, lt: to } },
+        select: { ok: true },
+      });
+      const totalRuns = runs.length;
+      const failedRuns = runs.filter((r) => !r.ok).length;
+      const uptimePct = totalRuns === 0 ? 100 : ((totalRuns - failedRuns) / totalRuns) * 100;
+      return { totalRuns, failedRuns, uptimePct: Math.round(uptimePct * 10000) / 10000 };
+    };
+
+    // Build 3-month history labels
+    const historyMonths: Array<{ label: string; start: Date; end: Date }> = [];
+    for (let i = 2; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const end = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+      const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      historyMonths.push({ label, start: d, end });
+    }
+
+    const monitorsData = await Promise.all(
+      monitors.map(async (m) => {
+        const slaTarget = m.slaTarget != null ? Number(m.slaTarget) : null;
+
+        // Current month stats
+        const { totalRuns, failedRuns, uptimePct } = await computeUptime(m.id, monthStart, now);
+
+        // Compliance
+        let compliant: boolean | null = null;
+        let errorBudgetUsedPct: number | null = null;
+        let budgetRemainingPct: number | null = null;
+
+        if (slaTarget != null) {
+          compliant = uptimePct >= slaTarget;
+          const allowedDown = 100 - slaTarget;
+          if (allowedDown <= 0) {
+            errorBudgetUsedPct = uptimePct < 100 ? 100 : 0;
+          } else {
+            errorBudgetUsedPct = Math.min(100, Math.max(0, ((100 - uptimePct) / allowedDown) * 100));
+            errorBudgetUsedPct = Math.round(errorBudgetUsedPct * 100) / 100;
+          }
+          budgetRemainingPct = Math.round((100 - errorBudgetUsedPct) * 100) / 100;
+        }
+
+        // Monthly history (last 3 months)
+        const monthlyHistory = await Promise.all(
+          historyMonths.map(async (hm) => {
+            const { uptimePct: hUptime } = await computeUptime(m.id, hm.start, hm.end);
+            const hCompliant = slaTarget != null ? hUptime >= slaTarget : null;
+            return {
+              month: hm.label,
+              uptimePct: Math.round(hUptime * 10000) / 10000,
+              compliant: hCompliant,
+            };
+          }),
+        );
+
+        return {
+          id: m.id,
+          name: m.name,
+          type: m.type,
+          folder: m.folderId,
+          slaTarget,
+          uptimePct,
+          compliant,
+          errorBudgetUsedPct,
+          budgetRemainingPct,
+          totalRuns,
+          failedRuns,
+          monthlyHistory,
+        };
+      }),
+    );
+
+    // Summary
+    const compliantCount = monitorsData.filter((m) => m.compliant === true && (m.slaTarget == null || m.uptimePct - (m.slaTarget ?? 0) >= 0.1)).length;
+    const atRiskCount = monitorsData.filter(
+      (m) => m.slaTarget != null && m.compliant === true && m.uptimePct - (m.slaTarget ?? 0) < 0.1,
+    ).length;
+    const breachedCount = monitorsData.filter((m) => m.compliant === false).length;
+    const noTargetCount = monitorsData.filter((m) => m.slaTarget == null).length;
+
+    const currentMonthLabel = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    return {
+      generatedAt: now.toISOString(),
+      period: {
+        start: monthStart.toISOString(),
+        end: now.toISOString(),
+      },
+      summary: {
+        totalMonitors: monitors.length,
+        compliant: compliantCount,
+        atRisk: atRiskCount,
+        breached: breachedCount,
+        noTarget: noTargetCount,
+        currentMonth: currentMonthLabel,
+      },
+      monitors: monitorsData,
+    };
+  }
+}
+
+export interface SuggestedMonitor {
+  name: string;
+  type: 'HTTP' | 'TCP';
+  target: string;
+  reason: string;
+  intervalSec: number;
+}
+
+// ─── Pure simulation function (exported for unit tests) ────────────────────
+
+export interface SimulateRun {
+  ok: boolean;
+  checkedAt: string;
+}
+
+export interface SimulateConfig {
+  confirmations?: number;
+  flapDetection?: boolean;
+  flapWindow?: number;
+  flapThreshold?: number;
+  scheduleStartHour?: number;
+  scheduleEndHour?: number;
+}
+
+export interface SimulateAlertsResult {
+  totalRuns: number;
+  totalFails: number;
+  uptimePct: number;
+  alertsFired: number;
+  recoverysFired: number;
+  flappingAlertsFired: number;
+  alertsPerDay: number;
+  noiseScore: 'low' | 'medium' | 'high';
+  timeline: Array<{
+    timestamp: string;
+    type: 'alert' | 'recovery' | 'flapping';
+    reason: string;
+  }>;
+}
+
+export function simulateAlertRules(runs: SimulateRun[], config: SimulateConfig): SimulateAlertsResult {
+  const confirmations = config.confirmations ?? 1;
+  const flapDetection = config.flapDetection ?? false;
+  const flapWindow = config.flapWindow ?? 5;
+  const flapThreshold = config.flapThreshold ?? 3;
+  const hasSchedule =
+    config.scheduleStartHour !== undefined && config.scheduleStartHour !== null &&
+    config.scheduleEndHour !== undefined && config.scheduleEndHour !== null;
+  const scheduleStartHour = config.scheduleStartHour ?? 0;
+  const scheduleEndHour = config.scheduleEndHour ?? 23;
+
+  let consecutiveFails = 0;
+  let lastState: 'ok' | 'fail' = 'ok';
+  const timeline: SimulateAlertsResult['timeline'] = [];
+  let alertsFired = 0;
+  let recoverysFired = 0;
+  let flappingAlertsFired = 0;
+  let totalFails = 0;
+
+  for (let i = 0; i < runs.length; i++) {
+    const run = runs[i];
+
+    if (!run.ok) {
+      consecutiveFails++;
+      totalFails++;
+    } else {
+      consecutiveFails = 0;
+    }
+
+    if (consecutiveFails >= confirmations && lastState !== 'fail') {
+      // Check schedule filter
+      if (hasSchedule) {
+        const hour = new Date(run.checkedAt).getUTCHours();
+        let inWindow: boolean;
+        if (scheduleStartHour <= scheduleEndHour) {
+          inWindow = hour >= scheduleStartHour && hour < scheduleEndHour;
+        } else {
+          // wraps midnight
+          inWindow = hour >= scheduleStartHour || hour < scheduleEndHour;
+        }
+        if (!inWindow) {
+          // skip alert but still track state so recovery works
+          lastState = 'fail';
+          continue;
+        }
+      }
+
+      // Flap detection: count state changes in last flapWindow runs
+      if (flapDetection) {
+        const windowStart = Math.max(0, i - flapWindow + 1);
+        const windowRuns = runs.slice(windowStart, i + 1);
+        let stateChanges = 0;
+        for (let j = 1; j < windowRuns.length; j++) {
+          if (windowRuns[j].ok !== windowRuns[j - 1].ok) stateChanges++;
+        }
+        if (stateChanges >= flapThreshold) {
+          timeline.push({
+            timestamp: run.checkedAt,
+            type: 'flapping',
+            reason: `Flapping detected: ${stateChanges} state changes in last ${windowRuns.length} runs`,
+          });
+          flappingAlertsFired++;
+          lastState = 'fail';
+          continue;
+        }
+      }
+
+      timeline.push({
+        timestamp: run.checkedAt,
+        type: 'alert',
+        reason: `${consecutiveFails} consecutive failure${consecutiveFails > 1 ? 's' : ''}`,
+      });
+      alertsFired++;
+      lastState = 'fail';
+    } else if (run.ok && lastState === 'fail') {
+      timeline.push({
+        timestamp: run.checkedAt,
+        type: 'recovery',
+        reason: 'Monitor recovered',
+      });
+      recoverysFired++;
+      lastState = 'ok';
+    }
+  }
+
+  const totalRuns = runs.length;
+  const uptimePct =
+    totalRuns > 0 ? Math.round(((totalRuns - totalFails) / totalRuns) * 10000) / 100 : 100;
+  const alertsPerDay = Math.round((alertsFired / 7) * 10) / 10;
+  const noiseScore: 'low' | 'medium' | 'high' =
+    alertsPerDay < 1 ? 'low' : alertsPerDay <= 3 ? 'medium' : 'high';
+
+  return {
+    totalRuns,
+    totalFails,
+    uptimePct,
+    alertsFired,
+    recoverysFired,
+    flappingAlertsFired,
+    alertsPerDay,
+    noiseScore,
+    timeline,
+  };
 }

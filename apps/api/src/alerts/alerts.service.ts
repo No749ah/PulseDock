@@ -1,5 +1,6 @@
 import { createHmac } from 'node:crypto';
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
+import { isChannelActive } from './alert-channel-schedule';
 import { PrismaService } from '../common/prisma.service';
 import { MailerService } from '../common/mailer.service';
 import type { AlertChannel, Monitor, MonitorLevel, MonitorRun } from '../types';
@@ -11,6 +12,15 @@ import { NotificationsService } from '../notifications/notifications.service';
 export class AlertsService {
   private readonly logger = new Logger(AlertsService.name);
   private readonly realtime: Pick<RealtimeEvents, 'alertTriggered'>;
+
+  /** In-memory batch queue for alert batching / digest mode (resets on restart — acceptable). */
+  readonly alertBatchQueue = new Map<string, {
+    channelId: string;
+    channel: AlertChannel;
+    windowMs: number;
+    alerts: Array<{ monitorName: string; level: string; message: string; timestamp: Date }>;
+    timer: ReturnType<typeof setTimeout>;
+  }>();
 
   constructor(
     private readonly prisma: PrismaService,
@@ -555,6 +565,302 @@ export class AlertsService {
       }
       return;
     }
+
+    // ── Rocket.Chat ──────────────────────────────────────────────────────────
+    // Config: { webhookUrl: string }
+    // webhookUrl is the Rocket.Chat Incoming Webhook URL (e.g. https://chat.example.com/hooks/TOKEN)
+    // Rocket.Chat supports the same payload format as Slack incoming webhooks.
+    if (channel.type === 'rocketchat' && typeof channel.config.webhookUrl === 'string') {
+      const ctx = extra as {
+        monitor?: { name?: string; type?: string; target?: string };
+        run?: { level?: string; message?: string; latencyMs?: number; checkedAt?: string };
+        test?: boolean;
+      } | undefined;
+      const run = ctx?.run;
+      const monitor = ctx?.monitor;
+      const level = run?.level ?? 'red';
+      const emoji = level === 'green' ? '✅' : level === 'yellow' ? '⚠️' : '🚨';
+      const statusLabel = level === 'green' ? 'Recovered' : level === 'yellow' ? 'Degraded' : 'Down';
+      const color = level === 'green' ? '#3fb950' : level === 'yellow' ? '#d29922' : '#f85149';
+
+      const fields: Array<{ title: string; value: string; short: boolean }> = [];
+      if (monitor?.name) fields.push({ title: 'Monitor', value: monitor.name, short: true });
+      if (monitor?.type) fields.push({ title: 'Type', value: monitor.type.replace('_', ' '), short: true });
+      if (run?.latencyMs != null) fields.push({ title: 'Latency', value: `${run.latencyMs}ms`, short: true });
+      if (monitor?.target) fields.push({ title: 'Target', value: monitor.target, short: false });
+
+      const rcPayload = {
+        text: `${emoji} **PulseDock Alert** — ${monitor?.name ?? 'Monitor'} is ${statusLabel}`,
+        attachments: [
+          {
+            color,
+            title: `${statusLabel}: ${monitor?.name ?? 'Monitor'}`,
+            text: run?.message ?? text,
+            fields,
+            ts: new Date().toISOString(),
+            footer: 'PulseDock',
+          },
+        ],
+      };
+
+      const rcResp = await fetch(channel.config.webhookUrl as string, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(rcPayload),
+      });
+      if (!rcResp.ok) {
+        const rcBody = await rcResp.text().catch(() => '');
+        throw new Error(`Rocket.Chat webhook returned ${rcResp.status}: ${rcBody}`);
+      }
+      return;
+    }
+
+    // ── Apprise ───────────────────────────────────────────────────────────────
+    // Config: { serverUrl: string, tag?: string }
+    // Apprise is a universal notification gateway. POST to /notify/{tag} or /notify.
+    // serverUrl: base URL of your Apprise API (e.g. http://apprise:8000)
+    // tag: optional tag name to scope which services are notified (must be pre-configured in Apprise)
+    if (channel.type === 'apprise' && typeof channel.config.serverUrl === 'string') {
+      const ctx = extra as {
+        run?: { level?: string; message?: string };
+        monitor?: { name?: string };
+        test?: boolean;
+      } | undefined;
+      const run = ctx?.run;
+      const monitor = ctx?.monitor;
+      const level = run?.level ?? 'red';
+      const levelLabel = level === 'green' ? 'Recovered' : level === 'yellow' ? 'Degraded' : 'Down';
+      const appriseType = level === 'green' ? 'success' : level === 'yellow' ? 'warning' : 'failure';
+
+      const baseUrl = (channel.config.serverUrl as string).replace(/\/$/, '');
+      const tag = typeof channel.config.tag === 'string' && channel.config.tag.trim() ? channel.config.tag.trim() : null;
+      const appriseUrl = tag ? `${baseUrl}/notify/${encodeURIComponent(tag)}` : `${baseUrl}/notify`;
+
+      const apprisePayload = {
+        title: `[PulseDock] ${monitor?.name ?? 'Monitor'} — ${levelLabel}`,
+        body: run?.message ?? text,
+        type: appriseType,
+        // Apprise API supports 'info', 'success', 'warning', 'failure'
+      };
+
+      const appriseResp = await fetch(appriseUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(apprisePayload),
+      });
+      if (!appriseResp.ok) {
+        const appriseBody = await appriseResp.text().catch(() => '');
+        throw new Error(`Apprise returned ${appriseResp.status}: ${appriseBody}`);
+      }
+      return;
+    }
+
+    // ── Mattermost ─────────────────────────────────────────────────────────────
+    // POST to Mattermost Incoming Webhook URL (compatible with self-hosted + cloud).
+    // Sends an attachment with color-coded status and key facts.
+    if (channel.type === 'mattermost' && typeof channel.config.webhookUrl === 'string') {
+      const ctx = extra as {
+        run?: { level?: string; message?: string; latencyMs?: number; checkedAt?: string };
+        monitor?: { name?: string; type?: string; target?: string };
+        test?: boolean;
+      } | undefined;
+      const run = ctx?.run;
+      const monitor = ctx?.monitor;
+      const level = run?.level ?? 'red';
+      const levelLabel = level === 'green' ? 'RECOVERED' : level === 'yellow' ? 'DEGRADED' : 'DOWN';
+      const color = level === 'green' ? '#36a64f' : level === 'yellow' ? '#ffa500' : '#cc0000';
+      const emoji = level === 'green' ? ':white_check_mark:' : level === 'yellow' ? ':warning:' : ':red_circle:';
+      const username = typeof channel.config.username === 'string' && channel.config.username.trim() ? channel.config.username.trim() : 'PulseDock';
+      const iconUrl = typeof channel.config.iconUrl === 'string' && channel.config.iconUrl.trim() ? channel.config.iconUrl.trim() : undefined;
+
+      const fields: Array<{ short: boolean; title: string; value: string }> = [];
+      if (monitor?.name) fields.push({ title: 'Monitor', value: monitor.name, short: true });
+      if (monitor?.type) fields.push({ title: 'Type', value: monitor.type.replace('_', ' '), short: true });
+      if (run?.latencyMs != null) fields.push({ title: 'Latency', value: `${run.latencyMs}ms`, short: true });
+      if (monitor?.target) fields.push({ title: 'Target', value: monitor.target, short: false });
+
+      const payload: Record<string, unknown> = {
+        username,
+        attachments: [
+          {
+            fallback: `${emoji} [PulseDock] ${monitor?.name ?? 'Monitor'} — ${levelLabel}: ${run?.message ?? text}`,
+            color,
+            title: `${emoji} ${monitor?.name ?? 'Monitor'} — ${levelLabel}`,
+            text: run?.message ?? text,
+            fields,
+            footer: 'PulseDock',
+            ts: run?.checkedAt ? Math.floor(new Date(run.checkedAt).getTime() / 1000) : Math.floor(Date.now() / 1000),
+          },
+        ],
+      };
+      if (iconUrl) payload.icon_url = iconUrl;
+      if (typeof channel.config.channel === 'string' && channel.config.channel.trim()) {
+        payload.channel = channel.config.channel.trim();
+      }
+
+      const mmResp = await fetch(channel.config.webhookUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      if (!mmResp.ok) {
+        const mmBody = await mmResp.text().catch(() => '');
+        throw new Error(`Mattermost webhook returned ${mmResp.status}: ${mmBody}`);
+      }
+      return;
+    }
+
+    // ── Zulip ──────────────────────────────────────────────────────────────────
+    // POST to Zulip bot via REST API.
+    // Supports stream messages (type=stream, to=stream-name, topic=subject) and
+    // DM messages (type=direct, to=user-email).
+    if (
+      channel.type === 'zulip' &&
+      typeof channel.config.serverUrl === 'string' &&
+      typeof channel.config.botEmail === 'string' &&
+      typeof channel.config.botApiKey === 'string'
+    ) {
+      const ctx = extra as {
+        run?: { level?: string; message?: string; latencyMs?: number };
+        monitor?: { name?: string; type?: string; target?: string };
+        test?: boolean;
+      } | undefined;
+      const run = ctx?.run;
+      const monitor = ctx?.monitor;
+      const level = run?.level ?? 'red';
+      const levelLabel = level === 'green' ? 'RECOVERED' : level === 'yellow' ? 'DEGRADED' : 'DOWN';
+      const emoji = level === 'green' ? ':check_mark:' : level === 'yellow' ? ':warning:' : ':red_circle:';
+
+      const baseUrl = (channel.config.serverUrl as string).replace(/\/$/, '');
+      const messageType = typeof channel.config.messageType === 'string' && channel.config.messageType === 'direct' ? 'direct' : 'stream';
+      const streamName = typeof channel.config.stream === 'string' && channel.config.stream.trim() ? channel.config.stream.trim() : 'general';
+      const topic = typeof channel.config.topic === 'string' && channel.config.topic.trim() ? channel.config.topic.trim() : 'PulseDock Alerts';
+      const dmTo = typeof channel.config.dmTo === 'string' && channel.config.dmTo.trim() ? channel.config.dmTo.trim() : channel.config.botEmail;
+
+      const facts: string[] = [];
+      if (monitor?.name) facts.push(`**Monitor:** ${monitor.name}`);
+      if (monitor?.type) facts.push(`**Type:** ${monitor.type.replace('_', ' ')}`);
+      if (run?.latencyMs != null) facts.push(`**Latency:** ${run.latencyMs}ms`);
+      if (monitor?.target) facts.push(`**Target:** ${monitor.target}`);
+
+      const content =
+        `${emoji} **[PulseDock] ${monitor?.name ?? 'Monitor'} — ${levelLabel}**\n` +
+        (run?.message ?? text) +
+        (facts.length > 0 ? '\n\n' + facts.join(' | ') : '');
+
+      const params = new URLSearchParams({
+        type: messageType,
+        to: messageType === 'direct' ? dmTo : streamName,
+        content,
+      });
+      if (messageType === 'stream') params.set('topic', topic);
+
+      const credentials = Buffer.from(`${channel.config.botEmail}:${channel.config.botApiKey}`).toString('base64');
+      const zulipResp = await fetch(`${baseUrl}/api/v1/messages`, {
+        method: 'POST',
+        headers: {
+          'content-type': 'application/x-www-form-urlencoded',
+          'authorization': `Basic ${credentials}`,
+        },
+        body: params.toString(),
+      });
+      if (!zulipResp.ok) {
+        const zulipBody = await zulipResp.text().catch(() => '');
+        throw new Error(`Zulip API returned ${zulipResp.status}: ${zulipBody}`);
+      }
+      return;
+    }
+  }
+
+  /**
+   * Queues an alert for batch delivery. If no timer is running for the channel, starts one.
+   * Only called for DOWN/DEGRADED events when batchWindowSec > 0.
+   */
+  queueBatchAlert(
+    channel: AlertChannel,
+    monitorName: string,
+    level: string,
+    message: string,
+  ): void {
+    const batchWindowSec = channel.batchWindowSec ?? 0;
+    if (batchWindowSec <= 0) return;
+    const windowMs = batchWindowSec * 1000;
+    const existing = this.alertBatchQueue.get(channel.id);
+    if (existing) {
+      existing.alerts.push({ monitorName, level, message, timestamp: new Date() });
+      this.logger.debug(`[BatchAlert] Queued alert for channel ${channel.id} (${channel.name}), total: ${existing.alerts.length}`);
+    } else {
+      const timer = setTimeout(() => { this.flushBatch(channel.id); }, windowMs);
+      this.alertBatchQueue.set(channel.id, {
+        channelId: channel.id,
+        channel,
+        windowMs,
+        alerts: [{ monitorName, level, message, timestamp: new Date() }],
+        timer,
+      });
+      this.logger.debug(`[BatchAlert] Started batch window (${batchWindowSec}s) for channel ${channel.id} (${channel.name})`);
+    }
+  }
+
+  /**
+   * Flushes the pending batch for a channel and delivers a batched notification.
+   */
+  async flushBatch(channelId: string): Promise<void> {
+    const batch = this.alertBatchQueue.get(channelId);
+    if (!batch || batch.alerts.length === 0) {
+      this.alertBatchQueue.delete(channelId);
+      return;
+    }
+    this.alertBatchQueue.delete(channelId);
+    clearTimeout(batch.timer);
+
+    const { channel, alerts, windowMs } = batch;
+    const n = alerts.length;
+    const windowSec = Math.round(windowMs / 1000);
+    const subject = `🔴 ${n} monitor${n === 1 ? '' : 's'} need${n === 1 ? 's' : ''} attention`;
+
+    this.logger.log(`[BatchAlert] Flushing ${n} batched alert(s) for channel ${channel.id} (${channel.name})`);
+
+    if (channel.type === 'email') {
+      const rows = alerts.map(a =>
+        `<tr><td style="padding:6px 12px;border-bottom:1px solid #333;">${a.monitorName}</td><td style="padding:6px 12px;border-bottom:1px solid #333;">${a.level.toUpperCase()}</td><td style="padding:6px 12px;border-bottom:1px solid #333;">${a.message}</td></tr>`
+      ).join('');
+      const html = `<h2 style="color:#f85149;">${subject}</h2><table style="border-collapse:collapse;width:100%;font-family:monospace;font-size:13px;"><thead><tr><th style="text-align:left;padding:6px 12px;background:#1e1e1e;color:#ccc;">Monitor</th><th style="text-align:left;padding:6px 12px;background:#1e1e1e;color:#ccc;">Level</th><th style="text-align:left;padding:6px 12px;background:#1e1e1e;color:#ccc;">Message</th></tr></thead><tbody>${rows}</tbody></table><p style="color:#666;font-size:12px;margin-top:12px;">Batched from last ${windowSec}s — PulseDock</p>`;
+      const textFallback = `${subject}\n\n${alerts.map(a => `• ${a.monitorName} — ${a.level.toUpperCase()}: ${a.message}`).join('\n')}\n\nBatched from last ${windowSec}s`;
+      try {
+        await this.mailer.sendAlertEmail(
+          channel.config.to as string,
+          textFallback,
+          { batchedHtml: html, batchedAlerts: alerts, subject },
+        );
+      } catch (err) {
+        this.logger.error(`[BatchAlert] Email batch delivery failed for channel ${channel.id}`, err instanceof Error ? err.stack : String(err));
+      }
+      return;
+    }
+
+    // Slack / Discord / Webhook / others: text-based batched message
+    const bulletLines = alerts.map(a => `• ${a.monitorName} — ${a.message}`).join('\n');
+    const footerLine = `_Batched from last ${windowSec}s_`;
+
+    let batchText: string;
+    if (channel.type === 'slack') {
+      batchText = `${subject}\n${bulletLines}\n${footerLine}`;
+    } else if (channel.type === 'discord') {
+      batchText = `**${subject}**\n${bulletLines}\n${footerLine}`;
+    } else {
+      batchText = `${subject}\n${bulletLines}\nBatched from last ${windowSec}s`;
+    }
+
+    try {
+      await this.sendWithRetry(channel, batchText, {
+        batchedAlerts: alerts,
+        batchWindowSec: windowSec,
+        subject,
+      }, { monitorId: 'batch', monitorName: subject, trigger: 'batch_flush' });
+    } catch (err) {
+      this.logger.error(`[BatchAlert] Batch delivery failed for channel ${channel.id}`, err instanceof Error ? err.stack : String(err));
+    }
   }
 
   /**
@@ -858,6 +1164,8 @@ export class AlertsService {
       groupByFolder: l.alertChannel.groupByFolder,
       groupByTag: l.alertChannel.groupByTag,
       messageTemplate: l.alertChannel.messageTemplate ?? null,
+      scheduleJson: l.alertChannel.scheduleJson ?? null,
+      batchWindowSec: l.alertChannel.batchWindowSec ?? null,
     }));
 
     const isFlapping = context?.isFlapping ?? false;
@@ -890,15 +1198,23 @@ export class AlertsService {
     const isRecovery = run.level === 'green';
 
     for (const channel of channels) {
+      // Check per-channel active schedule — silently drop if outside window
+      if (!isChannelActive((channel as AlertChannel & { scheduleJson?: unknown }).scheduleJson)) {
+        this.logger.log(`[AlertSchedule] Channel ${channel.id} (${channel.name}) is outside active window — skipping`);
+        continue;
+      }
       try {
         const trigger = isFlapping ? 'monitor_flapping' : isRecovery ? 'monitor_recovery' : 'monitor_failure';
         if (isRecovery || isFlapping) {
-          // Recovery and flapping alerts always send directly
+          // Recovery and flapping alerts always send directly — never batched
           await this.sendWithRetry(channel, text, extra, {
             monitorId: monitor.id,
             monitorName: monitor.name,
             trigger,
           });
+        } else if ((channel.batchWindowSec ?? 0) > 0) {
+          // Non-recovery with batch window — queue for batch delivery
+          this.queueBatchAlert(channel, monitor.name, run.level, run.message ?? run.level);
         } else {
           // Non-recovery failure alerts go through grouping
           await this.notifyWithGrouping(channel, monitor, run, text, extra);
@@ -1281,6 +1597,81 @@ export class AlertsService {
       `${burnRate1h.toFixed(1)}× faster than sustainable (1h), ${burnRate6h.toFixed(1)}× (6h). ` +
       `Budget ${budgetConsumedPct.toFixed(1)}% consumed. SLA target: ${slaTarget}%`;
     await this.sendSlaNotification(monitorId, monitorName, userId, text, 'sla_burn_rate');
+  }
+
+  /**
+   * Returns aggregated delivery statistics for a specific alert channel.
+   * Includes total counts, success rate, 24h window stats, and recent 10 log entries.
+   */
+  async deliveryStats(userId: string, channelId: string): Promise<{
+    totalDeliveries: number;
+    successCount: number;
+    failureCount: number;
+    successRate: number;
+    lastDeliveryAt: Date | null;
+    lastSuccessAt: Date | null;
+    lastFailureAt: Date | null;
+    last24hSuccess: number;
+    last24hFailure: number;
+    recentLogs: Array<{
+      id: string;
+      triggeredAt: Date;
+      success: boolean;
+      statusCode: number | null;
+      errorMessage: string | null;
+      monitorName: string | null;
+    }>;
+  }> {
+    const channel = await this.prisma.alertChannel.findFirst({ where: { id: channelId, userId } });
+    if (!channel) throw new NotFoundException('Alert channel not found');
+
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const [totalDeliveries, successCount, failureCount, last24h, recentLogs] = await Promise.all([
+      this.prisma.alertDeliveryLog.count({ where: { alertChannelId: channelId } }),
+      this.prisma.alertDeliveryLog.count({ where: { alertChannelId: channelId, status: 'success' } }),
+      this.prisma.alertDeliveryLog.count({ where: { alertChannelId: channelId, status: 'failed' } }),
+      this.prisma.alertDeliveryLog.findMany({
+        where: { alertChannelId: channelId, createdAt: { gte: since24h } },
+        select: { status: true },
+      }),
+      this.prisma.alertDeliveryLog.findMany({
+        where: { alertChannelId: channelId },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: {
+          id: true,
+          createdAt: true,
+          status: true,
+          errorMessage: true,
+          monitorName: true,
+        },
+      }),
+    ]);
+
+    const lastDelivery = recentLogs[0] ?? null;
+    const lastSuccess = recentLogs.find(l => l.status === 'success') ?? null;
+    const lastFailure = recentLogs.find(l => l.status === 'failed') ?? null;
+
+    return {
+      totalDeliveries,
+      successCount,
+      failureCount,
+      successRate: totalDeliveries > 0 ? Math.round((successCount / totalDeliveries) * 100) : 100,
+      lastDeliveryAt: lastDelivery?.createdAt ?? null,
+      lastSuccessAt: lastSuccess?.createdAt ?? null,
+      lastFailureAt: lastFailure?.createdAt ?? null,
+      last24hSuccess: last24h.filter(l => l.status === 'success').length,
+      last24hFailure: last24h.filter(l => l.status === 'failed').length,
+      recentLogs: recentLogs.map(l => ({
+        id: l.id,
+        triggeredAt: l.createdAt,
+        success: l.status === 'success',
+        statusCode: null,
+        errorMessage: l.errorMessage,
+        monitorName: l.monitorName,
+      })),
+    };
   }
 
   /**

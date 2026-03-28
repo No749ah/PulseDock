@@ -23,6 +23,7 @@ function makeMonitorsService() {
     monitorChart: vi.fn(),
     versionSummary: vi.fn(),
     exportMonitors: vi.fn(),
+    exportMonitorsConfig: vi.fn(),
     importMonitors: vi.fn(),
     importExternal: vi.fn(),
     listMonitorAlerts: vi.fn(),
@@ -162,10 +163,11 @@ describe('MonitorsController', () => {
     expect(service.versionSummary).toHaveBeenCalledWith('user-1');
   });
 
-  it('exportMonitors() delegates to service.exportMonitors', async () => {
-    service.exportMonitors.mockResolvedValue({ version: '1', exportedAt: new Date().toISOString(), monitors: [] });
-    await controller.exportMonitors(makeReq());
-    expect(service.exportMonitors).toHaveBeenCalledWith('user-1');
+  it('exportMonitors() delegates to service.exportMonitorsConfig', async () => {
+    const mockRes = { setHeader: vi.fn(), send: vi.fn() } as unknown as import('express').Response;
+    service.exportMonitorsConfig = vi.fn().mockResolvedValue({ content: '{}', contentType: 'application/json', filename: 'pulsedock.json' });
+    await controller.exportMonitorsConfig(makeReq(), mockRes, 'json', undefined, undefined);
+    expect(service.exportMonitorsConfig).toHaveBeenCalledWith('user-1', expect.objectContaining({ format: 'json' }));
   });
 
   it('importMonitors() delegates to service.importMonitors', async () => {

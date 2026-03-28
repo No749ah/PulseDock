@@ -38,7 +38,7 @@ export function TableRow({ children, hover = true, className = "", onClick }: { 
   );
 }
 
-export function TableHeader({ children, className = "" }: { children: ReactNode; className?: string }) {
+export function TableHeader({ children, className = "" }: { children?: ReactNode; className?: string }) {
   return (
     <th className={`px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider ${className}`}>
       {children}

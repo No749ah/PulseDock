@@ -22,8 +22,9 @@ import { certExpiryPlugin } from './plugins/cert-expiry.plugin';
 // Extracted runner modules
 import { runHttpCheck } from './runners/http.runner';
 import { runBrowserCheck } from './runners/http.runner';
-import { runTcpCheck, runSslCheck, runDnsCheck, runPingCheck, runSmtpCheck } from './runners/network.runner';
+import { runTcpCheck, runSslCheck, runDnsCheck, runPingCheck, runSmtpCheck, runFtpCheck, runImapCheck, runPop3Check } from './runners/network.runner';
 import { runWhoisCheck } from './runners/whois.runner';
+import { runCtLogCheck } from './runners/ct-log.runner';
 import { runGitReleaseCheck, runDockerCheck } from './runners/version.runner';
 
 @Injectable()
@@ -137,11 +138,26 @@ export class ChecksService {
   }
 
   private async dispatchCheck(monitor: Monitor) {
-    // Merge top-level trackedHeaders field into config for HTTP/BROWSER runners
-    const monitorWithHeaders = monitor as typeof monitor & { trackedHeaders?: string | null };
-    const httpConfig = monitorWithHeaders.trackedHeaders
-      ? { ...monitor.config, trackedHeaders: monitorWithHeaders.trackedHeaders }
-      : monitor.config;
+    // Merge top-level trackedHeaders + metric capture fields + headerAssertions into config for HTTP/BROWSER runners
+    const monitorExt = monitor as typeof monitor & {
+      trackedHeaders?: string | null;
+      metricPath?: string | null;
+      metricName?: string | null;
+      metricUnit?: string | null;
+      metricAlertMin?: number | null;
+      metricAlertMax?: number | null;
+      headerAssertions?: unknown | null;
+    };
+    const httpConfig = {
+      ...monitor.config,
+      ...(monitorExt.trackedHeaders ? { trackedHeaders: monitorExt.trackedHeaders } : {}),
+      ...(monitorExt.metricPath ? { metricPath: monitorExt.metricPath } : {}),
+      ...(monitorExt.metricName ? { metricName: monitorExt.metricName } : {}),
+      ...(monitorExt.metricUnit ? { metricUnit: monitorExt.metricUnit } : {}),
+      ...(monitorExt.metricAlertMin !== null && monitorExt.metricAlertMin !== undefined ? { metricAlertMin: monitorExt.metricAlertMin } : {}),
+      ...(monitorExt.metricAlertMax !== null && monitorExt.metricAlertMax !== undefined ? { metricAlertMax: monitorExt.metricAlertMax } : {}),
+      ...(Array.isArray(monitorExt.headerAssertions) && monitorExt.headerAssertions.length > 0 ? { headerAssertions: monitorExt.headerAssertions } : {}),
+    };
 
     switch (monitor.type) {
       case 'HTTP':
@@ -163,9 +179,17 @@ export class ChecksService {
       case 'SMTP':
         return runSmtpCheck(monitor.target, monitor.config, monitor.timeoutMs);
       case 'BROWSER':
-        return runBrowserCheck(monitor.target, httpConfig, monitor.timeoutMs);
+        return runBrowserCheck(monitor.target, httpConfig as Record<string, unknown>, monitor.timeoutMs);
       case 'WHOIS':
         return runWhoisCheck(monitor.target, monitor.config as { warnDays?: number; criticalDays?: number }, monitor.timeoutMs);
+      case 'FTP':
+        return runFtpCheck(monitor.target, monitor.config, monitor.timeoutMs);
+      case 'IMAP':
+        return runImapCheck(monitor.target, monitor.config, monitor.timeoutMs);
+      case 'POP3':
+        return runPop3Check(monitor.target, monitor.config, monitor.timeoutMs);
+      case 'CT_LOG':
+        return runCtLogCheck(monitor.target, monitor.config ?? {}, monitor.timeoutMs);
       default:
         return runHttpCheck(monitor.target, monitor.timeoutMs);
     }
@@ -448,6 +472,16 @@ export class ChecksService {
     }
     // ─────────────────────────────────────────────────────────────────────────────────
 
+    // ── Geo-region round-robin tagging ───────────────────────────────────────────────
+    // Pick the next region from monitor.geoRegions (if configured) using round-robin
+    let geoRegion: string | null = null;
+    const monitorWithGeo = monitor as typeof monitor & { geoRegions?: string[] };
+    if (monitorWithGeo.geoRegions && monitorWithGeo.geoRegions.length > 0) {
+      const runCount = await this.prisma.monitorRun.count({ where: { monitorId: monitor.id } });
+      geoRegion = monitorWithGeo.geoRegions[runCount % monitorWithGeo.geoRegions.length];
+    }
+    // ─────────────────────────────────────────────────────────────────────────────────
+
     const created = await this.prisma.monitorRun.create({
       data: {
         userId: monitor.userId,
@@ -467,6 +501,24 @@ export class ChecksService {
         securityAuditJson: ((result as PluginExecutionResult).securityHeadersAudit
           ? ((result as PluginExecutionResult).securityHeadersAudit as unknown as Prisma.InputJsonValue)
           : Prisma.DbNull),
+        // Response body size in bytes (HTTP/BROWSER monitors)
+        responseSizeBytes: typeof (result as PluginExecutionResult).responseSizeBytes === 'number'
+          ? (result as PluginExecutionResult).responseSizeBytes
+          : null,
+        // HTTP redirect chain (URLs followed before reaching final response)
+        redirectChain: Array.isArray((result as PluginExecutionResult & { redirectChain?: string[] }).redirectChain)
+          ? (result as PluginExecutionResult & { redirectChain?: string[] }).redirectChain!
+          : [],
+        // Geo region tag (round-robin from monitor.geoRegions if configured)
+        geoRegion,
+        // Custom metric value captured from response body via metricPath JSONPath
+        capturedMetricValue: typeof (result as PluginExecutionResult).capturedMetricValue === 'number'
+          ? (result as PluginExecutionResult).capturedMetricValue
+          : null,
+        // Header assertion failures (present when headerAssertions configured and at least one fails)
+        headerAssertionsFailed: Array.isArray((result as PluginExecutionResult).headerAssertionsFailed) && (result as PluginExecutionResult).headerAssertionsFailed!.length > 0
+          ? ((result as PluginExecutionResult).headerAssertionsFailed as unknown as Prisma.InputJsonValue)
+          : Prisma.DbNull,
       },
     });
 
@@ -729,7 +781,87 @@ export class ChecksService {
       }
     }
 
+    // ── Per-monitor Status Webhook ────────────────────────────────────────────────────
+    // When statusWebhookUrl is set on the monitor, fire a POST to that URL on every
+    // status change (levelChanged). Includes HMAC-SHA256 signature when statusWebhookSecret
+    // is configured. Useful for CI/CD integrations, custom dashboards, and automation.
+    if (levelChanged) {
+      const monitorWithWebhook = monitor as typeof monitor & {
+        statusWebhookUrl?: string | null;
+        statusWebhookSecret?: string | null;
+      };
+      if (monitorWithWebhook.statusWebhookUrl) {
+        void this.fireMonitorStatusWebhook(
+          monitorWithWebhook.statusWebhookUrl,
+          monitorWithWebhook.statusWebhookSecret ?? null,
+          monitor,
+          run,
+          prev?.level ?? null,
+        );
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────────────
+
     return run;
+  }
+
+  /**
+   * Fires a per-monitor status webhook when the monitor's level changes.
+   * Posts a JSON payload to statusWebhookUrl with monitor details and the level change.
+   * If statusWebhookSecret is set, adds an X-PulseDock-Signature header (HMAC-SHA256).
+   *
+   * @param url - The webhook URL to POST to
+   * @param secret - Optional HMAC-SHA256 signing secret
+   * @param monitor - The monitor that changed state
+   * @param run - The current check result
+   * @param previousLevel - The previous run's level (null if first run)
+   */
+  private async fireMonitorStatusWebhook(
+    url: string,
+    secret: string | null,
+    monitor: Monitor,
+    run: MonitorRun,
+    previousLevel: string | null,
+  ): Promise<void> {
+    try {
+      const payload = {
+        event: 'monitor.status_changed',
+        monitorId: monitor.id,
+        monitorName: monitor.name,
+        monitorType: monitor.type,
+        target: monitor.target,
+        level: run.level,
+        previousLevel,
+        ok: run.ok,
+        latencyMs: run.latencyMs,
+        message: run.message,
+        checkedAt: typeof run.checkedAt === 'string' ? run.checkedAt : new Date(run.checkedAt as unknown as Date).toISOString(),
+      };
+      const body = JSON.stringify(payload);
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'PulseDock-Monitor/1.0',
+        'X-PulseDock-Event': 'monitor.status_changed',
+      };
+
+      if (secret) {
+        const { createHmac } = await import('node:crypto');
+        const sig = createHmac('sha256', secret).update(body).digest('hex');
+        headers['X-PulseDock-Signature'] = `sha256=${sig}`;
+      }
+
+      const fetchImpl = globalThis.fetch;
+      if (typeof fetchImpl === 'function') {
+        const resp = await (fetchImpl as typeof fetch)(url, { method: 'POST', headers, body, signal: AbortSignal.timeout(10_000) });
+        if (!resp.ok) {
+          this.logger.warn(`[StatusWebhook] Monitor ${monitor.id} webhook returned ${resp.status} for ${url}`);
+        }
+      }
+    } catch (err) {
+      this.logger.warn(
+        `[StatusWebhook] Failed to fire webhook for monitor ${monitor.id}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 
   /**

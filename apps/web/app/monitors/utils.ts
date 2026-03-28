@@ -75,11 +75,25 @@ export function buildEditFormData(monitor: MonitorItem): MonitorFormDataExtended
     authApiKeyIn: String(monitor.config?.authApiKeyIn ?? "header"),
     trackedHeaders: (monitor as typeof monitor & { trackedHeaders?: string | null }).trackedHeaders ?? "",
     timeoutMs: (monitor as typeof monitor & { timeoutMs?: number | null }).timeoutMs ?? null,
+    statusWebhookUrl: (monitor as typeof monitor & { statusWebhookUrl?: string | null }).statusWebhookUrl ?? "",
+    statusWebhookSecret: "",
+    throttleMs: (monitor as typeof monitor & { throttleMs?: number | null }).throttleMs ?? null,
+    maxChecksPerHour: (monitor as typeof monitor & { maxChecksPerHour?: number | null }).maxChecksPerHour ?? null,
+    metricPath: (monitor as typeof monitor & { metricPath?: string | null }).metricPath ?? null,
+    metricName: (monitor as typeof monitor & { metricName?: string | null }).metricName ?? null,
+    metricUnit: (monitor as typeof monitor & { metricUnit?: string | null }).metricUnit ?? null,
+    metricAlertMin: (monitor as typeof monitor & { metricAlertMin?: number | null }).metricAlertMin ?? null,
+    metricAlertMax: (monitor as typeof monitor & { metricAlertMax?: number | null }).metricAlertMax ?? null,
+    // Pre-request auth step
+    preAuthUrl: String(monitor.config?.preAuthUrl ?? ""),
+    preAuthBody: String(monitor.config?.preAuthBody ?? ""),
+    preAuthExtractCookie: String(monitor.config?.preAuthExtractCookie ?? ""),
+    preAuthExtractToken: String(monitor.config?.preAuthExtractToken ?? ""),
   };
 }
 
 export function buildFormDataFromTemplate(t: MonitorTemplate): MonitorFormDataExtended {
-  const safeType = (["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "BROWSER"] as string[]).includes(t.type)
+  const safeType = (["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "BROWSER", "FTP", "IMAP", "POP3", "CT_LOG"] as string[]).includes(t.type)
     ? (t.type as MonitorFormData["type"])
     : "HTTP";
   const cfg = (t.config ?? {}) as Record<string, unknown>;

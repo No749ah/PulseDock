@@ -262,3 +262,129 @@ describe('MonitorsService – getHealthScore', () => {
     expect(summary.overall).toHaveProperty('f');
   });
 });
+
+// ── Tests for healthScore (v2: uptime/latency/incidents/flapping) ─────────────
+
+/**
+ * Build a full prisma mock suitable for testing the new healthScore() method.
+ * Supports separate mocking of monitorRun.findMany calls (24h and 7d),
+ * incident.count, and incidentMonitor.groupBy.
+ */
+function buildHealthScoreV2Prisma(opts: {
+  monitor?: object | null;
+  runs24h?: Array<{ ok: boolean; latencyMs: number | null }>;
+  runs7d?: Array<{ latencyMs: number }>;
+  activeIncidents?: number;
+}) {
+  const { monitor = null, runs24h = [], runs7d = [], activeIncidents = 0 } = opts;
+
+  // monitorRun.findMany: first call = 24h runs, second call = 7d latency runs
+  let findManyCallCount = 0;
+  const monitorRunFindMany = vi.fn().mockImplementation(() => {
+    findManyCallCount++;
+    if (findManyCallCount === 1) return Promise.resolve(runs24h);
+    return Promise.resolve(runs7d);
+  });
+
+  return {
+    monitor: {
+      findFirst: vi.fn().mockResolvedValue(monitor),
+      findMany: vi.fn().mockResolvedValue([]),
+    },
+    monitorRun: {
+      findMany: monitorRunFindMany,
+      findFirst: vi.fn().mockResolvedValue(null),
+      groupBy: vi.fn().mockResolvedValue([]),
+    },
+    incident: {
+      count: vi.fn().mockResolvedValue(activeIncidents),
+    },
+    incidentMonitor: {
+      groupBy: vi.fn().mockResolvedValue([]),
+    },
+    monitorDependency: { findMany: vi.fn().mockResolvedValue([]) },
+    monitorAlert: { findMany: vi.fn().mockResolvedValue([]) },
+    monitorTag: { findMany: vi.fn().mockResolvedValue([]) },
+  };
+}
+
+describe('MonitorsService – healthScore (v2)', () => {
+  // ── 1. Returns null when no runs in last 24h ──────────────────────────────
+  it('returns null score when no runs in last 24h', async () => {
+    const prisma = buildHealthScoreV2Prisma({
+      monitor: { id: 'm1', isFlapping: false, userId: 'u1' },
+      runs24h: [],
+    });
+    const svc = await buildService(prisma);
+    const result = await svc.healthScore('u1', 'm1');
+    expect(result.score).toBeNull();
+    expect(result.breakdown).toBeNull();
+  });
+
+  // ── 2. Perfect score (100) — 100% uptime, no incidents, not flapping ─────
+  it('returns score 100 for perfect monitor (100% uptime, no incidents, no flapping, good latency)', async () => {
+    const runs24h = Array.from({ length: 20 }, () => ({ ok: true, latencyMs: 100 }));
+    const runs7d = Array.from({ length: 20 }, () => ({ latencyMs: 100 }));
+    const prisma = buildHealthScoreV2Prisma({
+      monitor: { id: 'm1', isFlapping: false, userId: 'u1' },
+      runs24h,
+      runs7d,
+      activeIncidents: 0,
+    });
+    const svc = await buildService(prisma);
+    const result = await svc.healthScore('u1', 'm1');
+    expect(result.score).toBe(100);
+    expect(result.breakdown!.uptime).toBe(50);
+    expect(result.breakdown!.latency).toBe(30);
+    expect(result.breakdown!.incidents).toBe(20);
+    expect(result.breakdown!.flapping).toBe(0);
+  });
+
+  // ── 3. 50% uptime → uptimeScore = 25 ────────────────────────────────────
+  it('computes uptimeScore = 25 for 50% uptime', async () => {
+    // 10 ok out of 20 = 50% uptime
+    const runs24h = Array.from({ length: 20 }, (_, i) => ({ ok: i % 2 === 0, latencyMs: 100 }));
+    const prisma = buildHealthScoreV2Prisma({
+      monitor: { id: 'm2', isFlapping: false, userId: 'u1' },
+      runs24h,
+      runs7d: [],
+      activeIncidents: 0,
+    });
+    const svc = await buildService(prisma);
+    const result = await svc.healthScore('u1', 'm2');
+    expect(result.breakdown!.uptime).toBe(25);
+  });
+
+  // ── 4. Flapping penalty subtracts 15 from total ──────────────────────────
+  it('subtracts 15 from total when monitor is flapping', async () => {
+    const runs24h = Array.from({ length: 20 }, () => ({ ok: true, latencyMs: 100 }));
+    const prisma = buildHealthScoreV2Prisma({
+      monitor: { id: 'm3', isFlapping: true, userId: 'u1' },
+      runs24h,
+      runs7d: [],
+      activeIncidents: 0,
+    });
+    const svc = await buildService(prisma);
+    const result = await svc.healthScore('u1', 'm3');
+    // 50 (uptime) + 30 (latency, no baseline) + 20 (no incidents) - 15 (flapping) = 85
+    expect(result.breakdown!.flapping).toBe(-15);
+    expect(result.score).toBe(85);
+  });
+
+  // ── 5. Active incident subtracts 10 per incident ─────────────────────────
+  it('subtracts 10 per active incident from incident score (min 0)', async () => {
+    const runs24h = Array.from({ length: 20 }, () => ({ ok: true, latencyMs: 100 }));
+    const prisma = buildHealthScoreV2Prisma({
+      monitor: { id: 'm4', isFlapping: false, userId: 'u1' },
+      runs24h,
+      runs7d: [],
+      activeIncidents: 1,
+    });
+    const svc = await buildService(prisma);
+    const result = await svc.healthScore('u1', 'm4');
+    // incidentScore = max(0, 20 - 1*10) = 10
+    expect(result.breakdown!.incidents).toBe(10);
+    // 50 + 30 + 10 = 90
+    expect(result.score).toBe(90);
+  });
+});

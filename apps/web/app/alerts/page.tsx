@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Edit, Trash2, Activity, CheckCircle2, XCircle, Clock, Bell, Mail, MessageSquare, Hash, Globe, Send, Eye, Smartphone, X, RefreshCw } from 'lucide-react';
+import { Plus, Edit, Trash2, Activity, CheckCircle2, XCircle, Clock, Bell, Mail, MessageSquare, Hash, Globe, Send, Eye, Smartphone, X, RefreshCw, BarChart2, ChevronDown, ChevronUp } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -18,7 +18,15 @@ import { useToast } from '../../components/ui/toast';
 import { useTableSort, exportCSV, exportJSON } from '../../lib/useTableSort';
 import { brand } from '../../lib/brand';
 
-type AlertType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms' | 'teams' | 'ntfy' | 'gotify' | 'matrix';
+type AlertType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms' | 'teams' | 'ntfy' | 'gotify' | 'matrix' | 'rocketchat' | 'apprise' | 'mattermost' | 'zulip';
+
+type ChannelSchedule = {
+  enabled: boolean;
+  timezone: string;
+  days: number[];
+  startHour: number;
+  endHour: number;
+};
 
 type AlertChannel = {
   id: string;
@@ -32,6 +40,29 @@ type AlertChannel = {
   groupByFolder?: boolean;
   groupByTag?: boolean;
   messageTemplate?: string | null;
+  scheduleJson?: ChannelSchedule | null;
+  batchWindowSec?: number | null;
+  deliveryCount?: number;
+};
+
+type DeliveryStats = {
+  totalDeliveries: number;
+  successCount: number;
+  failureCount: number;
+  successRate: number;
+  lastDeliveryAt: string | null;
+  lastSuccessAt: string | null;
+  lastFailureAt: string | null;
+  last24hSuccess: number;
+  last24hFailure: number;
+  recentLogs: Array<{
+    id: string;
+    triggeredAt: string;
+    success: boolean;
+    statusCode: number | null;
+    errorMessage: string | null;
+    monitorName: string | null;
+  }>;
 };
 
 function ChannelTypeIcon({ type }: { type: AlertType }) {
@@ -61,6 +92,14 @@ function ChannelTypeIcon({ type }: { type: AlertType }) {
       return <Bell className={`${iconClass} text-cyan-400`} />;
     case 'matrix':
       return <MessageSquare className={`${iconClass} text-emerald-400`} />;
+    case 'rocketchat':
+      return <MessageSquare className={`${iconClass} text-orange-400`} />;
+    case 'apprise':
+      return <Bell className={`${iconClass} text-violet-400`} />;
+    case 'mattermost':
+      return <MessageSquare className={`${iconClass} text-blue-400`} />;
+    case 'zulip':
+      return <MessageSquare className={`${iconClass} text-green-400`} />;
     default:
       return <Bell className={`${iconClass} text-text-secondary`} />;
   }
@@ -99,6 +138,138 @@ type DeliveryHistory = {
 };
 
 const inputClass = "w-full px-4 py-3 bg-surface border border-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent";
+
+const TIMEZONES = [
+  'UTC', 'America/New_York', 'America/Chicago', 'America/Denver', 'America/Los_Angeles',
+  'America/Sao_Paulo', 'Europe/London', 'Europe/Berlin', 'Europe/Paris', 'Europe/Moscow',
+  'Asia/Dubai', 'Asia/Kolkata', 'Asia/Bangkok', 'Asia/Shanghai', 'Asia/Tokyo',
+  'Australia/Sydney', 'Pacific/Auckland',
+];
+
+const DAY_LABELS = ['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'];
+
+function ChannelScheduleSection({
+  enabled, setEnabled,
+  timezone, setTimezone,
+  days, setDays,
+  startHour, setStartHour,
+  endHour, setEndHour,
+}: {
+  enabled: boolean; setEnabled: (v: boolean) => void;
+  timezone: string; setTimezone: (v: string) => void;
+  days: number[]; setDays: (v: number[]) => void;
+  startHour: number; setStartHour: (v: number) => void;
+  endHour: number; setEndHour: (v: number) => void;
+}) {
+  function toggleDay(d: number) {
+    setDays(days.includes(d) ? days.filter(x => x !== d) : [...days, d].sort());
+  }
+  return (
+    <div className="border-t border-border pt-4 space-y-3">
+      <div className="flex items-center justify-between">
+        <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Active Schedule</p>
+        <label className="flex items-center gap-2 cursor-pointer">
+          <input type="checkbox" checked={enabled} onChange={e => setEnabled(e.target.checked)} className="w-4 h-4 accent-accent" />
+          <span className="text-xs text-text-secondary">Restrict to time window</span>
+        </label>
+      </div>
+      {enabled && (
+        <div className="space-y-3 bg-surface-elevated rounded-lg p-3">
+          <div className="flex flex-wrap gap-1">
+            {DAY_LABELS.map((label, i) => (
+              <button
+                key={i}
+                type="button"
+                onClick={() => toggleDay(i)}
+                className={`px-2.5 py-1 rounded text-xs font-medium transition-colors ${days.includes(i) ? 'bg-accent text-white' : 'bg-surface text-text-secondary border border-border hover:border-accent'}`}
+              >{label}</button>
+            ))}
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              value={timezone}
+              onChange={e => setTimezone(e.target.value)}
+              className="flex-1 text-xs rounded border border-border bg-surface px-2 py-1.5 text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+            >
+              {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
+            </select>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-text-secondary w-12">From</span>
+            <select value={startHour} onChange={e => setStartHour(Number(e.target.value))} className="text-xs rounded border border-border bg-surface px-2 py-1.5 text-text-primary focus:outline-none focus:ring-1 focus:ring-accent">
+              {Array.from({length: 24}, (_, h) => <option key={h} value={h}>{String(h).padStart(2,'0')}:00</option>)}
+            </select>
+            <span className="text-xs text-text-secondary">to</span>
+            <select value={endHour} onChange={e => setEndHour(Number(e.target.value))} className="text-xs rounded border border-border bg-surface px-2 py-1.5 text-text-primary focus:outline-none focus:ring-1 focus:ring-accent">
+              {Array.from({length: 24}, (_, h) => <option key={h+1} value={h+1}>{String(h+1).padStart(2,'0')}:00</option>)}
+            </select>
+          </div>
+          <p className="text-[11px] text-text-muted">Alerts outside this window are silently dropped — not queued or delayed.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function DeliveryStatsPanel({ stats }: { stats: DeliveryStats }) {
+  const rateColor =
+    stats.successRate >= 90 ? 'text-green-400' :
+    stats.successRate >= 70 ? 'text-yellow-400' :
+    'text-red-400';
+
+  return (
+    <div className="space-y-3">
+      {/* Summary row */}
+      <div className="flex flex-wrap items-center gap-6 text-sm">
+        <div className="flex flex-col">
+          <span className="text-xs text-text-secondary mb-0.5">Success Rate</span>
+          <span className={`text-lg font-bold ${rateColor}`}>{stats.successRate}%</span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-xs text-text-secondary mb-0.5">Total Deliveries</span>
+          <span className="text-sm font-semibold text-text-primary">{stats.totalDeliveries}</span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-xs text-text-secondary mb-0.5">Last Delivery</span>
+          <span className="text-sm text-text-primary">
+            {stats.lastDeliveryAt ? relativeTime(stats.lastDeliveryAt) : 'Never'}
+          </span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-xs text-text-secondary mb-0.5">Last 24h</span>
+          <span className="text-sm text-text-primary">
+            <span className="text-green-400">{stats.last24hSuccess}✓</span>
+            {' '}
+            <span className="text-red-400">{stats.last24hFailure}✗</span>
+          </span>
+        </div>
+      </div>
+
+      {/* Recent deliveries dot row */}
+      {stats.recentLogs.length > 0 && (
+        <div className="space-y-1">
+          <span className="text-xs text-text-secondary">Recent deliveries (newest first)</span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {stats.recentLogs.map((log) => (
+              <span
+                key={log.id}
+                title={`${log.success ? 'Success' : 'Failed'}${log.monitorName ? ` — ${log.monitorName}` : ''}${log.errorMessage ? `: ${log.errorMessage}` : ''}\n${relativeTime(log.triggeredAt)}`}
+                className={`w-3 h-3 rounded-full cursor-default transition-opacity hover:opacity-70 ${log.success ? 'bg-green-400' : 'bg-red-400'}`}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Last failure error */}
+      {stats.lastFailureAt && stats.recentLogs.find(l => !l.success)?.errorMessage && (
+        <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded px-3 py-1.5 font-mono truncate max-w-lg">
+          {stats.recentLogs.find(l => !l.success)?.errorMessage}
+        </div>
+      )}
+    </div>
+  );
+}
 
 export default function AlertsPage() {
   const router = useRouter();
@@ -167,9 +338,25 @@ export default function AlertsPage() {
   const [editGroupWindowMin, setEditGroupWindowMin] = useState(5);
   const [editGroupByFolder, setEditGroupByFolder] = useState(true);
   const [editGroupByTag, setEditGroupByTag] = useState(false);
+  // Batch window state (create form)
+  const [createBatchWindowSec, setCreateBatchWindowSec] = useState(0);
+  // Batch window state (edit form)
+  const [editBatchWindowSec, setEditBatchWindowSec] = useState(0);
   // Channel-level message template (applies to all channel types)
   const [createChannelMsgTemplate, setCreateChannelMsgTemplate] = useState('');
+  // Schedule state — create modal
+  const [createScheduleEnabled, setCreateScheduleEnabled] = useState(false);
+  const [createScheduleTz, setCreateScheduleTz] = useState('UTC');
+  const [createScheduleDays, setCreateScheduleDays] = useState<number[]>([1,2,3,4,5]);
+  const [createScheduleStart, setCreateScheduleStart] = useState(9);
+  const [createScheduleEnd, setCreateScheduleEnd] = useState(18);
   const [editChannelMsgTemplate, setEditChannelMsgTemplate] = useState('');
+  // Schedule state — edit modal
+  const [editScheduleEnabled, setEditScheduleEnabled] = useState(false);
+  const [editScheduleTz, setEditScheduleTz] = useState('UTC');
+  const [editScheduleDays, setEditScheduleDays] = useState<number[]>([1,2,3,4,5]);
+  const [editScheduleStart, setEditScheduleStart] = useState(9);
+  const [editScheduleEnd, setEditScheduleEnd] = useState(18);
   const [deliveryOpen, setDeliveryOpen] = useState(false);
   const [deliveryHistory, setDeliveryHistory] = useState<DeliveryHistory | null>(null);
   const [deliveryLoading, setDeliveryLoading] = useState(false);
@@ -187,6 +374,11 @@ export default function AlertsPage() {
   // Retry state
   const [retryingDeliveryId, setRetryingDeliveryId] = useState<string | null>(null);
   const [retryingAll, setRetryingAll] = useState(false);
+
+  // Delivery stats panel state
+  const [expandedStatsId, setExpandedStatsId] = useState<string | null>(null);
+  const [statsCache, setStatsCache] = useState<Record<string, DeliveryStats>>({});
+  const [statsLoading, setStatsLoading] = useState<string | null>(null);
 
   useEffect(() => {
     const user = getUser();
@@ -214,6 +406,11 @@ export default function AlertsPage() {
     setCreateGroupByFolder(true);
     setCreateGroupByTag(false);
     setCreateChannelMsgTemplate('');
+    setCreateScheduleEnabled(false);
+    setCreateScheduleTz('UTC');
+    setCreateScheduleDays([1,2,3,4,5]);
+    setCreateScheduleStart(9);
+    setCreateScheduleEnd(18);
   }
 
   function previewCreateTemplate(template: string) {
@@ -317,6 +514,24 @@ export default function AlertsPage() {
     }
   }
 
+  async function toggleStats(channelId: string) {
+    if (expandedStatsId === channelId) {
+      setExpandedStatsId(null);
+      return;
+    }
+    setExpandedStatsId(channelId);
+    if (statsCache[channelId]) return; // already loaded
+    setStatsLoading(channelId);
+    try {
+      const data = await api<DeliveryStats>(`/v1/alert-channels/${channelId}/delivery-stats`);
+      setStatsCache((prev) => ({ ...prev, [channelId]: data }));
+    } catch {
+      // silently fail — panel will show empty state
+    } finally {
+      setStatsLoading(null);
+    }
+  }
+
   function next() {
     setWizardStep((s) => Math.min(2, s + 1));
   }
@@ -373,6 +588,31 @@ export default function AlertsPage() {
     if (type === 'matrix') {
       return { homeserverUrl: a, accessToken: b, roomId: secret ?? '' };
     }
+    if (type === 'rocketchat') return { webhookUrl: a };
+    if (type === 'apprise') {
+      const cfg: Record<string, unknown> = { serverUrl: a };
+      if (b?.trim()) cfg.tag = b.trim();
+      return cfg;
+    }
+    if (type === 'mattermost') {
+      const cfg: Record<string, unknown> = { webhookUrl: a };
+      if (b?.trim()) cfg.channel = b.trim();
+      if (secret?.trim()) cfg.username = secret.trim();
+      return cfg;
+    }
+    if (type === 'zulip') {
+      // a=serverUrl, b=botEmail, secret=botApiKey, username=stream/dmTo, avatarUrl=topic, mentionRoleId=messageType
+      const cfg: Record<string, unknown> = { serverUrl: a, botEmail: b ?? '', botApiKey: secret ?? '' };
+      const msgType = extras?.mentionRoleId?.trim() || 'stream';
+      cfg.messageType = msgType;
+      if (msgType === 'stream') {
+        if (extras?.username?.trim()) cfg.stream = extras.username.trim();
+        if (extras?.avatarUrl?.trim()) cfg.topic = extras.avatarUrl.trim();
+      } else {
+        if (extras?.username?.trim()) cfg.dmTo = extras.username.trim();
+      }
+      return cfg;
+    }
     return { to: a };
   }
 
@@ -389,7 +629,9 @@ export default function AlertsPage() {
           groupWindowSec: createGroupWindowMin * 60,
           groupByFolder: createGroupByFolder,
           groupByTag: createGroupByTag,
+          ...(createBatchWindowSec > 0 && { batchWindowSec: createBatchWindowSec }),
           ...(createChannelMsgTemplate.trim() && { messageTemplate: createChannelMsgTemplate.trim() }),
+          scheduleJson: createScheduleEnabled ? { enabled: true, timezone: createScheduleTz, days: createScheduleDays, startHour: createScheduleStart, endHour: createScheduleEnd } : null,
         }),
       });
       setWizardOpen(false);
@@ -503,6 +745,25 @@ export default function AlertsPage() {
       setEditA(String(channel.config.homeserverUrl ?? ''));
       setEditB(String(channel.config.accessToken ?? ''));
       setEditSecret(String(channel.config.roomId ?? ''));
+    } else if (channel.type === 'rocketchat') {
+      setEditA(String(channel.config.webhookUrl ?? ''));
+      setEditB('');
+      setEditSecret('');
+    } else if (channel.type === 'apprise') {
+      setEditA(String(channel.config.serverUrl ?? ''));
+      setEditB(String(channel.config.tag ?? ''));
+      setEditSecret('');
+    } else if (channel.type === 'mattermost') {
+      setEditA(String(channel.config.webhookUrl ?? ''));
+      setEditB(String(channel.config.channel ?? ''));
+      setEditSecret(String(channel.config.username ?? ''));
+    } else if (channel.type === 'zulip') {
+      setEditA(String(channel.config.serverUrl ?? ''));
+      setEditB(String(channel.config.botEmail ?? ''));
+      setEditSecret(String(channel.config.botApiKey ?? ''));
+      setEditUsername(String(channel.config.stream ?? channel.config.dmTo ?? ''));
+      setEditAvatarUrl(String(channel.config.topic ?? ''));
+      setEditMentionRoleId(String(channel.config.messageType ?? 'stream'));
     } else {
       setEditA(String(channel.config.to ?? ''));
       setEditB('');
@@ -514,7 +775,14 @@ export default function AlertsPage() {
     setEditGroupWindowMin(Math.round((channel.groupWindowSec ?? 300) / 60));
     setEditGroupByFolder(channel.groupByFolder ?? true);
     setEditGroupByTag(channel.groupByTag ?? false);
+    setEditBatchWindowSec(channel.batchWindowSec ?? 0);
     setEditChannelMsgTemplate((channel as AlertChannel & { messageTemplate?: string | null }).messageTemplate ?? '');
+    const sched = channel.scheduleJson;
+    setEditScheduleEnabled(sched?.enabled ?? false);
+    setEditScheduleTz(sched?.timezone ?? 'UTC');
+    setEditScheduleDays(sched?.days ?? [1,2,3,4,5]);
+    setEditScheduleStart(sched?.startHour ?? 9);
+    setEditScheduleEnd(sched?.endHour ?? 18);
     setEditOpen(true);
   }
 
@@ -531,7 +799,9 @@ export default function AlertsPage() {
           groupWindowSec: editGroupWindowMin * 60,
           groupByFolder: editGroupByFolder,
           groupByTag: editGroupByTag,
+          batchWindowSec: editBatchWindowSec > 0 ? editBatchWindowSec : null,
           messageTemplate: editChannelMsgTemplate.trim() || null,
+          scheduleJson: editScheduleEnabled ? { enabled: true, timezone: editScheduleTz, days: editScheduleDays, startHour: editScheduleStart, endHour: editScheduleEnd } : null,
         }),
       });
       setEditOpen(false);
@@ -638,6 +908,10 @@ export default function AlertsPage() {
                     { value: 'ntfy', label: 'ntfy (self-hosted)' },
                     { value: 'gotify', label: 'Gotify (self-hosted)' },
                     { value: 'matrix', label: 'Matrix / Element (self-hosted)' },
+                    { value: 'rocketchat', label: 'Rocket.Chat (self-hosted)' },
+                    { value: 'apprise', label: 'Apprise (universal gateway)' },
+                    { value: 'mattermost', label: 'Mattermost (self-hosted)' },
+                    { value: 'zulip', label: 'Zulip (self-hosted)' },
                   ]}
                 />
               </div>
@@ -647,11 +921,11 @@ export default function AlertsPage() {
               <div className="space-y-4">
                 <p className="font-semibold text-text-primary">Step 2/3 · Credentials</p>
                 <p className="text-sm text-text-secondary">
-                  {form.type === 'discord' ? 'Paste Discord webhook URL.' : form.type === 'slack' ? 'Paste Slack incoming webhook URL.' : form.type === 'webhook' ? 'Paste your endpoint URL.' : form.type === 'telegram' ? 'Bot token and chat ID are required.' : form.type === 'pagerduty' ? <span>Paste your PagerDuty <strong>Integration Key</strong> (Events API v2).</span> : form.type === 'opsgenie' ? <span>Paste your OpsGenie <strong>API Key</strong>.</span> : form.type === 'sms' ? <span>Enter your <strong>Twilio Account SID</strong>, Auth Token, and phone numbers. Alerts are sent as SMS.</span> : form.type === 'teams' ? <span>Paste your Microsoft Teams <strong>Incoming Webhook URL</strong>. Create it in Teams → channel → Connectors → Incoming Webhook.</span> : form.type === 'ntfy' ? <span>Paste the full <strong>ntfy topic URL</strong> (e.g. <code className="text-accent text-xs">https://ntfy.sh/my-alerts</code>). Add an access token if your topic is protected.</span> : form.type === 'gotify' ? <span>Enter your <strong>Gotify server URL</strong> and <strong>App Token</strong>. Create a Gotify app to get the token.</span> : form.type === 'matrix' ? <span>Enter your Matrix <strong>homeserver URL</strong>, <strong>access token</strong>, and <strong>room ID</strong>. Get the access token from Element → Settings → Help &amp; About. Room ID looks like <code className="text-accent text-xs">!abc:matrix.org</code>.</span> : 'Enter destination email.'}
+                  {form.type === 'discord' ? 'Paste Discord webhook URL.' : form.type === 'slack' ? 'Paste Slack incoming webhook URL.' : form.type === 'webhook' ? 'Paste your endpoint URL.' : form.type === 'telegram' ? 'Bot token and chat ID are required.' : form.type === 'pagerduty' ? <span>Paste your PagerDuty <strong>Integration Key</strong> (Events API v2).</span> : form.type === 'opsgenie' ? <span>Paste your OpsGenie <strong>API Key</strong>.</span> : form.type === 'sms' ? <span>Enter your <strong>Twilio Account SID</strong>, Auth Token, and phone numbers. Alerts are sent as SMS.</span> : form.type === 'teams' ? <span>Paste your Microsoft Teams <strong>Incoming Webhook URL</strong>. Create it in Teams → channel → Connectors → Incoming Webhook.</span> : form.type === 'ntfy' ? <span>Paste the full <strong>ntfy topic URL</strong> (e.g. <code className="text-accent text-xs">https://ntfy.sh/my-alerts</code>). Add an access token if your topic is protected.</span> : form.type === 'gotify' ? <span>Enter your <strong>Gotify server URL</strong> and <strong>App Token</strong>. Create a Gotify app to get the token.</span> : form.type === 'matrix' ? <span>Enter your Matrix <strong>homeserver URL</strong>, <strong>access token</strong>, and <strong>room ID</strong>. Get the access token from Element → Settings → Help &amp; About. Room ID looks like <code className="text-accent text-xs">!abc:matrix.org</code>.</span> : form.type === 'rocketchat' ? <span>Paste your Rocket.Chat <strong>Incoming Webhook URL</strong>. Create it in Rocket.Chat Admin → Integrations → New Incoming Webhook.</span> : form.type === 'apprise' ? <span>Enter your <strong>Apprise API server URL</strong> (e.g. <code className="text-accent text-xs">http://apprise:8000</code>). Optionally specify a tag to route to specific services.</span> : form.type === 'mattermost' ? <span>Paste your Mattermost <strong>Incoming Webhook URL</strong>. Create it in Mattermost → Integrations → Incoming Webhooks → Add.</span> : form.type === 'zulip' ? <span>Enter your Zulip <strong>server URL</strong>, bot email, and bot API key. Create a bot in Zulip → Personal settings → Bots → Add a new bot.</span> : 'Enter destination email.'}
                 </p>
                 <div>
                   <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                    {form.type === 'telegram' ? 'Bot token' : form.type === 'email' ? 'Email address' : form.type === 'pagerduty' ? 'Integration Key' : form.type === 'opsgenie' ? 'API Key' : form.type === 'sms' ? 'Account SID' : form.type === 'teams' ? 'Teams Webhook URL' : form.type === 'ntfy' ? 'Topic URL' : form.type === 'gotify' ? 'Server URL' : form.type === 'matrix' ? 'Homeserver URL' : 'URL'}
+                    {form.type === 'telegram' ? 'Bot token' : form.type === 'email' ? 'Email address' : form.type === 'pagerduty' ? 'Integration Key' : form.type === 'opsgenie' ? 'API Key' : form.type === 'sms' ? 'Account SID' : form.type === 'teams' ? 'Teams Webhook URL' : form.type === 'ntfy' ? 'Topic URL' : form.type === 'gotify' ? 'Server URL' : form.type === 'matrix' ? 'Homeserver URL' : form.type === 'rocketchat' ? 'Rocket.Chat Webhook URL' : form.type === 'apprise' ? 'Apprise Server URL' : form.type === 'mattermost' ? 'Mattermost Webhook URL' : form.type === 'zulip' ? 'Zulip Server URL' : 'URL'}
                   </label>
                   <input className={inputClass} value={form.a} onChange={(e) => setForm({ ...form, a: e.target.value })} />
                 </div>
@@ -731,6 +1005,68 @@ export default function AlertsPage() {
                       <input className={inputClass} placeholder="!abc123:matrix.org" value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} />
                       <p className="mt-1 text-xs text-text-secondary">Internal room ID (starts with !). Found in Element → Room settings → Advanced.</p>
                     </div>
+                  </>
+                )}
+                {form.type === 'apprise' && (
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Tag <span className="font-normal text-text-secondary">(optional)</span></label>
+                    <input className={inputClass} placeholder="e.g. alerts" value={form.b} onChange={(e) => setForm({ ...form, b: e.target.value })} />
+                    <p className="mt-1 text-xs text-text-secondary">Apprise tag to scope delivery. Must be pre-configured in your Apprise config. Leave blank to notify all services.</p>
+                  </div>
+                )}
+                {form.type === 'mattermost' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Channel override <span className="font-normal text-text-secondary">(optional)</span></label>
+                      <input className={inputClass} placeholder="e.g. #alerts" value={form.b} onChange={(e) => setForm({ ...form, b: e.target.value })} />
+                      <p className="mt-1 text-xs text-text-secondary">Override the default channel from the webhook config. Include the # prefix.</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Username override <span className="font-normal text-text-secondary">(optional)</span></label>
+                      <input className={inputClass} placeholder="PulseDock" value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} />
+                      <p className="mt-1 text-xs text-text-secondary">Display name for the bot. Defaults to &quot;PulseDock&quot;.</p>
+                    </div>
+                  </>
+                )}
+                {form.type === 'zulip' && (
+                  <>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Bot email <span className="text-red-400">*</span></label>
+                      <input className={inputClass} placeholder="pulsedock-bot@yourorg.zulipchat.com" value={form.b} onChange={(e) => setForm({ ...form, b: e.target.value })} />
+                      <p className="mt-1 text-xs text-text-secondary">The bot&apos;s email address from Zulip → Personal settings → Bots.</p>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Bot API key <span className="text-red-400">*</span></label>
+                      <input className={inputClass} type="password" placeholder="xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx" value={form.secret} onChange={(e) => setForm({ ...form, secret: e.target.value })} />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-text-secondary mb-1.5">Message type</label>
+                      <select className={inputClass} value={form.mentionRoleId || 'stream'} onChange={(e) => setForm({ ...form, mentionRoleId: e.target.value })}>
+                        <option value="stream">Stream (channel message)</option>
+                        <option value="direct">Direct message (DM)</option>
+                      </select>
+                    </div>
+                    {(!form.mentionRoleId || form.mentionRoleId === 'stream') && (
+                      <>
+                        <div>
+                          <label className="block text-sm font-medium text-text-secondary mb-1.5">Stream name <span className="font-normal text-text-secondary">(optional)</span></label>
+                          <input className={inputClass} placeholder="general" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
+                          <p className="mt-1 text-xs text-text-secondary">The stream (channel) to post to. Defaults to &quot;general&quot;.</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-text-secondary mb-1.5">Topic <span className="font-normal text-text-secondary">(optional)</span></label>
+                          <input className={inputClass} placeholder="PulseDock Alerts" value={form.avatarUrl} onChange={(e) => setForm({ ...form, avatarUrl: e.target.value })} />
+                          <p className="mt-1 text-xs text-text-secondary">The topic (thread) within the stream. Defaults to &quot;PulseDock Alerts&quot;.</p>
+                        </div>
+                      </>
+                    )}
+                    {form.mentionRoleId === 'direct' && (
+                      <div>
+                        <label className="block text-sm font-medium text-text-secondary mb-1.5">Recipient email</label>
+                        <input className={inputClass} placeholder="user@yourorg.zulipchat.com" value={form.username} onChange={(e) => setForm({ ...form, username: e.target.value })} />
+                        <p className="mt-1 text-xs text-text-secondary">Email address of the user to DM.</p>
+                      </div>
+                    )}
                   </>
                 )}
                 {form.type === 'webhook' && (
@@ -932,6 +1268,30 @@ export default function AlertsPage() {
                 )}
               </div>
 
+              {/* Batch Window */}
+              <div className="border-t border-border pt-4 space-y-3">
+                <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Batch Window</p>
+                <p className="text-xs text-text-muted">Collect alerts for this many seconds before delivering as one batched message. 0 = disabled. Good for reducing noise when multiple monitors fail simultaneously.</p>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Batch window (seconds)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={300}
+                    className={inputClass}
+                    value={createBatchWindowSec}
+                    onChange={(e) => setCreateBatchWindowSec(Math.max(0, Math.min(300, Number(e.target.value))))}
+                    placeholder="0 (disabled)"
+                  />
+                  <div className="mt-2 flex gap-2">
+                    <button type="button" onClick={() => setCreateBatchWindowSec(30)} className="text-xs px-2 py-1 rounded bg-surface-elevated text-text-secondary hover:text-accent transition-colors">30s</button>
+                    <button type="button" onClick={() => setCreateBatchWindowSec(60)} className="text-xs px-2 py-1 rounded bg-surface-elevated text-text-secondary hover:text-accent transition-colors">1m</button>
+                    <button type="button" onClick={() => setCreateBatchWindowSec(300)} className="text-xs px-2 py-1 rounded bg-surface-elevated text-text-secondary hover:text-accent transition-colors">5m</button>
+                    {createBatchWindowSec > 0 && <button type="button" onClick={() => setCreateBatchWindowSec(0)} className="text-xs px-2 py-1 rounded bg-surface-elevated text-text-secondary hover:text-red-400 transition-colors">clear</button>}
+                  </div>
+                </div>
+              </div>
+
               {/* Channel-level Message Template */}
               <div className="border-t border-border pt-4 space-y-3">
                 <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Custom Message Template</p>
@@ -948,6 +1308,14 @@ export default function AlertsPage() {
                   Available tokens: <span className="font-mono text-accent">{'{{monitor.name}}'}</span> <span className="font-mono text-accent">{'{{monitor.type}}'}</span> <span className="font-mono text-accent">{'{{monitor.target}}'}</span> <span className="font-mono text-accent">{'{{run.level}}'}</span> <span className="font-mono text-accent">{'{{run.message}}'}</span> <span className="font-mono text-accent">{'{{run.latencyMs}}'}</span> <span className="font-mono text-accent">{'{{run.checkedAt}}'}</span> <span className="font-mono text-accent">{'{{text}}'}</span> <span className="font-mono text-accent">{'{{timestamp}}'}</span> <span className="font-mono text-accent">{'{{channelName}}'}</span>
                 </div>
               </div>
+              {/* Alert Schedule */}
+              <ChannelScheduleSection
+                enabled={createScheduleEnabled} setEnabled={setCreateScheduleEnabled}
+                timezone={createScheduleTz} setTimezone={setCreateScheduleTz}
+                days={createScheduleDays} setDays={setCreateScheduleDays}
+                startHour={createScheduleStart} setStartHour={setCreateScheduleStart}
+                endHour={createScheduleEnd} setEndHour={setCreateScheduleEnd}
+              />
               </>
             )}
 
@@ -957,7 +1325,7 @@ export default function AlertsPage() {
                 <p className="text-sm text-text-primary">Name: <strong>{form.name}</strong></p>
                 <p className="text-sm text-text-primary">Platform: <strong>{form.type}</strong></p>
                 <p className="text-sm text-text-secondary">
-                  {form.type === 'telegram' ? 'Bot token' : form.type === 'email' ? 'Email' : form.type === 'pagerduty' ? 'Integration Key' : form.type === 'opsgenie' ? 'API Key' : form.type === 'sms' ? 'Account SID' : form.type === 'ntfy' ? 'Topic URL' : form.type === 'gotify' ? 'Server URL' : form.type === 'matrix' ? 'Homeserver URL' : 'URL'}: {form.a ? 'configured' : 'missing'}
+                  {form.type === 'telegram' ? 'Bot token' : form.type === 'email' ? 'Email' : form.type === 'pagerduty' ? 'Integration Key' : form.type === 'opsgenie' ? 'API Key' : form.type === 'sms' ? 'Account SID' : form.type === 'ntfy' ? 'Topic URL' : form.type === 'gotify' ? 'Server URL' : form.type === 'matrix' ? 'Homeserver URL' : form.type === 'rocketchat' ? 'Rocket.Chat Webhook URL' : form.type === 'apprise' ? 'Apprise Server URL' : form.type === 'mattermost' ? 'Mattermost Webhook URL' : form.type === 'zulip' ? 'Zulip Server URL' : 'URL'}: {form.a ? 'configured' : 'missing'}
                 </p>
                 {form.type === 'telegram' && (
                   <p className="text-sm text-text-secondary">Chat ID: {form.b ? 'configured' : 'missing'}</p>
@@ -998,7 +1366,7 @@ export default function AlertsPage() {
               </div>
               <div>
                 <label className="block text-sm font-medium text-text-secondary mb-1.5">
-                  {selected?.type === 'telegram' ? 'Bot token' : selected?.type === 'email' ? 'Email address' : selected?.type === 'pagerduty' ? 'Integration Key' : selected?.type === 'opsgenie' ? 'API Key' : selected?.type === 'ntfy' ? 'Topic URL' : selected?.type === 'gotify' ? 'Server URL' : selected?.type === 'matrix' ? 'Homeserver URL' : 'URL'}
+                  {selected?.type === 'telegram' ? 'Bot token' : selected?.type === 'email' ? 'Email address' : selected?.type === 'pagerduty' ? 'Integration Key' : selected?.type === 'opsgenie' ? 'API Key' : selected?.type === 'ntfy' ? 'Topic URL' : selected?.type === 'gotify' ? 'Server URL' : selected?.type === 'matrix' ? 'Homeserver URL' : selected?.type === 'rocketchat' ? 'Rocket.Chat Webhook URL' : selected?.type === 'apprise' ? 'Apprise Server URL' : selected?.type === 'mattermost' ? 'Mattermost Webhook URL' : selected?.type === 'zulip' ? 'Zulip Server URL' : 'URL'}
                 </label>
                 <input className={inputClass} value={editA} onChange={(e) => setEditA(e.target.value)} />
               </div>
@@ -1060,6 +1428,13 @@ export default function AlertsPage() {
                     <p className="mt-1 text-xs text-text-secondary">Internal room ID (starts with !). Found in Element → Room settings → Advanced.</p>
                   </div>
                 </>
+              )}
+              {selected?.type === 'apprise' && (
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Tag <span className="font-normal text-text-secondary">(optional)</span></label>
+                  <input className={inputClass} placeholder="e.g. alerts" value={editB} onChange={(e) => setEditB(e.target.value)} />
+                  <p className="mt-1 text-xs text-text-secondary">Apprise tag to scope delivery. Leave blank to notify all configured services.</p>
+                </div>
               )}
               {selected?.type === 'webhook' && (
                 <>
@@ -1261,6 +1636,30 @@ export default function AlertsPage() {
                 )}
               </div>
 
+              {/* Batch Window (edit) */}
+              <div className="border-t border-border pt-4 space-y-3">
+                <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Batch Window</p>
+                <p className="text-xs text-text-muted">Collect alerts for this many seconds before delivering as one batched message. 0 = disabled. Good for reducing noise when multiple monitors fail simultaneously.</p>
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Batch window (seconds)</label>
+                  <input
+                    type="number"
+                    min={0}
+                    max={300}
+                    className={inputClass}
+                    value={editBatchWindowSec}
+                    onChange={(e) => setEditBatchWindowSec(Math.max(0, Math.min(300, Number(e.target.value))))}
+                    placeholder="0 (disabled)"
+                  />
+                  <div className="mt-2 flex gap-2">
+                    <button type="button" onClick={() => setEditBatchWindowSec(30)} className="text-xs px-2 py-1 rounded bg-surface-elevated text-text-secondary hover:text-accent transition-colors">30s</button>
+                    <button type="button" onClick={() => setEditBatchWindowSec(60)} className="text-xs px-2 py-1 rounded bg-surface-elevated text-text-secondary hover:text-accent transition-colors">1m</button>
+                    <button type="button" onClick={() => setEditBatchWindowSec(300)} className="text-xs px-2 py-1 rounded bg-surface-elevated text-text-secondary hover:text-accent transition-colors">5m</button>
+                    {editBatchWindowSec > 0 && <button type="button" onClick={() => setEditBatchWindowSec(0)} className="text-xs px-2 py-1 rounded bg-surface-elevated text-text-secondary hover:text-red-400 transition-colors">clear</button>}
+                  </div>
+                </div>
+              </div>
+
               {/* Channel-level Message Template */}
               <div className="border-t border-border pt-4 space-y-3">
                 <p className="text-xs font-semibold text-text-secondary uppercase tracking-wide">Custom Message Template</p>
@@ -1277,6 +1676,15 @@ export default function AlertsPage() {
                   Available tokens: <span className="font-mono text-accent">{'{{monitor.name}}'}</span> <span className="font-mono text-accent">{'{{monitor.type}}'}</span> <span className="font-mono text-accent">{'{{monitor.target}}'}</span> <span className="font-mono text-accent">{'{{run.level}}'}</span> <span className="font-mono text-accent">{'{{run.message}}'}</span> <span className="font-mono text-accent">{'{{run.latencyMs}}'}</span> <span className="font-mono text-accent">{'{{run.checkedAt}}'}</span> <span className="font-mono text-accent">{'{{text}}'}</span> <span className="font-mono text-accent">{'{{timestamp}}'}</span> <span className="font-mono text-accent">{'{{channelName}}'}</span>
                 </div>
               </div>
+
+              {/* Alert Schedule */}
+              <ChannelScheduleSection
+                enabled={editScheduleEnabled} setEnabled={setEditScheduleEnabled}
+                timezone={editScheduleTz} setTimezone={setEditScheduleTz}
+                days={editScheduleDays} setDays={setEditScheduleDays}
+                startHour={editScheduleStart} setStartHour={setEditScheduleStart}
+                endHour={editScheduleEnd} setEndHour={setEditScheduleEnd}
+              />
             </div>
           </Modal>
 
@@ -1496,11 +1904,19 @@ export default function AlertsPage() {
               </TableHead>
               <TableBody>
                 {pageRows.map((c) => (
+                  <>
                   <TableRow key={c.id}>
                     <TableCell className={visibleCols.name ? '' : 'hidden'}>
                       <div className="flex items-center gap-2">
                         <ChannelTypeIcon type={c.type} />
-                        <span className="font-medium text-text-primary">{c.name}</span>
+                        <div className="flex flex-col min-w-0">
+                          <span className="font-medium text-text-primary">{c.name}</span>
+                          {c.scheduleJson?.enabled && (
+                            <span className="text-[10px] text-text-muted flex items-center gap-0.5">
+                              🕐 {['Su','Mo','Tu','We','Th','Fr','Sa'].filter((_,i) => c.scheduleJson!.days.includes(i)).join('')} {String(c.scheduleJson.startHour).padStart(2,'0')}:00–{String(c.scheduleJson.endHour).padStart(2,'0')}:00 {c.scheduleJson.timezone}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </TableCell>
                     <TableCell className={visibleCols.type ? '' : 'hidden'}>
@@ -1515,6 +1931,20 @@ export default function AlertsPage() {
                     <TableCell className={visibleCols.actions ? '' : 'hidden'}>
                       <div className="flex items-center gap-2">
                         <Button variant="secondary" size="sm" onClick={() => testChannel(c)}>Test</Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleStats(c.id)}
+                          aria-label={`Delivery stats for ${c.name}`}
+                          title="Stats"
+                          className={expandedStatsId === c.id ? 'text-accent' : ''}
+                        >
+                          <span className="flex items-center gap-1.5">
+                            <BarChart2 className="w-4 h-4" />
+                            <span className="hidden sm:inline text-xs">Stats</span>
+                            {expandedStatsId === c.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                          </span>
+                        </Button>
                         <Button variant="ghost" size="sm" onClick={() => openDeliveries(c)} aria-label={`Delivery history for ${c.name}`} title="History">
                           <span className="flex items-center gap-1.5">
                             <Activity className="w-4 h-4" />
@@ -1530,6 +1960,23 @@ export default function AlertsPage() {
                       </div>
                     </TableCell>
                   </TableRow>
+                  {expandedStatsId === c.id && (
+                    <tr key={`stats-${c.id}`} className="bg-surface-elevated/50">
+                      <td colSpan={5} className="px-6 py-4">
+                        {statsLoading === c.id ? (
+                          <div className="flex items-center gap-2 text-text-secondary text-sm">
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            Loading stats…
+                          </div>
+                        ) : statsCache[c.id] ? (
+                          <DeliveryStatsPanel stats={statsCache[c.id]} />
+                        ) : (
+                          <span className="text-sm text-text-secondary">No stats available.</span>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                  </>
                 ))}
               </TableBody>
             </Table>

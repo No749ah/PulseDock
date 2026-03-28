@@ -16,6 +16,8 @@ import {
   XCircle,
   LayoutGrid,
   List,
+  VolumeX,
+  Volume2,
 } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
@@ -91,6 +93,8 @@ export default function FoldersPage() {
 
   const [editOpen, setEditOpen] = useState(false);
   const [deleteOpen, setDeleteOpen] = useState(false);
+  const [muteOpen, setMuteOpen] = useState(false);
+  const [muteMinutes, setMuteMinutes] = useState('60');
   const [selected, setSelected] = useState<Folder | null>(null);
   const [editName, setEditName] = useState('');
   const [saving, setSaving] = useState(false);
@@ -177,6 +181,36 @@ export default function FoldersPage() {
       toastError('Failed to delete project');
     } finally {
       setSaving(false);
+    }
+  }
+
+  function openMute(folder: Folder) {
+    setSelected(folder);
+    setMuteMinutes('60');
+    setMuteOpen(true);
+  }
+
+  async function confirmMute() {
+    if (!selected) return;
+    const mins = Math.max(1, Math.min(1440, Number(muteMinutes) || 60));
+    setSaving(true);
+    try {
+      const res = await api(`/v1/folders/${selected.id}/mute`, { minutes: mins }, { method: 'POST' }) as { monitorCount: number; mutedUntil: string };
+      success(`Muted ${res.monitorCount} monitor${res.monitorCount !== 1 ? 's' : ''} in "${selected.name}" for ${mins} min`);
+      setMuteOpen(false);
+    } catch {
+      toastError('Failed to mute project');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function unmuteFolder(folder: Folder) {
+    try {
+      const res = await api(`/v1/folders/${folder.id}/mute`, undefined, { method: 'DELETE' }) as { monitorCount: number };
+      success(`Unmuted ${res.monitorCount} monitor${res.monitorCount !== 1 ? 's' : ''} in "${folder.name}"`);
+    } catch {
+      toastError('Failed to unmute project');
     }
   }
 
@@ -311,6 +345,61 @@ export default function FoldersPage() {
             </div>
           </Modal>
 
+          {/* Mute Modal */}
+          <Modal
+            isOpen={muteOpen}
+            onClose={() => setMuteOpen(false)}
+            title={`Mute alerts — ${selected?.name}`}
+            actions={
+              <>
+                <Button variant="secondary" onClick={() => setMuteOpen(false)}>Cancel</Button>
+                <Button
+                  variant="primary"
+                  className="gap-1.5"
+                  onClick={confirmMute}
+                  disabled={saving || !muteMinutes || Number(muteMinutes) < 1}
+                >
+                  <VolumeX className="w-4 h-4" />
+                  {saving ? 'Muting…' : 'Mute all monitors'}
+                </Button>
+              </>
+            }
+          >
+            <div className="space-y-4">
+              <p className="text-text-secondary text-sm">
+                All {selected?.stats?.totalMonitors ?? 0} monitors in <strong className="text-text-primary">{selected?.name}</strong> will stop sending alerts for the specified duration.
+              </p>
+              <div>
+                <label className="block text-sm font-medium text-text-primary mb-2">Mute duration</label>
+                <div className="flex items-center gap-3">
+                  <input
+                    type="number"
+                    min={1}
+                    max={1440}
+                    value={muteMinutes}
+                    onChange={(e) => setMuteMinutes(e.target.value)}
+                    className={inputClass + ' max-w-[120px]'}
+                    placeholder="60"
+                  />
+                  <span className="text-text-secondary text-sm">minutes</span>
+                  <div className="flex gap-2 ml-2">
+                    {[30, 60, 120, 240].map((m) => (
+                      <button
+                        key={m}
+                        type="button"
+                        onClick={() => setMuteMinutes(String(m))}
+                        className={`px-2.5 py-1 rounded-md text-xs font-medium transition-colors ${Number(muteMinutes) === m ? 'bg-accent text-white' : 'bg-surface-elevated text-text-secondary hover:text-text-primary hover:bg-surface-elevated/80'}`}
+                      >
+                        {m >= 60 ? `${m / 60}h` : `${m}m`}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <p className="text-xs text-text-secondary mt-1.5">Max 1440 min (24h). Recoveries will still fire during mute.</p>
+              </div>
+            </div>
+          </Modal>
+
           {/* Header */}
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -386,6 +475,14 @@ export default function FoldersPage() {
                           <h3 className="font-semibold text-text-primary text-sm truncate">{f.name}</h3>
                         </div>
                         <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            onClick={() => openMute(f)}
+                            className="p-1 rounded text-text-secondary hover:text-warning transition-colors"
+                            aria-label={`Mute alerts for ${f.name}`}
+                            title="Mute all monitors in project"
+                          >
+                            <VolumeX className="w-3.5 h-3.5" />
+                          </button>
                           <button
                             onClick={() => openEdit(f)}
                             className="p-1 rounded text-text-secondary hover:text-accent transition-colors"
@@ -524,6 +621,12 @@ export default function FoldersPage() {
                           <TableCell>{new Date(f.createdAt).toLocaleDateString()}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
+                              <Button variant="ghost" size="sm" onClick={() => openMute(f)} className="text-warning hover:text-warning" aria-label={`Mute ${f.name}`} title="Mute all monitors in project">
+                                <VolumeX className="w-4 h-4" />
+                              </Button>
+                              <Button variant="ghost" size="sm" onClick={() => unmuteFolder(f)} className="text-text-secondary" aria-label={`Unmute ${f.name}`} title="Unmute all monitors in project">
+                                <Volume2 className="w-4 h-4" />
+                              </Button>
                               <Button variant="ghost" size="sm" onClick={() => openEdit(f)} aria-label={`Edit ${f.name}`} title="Edit project">
                                 <Edit className="w-4 h-4" />
                               </Button>

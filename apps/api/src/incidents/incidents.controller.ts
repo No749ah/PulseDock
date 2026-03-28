@@ -6,6 +6,7 @@ import {
   Delete,
   Body,
   Param,
+  Query,
   Req,
   HttpCode,
   HttpStatus,
@@ -82,6 +83,18 @@ export class IncidentsController {
     return this.incidents.findAll(req.user.sub);
   }
 
+  @Get('mttr-report')
+  @ApiOperation({ summary: 'MTTR/MTTF reliability report', description: 'Returns Mean Time to Recovery, Mean Time to Failure, and trend data for the authenticated user\'s incidents.' })
+  @ApiResponse({ status: 200, description: 'MTTR/MTTF report with overall stats, per-monitor breakdown, and weekly trend.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
+  mttrReport(
+    @Req() req: AuthenticatedRequest,
+    @Query('periodDays') periodDays?: string,
+  ) {
+    const days = periodDays ? parseInt(periodDays, 10) : 30;
+    return this.incidents.mttrReport(req.user.sub, isNaN(days) ? 30 : days);
+  }
+
   @Get(':id')
   @ApiOperation({ summary: 'Get a single incident with full timeline', description: 'Returns a single incident including all status updates and affected monitors.' })
   @ApiParam({ name: 'id', description: 'Incident CUID', example: 'clfxyz123' })
@@ -148,6 +161,22 @@ export class IncidentsController {
       rootCause: body.rootCause,
       postmortemNotes: body.postmortemNotes,
     });
+  }
+
+  @Post(':id/generate-postmortem')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({
+    summary: 'Auto-generate incident post-mortem',
+    description: 'Generates a structured post-mortem markdown document from incident data: duration, affected monitors, check failure stats, timeline updates, and all standard post-mortem sections. If postmortemNotes is not yet set, the generated content is saved automatically.',
+  })
+  @ApiParam({ name: 'id', description: 'Incident CUID', example: 'clfxyz123' })
+  @ApiResponse({ status: 200, description: 'Generated post-mortem markdown returned.' })
+  @ApiResponse({ status: 404, description: 'Incident not found.' })
+  generatePostmortem(
+    @Req() req: AuthenticatedRequest,
+    @Param('id') id: string,
+  ) {
+    return this.incidents.generatePostmortem(req.user.sub, id);
   }
 
   @Delete(':id')

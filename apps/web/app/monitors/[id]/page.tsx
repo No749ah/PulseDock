@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi, Shield, Globe, CheckCircle, XCircle, FileText, GitCompare, MessageSquare, Pin, List } from "lucide-react";
+import { AlertCircle, AlertTriangle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi, Shield, Globe, CheckCircle, XCircle, FileText, GitCompare, MessageSquare, Pin, List, BarChart2 } from "lucide-react";
 import { Breadcrumb } from "../../../components/breadcrumb";
 import { api } from "../../../lib/api";
 import { createRealtimeSocket } from "../../../lib/realtime";
@@ -224,7 +224,65 @@ export default function MonitorDetailPage() {
   const [depLoading, setDepLoading] = useState(false);
   const [errorBudget, setErrorBudget] = useState<ErrorBudget | null>(null);
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate" | "domain" | "security" | "content" | "headers" | "diff" | "annotations">("overview");
+  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate" | "domain" | "security" | "content" | "headers" | "diff" | "annotations" | "ctlog" | "geo" | "failures" | "simulate" | "metric">("overview");
+
+  // Custom Metric state
+  type MetricPoint = { checkedAt: string; value: number; level: string };
+  type MetricHistoryData = {
+    metricName: string | null; metricUnit: string | null; metricPath: string | null;
+    metricAlertMin: number | null; metricAlertMax: number | null;
+    points: MetricPoint[];
+    stats: { min: number | null; max: number | null; avg: number | null; latest: number | null; count: number };
+  };
+  const [metricData, setMetricData] = useState<MetricHistoryData | null>(null);
+  const [metricLoading, setMetricLoading] = useState(false);
+  const [metricError, setMetricError] = useState<string | null>(null);
+  const [metricPeriod, setMetricPeriod] = useState(30);
+
+  // Simulate Alerts state
+  const [simConfirmations, setSimConfirmations] = useState(1);
+  const [simFlapDetection, setSimFlapDetection] = useState(false);
+  const [simFlapWindow, setSimFlapWindow] = useState(5);
+  const [simFlapThreshold, setSimFlapThreshold] = useState(3);
+  const [simScheduleEnabled, setSimScheduleEnabled] = useState(false);
+  const [simScheduleStartHour, setSimScheduleStartHour] = useState(9);
+  const [simScheduleEndHour, setSimScheduleEndHour] = useState(17);
+  const [simLoading, setSimLoading] = useState(false);
+  const [simError, setSimError] = useState<string | null>(null);
+  type SimResult = {
+    totalRuns: number;
+    totalFails: number;
+    uptimePct: number;
+    alertsFired: number;
+    recoverysFired: number;
+    flappingAlertsFired: number;
+    alertsPerDay: number;
+    noiseScore: "low" | "medium" | "high";
+    timeline: Array<{ timestamp: string; type: "alert" | "recovery" | "flapping"; reason: string }>;
+    currentConfig: { confirmations: number; flapDetection: boolean; flapWindow: number; flapThreshold: number };
+  };
+  const [simResult, setSimResult] = useState<SimResult | null>(null);
+  const [showApplyConfirm, setShowApplyConfirm] = useState(false);
+  const [applyLoading, setApplyLoading] = useState(false);
+
+  // Failure pattern analysis
+  type FailurePattern = {
+    pattern: string;
+    count: number;
+    percentage: number;
+    firstSeen: string;
+    lastSeen: string;
+    exampleMessage: string;
+    weeklyTrend: number[];
+  };
+  type FailurePatternsData = {
+    totalFailures: number;
+    uniquePatterns: number;
+    patterns: FailurePattern[];
+  };
+  const [failurePatterns, setFailurePatterns] = useState<FailurePatternsData | null>(null);
+  const [failurePatternsLoading, setFailurePatternsLoading] = useState(false);
+  const [failuresPeriod, setFailuresPeriod] = useState<7 | 30 | 90>(30);
 
   // Annotations
   type Annotation = { id: string; text: string; color: string; annotatedAt: string; createdAt: string };
@@ -242,6 +300,20 @@ export default function MonitorDetailPage() {
   const [perfPeriod, setPerfPeriod] = useState<"24h" | "7d" | "30d">("7d");
   const [transitionsData, setTransitionsData] = useState<StatusTransitionsData | null>(null);
   const [perfComparison, setPerfComparison] = useState<PeriodComparisonData | null>(null);
+
+  // Daily latency percentile history (P50/P95/P99)
+  type LatencyHistoryDay = {
+    date: string;
+    p50: number | null;
+    p95: number | null;
+    p99: number | null;
+    avgMs: number | null;
+    uptimePct: number | null;
+    totalChecks: number;
+  };
+  const [latencyHistory, setLatencyHistory] = useState<LatencyHistoryDay[] | null>(null);
+  const [latencyHistoryLoading, setLatencyHistoryLoading] = useState(false);
+  const [latencyHistoryDays, setLatencyHistoryDays] = useState<14 | 30 | 60>(30);
 
   // Certificate details (SSL/HTTP monitors)
   const [certDetails, setCertDetails] = useState<Record<string, unknown> | null>(null);
@@ -286,8 +358,21 @@ export default function MonitorDetailPage() {
   const [addingEvent, setAddingEvent] = useState(false);
   const [eventError, setEventError] = useState("");
 
+  // Geo distribution stats
+  type GeoRegionStat = {
+    region: string;
+    totalRuns: number;
+    okRuns: number;
+    uptimePct: number;
+    avgLatencyMs: number | null;
+    p95LatencyMs: number | null;
+  };
+  const [geoStats, setGeoStats] = useState<{ regions: GeoRegionStat[]; hasGeoData: boolean } | null>(null);
+  const [geoStatsLoading, setGeoStatsLoading] = useState(false);
+  const [geoPeriod, setGeoPeriod] = useState<1 | 7 | 30>(7);
+
   // Check history pagination + filter
-  const [runsStatusFilter, setRunsStatusFilter] = useState<"all"|"ok"|"failed">("all");
+  const [runsStatusFilter, setRunsStatusFilter] = useState<"all"|"ok"|"failed"|"degraded">("all");
   const [runsHasMore, setRunsHasMore] = useState(false);
   const [runsNextCursor, setRunsNextCursor] = useState<string | null>(null);
   const [runsTotal, setRunsTotal] = useState<number | null>(null);
@@ -418,8 +503,47 @@ export default function MonitorDetailPage() {
     }
   }, [loading, monitor, chartPeriod, loadChartData]);
 
+  // Load geo stats when geo tab becomes active or period changes
+  useEffect(() => {
+    if (activeMainTab !== "geo" || !monitor) return;
+    const user = getUser();
+    if (!user) return;
+    setGeoStatsLoading(true);
+    api<{ regions: GeoRegionStat[]; hasGeoData: boolean }>(`/v1/monitors/${id}/geo-stats?periodDays=${geoPeriod}`, user.id)
+      .then((data) => setGeoStats(data))
+      .catch(() => setGeoStats({ regions: [], hasGeoData: false }))
+      .finally(() => setGeoStatsLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMainTab, id, geoPeriod]);
+
+  // Load failure patterns when failures tab becomes active or period changes
+  useEffect(() => {
+    if (activeMainTab !== "failures" || !monitor) return;
+    const user = getUser();
+    if (!user) return;
+    setFailurePatternsLoading(true);
+    api<FailurePatternsData>(`/v1/monitors/${id}/failure-patterns?periodDays=${failuresPeriod}`, user.id)
+      .then((data) => setFailurePatterns(data))
+      .catch(() => setFailurePatterns({ totalFailures: 0, uniquePatterns: 0, patterns: [] }))
+      .finally(() => setFailurePatternsLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMainTab, id, failuresPeriod]);
+
+  // Load latency history when performance tab is active or days change
+  useEffect(() => {
+    if (activeMainTab !== "performance" || !monitor) return;
+    const user = getUser();
+    if (!user) return;
+    setLatencyHistoryLoading(true);
+    api<{ days: LatencyHistoryDay[] }>(`/v1/monitors/${id}/latency-history?days=${latencyHistoryDays}`, user.id)
+      .then((data) => setLatencyHistory(data.days))
+      .catch(() => setLatencyHistory([]))
+      .finally(() => setLatencyHistoryLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMainTab, id, latencyHistoryDays]);
+
   // Load runs with optional status filter (resets pagination)
-  const loadFilteredRuns = useCallback(async (statusFilter: "all" | "ok" | "failed") => {
+  const loadFilteredRuns = useCallback(async (statusFilter: "all" | "ok" | "failed" | "degraded") => {
     const user = getUser();
     if (!user) return;
     setRunsStatusFilter(statusFilter);
@@ -1058,6 +1182,19 @@ export default function MonitorDetailPage() {
               Domain
             </button>
           )}
+          {monitor.type === "CT_LOG" && (
+            <button
+              onClick={() => setActiveMainTab("ctlog")}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                activeMainTab === "ctlog"
+                  ? "bg-white/10 text-text-primary"
+                  : "text-text-muted hover:text-text-secondary"
+              }`}
+            >
+              <Shield className="w-3.5 h-3.5" />
+              CT Logs
+            </button>
+          )}
           {(monitor.type === "HTTP" || monitor.type === "BROWSER") && !!(monitor.config as Record<string, unknown>)?.checkSecurityHeaders && (
             <button
               onClick={() => setActiveMainTab("security")}
@@ -1140,7 +1277,589 @@ export default function MonitorDetailPage() {
               </span>
             )}
           </button>
+          {/* Geo tab — only if geoRegions configured */}
+          {monitor.geoRegions && monitor.geoRegions.length > 0 && (
+            <button
+              onClick={() => setActiveMainTab("geo")}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                activeMainTab === "geo"
+                  ? "bg-white/10 text-text-primary"
+                  : "text-text-muted hover:text-text-secondary"
+              }`}
+            >
+              <Globe className="w-3.5 h-3.5" />
+              Geo
+            </button>
+          )}
+          <button
+            onClick={() => setActiveMainTab("failures")}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+              activeMainTab === "failures"
+                ? "bg-white/10 text-text-primary"
+                : "text-text-muted hover:text-text-secondary"
+            }`}
+          >
+            <AlertTriangle className="w-3.5 h-3.5" />
+            Failures
+          </button>
+          <button
+            onClick={() => setActiveMainTab("simulate")}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+              activeMainTab === "simulate"
+                ? "bg-white/10 text-text-primary"
+                : "text-text-muted hover:text-text-secondary"
+            }`}
+          >
+            <Zap className="w-3.5 h-3.5" />
+            Simulate
+          </button>
+          {/* Metric tab — only for HTTP/BROWSER monitors with metricPath configured */}
+          {(monitor.type === "HTTP" || monitor.type === "BROWSER") && !!monitor.metricPath && (
+            <button
+              onClick={async () => {
+                setActiveMainTab("metric");
+                const user = getUser();
+                if (!user) return;
+                setMetricLoading(true);
+                setMetricError(null);
+                try {
+                  const data = await api<MetricHistoryData>(`/v1/monitors/${id}/metric-history?periodDays=${metricPeriod}&limit=200`, user.id);
+                  setMetricData(data);
+                } catch {
+                  setMetricError("Failed to load metric history");
+                } finally {
+                  setMetricLoading(false);
+                }
+              }}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                activeMainTab === "metric"
+                  ? "bg-white/10 text-text-primary"
+                  : "text-text-muted hover:text-text-secondary"
+              }`}
+            >
+              <BarChart2 className="w-3.5 h-3.5" />
+              Metric
+            </button>
+          )}
         </div>
+
+        {/* Simulate Alerts Tab */}
+        {activeMainTab === "simulate" && (
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Left: settings */}
+            <Card className="p-5 space-y-5">
+              <div>
+                <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                  <Zap className="w-4 h-4" />
+                  Alert Rule Settings
+                </h2>
+                <p className="text-xs text-text-muted mt-1">Adjust settings to see how many alerts would have fired over the last 7 days.</p>
+              </div>
+
+              {/* Confirmations */}
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-sm font-medium text-text-primary">Confirmations</label>
+                  <span className="text-sm font-mono text-accent">{simConfirmations}</span>
+                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={5}
+                  value={simConfirmations}
+                  onChange={(e) => setSimConfirmations(Number(e.target.value))}
+                  className="w-full accent-accent"
+                />
+                <p className="text-xs text-text-muted">Consecutive failures required before alerting.</p>
+              </div>
+
+              {/* Flap Detection */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-text-primary">Flap Detection</p>
+                  <p className="text-xs text-text-muted">Suppress alerts when monitor is rapidly toggling.</p>
+                </div>
+                <button
+                  onClick={() => setSimFlapDetection(!simFlapDetection)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${simFlapDetection ? "bg-accent" : "bg-surface-elevated border border-border"}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${simFlapDetection ? "translate-x-6" : "translate-x-1"}`} />
+                </button>
+              </div>
+
+              {simFlapDetection && (
+                <div className="pl-4 border-l border-border space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-text-secondary">Flap Window</label>
+                      <span className="text-sm font-mono text-accent">{simFlapWindow} runs</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={3}
+                      max={10}
+                      value={simFlapWindow}
+                      onChange={(e) => setSimFlapWindow(Number(e.target.value))}
+                      className="w-full accent-accent"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-sm font-medium text-text-secondary">Flap Threshold</label>
+                      <span className="text-sm font-mono text-accent">{simFlapThreshold} changes</span>
+                    </div>
+                    <input
+                      type="range"
+                      min={2}
+                      max={5}
+                      value={simFlapThreshold}
+                      onChange={(e) => setSimFlapThreshold(Number(e.target.value))}
+                      className="w-full accent-accent"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {/* Business Hours Filter */}
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-text-primary">Business Hours Only</p>
+                  <p className="text-xs text-text-muted">Only alert during specific UTC hours.</p>
+                </div>
+                <button
+                  onClick={() => setSimScheduleEnabled(!simScheduleEnabled)}
+                  className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${simScheduleEnabled ? "bg-accent" : "bg-surface-elevated border border-border"}`}
+                >
+                  <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${simScheduleEnabled ? "translate-x-6" : "translate-x-1"}`} />
+                </button>
+              </div>
+
+              {simScheduleEnabled && (
+                <div className="pl-4 border-l border-border flex items-center gap-4">
+                  <div>
+                    <label className="text-xs text-text-muted block mb-1">Start Hour (UTC)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={23}
+                      value={simScheduleStartHour}
+                      onChange={(e) => setSimScheduleStartHour(Number(e.target.value))}
+                      className="w-20 px-2 py-1 text-sm rounded-lg border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs text-text-muted block mb-1">End Hour (UTC)</label>
+                    <input
+                      type="number"
+                      min={0}
+                      max={23}
+                      value={simScheduleEndHour}
+                      onChange={(e) => setSimScheduleEndHour(Number(e.target.value))}
+                      className="w-20 px-2 py-1 text-sm rounded-lg border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                    />
+                  </div>
+                </div>
+              )}
+
+              <button
+                onClick={async () => {
+                  const user = getUser();
+                  if (!user) return;
+                  setSimLoading(true);
+                  setSimError(null);
+                  setSimResult(null);
+                  try {
+                    const body: Record<string, unknown> = {
+                      confirmations: simConfirmations,
+                      flapDetection: simFlapDetection,
+                      flapWindow: simFlapWindow,
+                      flapThreshold: simFlapThreshold,
+                    };
+                    if (simScheduleEnabled) {
+                      body.scheduleStartHour = simScheduleStartHour;
+                      body.scheduleEndHour = simScheduleEndHour;
+                    }
+                    const result = await api<SimResult>(`/v1/monitors/${id}/simulate-alerts`, user.id, {
+                      method: "POST",
+                      body: JSON.stringify(body),
+                    });
+                    setSimResult(result);
+                  } catch (e) {
+                    setSimError(e instanceof Error ? e.message : "Simulation failed");
+                  } finally {
+                    setSimLoading(false);
+                  }
+                }}
+                disabled={simLoading}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-accent text-white font-medium text-sm hover:bg-accent/90 disabled:opacity-50 transition-colors"
+              >
+                <Zap className="w-4 h-4" />
+                {simLoading ? "Simulating…" : "Simulate"}
+              </button>
+
+              {simError && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-danger/10 border border-danger/20">
+                  <AlertCircle className="w-4 h-4 text-danger mt-0.5 shrink-0" />
+                  <span className="text-xs text-danger">{simError}</span>
+                </div>
+              )}
+            </Card>
+
+            {/* Right: results */}
+            <div className="space-y-4">
+              {!simResult && !simLoading && (
+                <Card className="p-8 flex flex-col items-center gap-3 text-center">
+                  <Zap className="w-10 h-10 text-text-muted opacity-30" />
+                  <p className="text-sm font-medium text-text-secondary">No simulation yet</p>
+                  <p className="text-xs text-text-muted">Configure settings and click Simulate to see results.</p>
+                </Card>
+              )}
+
+              {simLoading && (
+                <Card className="p-8 flex items-center justify-center">
+                  <div className="w-6 h-6 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+                </Card>
+              )}
+
+              {simResult && !simLoading && (
+                <>
+                  {/* Noise score badge */}
+                  <Card className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Simulation Results</h3>
+                      <span className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border ${
+                        simResult.noiseScore === "low"
+                          ? "bg-green-500/15 text-green-400 border-green-500/30"
+                          : simResult.noiseScore === "medium"
+                          ? "bg-yellow-500/15 text-yellow-400 border-yellow-500/30"
+                          : "bg-red-500/15 text-red-400 border-red-500/30"
+                      }`}>
+                        {simResult.noiseScore === "low" ? "🟢" : simResult.noiseScore === "medium" ? "🟡" : "🔴"}
+                        {simResult.noiseScore.charAt(0).toUpperCase() + simResult.noiseScore.slice(1)} noise
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {[
+                        { label: "Alerts", value: simResult.alertsFired, color: simResult.alertsFired > 0 ? "text-danger" : "text-success" },
+                        { label: "Recoveries", value: simResult.recoverysFired, color: "text-blue-400" },
+                        { label: "Flapping", value: simResult.flappingAlertsFired, color: simResult.flappingAlertsFired > 0 ? "text-warning" : "text-text-secondary" },
+                        { label: "Per day avg", value: `${simResult.alertsPerDay}`, color: "text-text-primary" },
+                      ].map((stat) => (
+                        <div key={stat.label} className="text-center p-2 rounded-lg bg-surface-elevated border border-border">
+                          <p className="text-[10px] text-text-muted uppercase tracking-wider mb-1">{stat.label}</p>
+                          <p className={`text-lg font-bold tabular-nums ${stat.color}`}>{stat.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className="mt-3 pt-3 border-t border-border grid grid-cols-3 gap-3 text-center">
+                      {[
+                        { label: "Total Runs", value: simResult.totalRuns },
+                        { label: "Total Fails", value: simResult.totalFails },
+                        { label: "Uptime", value: `${simResult.uptimePct}%` },
+                      ].map((stat) => (
+                        <div key={stat.label}>
+                          <p className="text-[10px] text-text-muted uppercase tracking-wider">{stat.label}</p>
+                          <p className="text-sm font-semibold text-text-primary tabular-nums">{stat.value}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+
+                  {/* Apply to monitor button */}
+                  <button
+                    onClick={() => setShowApplyConfirm(true)}
+                    className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-xl bg-surface-elevated border border-border text-text-secondary hover:text-text-primary hover:border-accent/40 font-medium text-sm transition-colors"
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    Apply to Monitor
+                  </button>
+
+                  {/* Timeline */}
+                  {simResult.timeline.length > 0 ? (
+                    <Card className="p-4">
+                      <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">Alert Timeline</h3>
+                      <div className="space-y-2 max-h-72 overflow-y-auto">
+                        {simResult.timeline.map((event, i) => {
+                          const typeConfig = {
+                            alert: { color: "text-danger", bg: "bg-danger/10 border-danger/20", label: "Alert" },
+                            recovery: { color: "text-blue-400", bg: "bg-blue-400/10 border-blue-400/20", label: "Recovery" },
+                            flapping: { color: "text-warning", bg: "bg-warning/10 border-warning/20", label: "Flapping" },
+                          }[event.type];
+                          return (
+                            <div key={i} className={`flex items-start gap-3 p-2.5 rounded-lg border text-xs ${typeConfig.bg}`}>
+                              <span className={`font-semibold shrink-0 ${typeConfig.color}`}>{typeConfig.label}</span>
+                              <span className="text-text-secondary flex-1">{event.reason}</span>
+                              <span className="text-text-muted shrink-0 font-mono">
+                                {new Date(event.timestamp).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </Card>
+                  ) : (
+                    <Card className="p-4 text-center text-sm text-text-muted">
+                      No alerts would have fired with these settings. ✓
+                    </Card>
+                  )}
+                </>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Apply to monitor confirmation dialog */}
+        {showApplyConfirm && simResult && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowApplyConfirm(false)}>
+            <div className="w-full max-w-md mx-4 rounded-2xl border border-border bg-surface-elevated shadow-2xl p-6" onClick={(e) => e.stopPropagation()}>
+              <h2 className="text-lg font-semibold text-text-primary mb-1">Apply Simulated Config?</h2>
+              <p className="text-sm text-text-secondary mb-4">
+                This will update the monitor with the following settings:
+              </p>
+              <div className="space-y-2 mb-4 text-sm">
+                <div className="flex justify-between"><span className="text-text-muted">Confirmations</span><span className="text-text-primary font-medium">{simConfirmations}</span></div>
+                <div className="flex justify-between"><span className="text-text-muted">Flap Detection</span><span className="text-text-primary font-medium">{simFlapDetection ? "Enabled" : "Disabled"}</span></div>
+                {simFlapDetection && <>
+                  <div className="flex justify-between"><span className="text-text-muted">Flap Window</span><span className="text-text-primary font-medium">{simFlapWindow} runs</span></div>
+                  <div className="flex justify-between"><span className="text-text-muted">Flap Threshold</span><span className="text-text-primary font-medium">{simFlapThreshold} changes</span></div>
+                </>}
+                <div className="flex justify-between"><span className="text-text-muted">Business Hours</span><span className="text-text-primary font-medium">{simScheduleEnabled ? `${simScheduleStartHour}:00–${simScheduleEndHour}:00 UTC` : "All hours"}</span></div>
+              </div>
+              <div className="flex items-center justify-end gap-2">
+                <button onClick={() => setShowApplyConfirm(false)} className="px-4 py-2 text-sm text-text-secondary hover:text-text-primary transition-colors">Cancel</button>
+                <button
+                  onClick={async () => {
+                    const user = getUser();
+                    if (!user) return;
+                    setApplyLoading(true);
+                    try {
+                      await api(`/v1/monitors/${id}`, user.id, {
+                        method: "PATCH",
+                        body: JSON.stringify({
+                          confirmations: simConfirmations,
+                          flapDetectionEnabled: simFlapDetection,
+                          flapWindow: simFlapWindow,
+                          flapThreshold: simFlapThreshold,
+                          scheduleEnabled: simScheduleEnabled,
+                          ...(simScheduleEnabled ? { scheduleStartHour: simScheduleStartHour, scheduleEndHour: simScheduleEndHour } : {}),
+                        }),
+                      });
+                      setMonitor((prev) => prev ? {
+                        ...prev,
+                        confirmations: simConfirmations,
+                        flapDetectionEnabled: simFlapDetection,
+                        flapWindow: simFlapWindow,
+                        scheduleEnabled: simScheduleEnabled,
+                        ...(simScheduleEnabled ? { scheduleStartHour: simScheduleStartHour, scheduleEndHour: simScheduleEndHour } : {}),
+                      } : prev);
+                      setShowApplyConfirm(false);
+                      showToast("Monitor settings updated from simulation.");
+                    } catch (e) {
+                      setSimError(e instanceof Error ? e.message : "Failed to apply settings");
+                      setShowApplyConfirm(false);
+                    } finally {
+                      setApplyLoading(false);
+                    }
+                  }}
+                  disabled={applyLoading}
+                  className="px-4 py-2 text-sm font-medium rounded-xl bg-accent text-white hover:bg-accent/90 transition-colors disabled:opacity-50"
+                >
+                  {applyLoading ? "Applying…" : "Apply"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Custom Metric Tab */}
+        {activeMainTab === "metric" && (
+          <div className="space-y-6">
+            {/* Period selector */}
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-semibold text-text-primary flex items-center gap-2">
+                  <BarChart2 className="w-4 h-4 text-accent" />
+                  Custom Metric: {metricData?.metricName ?? monitor.metricName ?? "Captured Value"}
+                  {(metricData?.metricUnit ?? monitor.metricUnit) && (
+                    <span className="text-xs text-text-muted font-normal">({metricData?.metricUnit ?? monitor.metricUnit})</span>
+                  )}
+                </h2>
+                <p className="text-xs text-text-muted mt-0.5">Path: <code className="font-mono bg-surface-elevated px-1 py-0.5 rounded">{metricData?.metricPath ?? monitor.metricPath}</code></p>
+              </div>
+              <div className="flex items-center gap-2">
+                {([7, 30, 90] as const).map((d) => (
+                  <button
+                    key={d}
+                    onClick={async () => {
+                      setMetricPeriod(d);
+                      const user = getUser();
+                      if (!user) return;
+                      setMetricLoading(true);
+                      setMetricError(null);
+                      try {
+                        const data = await api<MetricHistoryData>(`/v1/monitors/${id}/metric-history?periodDays=${d}&limit=200`, user.id);
+                        setMetricData(data);
+                      } catch {
+                        setMetricError("Failed to load metric history");
+                      } finally {
+                        setMetricLoading(false);
+                      }
+                    }}
+                    className={`px-3 py-1 text-xs rounded-lg font-medium transition-colors ${metricPeriod === d ? "bg-accent text-white" : "bg-surface-elevated text-text-secondary hover:text-text-primary"}`}
+                  >
+                    {d}d
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {metricLoading && (
+              <div className="flex items-center justify-center h-40 text-text-muted">
+                <Activity className="w-5 h-5 animate-spin mr-2" /> Loading metric history…
+              </div>
+            )}
+            {metricError && (
+              <div className="p-4 rounded-xl bg-danger/10 border border-danger/30 text-danger text-sm">{metricError}</div>
+            )}
+
+            {!metricLoading && !metricError && metricData && (
+              <>
+                {/* Stats cards */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  {([
+                    { label: "Latest", value: metricData.stats.latest, color: "text-accent" },
+                    { label: "Avg", value: metricData.stats.avg, color: "text-text-primary" },
+                    { label: "Min", value: metricData.stats.min, color: "text-success" },
+                    { label: "Max", value: metricData.stats.max, color: "text-warning" },
+                  ] as Array<{ label: string; value: number | null; color: string }>).map(({ label, value, color }) => (
+                    <Card key={label} className="p-4 text-center">
+                      <p className="text-xs text-text-muted mb-1">{label}</p>
+                      <p className={`text-2xl font-bold tabular-nums ${color}`}>
+                        {value !== null ? value.toLocaleString(undefined, { maximumFractionDigits: 2 }) : "—"}
+                      </p>
+                      {(metricData.metricUnit) && (
+                        <p className="text-[11px] text-text-muted mt-0.5">{metricData.metricUnit}</p>
+                      )}
+                    </Card>
+                  ))}
+                </div>
+
+                {/* Alert thresholds info */}
+                {(metricData.metricAlertMin !== null || metricData.metricAlertMax !== null) && (
+                  <div className="flex flex-wrap gap-3">
+                    {metricData.metricAlertMin !== null && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-warning/10 border border-warning/30 text-warning font-medium">
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        Alert when &lt; {metricData.metricAlertMin} {metricData.metricUnit ?? ""}
+                      </span>
+                    )}
+                    {metricData.metricAlertMax !== null && (
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs rounded-lg bg-warning/10 border border-warning/30 text-warning font-medium">
+                        <AlertTriangle className="w-3.5 h-3.5" />
+                        Alert when &gt; {metricData.metricAlertMax} {metricData.metricUnit ?? ""}
+                      </span>
+                    )}
+                  </div>
+                )}
+
+                {/* Bar chart */}
+                {metricData.points.length === 0 ? (
+                  <Card className="p-8 text-center">
+                    <BarChart2 className="w-8 h-8 text-text-muted mx-auto mb-3" />
+                    <p className="text-text-secondary text-sm">No metric data captured yet.</p>
+                    <p className="text-text-muted text-xs mt-1">The next HTTP check will extract the value from the configured JSONPath.</p>
+                  </Card>
+                ) : (
+                  <Card className="p-5">
+                    <div className="flex items-center justify-between mb-4">
+                      <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
+                        Value over time <span className="text-text-muted font-normal normal-case">({metricData.points.length} data points)</span>
+                      </h3>
+                    </div>
+                    {/* SVG bar chart */}
+                    {(() => {
+                      const pts = [...metricData.points].reverse(); // oldest first
+                      const vals = pts.map((p) => p.value);
+                      const minV = Math.min(...vals);
+                      const maxV = Math.max(...vals);
+                      const range = maxV - minV || 1;
+                      const barW = Math.max(2, Math.min(8, Math.floor(600 / pts.length)));
+                      const gap = Math.max(1, barW > 4 ? 2 : 1);
+                      const totalW = pts.length * (barW + gap);
+                      const H = 120;
+                      const alertMin = metricData.metricAlertMin;
+                      const alertMax = metricData.metricAlertMax;
+                      const minLineY = alertMin !== null ? H - Math.round(((alertMin - minV) / range) * H) : null;
+                      const maxLineY = alertMax !== null ? H - Math.round(((alertMax - minV) / range) * H) : null;
+                      return (
+                        <div className="overflow-x-auto">
+                          <svg width={Math.max(totalW, 400)} height={H + 20} className="min-w-full">
+                            {pts.map((p, i) => {
+                              const barH = Math.max(2, Math.round(((p.value - minV) / range) * H));
+                              const x = i * (barW + gap);
+                              const y = H - barH;
+                              const fill = p.level === "red" ? "#ef4444" : p.level === "yellow" ? "#f59e0b" : "#22c55e";
+                              return <rect key={i} x={x} y={y} width={barW} height={barH} fill={fill} rx="1" opacity={0.85} />;
+                            })}
+                            {/* Alert threshold lines */}
+                            {minLineY !== null && minLineY >= 0 && minLineY <= H && (
+                              <line x1={0} x2={Math.max(totalW, 400)} y1={minLineY} y2={minLineY} stroke="#f59e0b" strokeWidth={1} strokeDasharray="4 2" opacity={0.7} />
+                            )}
+                            {maxLineY !== null && maxLineY >= 0 && maxLineY <= H && (
+                              <line x1={0} x2={Math.max(totalW, 400)} y1={maxLineY} y2={maxLineY} stroke="#f59e0b" strokeWidth={1} strokeDasharray="4 2" opacity={0.7} />
+                            )}
+                            {/* Y-axis labels */}
+                            <text x={2} y={10} fill="#6b7280" fontSize={9}>{maxV.toLocaleString(undefined, { maximumFractionDigits: 1 })}</text>
+                            <text x={2} y={H - 2} fill="#6b7280" fontSize={9}>{minV.toLocaleString(undefined, { maximumFractionDigits: 1 })}</text>
+                          </svg>
+                        </div>
+                      );
+                    })()}
+                    <div className="flex items-center gap-4 mt-2 text-[11px] text-text-muted">
+                      <span className="flex items-center gap-1"><span className="inline-block w-3 h-2 rounded-sm bg-success" /> OK</span>
+                      <span className="flex items-center gap-1"><span className="inline-block w-3 h-2 rounded-sm bg-warning" /> Alert</span>
+                      <span className="flex items-center gap-1"><span className="inline-block w-3 h-2 rounded-sm bg-danger" /> Down</span>
+                    </div>
+                  </Card>
+                )}
+
+                {/* Recent values table */}
+                {metricData.points.length > 0 && (
+                  <Card className="p-4">
+                    <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">Recent Values</h3>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="text-left text-xs text-text-muted border-b border-border">
+                            <th className="pb-2 font-medium">Time</th>
+                            <th className="pb-2 font-medium">Value</th>
+                            <th className="pb-2 font-medium">Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {metricData.points.slice(0, 20).map((p, i) => {
+                            const levelColor = p.level === "red" ? "text-danger" : p.level === "yellow" ? "text-warning" : "text-success";
+                            const levelLabel = p.level === "red" ? "Down" : p.level === "yellow" ? "Degraded" : "OK";
+                            return (
+                              <tr key={i} className="border-b border-border/50 hover:bg-white/2">
+                                <td className="py-2 text-text-secondary">{relativeTime(p.checkedAt)}</td>
+                                <td className="py-2 font-mono font-medium text-text-primary tabular-nums">
+                                  {p.value.toLocaleString(undefined, { maximumFractionDigits: 4 })}
+                                  {metricData.metricUnit && <span className="text-text-muted ml-1 text-xs">{metricData.metricUnit}</span>}
+                                </td>
+                                <td className={`py-2 font-medium text-xs ${levelColor}`}>{levelLabel}</td>
+                              </tr>
+                            );
+                          })}
+                        </tbody>
+                      </table>
+                    </div>
+                  </Card>
+                )}
+              </>
+            )}
+          </div>
+        )}
 
         {/* SLO Tab Content */}
         {activeMainTab === "slo" && ((): React.ReactNode => {
@@ -1416,7 +2135,259 @@ export default function MonitorDetailPage() {
                     )}
                   </Card>
                 )}
-              </>
+                {/* F. Response Size Trend (HTTP/BROWSER only) */}
+                {(monitor?.type === "HTTP" || monitor?.type === "BROWSER") && (() => {
+                  const sizeRuns = runs.filter((r) => r.responseSizeBytes != null && r.ok);
+                  if (sizeRuns.length < 2) return null;
+                  const sizes = sizeRuns.slice(0, 60).reverse().map((r) => r.responseSizeBytes as number);
+                  const maxSize = Math.max(...sizes, 1);
+                  const minSize = Math.min(...sizes);
+                  const avgSize = Math.round(sizes.reduce((s, v) => s + v, 0) / sizes.length);
+                  const latestSize = sizes[sizes.length - 1];
+                  const formatBytes = (b: number) =>
+                    b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : b >= 1024 ? `${(b / 1024).toFixed(1)} KB` : `${b} B`;
+                  const deltaVsAvg = avgSize > 0 ? Math.round(((latestSize - avgSize) / avgSize) * 100) : 0;
+                  return (
+                    <Card className="p-5">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                          <Activity className="w-4 h-4" />
+                          Response Size Trend
+                        </h2>
+                        <span className="text-xs text-text-muted">{sizeRuns.length} samples</span>
+                      </div>
+                      {/* Stats row */}
+                      <div className="grid grid-cols-3 gap-3 mb-4">
+                        {[
+                          { label: "Latest", value: formatBytes(latestSize), sub: deltaVsAvg !== 0 ? `${deltaVsAvg > 0 ? "+" : ""}${deltaVsAvg}% vs avg` : "≈ avg", color: Math.abs(deltaVsAvg) > 20 ? "text-warning" : "text-success" },
+                          { label: "Average", value: formatBytes(avgSize), sub: `of last ${sizes.length} checks` },
+                          { label: "Range", value: formatBytes(maxSize - minSize), sub: `${formatBytes(minSize)} – ${formatBytes(maxSize)}` },
+                        ].map(({ label, value, sub, color }) => (
+                          <div key={label} className="p-3 rounded-lg bg-surface-2 border border-border">
+                            <p className="text-xs text-text-muted uppercase tracking-wider">{label}</p>
+                            <p className={`text-lg font-bold tabular-nums mt-0.5 ${color ?? "text-text-primary"}`}>{value}</p>
+                            <p className="text-xs text-text-muted mt-0.5">{sub}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Bar sparkline */}
+                      <div className="flex items-end gap-[2px] h-16">
+                        {sizes.map((s, i) => {
+                          const pct = maxSize > 0 ? (s / maxSize) * 100 : 0;
+                          const isLatest = i === sizes.length - 1;
+                          const devPct = avgSize > 0 ? Math.abs((s - avgSize) / avgSize) * 100 : 0;
+                          const barColor = devPct > 30 ? "bg-warning" : devPct > 60 ? "bg-danger" : isLatest ? "bg-accent" : "bg-accent/40";
+                          return (
+                            <div
+                              key={i}
+                              className={`flex-1 rounded-t ${barColor} transition-all`}
+                              style={{ height: `${Math.max(pct, 4)}%` }}
+                              title={formatBytes(s)}
+                            />
+                          );
+                        })}
+                      </div>
+                      <p className="text-[10px] text-text-muted mt-1 text-center">Last {sizes.length} successful checks (oldest → newest)</p>
+                    </Card>
+                  );
+                })()}
+                {/* G. Redirect Stats (HTTP/BROWSER only) */}
+                {(monitor?.type === "HTTP" || monitor?.type === "BROWSER") && (() => {
+                  const redirectRuns = runs.filter((r) => r.redirectChain && r.redirectChain.length > 0);
+                  if (redirectRuns.length === 0) return null;
+                  const counts: Record<string, { chain: string[]; count: number }> = {};
+                  for (const r of redirectRuns) {
+                    const key = JSON.stringify(r.redirectChain);
+                    if (!counts[key]) counts[key] = { chain: r.redirectChain!, count: 0 };
+                    counts[key].count++;
+                  }
+                  const commonChains = Object.values(counts).sort((a, b) => b.count - a.count).slice(0, 5);
+                  const totalHops = redirectRuns.reduce((s, r) => s + (r.redirectChain?.length ?? 0), 0);
+                  const avgHops = Math.round((totalHops / redirectRuns.length) * 10) / 10;
+                  const maxHops = redirectRuns.reduce((m, r) => Math.max(m, r.redirectChain?.length ?? 0), 0);
+                  return (
+                    <Card className="p-5">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                          <Activity className="w-4 h-4" />
+                          Redirect Stats
+                        </h2>
+                        <span className="text-xs text-text-muted">{redirectRuns.length} runs with redirects</span>
+                      </div>
+                      <div className="grid grid-cols-3 gap-3 mb-4">
+                        {[
+                          { label: "Has Redirects", value: "Yes", sub: `${redirectRuns.length} of ${runs.length} runs` },
+                          { label: "Avg Hops", value: `${avgHops}`, sub: "hops per redirected run" },
+                          { label: "Max Hops", value: `${maxHops}`, sub: "most hops in a single run" },
+                        ].map(({ label, value, sub }) => (
+                          <div key={label} className="p-3 rounded-lg bg-surface-2 border border-border">
+                            <p className="text-xs text-text-muted uppercase tracking-wider">{label}</p>
+                            <p className="text-lg font-bold tabular-nums mt-0.5 text-amber-400">{value}</p>
+                            <p className="text-xs text-text-muted mt-0.5">{sub}</p>
+                          </div>
+                        ))}
+                      </div>
+                      <div className="space-y-2">
+                        <p className="text-xs text-text-muted font-medium uppercase tracking-wider">Common chains</p>
+                        {commonChains.map(({ chain, count }, i) => (
+                          <div key={i} className="p-2 rounded-lg bg-surface-2 border border-border text-xs font-mono text-text-secondary break-all">
+                            <span className="text-amber-400 font-medium mr-2">{count}×</span>
+                            {chain.map((url, j) => (
+                              <span key={j}>
+                                {j > 0 && <span className="text-text-muted mx-1">→</span>}
+                                <span>{url}</span>
+                              </span>
+                            ))}
+                          </div>
+                        ))}
+                      </div>
+                    </Card>
+                  );
+                })()}
+
+                {/* G. Daily Latency Percentile History (P50/P95/P99) */}
+                <Card className="p-5 space-y-4">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4" />
+                        Daily Latency Trends
+                      </h3>
+                      <p className="text-xs text-text-muted mt-1">P50 / P95 / P99 per day over the selected period</p>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {([14, 30, 60] as const).map((d) => (
+                        <button
+                          key={d}
+                          onClick={() => setLatencyHistoryDays(d)}
+                          className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                            latencyHistoryDays === d
+                              ? "bg-accent text-white"
+                              : "bg-white/5 text-text-muted hover:text-text-secondary border border-white/10"
+                          }`}
+                        >
+                          {d}d
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {latencyHistoryLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="w-5 h-5 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+                    </div>
+                  ) : !latencyHistory || latencyHistory.every((d) => d.p50 === null) ? (
+                    <p className="text-sm text-text-muted text-center py-6">No latency data for this period.</p>
+                  ) : (() => {
+                    const withData = latencyHistory.filter((d) => d.p50 !== null || d.p95 !== null);
+                    const maxVal = Math.max(...latencyHistory.map((d) => d.p99 ?? d.p95 ?? d.p50 ?? 0), 1);
+                    const formatDate = (iso: string) => {
+                      const d = new Date(iso + 'T00:00:00Z');
+                      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+                    };
+                    // Show tick every ~7 days
+                    const tickInterval = Math.max(1, Math.floor(latencyHistory.length / 6));
+
+                    return (
+                      <div>
+                        {/* SVG chart */}
+                        <div className="relative h-40 w-full" aria-label="Latency percentile trend chart">
+                          <svg viewBox={`0 0 ${latencyHistory.length * 10} 100`} className="w-full h-full" preserveAspectRatio="none">
+                            {/* Grid lines */}
+                            {[25, 50, 75, 100].map((pct) => (
+                              <line
+                                key={pct}
+                                x1="0" y1={100 - pct} x2={latencyHistory.length * 10} y2={100 - pct}
+                                stroke="rgba(255,255,255,0.06)" strokeWidth="0.5"
+                              />
+                            ))}
+                            {/* P99 area */}
+                            {latencyHistory.some((d) => d.p99 !== null) && (
+                              <polyline
+                                points={latencyHistory
+                                  .map((d, i) => d.p99 !== null ? `${i * 10 + 5},${100 - Math.min(98, (d.p99 / maxVal) * 98)}` : null)
+                                  .filter(Boolean)
+                                  .join(' ')}
+                                fill="none"
+                                stroke="rgba(248,113,113,0.5)"
+                                strokeWidth="1"
+                              />
+                            )}
+                            {/* P95 line */}
+                            <polyline
+                              points={latencyHistory
+                                .map((d, i) => d.p95 !== null ? `${i * 10 + 5},${100 - Math.min(98, (d.p95 / maxVal) * 98)}` : null)
+                                .filter(Boolean)
+                                .join(' ')}
+                              fill="none"
+                              stroke="rgba(251,146,60,0.8)"
+                              strokeWidth="1.5"
+                            />
+                            {/* P50 line */}
+                            <polyline
+                              points={latencyHistory
+                                .map((d, i) => d.p50 !== null ? `${i * 10 + 5},${100 - Math.min(98, (d.p50 / maxVal) * 98)}` : null)
+                                .filter(Boolean)
+                                .join(' ')}
+                              fill="none"
+                              stroke="rgba(74,222,128,0.9)"
+                              strokeWidth="1.5"
+                            />
+                          </svg>
+                        </div>
+
+                        {/* X-axis date labels */}
+                        <div className="flex justify-between mt-1 px-1">
+                          {latencyHistory
+                            .filter((_, i) => i % tickInterval === 0 || i === latencyHistory.length - 1)
+                            .map((d) => (
+                              <span key={d.date} className="text-[10px] text-text-muted">{formatDate(d.date)}</span>
+                            ))}
+                        </div>
+
+                        {/* Legend */}
+                        <div className="flex items-center gap-4 mt-3 text-xs text-text-secondary">
+                          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 rounded bg-green-400 inline-block" />P50 (median)</span>
+                          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 rounded bg-orange-400 inline-block" />P95</span>
+                          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 rounded bg-red-400 inline-block" />P99</span>
+                          <span className="ml-auto text-text-muted">
+                            Peak: {maxVal}ms
+                          </span>
+                        </div>
+
+                        {/* Summary stats */}
+                        {withData.length > 0 && (() => {
+                          const p95vals = latencyHistory.filter(d => d.p95 !== null).map(d => d.p95!);
+                          const avgP95 = p95vals.length > 0 ? Math.round(p95vals.reduce((s,v) => s + v, 0) / p95vals.length) : null;
+                          const trend = p95vals.length >= 2
+                            ? p95vals[p95vals.length - 1] > p95vals[0] ? '↑ worsening' : '↓ improving'
+                            : null;
+                          return (
+                            <div className="grid grid-cols-3 gap-3 mt-3">
+                              <div className="p-2.5 rounded-lg bg-surface-2 border border-border text-center">
+                                <p className="text-[10px] text-text-muted uppercase tracking-wider">Avg P95</p>
+                                <p className="text-sm font-bold tabular-nums text-orange-400 mt-0.5">{avgP95 !== null ? `${avgP95}ms` : '—'}</p>
+                              </div>
+                              <div className="p-2.5 rounded-lg bg-surface-2 border border-border text-center">
+                                <p className="text-[10px] text-text-muted uppercase tracking-wider">Peak P99</p>
+                                <p className="text-sm font-bold tabular-nums text-red-400 mt-0.5">
+                                  {latencyHistory.some(d => d.p99 !== null) ? `${Math.max(...latencyHistory.filter(d => d.p99 !== null).map(d => d.p99!))}ms` : '—'}
+                                </p>
+                              </div>
+                              <div className="p-2.5 rounded-lg bg-surface-2 border border-border text-center">
+                                <p className="text-[10px] text-text-muted uppercase tracking-wider">P95 Trend</p>
+                                <p className={`text-sm font-bold mt-0.5 ${trend?.includes('worsening') ? 'text-red-400' : trend?.includes('improving') ? 'text-green-400' : 'text-text-muted'}`}>
+                                  {trend ?? '—'}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    );
+                  })()}
+                </Card>
+            </>
             )}
           </div>
         )}
@@ -1745,6 +2716,82 @@ export default function MonitorDetailPage() {
           );
         })()}
 
+        {/* CT Log History Tab */}
+        {(activeMainTab as string) === "ctlog" && monitor.type === "CT_LOG" && ((): React.ReactNode => {
+          const ctRuns = runs.slice(0, 20);
+
+          const levelColor = (level: string) => {
+            if (level === "green") return "text-success";
+            if (level === "yellow") return "text-warning";
+            return "text-error";
+          };
+
+          const levelBg = (level: string) => {
+            if (level === "green") return "bg-success/10 border-success/20";
+            if (level === "yellow") return "bg-warning/10 border-warning/20";
+            return "bg-error/10 border-error/20";
+          };
+
+          const levelLabel = (level: string) => {
+            if (level === "green") return "No new certs";
+            if (level === "yellow") return "New certs found";
+            return "Check failed";
+          };
+
+          return (
+            <Card className="p-6 space-y-4">
+              <div>
+                <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Certificate Transparency Log History</h2>
+                <p className="text-xs text-text-muted mt-1">
+                  Showing the last {ctRuns.length} CT log check results. Yellow = new certificates detected, Green = no new certs, Red = check failed.
+                </p>
+              </div>
+
+              {ctRuns.length === 0 && (
+                <div className="text-center py-6 text-text-muted text-sm">
+                  No checks yet — trigger a manual check to see CT log data.
+                </div>
+              )}
+
+              <div className="space-y-2">
+                {ctRuns.map((run, i) => {
+                  const level = (run as typeof run & { level?: string }).level ?? "green";
+                  const msg = (run as typeof run & { message?: string }).message ?? "";
+                  const checkedAt = (run as typeof run & { checkedAt?: string }).checkedAt;
+
+                  return (
+                    <div
+                      key={i}
+                      className={`rounded-lg border p-3 flex items-start gap-3 ${levelBg(level)}`}
+                    >
+                      <div className="mt-0.5 shrink-0">
+                        {level === "green" && <div className="w-2 h-2 rounded-full bg-success" />}
+                        {level === "yellow" && <div className="w-2 h-2 rounded-full bg-warning" />}
+                        {level === "red" && <div className="w-2 h-2 rounded-full bg-error" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`text-xs font-semibold ${levelColor(level)}`}>
+                            {levelLabel(level)}
+                          </span>
+                          {checkedAt && (
+                            <span className="text-xs text-text-muted">
+                              {new Date(checkedAt).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                        {msg && (
+                          <p className="text-xs text-text-secondary mt-1 leading-relaxed">{msg}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          );
+        })()}
+
         {/* Security Headers Audit Tab */}
         {activeMainTab === "security" && (monitor.type === "HTTP" || monitor.type === "BROWSER") && ((): React.ReactNode => {
           // Get the latest run that has a security audit
@@ -2034,6 +3081,222 @@ export default function MonitorDetailPage() {
             </Card>
           );
         })()}
+
+        {/* Geo Distribution Tab */}
+        {activeMainTab === "geo" && (
+          <Card className="p-6 space-y-4">
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                  <Globe className="w-4 h-4" />
+                  Geo Distribution
+                </h2>
+                <p className="text-xs text-text-muted mt-1">
+                  Per-region latency and availability. Regions: {(monitor.geoRegions ?? []).join(", ")}.
+                </p>
+              </div>
+              {/* Period selector */}
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-text-muted font-medium">Period:</span>
+                {([1, 7, 30] as const).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setGeoPeriod(p)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                      geoPeriod === p
+                        ? "bg-accent text-white"
+                        : "bg-white/5 text-text-muted hover:text-text-secondary border border-white/10"
+                    }`}
+                  >
+                    {p}d
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {geoStatsLoading ? (
+              <div className="flex items-center justify-center py-10">
+                <div className="w-6 h-6 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+              </div>
+            ) : !geoStats || !geoStats.hasGeoData ? (
+              <div className="flex items-start gap-3 p-4 rounded-xl border border-border bg-surface-elevated/40">
+                <Globe className="w-4 h-4 text-text-muted mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-text-secondary">
+                  No geo data yet. Configure geo regions in monitor settings to enable multi-region analysis.
+                </p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-xs text-text-muted border-b border-border">
+                      <th className="pb-2 pr-4 font-medium">Region</th>
+                      <th className="pb-2 pr-4 font-medium text-right">Checks</th>
+                      <th className="pb-2 pr-4 font-medium text-right">Uptime %</th>
+                      <th className="pb-2 pr-4 font-medium text-right">Avg Latency</th>
+                      <th className="pb-2 font-medium text-right">P95 Latency</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {[...geoStats.regions]
+                      .sort((a, b) => a.uptimePct - b.uptimePct)
+                      .map((r) => {
+                        const latencyColor = (ms: number | null) => {
+                          if (ms === null) return "text-text-muted";
+                          if (ms < 200) return "text-success";
+                          if (ms < 500) return "text-warning";
+                          return "text-danger";
+                        };
+                        const uptimeColor =
+                          r.uptimePct >= 99 ? "text-success" : r.uptimePct >= 95 ? "text-warning" : "text-danger";
+                        return (
+                          <tr key={r.region} className="hover:bg-white/5 transition-colors">
+                            <td className="py-2.5 pr-4 font-mono text-text-primary">{r.region}</td>
+                            <td className="py-2.5 pr-4 text-right text-text-secondary tabular-nums">{r.totalRuns}</td>
+                            <td className={`py-2.5 pr-4 text-right font-medium tabular-nums ${uptimeColor}`}>
+                              {r.uptimePct.toFixed(1)}%
+                            </td>
+                            <td className={`py-2.5 pr-4 text-right tabular-nums ${latencyColor(r.avgLatencyMs)}`}>
+                              {r.avgLatencyMs !== null ? `${r.avgLatencyMs}ms` : "—"}
+                            </td>
+                            <td className={`py-2.5 text-right tabular-nums ${latencyColor(r.p95LatencyMs)}`}>
+                              {r.p95LatencyMs !== null ? `${r.p95LatencyMs}ms` : "—"}
+                            </td>
+                          </tr>
+                        );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        )}
+
+        {/* Failure Patterns Tab */}
+        {activeMainTab === "failures" && (
+          <Card className="p-6 space-y-5">
+            {/* Header */}
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  Failure Pattern Analysis
+                </h2>
+                <p className="text-xs text-text-muted mt-1">
+                  Normalized error patterns from failed checks. Helps identify recurring failure causes.
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-text-muted font-medium">Period:</span>
+                {([7, 30, 90] as const).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setFailuresPeriod(p)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                      failuresPeriod === p
+                        ? "bg-accent text-white"
+                        : "bg-white/5 text-text-muted hover:text-text-secondary border border-white/10"
+                    }`}
+                  >
+                    {p}d
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {failurePatternsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-6 h-6 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+              </div>
+            ) : !failurePatterns || failurePatterns.totalFailures === 0 ? (
+              <div className="flex items-start gap-3 p-4 rounded-xl border border-border bg-surface-elevated/40">
+                <CheckCircle className="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-text-secondary">
+                  No failures found in the last {failuresPeriod} days. This monitor is healthy!
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Summary row */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="rounded-xl border border-border bg-surface-elevated/40 px-4 py-3">
+                    <p className="text-xs text-text-muted mb-1 uppercase tracking-wider">Total Failures</p>
+                    <p className="text-2xl font-bold tabular-nums text-danger">{failurePatterns.totalFailures}</p>
+                  </div>
+                  <div className="rounded-xl border border-border bg-surface-elevated/40 px-4 py-3">
+                    <p className="text-xs text-text-muted mb-1 uppercase tracking-wider">Unique Patterns</p>
+                    <p className="text-2xl font-bold tabular-nums text-text-primary">{failurePatterns.uniquePatterns}</p>
+                  </div>
+                  <div className="rounded-xl border border-border bg-surface-elevated/40 px-4 py-3 col-span-2 sm:col-span-1">
+                    <p className="text-xs text-text-muted mb-1 uppercase tracking-wider">Top Pattern %</p>
+                    <p className="text-2xl font-bold tabular-nums text-warning">
+                      {failurePatterns.patterns[0]?.percentage ?? 0}%
+                    </p>
+                  </div>
+                </div>
+
+                {/* Pattern table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-text-muted border-b border-border">
+                        <th className="pb-2 pr-4 font-medium">Pattern</th>
+                        <th className="pb-2 pr-4 font-medium text-right">Count</th>
+                        <th className="pb-2 pr-4 font-medium text-right">%</th>
+                        <th className="pb-2 pr-4 font-medium text-right hidden sm:table-cell">First Seen</th>
+                        <th className="pb-2 font-medium text-right hidden sm:table-cell">Last Seen</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {failurePatterns.patterns.map((p, i) => (
+                        <tr key={i} className="hover:bg-white/5 transition-colors group">
+                          <td className="py-3 pr-4 max-w-xs">
+                            <p className="font-mono text-xs text-text-primary truncate" title={p.pattern}>
+                              {p.pattern}
+                            </p>
+                            <p className="text-xs text-text-muted mt-0.5 truncate" title={p.exampleMessage}>
+                              e.g. {p.exampleMessage}
+                            </p>
+                            {/* Inline mini sparkline */}
+                            <div className="flex items-end gap-[2px] mt-1.5 h-4">
+                              {p.weeklyTrend.map((v, wi) => {
+                                const maxVal = Math.max(...p.weeklyTrend, 1);
+                                const h = Math.max(2, Math.round((v / maxVal) * 16));
+                                return (
+                                  <div
+                                    key={wi}
+                                    className="flex-1 rounded-sm"
+                                    style={{
+                                      height: h,
+                                      backgroundColor: v === 0 ? 'rgba(255,255,255,0.08)' : `rgba(248,113,113,${0.3 + (v / maxVal) * 0.7})`,
+                                    }}
+                                    title={`Week ${wi + 1}: ${v} failures`}
+                                  />
+                                );
+                              })}
+                            </div>
+                          </td>
+                          <td className="py-3 pr-4 text-right font-semibold tabular-nums text-danger">{p.count}</td>
+                          <td className="py-3 pr-4 text-right tabular-nums">
+                            <span className={`font-medium ${p.percentage > 50 ? "text-danger" : p.percentage > 20 ? "text-warning" : "text-text-secondary"}`}>
+                              {p.percentage}%
+                            </span>
+                          </td>
+                          <td className="py-3 pr-4 text-right text-text-muted text-xs tabular-nums hidden sm:table-cell">
+                            {relativeTime(p.firstSeen)}
+                          </td>
+                          <td className="py-3 text-right text-text-muted text-xs tabular-nums hidden sm:table-cell">
+                            {relativeTime(p.lastSeen)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
+            )}
+          </Card>
+        )}
 
         {/* Annotations Tab */}
         {activeMainTab === "annotations" && (
@@ -2762,6 +4025,114 @@ export default function MonitorDetailPage() {
           </Card>
         )}
 
+        {/* FTP config */}
+        {monitor.type === "FTP" && (
+          <Card className="p-4 space-y-3">
+            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              FTP Configuration
+            </h2>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Host</span>
+                <span className="font-mono text-text-primary">
+                  {monitor.target.includes(":") ? monitor.target.split(":")[0] : monitor.target}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Port</span>
+                <span className="font-mono text-accent">
+                  {monitor.target.includes(":") ? monitor.target.split(":").pop() : "21"}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">AUTH TLS (FTPS)</span>
+                <span className={`font-medium ${monitor.config?.checkTls ? "text-success" : "text-text-secondary"}`}>
+                  {monitor.config?.checkTls ? "Tested" : "Not tested"}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Protocol</span>
+                <span className="font-medium text-text-primary">
+                  {monitor.config?.checkTls ? "FTPS Explicit" : "Plain FTP"}
+                </span>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* IMAP config */}
+        {monitor.type === "IMAP" && (
+          <Card className="p-4 space-y-3">
+            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              IMAP Configuration
+            </h2>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Host</span>
+                <span className="font-mono text-text-primary">
+                  {monitor.target.includes(":") ? monitor.target.split(":")[0] : monitor.target}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Port</span>
+                <span className="font-mono text-accent">
+                  {monitor.target.includes(":") ? monitor.target.split(":").pop() : "143"}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">STARTTLS</span>
+                <span className={`font-medium ${monitor.config?.checkTls ? "text-success" : "text-text-secondary"}`}>
+                  {monitor.config?.checkTls ? "Tested" : "Not tested"}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Encryption</span>
+                <span className="font-medium text-text-primary">
+                  {monitor.config?.checkTls ? "STARTTLS" : "Plain (port 143) or IMAPS (port 993)"}
+                </span>
+              </div>
+            </div>
+          </Card>
+        )}
+
+        {/* POP3 config */}
+        {monitor.type === "POP3" && (
+          <Card className="p-4 space-y-3">
+            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              POP3 Configuration
+            </h2>
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Host</span>
+                <span className="font-mono text-text-primary">
+                  {monitor.target.includes(":") ? monitor.target.split(":")[0] : monitor.target}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Port</span>
+                <span className="font-mono text-accent">
+                  {monitor.target.includes(":") ? monitor.target.split(":").pop() : "110"}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">STLS</span>
+                <span className={`font-medium ${monitor.config?.checkTls ? "text-success" : "text-text-secondary"}`}>
+                  {monitor.config?.checkTls ? "Tested" : "Not tested"}
+                </span>
+              </div>
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Encryption</span>
+                <span className="font-medium text-text-primary">
+                  {monitor.config?.checkTls ? "STLS" : "Plain (port 110) or POP3S (port 995)"}
+                </span>
+              </div>
+            </div>
+          </Card>
+        )}
+
         {/* Browser / Page Check config */}
         {monitor.type === "BROWSER" && (
           <Card className="p-4 space-y-3">
@@ -2978,7 +4349,7 @@ export default function MonitorDetailPage() {
               <div className="flex items-center gap-2 flex-wrap">
                 {/* Status filter pills */}
                 <div className="flex items-center gap-1 rounded-lg border border-border p-0.5 bg-surface">
-                  {(["all", "ok", "failed"] as const).map((f) => (
+                  {(["all", "ok", "degraded", "failed"] as const).map((f) => (
                     <button
                       key={f}
                       onClick={() => loadFilteredRuns(f)}
@@ -2988,7 +4359,7 @@ export default function MonitorDetailPage() {
                           : "text-text-muted hover:text-text-secondary"
                       }`}
                     >
-                      {f === "all" ? "All" : f === "ok" ? "OK" : "Failed"}
+                      {f === "all" ? "All" : f === "ok" ? "OK" : f === "degraded" ? "Degraded" : "Failed"}
                     </button>
                   ))}
                 </div>
@@ -3029,7 +4400,7 @@ export default function MonitorDetailPage() {
               {runs.length === 0 ? (
                 <div className="text-center py-12 text-text-secondary text-sm">
                   {runsStatusFilter !== "all"
-                    ? `No ${runsStatusFilter === "ok" ? "successful" : "failed"} checks found.`
+                    ? `No ${runsStatusFilter === "ok" ? "successful" : runsStatusFilter === "degraded" ? "degraded" : "failed"} checks found.`
                     : "No runs yet — this monitor hasn't checked yet."}
                 </div>
               ) : (
@@ -3041,6 +4412,12 @@ export default function MonitorDetailPage() {
                         <TableHeader>Status</TableHeader>
                         <TableHeader>Latency</TableHeader>
                         <TableHeader>HTTP Code</TableHeader>
+                        {(monitor?.type === "HTTP" || monitor?.type === "BROWSER") && (
+                          <TableHeader className="hidden md:table-cell">Size</TableHeader>
+                        )}
+                        {(monitor?.type === "HTTP" || monitor?.type === "BROWSER") && (
+                          <TableHeader className="hidden md:table-cell">Redirects</TableHeader>
+                        )}
                         <TableHeader>Message</TableHeader>
                       </tr>
                     </TableHead>
@@ -3055,16 +4432,19 @@ export default function MonitorDetailPage() {
                           run.timings.downloadMs !== null
                         );
                         const showWaterfall = hasTimings && (monitor?.type === "HTTP" || monitor?.type === "BROWSER");
+                        const hasRedirectChain = !!(run.redirectChain && run.redirectChain.length > 0);
+                        const hasHeaderAssertionFailures = !!(run.headerAssertionsFailed && run.headerAssertionsFailed.length > 0);
+                        const isExpandable = showWaterfall || hasRedirectChain || hasHeaderAssertionFailures;
                         return (
                         <React.Fragment key={run.id}>
                         <TableRow
-                          className={showWaterfall ? "cursor-pointer hover:bg-surface-elevated/50 transition-colors" : ""}
-                          onClick={showWaterfall ? () => setExpandedRunId(isExpanded ? null : run.id) : undefined}
+                          className={isExpandable ? "cursor-pointer hover:bg-surface-elevated/50 transition-colors" : ""}
+                          onClick={isExpandable ? () => setExpandedRunId(isExpanded ? null : run.id) : undefined}
                         >
                           <TableCell className="text-xs text-text-secondary whitespace-nowrap">
                             <span className="flex items-center gap-1">
                               {relativeTime(run.checkedAt)}
-                              {showWaterfall && (
+                              {isExpandable && (
                                 <ChevronDown className={`w-3 h-3 text-text-muted transition-transform ${isExpanded ? "rotate-180" : ""}`} />
                               )}
                             </span>
@@ -3084,6 +4464,26 @@ export default function MonitorDetailPage() {
                           <TableCell className="text-sm font-mono text-text-secondary">
                             {run.statusCode || "—"}
                           </TableCell>
+                          {(monitor?.type === "HTTP" || monitor?.type === "BROWSER") && (
+                            <TableCell className="text-sm font-mono text-text-muted hidden md:table-cell whitespace-nowrap">
+                              {run.responseSizeBytes != null
+                                ? run.responseSizeBytes >= 1048576
+                                  ? `${(run.responseSizeBytes / 1048576).toFixed(1)} MB`
+                                  : run.responseSizeBytes >= 1024
+                                    ? `${(run.responseSizeBytes / 1024).toFixed(1)} KB`
+                                    : `${run.responseSizeBytes} B`
+                                : "—"}
+                            </TableCell>
+                          )}
+                          {(monitor?.type === "HTTP" || monitor?.type === "BROWSER") && (
+                            <TableCell className="text-sm font-mono hidden md:table-cell whitespace-nowrap">
+                              {run.redirectChain && run.redirectChain.length > 0 ? (
+                                <span className="text-amber-400 font-medium">→ {run.redirectChain.length}</span>
+                              ) : (
+                                <span className="text-text-muted">—</span>
+                              )}
+                            </TableCell>
+                          )}
                           <TableCell
                             className="text-sm text-text-secondary max-w-[300px] truncate"
                             title={run.message}
@@ -3093,14 +4493,49 @@ export default function MonitorDetailPage() {
                         </TableRow>
                         {isExpanded && showWaterfall && run.timings && (
                           <TableRow>
-                            <TableCell colSpan={5} className="py-0 pb-2 px-4">
+                            <TableCell colSpan={7} className="py-0 pb-2 px-4">
                               <TimingWaterfall timings={run.timings} totalMs={run.latencyMs} />
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        {isExpanded && run.redirectChain && run.redirectChain.length > 0 && (
+                          <TableRow>
+                            <TableCell colSpan={7} className="py-0 pb-2 px-4">
+                              <div className="text-xs text-text-secondary py-1">
+                                <span className="font-medium text-amber-400 mr-2">Redirect chain:</span>
+                                <span className="font-mono break-all">
+                                  {run.redirectChain.map((url, i) => (
+                                    <span key={i}>
+                                      {i > 0 && <span className="text-text-muted mx-1">→</span>}
+                                      <span>{url}</span>
+                                    </span>
+                                  ))}
+                                </span>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        )}
+                        {run.headerAssertionsFailed && run.headerAssertionsFailed.length > 0 && (
+                          <TableRow>
+                            <TableCell colSpan={7} className="py-0 pb-2 px-4">
+                              <div className="text-xs py-1.5">
+                                <span className="font-medium text-amber-400 mr-2">
+                                  ⚠ {run.headerAssertionsFailed.length} header assertion{run.headerAssertionsFailed.length === 1 ? '' : 's'} failed
+                                </span>
+                                <ul className="mt-1 space-y-0.5">
+                                  {run.headerAssertionsFailed.map((f, i) => (
+                                    <li key={i} className="text-text-secondary font-mono">
+                                      {f.message}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </div>
                             </TableCell>
                           </TableRow>
                         )}
                         {run.responseBody && (
                           <TableRow>
-                            <TableCell colSpan={5} className="py-0 pb-2 px-4">
+                            <TableCell colSpan={7} className="py-0 pb-2 px-4">
                               <ResponseBodyViewer body={run.responseBody} />
                             </TableCell>
                           </TableRow>
@@ -3235,6 +4670,7 @@ export default function MonitorDetailPage() {
          (monitor.confirmations != null && monitor.confirmations > 1) ||
          monitor.autoIncident ||
          monitor.runbookUrl ||
+         (monitor as typeof monitor & { statusWebhookUrl?: string | null }).statusWebhookUrl ||
          (monitor.timeoutMs && monitor.timeoutMs > 0) ? (
           <Card className="p-4 space-y-3">
             <div className="flex items-center justify-between">
@@ -3309,6 +4745,14 @@ export default function MonitorDetailPage() {
                   >
                     Open runbook →
                   </a>
+                </div>
+              )}
+              {(monitor as typeof monitor & { statusWebhookUrl?: string | null }).statusWebhookUrl && (
+                <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-surface-elevated/60 border border-border/60">
+                  <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Status Webhook</span>
+                  <span className="text-xs text-text-secondary truncate" title={(monitor as typeof monitor & { statusWebhookUrl?: string | null }).statusWebhookUrl!}>
+                    🔔 Active — fires on status change
+                  </span>
                 </div>
               )}
             </div>

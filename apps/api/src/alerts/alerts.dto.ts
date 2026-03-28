@@ -7,8 +7,8 @@ export class CreateAlertChannelDto {
   @MaxLength(255)
   name!: string;
 
-  @IsIn(['discord', 'webhook', 'slack', 'telegram', 'email', 'pagerduty', 'opsgenie', 'sms', 'teams', 'ntfy', 'gotify', 'matrix'])
-  type!: 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms' | 'teams' | 'ntfy' | 'gotify' | 'matrix';
+  @IsIn(['discord', 'webhook', 'slack', 'telegram', 'email', 'pagerduty', 'opsgenie', 'sms', 'teams', 'ntfy', 'gotify', 'matrix', 'rocketchat', 'apprise', 'mattermost', 'zulip'])
+  type!: 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms' | 'teams' | 'ntfy' | 'gotify' | 'matrix' | 'rocketchat' | 'apprise' | 'mattermost' | 'zulip';
 
   @IsObject()
   config!: Record<string, unknown>;
@@ -35,6 +35,22 @@ export class CreateAlertChannelDto {
   @IsString()
   @MaxLength(1000)
   messageTemplate?: string;
+
+  @IsOptional()
+  @IsObject()
+  scheduleJson?: {
+    enabled: boolean;
+    timezone: string;
+    days: number[];
+    startHour: number;
+    endHour: number;
+  } | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(10)
+  @Max(300)
+  batchWindowSec?: number;
 }
 
 export class UpdateAlertChannelDto {
@@ -45,8 +61,8 @@ export class UpdateAlertChannelDto {
   name?: string;
 
   @IsOptional()
-  @IsIn(['discord', 'webhook', 'slack', 'telegram', 'email', 'pagerduty', 'opsgenie', 'sms', 'teams', 'ntfy', 'gotify', 'matrix'])
-  type?: 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms' | 'teams' | 'ntfy' | 'gotify' | 'matrix';
+  @IsIn(['discord', 'webhook', 'slack', 'telegram', 'email', 'pagerduty', 'opsgenie', 'sms', 'teams', 'ntfy', 'gotify', 'matrix', 'rocketchat', 'apprise', 'mattermost', 'zulip'])
+  type?: 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms' | 'teams' | 'ntfy' | 'gotify' | 'matrix' | 'rocketchat' | 'apprise' | 'mattermost' | 'zulip';
 
   @IsOptional()
   @IsObject()
@@ -74,6 +90,22 @@ export class UpdateAlertChannelDto {
   @IsString()
   @MaxLength(1000)
   messageTemplate?: string | null;
+
+  @IsOptional()
+  @IsObject()
+  scheduleJson?: {
+    enabled: boolean;
+    timezone: string;
+    days: number[];
+    startHour: number;
+    endHour: number;
+  } | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(10)
+  @Max(300)
+  batchWindowSec?: number | null;
 }
 
 export class TestAlertChannelDto {

@@ -1,7 +1,7 @@
 import * as tls from 'tls';
 import { randomBytes } from 'crypto';
 import { Prisma } from '@prisma/client';
-import { Body, Controller, Delete, ForbiddenException, Get, HttpCode, NotFoundException, Param, Patch, Post, Query, Req, Res, UseGuards, DefaultValuePipe } from '@nestjs/common';
+import { BadRequestException, Body, Controller, Delete, ForbiddenException, Get, HttpCode, NotFoundException, Param, Patch, Post, Query, Req, Res, UseGuards, DefaultValuePipe } from '@nestjs/common';
 import type { Response } from 'express';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { Throttle } from '@nestjs/throttler';
@@ -12,7 +12,7 @@ import { ApiKeyScope } from '../apikeys/apikeys.dto';
 import { MonitorsService } from './monitors.service';
 import { PlanService } from '../settings/plan.service';
 import { PrismaService } from '../common/prisma.service';
-import { BulkActionDto, BulkCreateFromUrlsDto, CreateMonitorDto, CreateMonitorEventDto, DiscoverVersionDto, ImportExternalDto, ImportMonitorsDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
+import { BulkActionDto, BulkCreateFromUrlsDto, BulkEditDto, CreateMonitorDto, CreateMonitorEventDto, DiscoverVersionDto, ImportExternalDto, ImportFromComposeDto, ImportMonitorsDto, RunMonitorDto, SimulateAlertsDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
 import { MuteMonitorDto } from './dto/mute-monitor.dto';
 import { PauseMonitorDto } from './dto/pause-monitor.dto';
 import { AcknowledgeMonitorDto } from './dto/acknowledge-monitor.dto';
@@ -134,6 +134,71 @@ export class MonitorsController {
     return this.monitorsService.bulkAction(req.user.id, body.ids, body.action, body.tagId, body.value);
   }
 
+  @Patch('bulk-edit')
+  @HttpCode(200)
+  @Throttle({ default: { limit: 10, ttl: 60_000 } })
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({
+    summary: 'Bulk edit monitors',
+    description: 'Update one or more fields across multiple monitors at once. Only provided fields are updated — omit a field to leave it unchanged.',
+  })
+  @ApiResponse({ status: 200, description: 'Bulk edit applied. Returns count of affected monitors and any per-monitor errors.' })
+  bulkEdit(@Req() req: { user: { id: string } }, @Body() body: BulkEditDto) {
+    return this.monitorsService.bulkEdit(req.user.id, body);
+  }
+
+  @Post('compare')
+  @HttpCode(200)
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'Compare multiple monitors side by side' })
+  @ApiResponse({ status: 200, description: 'Comparison data returned.' })
+  async compare(
+    @Req() req: { user: { id: string } },
+    @Body() body: { monitorIds: string[]; period?: string },
+  ) {
+    const { monitorIds, period = '30d' } = body;
+    if (!Array.isArray(monitorIds) || monitorIds.length < 2 || monitorIds.length > 5) {
+      throw new BadRequestException('Provide 2–5 monitor IDs');
+    }
+
+    const results = await Promise.all(
+      monitorIds.map(async (id) => {
+        const monitor = await this.prisma.monitor.findFirst({
+          where: { id, userId: req.user.id },
+          select: { id: true, name: true, type: true, target: true, enabled: true },
+        });
+        if (!monitor) return null;
+
+        const lastRun = await this.prisma.monitorRun.findFirst({
+          where: { monitorId: id, userId: req.user.id },
+          orderBy: { checkedAt: 'desc' },
+          select: { level: true },
+        });
+
+        const validPeriods = ['1d', '7d', '30d', '90d'];
+        const safePeriod = validPeriods.includes(period) ? (period as '1d' | '7d' | '30d' | '90d') : '30d';
+        const uptime = await this.monitorsService.monitorUptime(req.user.id, id, safePeriod);
+
+        return {
+          id: monitor.id,
+          name: monitor.name,
+          type: monitor.type,
+          target: monitor.target,
+          level: lastRun?.level ?? 'green',
+          enabled: monitor.enabled,
+          uptimePct: uptime.uptimePct,
+          avgLatencyMs: uptime.avgLatencyMs,
+          incidents: uptime.incidents,
+          totalDowntimeSec: uptime.totalDowntimeSec,
+          mttrSec: uptime.mttrSec,
+          totalChecks: uptime.totalChecks,
+        };
+      }),
+    );
+
+    return { monitors: results.filter(Boolean), period };
+  }
+
   @Post('version-test')
   @ApiOperation({ summary: 'Test version source connection', description: 'Probe a version source (GitHub, Docker Hub, etc.) and return the latest version without saving.' })
   @ApiResponse({ status: 200, description: 'Test result returned.' })
@@ -192,6 +257,55 @@ export class MonitorsController {
     return this.monitorsService.getHealthScore(req.user.id, id);
   }
 
+  @Get(':id/check-rate')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Get effective check rate for a monitor',
+    description: 'Returns throttleMs, maxChecksPerHour, checks in the last hour, effective checks/hour, and whether the monitor is currently rate-limited.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Check rate information returned.',
+    schema: {
+      example: {
+        intervalSec: 60,
+        throttleMs: 5000,
+        maxChecksPerHour: 30,
+        checksLastHour: 12,
+        effectiveChecksPerHour: 30,
+        isThrottled: false,
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  checkRate(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.monitorsService.checkRate(req.user.id, id);
+  }
+
+  @Get(':id/metric-history')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Get custom metric capture history',
+    description: 'Returns time-series of numeric values captured from HTTP response body via the monitor metricPath JSONPath. Only populated when metricPath is configured.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'limit', required: false, description: 'Max data points (default 200)' })
+  @ApiQuery({ name: 'periodDays', required: false, description: 'Rolling window in days (default 30)' })
+  @ApiResponse({ status: 200, description: 'Metric history returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  metricHistory(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+    @Query('periodDays') periodDays?: string,
+  ) {
+    return this.monitorsService.metricHistory(req.user.id, id, {
+      limit: limit ? Math.min(500, Math.max(1, parseInt(limit, 10))) : undefined,
+      periodDays: periodDays ? Math.min(365, Math.max(1, parseInt(periodDays, 10))) : undefined,
+    });
+  }
+
   @Get(':id/runs')
   @ApiOperation({
     summary: 'Check run history for a monitor',
@@ -200,7 +314,7 @@ export class MonitorsController {
   @ApiParam({ name: 'id', description: 'Monitor ID' })
   @ApiQuery({ name: 'limit', required: false, description: 'Max runs to return (1-500, default 100)' })
   @ApiQuery({ name: 'before', required: false, description: 'Cursor: return runs older than this checkedAt ISO timestamp' })
-  @ApiQuery({ name: 'status', required: false, description: 'Filter: all | ok | failed (default: all)' })
+  @ApiQuery({ name: 'status', required: false, description: 'Filter: all | ok | failed | degraded (default: all)' })
   @ApiResponse({ status: 200, description: 'Run history returned.' })
   monitorRuns(
     @Req() req: { user: { id: string } },
@@ -296,6 +410,17 @@ export class MonitorsController {
     return this.monitorsService.versionSummary(req.user.id);
   }
 
+  @Get('coverage')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Monitor configuration coverage analysis',
+    description: 'Analyzes how well monitors are configured: alert channels, SLA targets, descriptions, runbook URLs, etc. Returns per-monitor gaps and aggregate score.',
+  })
+  @ApiResponse({ status: 200, description: 'Coverage analysis returned.' })
+  monitorCoverage(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.monitorCoverage(req.user.id);
+  }
+
   @Get('health-summary')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({
@@ -316,14 +441,103 @@ export class MonitorsController {
     return this.monitorsService.getHealthSummary(req.user.id);
   }
 
-  @Get('export')
+  @Get('health-scores')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'Get health scores for all monitors (batch)' })
+  @ApiResponse({ status: 200, description: 'Batch health scores returned.' })
+  healthScores(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.allHealthScores(req.user.id);
+  }
+
+  @Get('ssl-summary')
+  @RequireScope(ApiKeyScope.READ)
   @ApiOperation({
-    summary: 'Export monitors',
-    description: 'Returns all monitors as a portable JSON document (no IDs or timestamps). Suitable for backup and re-import.',
+    summary: 'SSL / TLS certificate inventory',
+    description:
+      'Returns an inventory of all SSL_CERT, HTTP, and BROWSER monitors with certificate expiry information. ' +
+      'SSL_CERT monitors include parsed days-remaining from their latest check run. ' +
+      'Sorted by urgency: expired first, then soonest expiry.',
   })
-  @ApiResponse({ status: 200, description: 'Export document returned.' })
-  exportMonitors(@Req() req: { user: { id: string } }) {
-    return this.monitorsService.exportMonitors(req.user.id);
+  @ApiResponse({
+    status: 200,
+    description: 'Certificate inventory returned.',
+    schema: {
+      example: {
+        total: 5,
+        expired: 0,
+        critical: 1,
+        warning: 2,
+        healthy: 2,
+        certs: [{ monitorId: 'abc', name: 'My Site', target: 'https://example.com', type: 'SSL_CERT', daysRemaining: 7, expiresAt: '2025-04-05', level: 'red' }],
+      },
+    },
+  })
+  sslSummary(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.getSslSummary(req.user.id);
+  }
+
+  @Get('heatmap')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'Uptime heatmap', description: 'Returns a per-monitor × per-day uptime heatmap for the last N days (1-90). Each cell contains uptimePct, total checks, and failed checks. Monitors ordered by pinned-first then creation date.' })
+  @ApiQuery({ name: 'days', required: false, description: '1-90 (default 30)' })
+  @ApiResponse({ status: 200, description: 'Heatmap data returned.' })
+  uptimeHeatmap(
+    @Req() req: { user: { id: string } },
+    @Query('days') daysParam?: string,
+  ) {
+    const days = Math.min(90, Math.max(1, parseInt(daysParam ?? '30', 10) || 30));
+    return this.monitorsService.uptimeHeatmap(req.user.id, days);
+  }
+
+  @Get('status-timeline')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Multi-monitor status timeline',
+    description:
+      'Returns a Gantt-style status timeline for all monitors. Each monitor has a list of segments ' +
+      '(start, end, level) showing when it was green/yellow/red. Use hours param to control window size (1-168h, default 24h). ' +
+      'Ideal for visualizing correlated outages across services.',
+  })
+  @ApiQuery({ name: 'hours', required: false, description: 'Window size in hours: 1–168 (default 24)' })
+  @ApiResponse({ status: 200, description: 'Status timeline returned.' })
+  statusTimeline(
+    @Req() req: { user: { id: string } },
+    @Query('hours') hoursParam?: string,
+  ) {
+    const hours = Math.min(168, Math.max(1, parseInt(hoursParam ?? '24', 10) || 24));
+    return this.monitorsService.statusTimeline(req.user.id, hours);
+  }
+
+  @Get('trends')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'Monitor trend analysis', description: 'Returns week-over-week uptime and latency trends for all monitors. Compares current 7 days vs prior 7 days.' })
+  @ApiResponse({ status: 200, description: 'Trend data returned.' })
+  monitorTrends(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.monitorTrends(req.user.id);
+  }
+
+  @Get('export')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'Export monitor configurations as JSON or YAML' })
+  @ApiQuery({ name: 'format', required: false, description: 'json (default) or yaml' })
+  @ApiQuery({ name: 'ids', required: false, description: 'Comma-separated monitor IDs to export (omit = all)' })
+  @ApiQuery({ name: 'includeAlertChannels', required: false, description: 'Include alert channel names (default: false)' })
+  async exportMonitorsConfig(
+    @Req() req: { user: { id: string } },
+    @Res() res: Response,
+    @Query('format') format?: string,
+    @Query('ids') ids?: string,
+    @Query('includeAlertChannels') includeAlertChannels?: string,
+  ) {
+    const result = await this.monitorsService.exportMonitorsConfig(req.user.id, {
+      format: format === 'yaml' ? 'yaml' : 'json',
+      ids: ids ? ids.split(',').map(s => s.trim()).filter(Boolean) : undefined,
+      includeAlertChannels: includeAlertChannels === 'true',
+    });
+    res.setHeader('Content-Type', result.contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${result.filename}"`);
+    res.setHeader('Cache-Control', 'no-cache');
+    res.send(result.content);
   }
 
   @Post('import')
@@ -337,6 +551,23 @@ export class MonitorsController {
     return this.monitorsService.importMonitors(req.user.id, body.monitors);
   }
 
+  @Post('import-config')
+  @HttpCode(200)
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({ summary: 'Import monitor configurations from JSON or YAML' })
+  @ApiResponse({ status: 200, description: 'Import result returned.' })
+  importMonitorsConfig(
+    @Req() req: { user: { id: string } },
+    @Body() body: { format: string; content: string; dryRun?: boolean; overwriteExisting?: boolean },
+  ) {
+    return this.monitorsService.importMonitorsConfig(req.user.id, {
+      format: body.format === 'yaml' ? 'yaml' : 'json',
+      content: body.content,
+      dryRun: body.dryRun ?? false,
+      overwriteExisting: body.overwriteExisting ?? false,
+    });
+  }
+
   @Post('import-external')
   @HttpCode(200)
   @ApiOperation({
@@ -346,6 +577,18 @@ export class MonitorsController {
   @ApiResponse({ status: 200, description: 'Import result with count of imported, skipped, and errors.' })
   importExternal(@Req() req: { user: { id: string } }, @Body() body: ImportExternalDto) {
     return this.monitorsService.importExternal(req.user.id, body.source, body.payload);
+  }
+
+  @Post('import-from-compose')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Parse a Docker Compose YAML and suggest monitors',
+    description: 'Returns suggested monitors based on service images and port mappings. Does not create monitors.',
+  })
+  @ApiResponse({ status: 200, description: 'Suggested monitors array' })
+  @ApiResponse({ status: 400, description: 'Invalid YAML' })
+  importFromCompose(@Req() req: { user: { id: string } }, @Body() body: ImportFromComposeDto) {
+    return this.monitorsService.importFromCompose(body.compose);
   }
 
   @Get(':id/alerts')
@@ -1216,6 +1459,14 @@ export class MonitorsController {
     return this.monitorsService.getSloSummary(req.user.id);
   }
 
+  @Get('sla-dashboard')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'SLA compliance dashboard for all monitors', description: 'Returns SLA compliance stats, error budget, and monthly history for all enabled monitors.' })
+  @ApiResponse({ status: 200, description: 'SLA dashboard data.' })
+  slaDashboard(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.slaDashboard(req.user.id);
+  }
+
   @Get(':id/status-transitions')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({
@@ -1389,5 +1640,115 @@ export class MonitorsController {
     @Param('id') id: string,
   ): Promise<{ pinned: boolean }> {
     return this.monitorsService.togglePin(req.user.id, id);
+  }
+
+  @Get(':id/redirect-chain-stats')
+  @ApiOperation({ summary: 'Redirect chain statistics for a monitor' })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Redirect chain statistics.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  redirectChainStats(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    return this.monitorsService.redirectChainStats(req.user.id, id);
+  }
+
+  // ─── CT Log History ──────────────────────────────────────────────────────
+
+  @Get(':id/ct-log-history')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'CT log check history for a monitor',
+    description: 'Returns the last 50 CT log check results for a CT_LOG monitor, showing certificate counts and detected domains per run.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'CT log history returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  ctLogHistory(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    return this.monitorsService.ctLogHistory(req.user.id, id);
+  }
+
+  // ─── Geo Distribution Stats ───────────────────────────────────────────────────────
+
+  @Get(':id/geo-stats')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Geo-distribution stats for a monitor',
+    description: 'Returns per-region latency and availability stats for monitors with geoRegions configured.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'periodDays', required: false, type: Number, description: 'Number of days to look back (default 7)' })
+  @ApiResponse({ status: 200, description: 'Geo stats returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  geoStats(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('periodDays') periodDays?: string,
+  ) {
+    return this.monitorsService.geoStats(req.user.id, id, periodDays ? parseInt(periodDays, 10) : 7);
+  }
+
+  // ─── Daily Latency Percentile History ────────────────────────────────────────────
+
+  @Get(':id/latency-history')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Daily P50/P95/P99 latency history',
+    description: 'Returns per-day latency percentiles (P50, P95, P99) and uptime% for the last N days. Useful for rendering multi-line performance trend charts.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'days', required: false, type: Number, description: 'Number of days to look back (default 30, max 90)' })
+  @ApiResponse({ status: 200, description: 'Daily latency history returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  latencyHistory(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('days') days?: string,
+  ) {
+    return this.monitorsService.latencyHistory(req.user.id, id, days ? parseInt(days, 10) : 30);
+  }
+
+  // ─── Failure Pattern Analysis ─────────────────────────────────────────────────────
+
+  @Get(':id/failure-patterns')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Failure pattern analysis for a monitor',
+    description: 'Groups failed check messages into normalized patterns. Returns frequency, first/last seen, and a weekly trend for each pattern. Useful for diagnosing recurring failure causes.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'periodDays', required: false, type: Number, description: 'Number of days to look back (default 30, max 365)' })
+  @ApiResponse({ status: 200, description: 'Failure pattern analysis returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  failurePatterns(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('periodDays') periodDays?: string,
+  ) {
+    return this.monitorsService.failurePatterns(req.user.id, id, periodDays ? parseInt(periodDays, 10) : 30);
+  }
+
+  // ─── Alert Rules Simulator ────────────────────────────────────────────────
+
+  @Post(':id/simulate-alerts')
+  @HttpCode(200)
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Simulate alert rules',
+    description: 'Replays the last 7 days of check history through a configurable alert ruleset. Returns how many alerts would have fired, a noise score, and a timeline of simulated events.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Simulation result returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  simulateAlerts(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Body() body: SimulateAlertsDto,
+  ) {
+    return this.monitorsService.simulateAlerts(req.user.id, id, body);
   }
 }

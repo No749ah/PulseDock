@@ -1,6 +1,22 @@
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUrl, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsNumber, IsObject, IsOptional, IsString, IsUrl, Max, MaxLength, Min, MinLength, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { SanitizeHtml } from '../common/sanitize';
+
+export class HeaderAssertionDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  header!: string;
+
+  @IsIn(['exists', 'not-exists', 'equals', 'contains'])
+  op!: 'exists' | 'not-exists' | 'equals' | 'contains';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  value?: string;
+}
 
 export class CreateMonitorDto {
   @ApiProperty({ description: 'Display name for the monitor', maxLength: 255, example: 'My API Health' })
@@ -33,11 +49,11 @@ export class CreateMonitorDto {
 
   @ApiProperty({
     description: 'Monitor type',
-    enum: ['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING', 'SMTP', 'BROWSER'],
+    enum: ['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING', 'SMTP', 'BROWSER', 'WHOIS', 'FTP', 'IMAP', 'POP3', 'CT_LOG'],
     example: 'HTTP',
   })
-  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING', 'SMTP', 'BROWSER'])
-  type!: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT' | 'DNS' | 'PING' | 'SMTP' | 'BROWSER';
+  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING', 'SMTP', 'BROWSER', 'WHOIS', 'FTP', 'IMAP', 'POP3', 'CT_LOG'])
+  type!: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT' | 'DNS' | 'PING' | 'SMTP' | 'BROWSER' | 'WHOIS' | 'FTP' | 'IMAP' | 'POP3' | 'CT_LOG';
 
   @ApiPropertyOptional({ description: 'Check interval in seconds (min 10)', minimum: 10, example: 60 })
   @IsOptional()
@@ -78,17 +94,19 @@ export class CreateMonitorDto {
   @ApiPropertyOptional({
     description: [
       'Monitor-type-specific configuration. For HTTP monitors: method, requestHeaders, requestBody, expectedStatus, bodyContains, responseTimeThresholdMs.',
+      'Pre-request auth step: preAuthUrl, preAuthBody, preAuthExtractCookie (cookie name) OR preAuthExtractToken (dot-path to JWT/token in JSON response).',
       'For HEARTBEAT: timeoutMin, token.',
       'For SSL_CERT: warnDays.',
       'For GIT_RELEASE/DOCKER_IMAGE: token, host, appVersionEndpoint, appAuthType.',
     ].join(' '),
     example: {
-      method: 'POST',
-      requestHeaders: { 'Authorization': 'Bearer <token>', 'Content-Type': 'application/json' },
-      requestBody: '{"ping":true}',
-      expectedStatus: [200, 201],
-      bodyContains: '"ok":true',
+      method: 'GET',
+      expectedStatus: 200,
+      bodyContains: '"status":"ok"',
       responseTimeThresholdMs: 2000,
+      preAuthUrl: 'https://app.example.com/api/auth/login',
+      preAuthBody: '{"email":"monitor@example.com","password":"secret"}',
+      preAuthExtractToken: 'data.accessToken',
     },
   })
   @IsOptional()
@@ -233,6 +251,78 @@ export class CreateMonitorDto {
   @Max(10080)
   rtoMinutes?: number;
 
+  @ApiPropertyOptional({ description: 'Optional per-monitor webhook URL. PulseDock will POST a status change payload to this URL whenever the monitor level changes (e.g. green→red, red→green). Useful for CI/CD integrations and automation.', example: 'https://example.com/hooks/monitor-status' })
+  @IsOptional()
+  @IsUrl()
+  @MaxLength(2048)
+  statusWebhookUrl?: string | null;
+
+  @ApiPropertyOptional({ description: 'Optional HMAC-SHA256 secret for the status webhook. When set, PulseDock adds an X-PulseDock-Signature header to each webhook call (sha256=<hex> format). Use this to verify the payload origin.', example: 'super-secret-string' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
+  statusWebhookSecret?: string | null;
+
+  @ApiPropertyOptional({ description: 'Minimum milliseconds between consecutive checks for this monitor (throttle). Prevents rapid successive checks after interval drift. Min 1000ms, max 3600000ms (1 hour).', minimum: 1000, maximum: 3600000, example: 5000 })
+  @IsOptional()
+  @IsInt()
+  @Min(1000)
+  @Max(3600000)
+  throttleMs?: number;
+
+  @ApiPropertyOptional({ description: 'Hard cap on checks per hour regardless of interval. Max 360 (one check per 10 seconds).', minimum: 1, maximum: 360, example: 60 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(360)
+  maxChecksPerHour?: number;
+
+  @ApiPropertyOptional({ description: 'Geo region tags for simulated multi-region monitoring (max 10 regions, 50 chars each). Round-robin assignment to runs.', example: ['us-east-1', 'eu-west-1', 'ap-southeast-1'] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(50, { each: true })
+  @ArrayMaxSize(10)
+  geoRegions?: string[];
+
+  @ApiPropertyOptional({ description: 'JSONPath expression to extract a numeric metric from the HTTP response body (e.g. "$.queue.depth", "$.metrics.errors"). HTTP/BROWSER monitors only.', example: '$.queue.depth' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  metricPath?: string | null;
+
+  @ApiPropertyOptional({ description: 'Human-readable label for the captured metric (e.g. "Queue Depth", "Error Rate"). Shown in charts and alerts.', example: 'Queue Depth' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  metricName?: string | null;
+
+  @ApiPropertyOptional({ description: 'Optional unit label appended to captured metric values (e.g. "items", "ms", "%", "req/s").', example: 'items' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  metricUnit?: string | null;
+
+  @ApiPropertyOptional({ description: 'Alert yellow when captured metric value drops below this minimum threshold.', example: 0 })
+  @IsOptional()
+  @IsNumber()
+  metricAlertMin?: number | null;
+
+  @ApiPropertyOptional({ description: 'Alert yellow when captured metric value exceeds this maximum threshold.', example: 1000 })
+  @IsOptional()
+  @IsNumber()
+  metricAlertMax?: number | null;
+
+  @ApiPropertyOptional({
+    description: 'Array of header assertions to evaluate on every HTTP check. Each assertion can check if a header exists, is absent, equals a value, or contains a substring. Alert yellow on any failure.',
+    type: [HeaderAssertionDto],
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => HeaderAssertionDto)
+  headerAssertions?: HeaderAssertionDto[];
+
 }
 
 export class UpdateMonitorDto {
@@ -259,8 +349,8 @@ export class UpdateMonitorDto {
   target?: string;
 
   @IsOptional()
-  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING', 'SMTP', 'BROWSER'])
-  type?: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT' | 'DNS' | 'PING' | 'SMTP' | 'BROWSER';
+  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING', 'SMTP', 'BROWSER', 'WHOIS', 'FTP', 'IMAP', 'POP3', 'CT_LOG'])
+  type?: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT' | 'DNS' | 'PING' | 'SMTP' | 'BROWSER' | 'WHOIS' | 'FTP' | 'IMAP' | 'POP3' | 'CT_LOG';
 
   @IsOptional()
   @IsInt()
@@ -401,6 +491,64 @@ export class UpdateMonitorDto {
   @Max(10080)
   rtoMinutes?: number;
 
+  @IsOptional()
+  @IsUrl()
+  @MaxLength(2048)
+  statusWebhookUrl?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
+  statusWebhookSecret?: string | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1000)
+  @Max(3600000)
+  throttleMs?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(360)
+  maxChecksPerHour?: number;
+
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @MaxLength(50, { each: true })
+  @ArrayMaxSize(10)
+  geoRegions?: string[];
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(512)
+  metricPath?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  metricName?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(32)
+  metricUnit?: string | null;
+
+  @IsOptional()
+  @IsNumber()
+  metricAlertMin?: number | null;
+
+  @IsOptional()
+  @IsNumber()
+  metricAlertMax?: number | null;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => HeaderAssertionDto)
+  headerAssertions?: HeaderAssertionDto[];
+
 }
 
 export class RunMonitorDto {
@@ -437,8 +585,8 @@ export class ImportMonitorItemDto {
   @MaxLength(1024)
   target!: string;
 
-  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING', 'SMTP', 'BROWSER'])
-  type!: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT' | 'DNS' | 'PING' | 'SMTP' | 'BROWSER';
+  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING', 'SMTP', 'BROWSER', 'WHOIS', 'FTP', 'IMAP', 'POP3', 'CT_LOG'])
+  type!: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT' | 'DNS' | 'PING' | 'SMTP' | 'BROWSER' | 'WHOIS' | 'FTP' | 'IMAP' | 'POP3' | 'CT_LOG';
 
   @IsOptional()
   @IsInt()
@@ -555,8 +703,8 @@ export class BulkActionDto {
   @IsString({ each: true })
   ids!: string[];
 
-  @IsIn(['enable', 'disable', 'delete', 'run', 'add-tag', 'remove-tag', 'update-interval', 'update-timeout', 'update-confirmations'])
-  action!: 'enable' | 'disable' | 'delete' | 'run' | 'add-tag' | 'remove-tag' | 'update-interval' | 'update-timeout' | 'update-confirmations';
+  @IsIn(['enable', 'disable', 'delete', 'run', 'add-tag', 'remove-tag', 'update-interval', 'update-timeout', 'update-confirmations', 'pause'])
+  action!: 'enable' | 'disable' | 'delete' | 'run' | 'add-tag' | 'remove-tag' | 'update-interval' | 'update-timeout' | 'update-confirmations' | 'pause';
 
   /** Tag ID — required when action is 'add-tag' or 'remove-tag' */
   @IsOptional()
@@ -567,6 +715,75 @@ export class BulkActionDto {
   @IsOptional()
   @IsNumber()
   value?: number;
+}
+
+export class BulkEditDto {
+  @ApiProperty({ description: 'Monitor IDs to update', type: [String] })
+  @IsArray()
+  @IsString({ each: true })
+  ids!: string[];
+
+  @ApiPropertyOptional({ description: 'New check interval in seconds (min 10)', minimum: 10, maximum: 86400 })
+  @IsOptional()
+  @IsInt()
+  @Min(10)
+  @Max(86400)
+  intervalSec?: number;
+
+  @ApiPropertyOptional({ description: 'Request timeout in milliseconds (min 100)', minimum: 100 })
+  @IsOptional()
+  @IsInt()
+  @Min(100)
+  @Max(60000)
+  timeoutMs?: number;
+
+  @ApiPropertyOptional({ description: 'Consecutive failures before alerting (1-10)', minimum: 1, maximum: 10 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(10)
+  confirmations?: number;
+
+  @ApiPropertyOptional({ description: 'Auto-retry count on failure (0-3)', minimum: 0, maximum: 3 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(3)
+  retryCount?: number;
+
+  @ApiPropertyOptional({ description: 'Enable/disable flap detection' })
+  @IsOptional()
+  @IsBoolean()
+  flapDetectionEnabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Latency alert threshold in ms (null to clear)' })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(60000)
+  latencyAlertMs?: number | null;
+
+  @ApiPropertyOptional({ description: 'SLA target uptime percentage (null to clear)', minimum: 0, maximum: 100 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(100)
+  slaTarget?: number | null;
+
+  @ApiPropertyOptional({ description: 'Enable or disable monitors' })
+  @IsOptional()
+  @IsBoolean()
+  enabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Folder ID to move monitors to (null = remove from folder)', nullable: true })
+  @IsOptional()
+  folderId?: string | null;
+
+  @ApiPropertyOptional({ description: 'Alert channel IDs to assign to all selected monitors (replaces existing)' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  alertChannelIds?: string[];
 }
 
 export class ImportExternalDto {
@@ -615,4 +832,47 @@ export class CreateMonitorEventDto {
   @IsOptional()
   @IsIn(['deploy', 'note', 'incident', 'maintenance', 'config'])
   eventType?: 'deploy' | 'note' | 'incident' | 'maintenance' | 'config';
+}
+
+export class ImportFromComposeDto {
+  @ApiProperty({ description: 'Raw YAML content of a docker-compose.yml file', maxLength: 102400 })
+  @IsString()
+  @MaxLength(102400)
+  compose!: string;
+}
+
+export class SimulateAlertsDto {
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(10)
+  confirmations?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  flapDetection?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(2)
+  @Max(10)
+  flapWindow?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(2)
+  @Max(5)
+  flapThreshold?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  scheduleStartHour?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(23)
+  scheduleEndHour?: number;
 }

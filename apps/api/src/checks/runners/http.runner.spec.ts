@@ -820,3 +820,87 @@ describe('runHttpCheck — response header assertion', () => {
     expect(result.ok).toBe(true);
   });
 });
+
+describe('runHttpCheck — pre-request authentication step', () => {
+  beforeEach(() => {
+    mockState.responseQueue = [];
+    mockState.https = { statusCode: 200, body: '{"ok":true}', headers: { 'content-type': 'application/json' } };
+    mockState.http = { statusCode: 200, body: '{"ok":true}', headers: { 'content-type': 'application/json' } };
+  });
+
+  it('returns red immediately when preAuthUrl has no extractors configured', async () => {
+    // Pre-auth succeeds (200) but nothing to extract → error
+    mockState.responseQueue = [
+      { statusCode: 200, body: '{"token":"abc"}' },
+      { statusCode: 200, body: '{"ok":true}' },
+    ];
+    const result = await runHttpCheck('https://example.com/protected', 5000, {
+      preAuthUrl: 'https://example.com/api/login',
+      preAuthBody: '{"email":"u@example.com","password":"s3cret"}',
+    });
+    expect(result.ok).toBe(false);
+    expect(result.level).toBe('red');
+    expect(result.message).toContain('Pre-auth');
+  });
+
+  it('extracts bearer token from JSON response and injects Authorization header', async () => {
+    mockState.responseQueue = [
+      { statusCode: 200, body: '{"data":{"accessToken":"jwt-xyz"}}' },
+    ];
+    mockState.https = { statusCode: 200, body: '{"status":"ok"}' };
+
+    const result = await runHttpCheck('https://example.com/protected', 5000, {
+      preAuthUrl: 'https://example.com/api/login',
+      preAuthBody: '{"email":"u@example.com","password":"s3cret"}',
+      preAuthExtractToken: 'data.accessToken',
+    });
+    expect(result.ok).toBe(true);
+  });
+
+  it('returns red when pre-auth endpoint returns non-JSON for token extraction', async () => {
+    mockState.responseQueue = [
+      { statusCode: 200, body: 'NOT JSON' },
+    ];
+    const result = await runHttpCheck('https://example.com/protected', 5000, {
+      preAuthUrl: 'https://example.com/api/login',
+      preAuthBody: '{}',
+      preAuthExtractToken: 'data.accessToken',
+    });
+    expect(result.ok).toBe(false);
+    expect(result.message).toContain('Pre-auth');
+  });
+
+  it('returns red when pre-auth request itself throws a network error', async () => {
+    mockState.responseQueue = [
+      { statusCode: 0, body: '', shouldError: new Error('ECONNREFUSED') },
+    ];
+    const result = await runHttpCheck('https://example.com/protected', 5000, {
+      preAuthUrl: 'https://example.com/api/login',
+      preAuthBody: '{}',
+      preAuthExtractToken: 'token',
+    });
+    expect(result.ok).toBe(false);
+    expect(result.level).toBe('red');
+    expect(result.message).toContain('Pre-auth');
+  });
+
+  it('continues to main check when preAuthUrl is not set', async () => {
+    mockState.https = { statusCode: 200, body: '{"ok":true}' };
+    const result = await runHttpCheck('https://example.com', 5000, {});
+    expect(result.ok).toBe(true);
+  });
+
+  it('uses preAuthBody as JSON string when provided', async () => {
+    mockState.responseQueue = [
+      { statusCode: 200, body: '{"token":"tok123"}' },
+    ];
+    mockState.https = { statusCode: 200, body: 'ok' };
+
+    const result = await runHttpCheck('https://example.com/protected', 5000, {
+      preAuthUrl: 'https://example.com/login',
+      preAuthBody: '{"user":"admin","pass":"secret"}',
+      preAuthExtractToken: 'token',
+    });
+    expect(result.ok).toBe(true);
+  });
+});

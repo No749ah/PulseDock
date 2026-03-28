@@ -7,7 +7,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ---
 
-## [Unreleased] — 2026-03-26
+## [1.5.0] — 2026-03-28
 
 ### Added
 - **Alert Acknowledgement** — `POST/DELETE /v1/monitors/:id/acknowledge` — Acknowledge active alerts with optional note. Suppresses further notifications. Shows note inline in the Acknowledged badge. Auto-clears when monitor recovers.
@@ -24,9 +24,23 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - **WebSocket live updates on monitor detail** — Check runs prepend in real-time without page refresh. Live green indicator badge.
 - **P95 latency line on detail chart** — Response time chart shows P95 line alongside avg line.
 - **Down monitor count badge in nav** — Sidebar "Monitors" link shows red badge with count of currently down monitors.
+- **FTP / IMAP / POP3 Monitor Types** — Three new protocol monitors: FTP (login + directory list), IMAP (login + SELECT INBOX), POP3 (login + STAT). Full UI support, validator, templates, icons. 30+ tests.
+- **CT Log Monitor** — Certificate Transparency log watcher. Detects newly issued certs for a domain within configurable hours. Alert on unexpected issuance. Frontend form config with `ctHours` field.
+- **Monitor Check Rate Limiting** — `throttleMs` (min ms between consecutive checks) and `maxChecksPerHour` (hard cap) fields on Monitor. Scheduler enforces per-monitor. `GET /v1/monitors/:id/check-rate` returns effective rate info. Rate Limiting section in monitor Advanced Settings. 5 tests.
+- **Monitor Trend Analysis** — `GET /v1/monitors/trends` — week-over-week uptime% and avg latency deltas for all monitors. Returns `uptimeTrend` / `latencyTrend` as `improving | degrading | stable | new` with numeric deltas. `/monitors/trends` page: summary cards, sortable table with trend badges and delta arrows. 5 tests.
+- **MTTR/MTTF Analytics** — `/mttr` page with mean-time-to-recovery and mean-time-to-failure metrics per monitor. Sortable table with incident counts, downtime totals, trend sparklines.
+- **Monitor Health Score** — Composite 0–100 scoring with grade A–F (uptime 40pts, latency trend 20pts, SLA budget 20pts, stability streak 20pts). Health score column on monitors list. Detail page breakdown. `GET /v1/monitors/health-summary` and `GET /v1/monitors/:id/health-score`. 17 tests.
+- **Alert Channel Delivery Stats** — Per-channel delivery success/failure rates, last delivery timestamp, failure reasons. `GET /v1/alert-channels/:id/stats`. Stats shown on alert channels page.
+- **Geo-Region Tagging** — `geoRegions` field on Monitor assigns round-robin region labels to check runs. `GET /v1/monitors/:id/geo-stats?periodDays=7` returns per-region uptime%, avgLatencyMs, p95LatencyMs. Monitor form tag-pill input. Detail page geo-stats table. Globe indicator on monitors list.
+- **Global Status Timeline** — `/monitors/timeline` — Gantt-style view of all monitors' state over time. Configurable period (1h–7d). Filter by folder/tag. Color-coded status segments.
+- **Failure Pattern Analysis** — Groups monitor failures by normalized error message. Shows frequency trends, top error types. "Failures" tab on monitor detail page.
+- **Import from Docker Compose** — `POST /v1/monitors/import-from-compose` — Paste a `docker-compose.yml`, get back suggested monitors (HTTP/TCP) based on service images and port mappings. "From Compose" button on monitors page with full import modal. 6 tests.
+- **Alert Rules Simulator** — `POST /v1/monitors/:id/simulate-alerts` — Replay last 7 days of check history through configurable alert rules (confirmations, flap detection, business hours). Returns noise score (low/medium/high), alerts/day rate, full event timeline. "Simulate Alerts" tab on monitor detail. "Apply to monitor" button. 6 tests.
+- **Custom Metric Capture** — `metricPath` JSONPath field on HTTP monitors. Extracts a numeric value from JSON responses and stores as a time-series. Threshold alerting on metric value. `GET /v1/monitors/:id/metric-history` returns time-series data. Chart on monitor detail.
+- **Monitor Coverage Analysis** — `GET /v1/monitors/coverage` — Config completeness scoring per monitor. Flags monitors missing alert channels, SLA targets, runbook URLs, tags. Sortable coverage table at `/monitors/coverage`. Score badges on monitors list.
 
 ### Tests
-- **3371 API tests** (up from 3208) — All passing. 163 new tests.
+- **3905 API tests** (up from 3208), **756 web**, **10 CLI**, **12 agent** — Total: **4683 tests passing**.
 
 ## [1.4.0] — 2026-03-25
 

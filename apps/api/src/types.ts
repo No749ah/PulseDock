@@ -1,5 +1,5 @@
-export type MonitorType = 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT' | 'DNS' | 'PING' | 'SMTP' | 'BROWSER' | 'WHOIS';
-export type AlertChannelType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms' | 'teams' | 'ntfy' | 'gotify' | 'matrix';
+export type MonitorType = 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT' | 'DNS' | 'PING' | 'SMTP' | 'BROWSER' | 'WHOIS' | 'FTP' | 'IMAP' | 'POP3' | 'CT_LOG';
+export type AlertChannelType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms' | 'teams' | 'ntfy' | 'gotify' | 'matrix' | 'rocketchat' | 'apprise' | 'mattermost' | 'zulip';
 export type MonitorLevel = 'green' | 'yellow' | 'red';
 
 export interface User {
@@ -37,6 +37,10 @@ export interface AlertChannel {
   groupByTag: boolean;
   /** Custom {{token}} message template. null = use default message. */
   messageTemplate: string | null;
+  /** JSON schedule config. null = always active. */
+  scheduleJson?: unknown;
+  /** If set, batch DOWN/DEGRADED alerts for this many seconds before delivering (max 300). */
+  batchWindowSec?: number | null;
 }
 
 export interface Monitor {
@@ -82,6 +86,9 @@ export interface Monitor {
   trackedHeaders?: string | null;
   headerBaseline?: Record<string, string | null> | null;
   headerBaselineSetAt?: string | null;
+  statusWebhookUrl?: string | null;
+  statusWebhookSecret?: string | null;
+  headerAssertions?: Array<{ header: string; op: string; value?: string }> | null;
   createdAt: string;
 }
 

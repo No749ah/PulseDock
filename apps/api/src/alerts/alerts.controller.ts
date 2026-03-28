@@ -34,6 +34,8 @@ export class AlertsController {
     groupByFolder: boolean;
     groupByTag: boolean;
     messageTemplate?: string | null;
+    scheduleJson?: import('@prisma/client').Prisma.JsonValue | null;
+    batchWindowSec?: number | null;
   }): import('../types').AlertChannel {
     return {
       id: c.id,
@@ -47,6 +49,8 @@ export class AlertsController {
       groupByFolder: c.groupByFolder,
       groupByTag: c.groupByTag,
       messageTemplate: c.messageTemplate ?? null,
+      scheduleJson: c.scheduleJson ?? null,
+      batchWindowSec: c.batchWindowSec ?? null,
     };
   }
 
@@ -54,7 +58,11 @@ export class AlertsController {
   @ApiOperation({ summary: 'List alert channels', description: 'Returns all configured alert channels for the authenticated user.' })
   @ApiResponse({ status: 200, description: 'Alert channels returned.' })
   async list(@Req() req: { user: { id: string } }) {
-    const channels = await this.prisma.alertChannel.findMany({ where: { userId: req.user.id }, orderBy: { createdAt: 'desc' } });
+    const channels = await this.prisma.alertChannel.findMany({
+      where: { userId: req.user.id },
+      orderBy: { createdAt: 'desc' },
+      include: { _count: { select: { deliveryLogs: true } } },
+    });
     return channels.map((c) => ({
       id: c.id,
       userId: c.userId,
@@ -67,6 +75,9 @@ export class AlertsController {
       groupByFolder: c.groupByFolder,
       groupByTag: c.groupByTag,
       messageTemplate: c.messageTemplate ?? null,
+      scheduleJson: c.scheduleJson ?? null,
+      batchWindowSec: c.batchWindowSec ?? null,
+      deliveryCount: c._count.deliveryLogs,
     }));
   }
 
@@ -89,19 +100,20 @@ export class AlertsController {
         plan: check.plan,
       });
     }
-    const channel = await this.prisma.alertChannel.create({
-      data: {
-        userId: req.user.id,
-        name: body.name,
-        type: body.type,
-        configJson: (body.config ?? {}) as Prisma.InputJsonValue,
-        alertGrouping: body.alertGrouping ?? false,
-        groupWindowSec: body.groupWindowSec ?? 300,
-        groupByFolder: body.groupByFolder ?? true,
-        groupByTag: body.groupByTag ?? false,
-        messageTemplate: (body as { messageTemplate?: string }).messageTemplate ?? null,
-      },
-    });
+    const createData: Parameters<typeof this.prisma.alertChannel.create>[0]['data'] = {
+      userId: req.user.id,
+      name: body.name,
+      type: body.type,
+      configJson: (body.config ?? {}) as Prisma.InputJsonValue,
+      alertGrouping: body.alertGrouping ?? false,
+      groupWindowSec: body.groupWindowSec ?? 300,
+      groupByFolder: body.groupByFolder ?? true,
+      groupByTag: body.groupByTag ?? false,
+      messageTemplate: (body as { messageTemplate?: string }).messageTemplate ?? null,
+      scheduleJson: ('scheduleJson' in body ? ((body as { scheduleJson?: unknown }).scheduleJson ?? Prisma.JsonNull) : Prisma.JsonNull) as Prisma.InputJsonValue,
+      batchWindowSec: body.batchWindowSec ?? null,
+    };
+    const channel = await this.prisma.alertChannel.create({ data: createData });
 
     await this.audit.log('alert_channel.create', req.user.id, req.user.id, { channelId: channel.id, type: channel.type });
 
@@ -117,6 +129,8 @@ export class AlertsController {
       groupByFolder: channel.groupByFolder,
       groupByTag: channel.groupByTag,
       messageTemplate: channel.messageTemplate ?? null,
+      scheduleJson: channel.scheduleJson ?? null,
+      batchWindowSec: channel.batchWindowSec ?? null,
     };
   }
 
@@ -129,19 +143,19 @@ export class AlertsController {
     const current = await this.prisma.alertChannel.findFirst({ where: { id, userId: req.user.id } });
     if (!current) throw new NotFoundException('channel not found');
 
-    const updated = await this.prisma.alertChannel.update({
-      where: { id },
-      data: {
-        name: body.name ?? current.name,
-        type: body.type ?? current.type,
-        configJson: (body.config ?? current.configJson) as Prisma.InputJsonValue,
-        ...(body.alertGrouping !== undefined && { alertGrouping: body.alertGrouping }),
-        ...(body.groupWindowSec !== undefined && { groupWindowSec: body.groupWindowSec }),
-        ...(body.groupByFolder !== undefined && { groupByFolder: body.groupByFolder }),
-        ...(body.groupByTag !== undefined && { groupByTag: body.groupByTag }),
-        ...('messageTemplate' in body && { messageTemplate: (body as { messageTemplate?: string | null }).messageTemplate ?? null }),
-      },
-    });
+    const updateData: Parameters<typeof this.prisma.alertChannel.update>[0]['data'] = {
+      name: body.name ?? current.name,
+      type: body.type ?? current.type,
+      configJson: (body.config ?? current.configJson) as Prisma.InputJsonValue,
+      ...(body.alertGrouping !== undefined && { alertGrouping: body.alertGrouping }),
+      ...(body.groupWindowSec !== undefined && { groupWindowSec: body.groupWindowSec }),
+      ...(body.groupByFolder !== undefined && { groupByFolder: body.groupByFolder }),
+      ...(body.groupByTag !== undefined && { groupByTag: body.groupByTag }),
+      ...('messageTemplate' in body && { messageTemplate: (body as { messageTemplate?: string | null }).messageTemplate ?? null }),
+      scheduleJson: ('scheduleJson' in body ? ((body as { scheduleJson?: unknown }).scheduleJson ?? Prisma.JsonNull) : (current.scheduleJson ?? Prisma.JsonNull)) as Prisma.InputJsonValue,
+      ...('batchWindowSec' in body && { batchWindowSec: body.batchWindowSec ?? null }),
+    };
+    const updated = await this.prisma.alertChannel.update({ where: { id }, data: updateData });
 
     await this.audit.log('alert_channel.update', req.user.id, req.user.id, { channelId: id });
     return {
@@ -156,6 +170,8 @@ export class AlertsController {
       groupByFolder: updated.groupByFolder,
       groupByTag: updated.groupByTag,
       messageTemplate: updated.messageTemplate ?? null,
+      scheduleJson: updated.scheduleJson ?? null,
+      batchWindowSec: updated.batchWindowSec ?? null,
     };
   }
 
@@ -313,6 +329,15 @@ export class AlertsController {
         groupedCount: l.groupedCount,
       })),
     };
+  }
+
+  @Get(':id/delivery-stats')
+  @ApiOperation({ summary: 'Get alert channel delivery stats', description: 'Returns aggregated delivery statistics and recent logs for a specific alert channel.' })
+  @ApiParam({ name: 'id', description: 'Alert channel ID' })
+  @ApiResponse({ status: 200, description: 'Delivery stats returned.' })
+  @ApiResponse({ status: 404, description: 'Channel not found.' })
+  async deliveryStats(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.alertsService.deliveryStats(req.user.id, id);
   }
 
   @Get(':id/deliveries')

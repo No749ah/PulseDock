@@ -21,6 +21,9 @@ import {
   runDnsCheck,
   runPingCheck,
   runSmtpCheck,
+  runFtpCheck,
+  runImapCheck,
+  runPop3Check,
 } from './network.runner';
 
 // ── normalizeSslHost ─────────────────────────────────────────────────────────
@@ -712,5 +715,436 @@ describe('runSmtpCheck', () => {
 
     await runSmtpCheck('mail.example.com', {});
     expect(capturedPort).toBe(25);
+  });
+});
+
+// ── runFtpCheck ───────────────────────────────────────────────────────────────
+
+/** Builds a mock socket that emits a single data event with the given text. */
+function makeFtpSocket(responses: string[]) {
+  let dataHandler: ((buf: Buffer) => void) | null = null;
+  const socket = {
+    write: vi.fn((chunk: string) => {
+      // After QUIT or AUTH TLS, emit the next response if any
+      const next = responses.shift();
+      if (next && dataHandler) {
+        setTimeout(() => dataHandler!(Buffer.from(next)), 0);
+      }
+    }),
+    destroy: vi.fn(),
+    on: vi.fn((event: string, cb: (buf: Buffer) => void) => {
+      if (event === 'data') dataHandler = cb;
+    }),
+    once: vi.fn((_event: string, _cb: unknown) => { /* no-op: only error path */ }),
+  };
+  return socket;
+}
+
+describe('runFtpCheck', () => {
+  afterEach(() => { vi.clearAllMocks(); });
+
+  it('returns red for empty host', async () => {
+    const result = await runFtpCheck('', {});
+    expect(result.ok).toBe(false);
+    expect(result.level).toBe('red');
+    expect(result.statusCode).toBe(400);
+    expect(result.message).toContain('FTP target');
+  });
+
+  it('returns red for invalid port :0', async () => {
+    const result = await runFtpCheck(':0', {});
+    expect(result.ok).toBe(false);
+    expect(result.statusCode).toBe(400);
+  });
+
+  it('returns red for port out of range (99999)', async () => {
+    const result = await runFtpCheck('ftp.example.com:99999', {});
+    expect(result.ok).toBe(false);
+    expect(result.statusCode).toBe(400);
+  });
+
+  it('strips ftp:// prefix', async () => {
+    const mockSocket = {
+      write: vi.fn(), destroy: vi.fn(),
+      on: vi.fn(), once: vi.fn((event: string, cb: (err: Error) => void) => {
+        if (event === 'error') setTimeout(() => cb(new Error('ECONNREFUSED')), 0);
+      }),
+    };
+    vi.mocked(net.createConnection).mockReturnValue(mockSocket as unknown as ReturnType<typeof net.createConnection>);
+    const result = await runFtpCheck('ftp://ftp.example.com:21', {});
+    expect(result.statusCode).not.toBe(400);
+  });
+
+  it('defaults to port 21 when no port given', async () => {
+    let capturedPort: number | undefined;
+    const mockSocket = {
+      write: vi.fn(), destroy: vi.fn(),
+      on: vi.fn(), once: vi.fn((event: string, cb: (err: Error) => void) => {
+        if (event === 'error') setTimeout(() => cb(new Error('ECONNREFUSED')), 0);
+      }),
+    };
+    vi.mocked(net.createConnection).mockImplementation((opts: unknown) => {
+      capturedPort = (opts as { port: number }).port;
+      return mockSocket as unknown as ReturnType<typeof net.createConnection>;
+    });
+    await runFtpCheck('ftp.example.com', {});
+    expect(capturedPort).toBe(21);
+  });
+
+  it('returns green on 220 banner without TLS check', async () => {
+    let dataHandler: ((buf: Buffer) => void) | null = null;
+    const mockSocket = {
+      write: vi.fn(),
+      destroy: vi.fn(),
+      on: vi.fn((event: string, cb: (buf: Buffer) => void) => {
+        if (event === 'data') dataHandler = cb;
+      }),
+      once: vi.fn(),
+    };
+    vi.mocked(net.createConnection).mockReturnValue(mockSocket as unknown as ReturnType<typeof net.createConnection>);
+
+    const promise = runFtpCheck('ftp.example.com:21', { checkTls: false });
+    // Emit 220 banner
+    setTimeout(() => dataHandler!(Buffer.from('220 FTP ready\r\n')), 10);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    expect(result.level).toBe('green');
+    expect(result.message).toContain('FTP ok');
+    expect(result.message).toContain('banner');
+  });
+
+  it('returns green on 220 + 234 TLS response', async () => {
+    let dataHandler: ((buf: Buffer) => void) | null = null;
+    const mockSocket = {
+      write: vi.fn((chunk: string) => {
+        // After AUTH TLS, send 234 response
+        if (chunk.includes('AUTH TLS') && dataHandler) {
+          setTimeout(() => dataHandler!(Buffer.from('234 AUTH TLS OK\r\n')), 5);
+        }
+      }),
+      destroy: vi.fn(),
+      on: vi.fn((event: string, cb: (buf: Buffer) => void) => {
+        if (event === 'data') dataHandler = cb;
+      }),
+      once: vi.fn(),
+    };
+    vi.mocked(net.createConnection).mockReturnValue(mockSocket as unknown as ReturnType<typeof net.createConnection>);
+
+    const promise = runFtpCheck('ftp.example.com:21', { checkTls: true });
+    setTimeout(() => dataHandler!(Buffer.from('220 FTP Server ready\r\n')), 10);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    expect(result.level).toBe('green');
+    expect(result.message).toContain('TLS supported');
+  });
+
+  it('returns yellow when AUTH TLS not supported (500/502/504)', async () => {
+    let dataHandler: ((buf: Buffer) => void) | null = null;
+    const mockSocket = {
+      write: vi.fn((chunk: string) => {
+        if (chunk.includes('AUTH TLS') && dataHandler) {
+          setTimeout(() => dataHandler!(Buffer.from('502 Command not implemented\r\n')), 5);
+        }
+      }),
+      destroy: vi.fn(),
+      on: vi.fn((event: string, cb: (buf: Buffer) => void) => {
+        if (event === 'data') dataHandler = cb;
+      }),
+      once: vi.fn(),
+    };
+    vi.mocked(net.createConnection).mockReturnValue(mockSocket as unknown as ReturnType<typeof net.createConnection>);
+
+    const promise = runFtpCheck('ftp.example.com:21', { checkTls: true });
+    setTimeout(() => dataHandler!(Buffer.from('220 FTP ready\r\n')), 10);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    expect(result.level).toBe('yellow');
+    expect(result.message).toContain('TLS not supported');
+  });
+
+  it('returns red on connection error', async () => {
+    const mockSocket = {
+      write: vi.fn(), destroy: vi.fn(),
+      on: vi.fn(),
+      once: vi.fn((event: string, cb: (err: Error) => void) => {
+        if (event === 'error') setTimeout(() => cb(new Error('ECONNREFUSED')), 0);
+      }),
+    };
+    vi.mocked(net.createConnection).mockReturnValue(mockSocket as unknown as ReturnType<typeof net.createConnection>);
+    const result = await runFtpCheck('ftp.example.com:21', {});
+    expect(result.ok).toBe(false);
+    expect(result.level).toBe('red');
+    expect(result.message).toContain('ECONNREFUSED');
+  });
+});
+
+// ── runImapCheck ──────────────────────────────────────────────────────────────
+
+describe('runImapCheck', () => {
+  afterEach(() => { vi.clearAllMocks(); });
+
+  it('returns red for empty host', async () => {
+    const result = await runImapCheck('', {});
+    expect(result.ok).toBe(false);
+    expect(result.level).toBe('red');
+    expect(result.statusCode).toBe(400);
+    expect(result.message).toContain('IMAP target');
+  });
+
+  it('returns red for invalid port :0', async () => {
+    const result = await runImapCheck(':0', {});
+    expect(result.ok).toBe(false);
+    expect(result.statusCode).toBe(400);
+  });
+
+  it('strips imap:// prefix', async () => {
+    const mockSocket = {
+      write: vi.fn(), destroy: vi.fn(),
+      on: vi.fn(), once: vi.fn((event: string, cb: (err: Error) => void) => {
+        if (event === 'error') setTimeout(() => cb(new Error('ECONNREFUSED')), 0);
+      }),
+    };
+    vi.mocked(net.createConnection).mockReturnValue(mockSocket as unknown as ReturnType<typeof net.createConnection>);
+    const result = await runImapCheck('imap://mail.example.com:143', {});
+    expect(result.statusCode).not.toBe(400);
+  });
+
+  it('defaults to port 143 when no port given', async () => {
+    let capturedPort: number | undefined;
+    const mockSocket = {
+      write: vi.fn(), destroy: vi.fn(),
+      on: vi.fn(), once: vi.fn((event: string, cb: (err: Error) => void) => {
+        if (event === 'error') setTimeout(() => cb(new Error('ECONNREFUSED')), 0);
+      }),
+    };
+    vi.mocked(net.createConnection).mockImplementation((opts: unknown) => {
+      capturedPort = (opts as { port: number }).port;
+      return mockSocket as unknown as ReturnType<typeof net.createConnection>;
+    });
+    await runImapCheck('mail.example.com', {});
+    expect(capturedPort).toBe(143);
+  });
+
+  it('returns green on * OK greeting without STARTTLS', async () => {
+    let dataHandler: ((buf: Buffer) => void) | null = null;
+    const mockSocket = {
+      write: vi.fn(),
+      destroy: vi.fn(),
+      on: vi.fn((event: string, cb: (buf: Buffer) => void) => {
+        if (event === 'data') dataHandler = cb;
+      }),
+      once: vi.fn(),
+    };
+    vi.mocked(net.createConnection).mockReturnValue(mockSocket as unknown as ReturnType<typeof net.createConnection>);
+
+    const promise = runImapCheck('mail.example.com:143', { checkTls: false });
+    setTimeout(() => dataHandler!(Buffer.from('* OK Dovecot ready\r\n')), 10);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    expect(result.level).toBe('green');
+    expect(result.message).toContain('IMAP ok');
+  });
+
+  it('returns green on STARTTLS OK response', async () => {
+    let dataHandler: ((buf: Buffer) => void) | null = null;
+    const mockSocket = {
+      write: vi.fn((chunk: string) => {
+        if (chunk.includes('STARTTLS') && dataHandler) {
+          setTimeout(() => dataHandler!(Buffer.from('a001 OK Begin TLS negotiation\r\n')), 5);
+        }
+      }),
+      destroy: vi.fn(),
+      on: vi.fn((event: string, cb: (buf: Buffer) => void) => {
+        if (event === 'data') dataHandler = cb;
+      }),
+      once: vi.fn(),
+    };
+    vi.mocked(net.createConnection).mockReturnValue(mockSocket as unknown as ReturnType<typeof net.createConnection>);
+
+    const promise = runImapCheck('mail.example.com:143', { checkTls: true });
+    setTimeout(() => dataHandler!(Buffer.from('* OK Dovecot ready\r\n')), 10);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    expect(result.level).toBe('green');
+    expect(result.message).toContain('STARTTLS accepted');
+  });
+
+  it('returns yellow when STARTTLS NO/BAD response', async () => {
+    let dataHandler: ((buf: Buffer) => void) | null = null;
+    const mockSocket = {
+      write: vi.fn((chunk: string) => {
+        if (chunk.includes('STARTTLS') && dataHandler) {
+          setTimeout(() => dataHandler!(Buffer.from('a001 NO STARTTLS not supported\r\n')), 5);
+        }
+      }),
+      destroy: vi.fn(),
+      on: vi.fn((event: string, cb: (buf: Buffer) => void) => {
+        if (event === 'data') dataHandler = cb;
+      }),
+      once: vi.fn(),
+    };
+    vi.mocked(net.createConnection).mockReturnValue(mockSocket as unknown as ReturnType<typeof net.createConnection>);
+
+    const promise = runImapCheck('mail.example.com:143', { checkTls: true });
+    setTimeout(() => dataHandler!(Buffer.from('* OK Dovecot ready\r\n')), 10);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    expect(result.level).toBe('yellow');
+    expect(result.message).toContain('STARTTLS not supported');
+  });
+
+  it('returns red on connection error', async () => {
+    const mockSocket = {
+      write: vi.fn(), destroy: vi.fn(),
+      on: vi.fn(),
+      once: vi.fn((event: string, cb: (err: Error) => void) => {
+        if (event === 'error') setTimeout(() => cb(new Error('EHOSTUNREACH')), 0);
+      }),
+    };
+    vi.mocked(net.createConnection).mockReturnValue(mockSocket as unknown as ReturnType<typeof net.createConnection>);
+    const result = await runImapCheck('mail.example.com:143', {});
+    expect(result.ok).toBe(false);
+    expect(result.level).toBe('red');
+    expect(result.message).toContain('EHOSTUNREACH');
+  });
+});
+
+// ── runPop3Check ──────────────────────────────────────────────────────────────
+
+describe('runPop3Check', () => {
+  afterEach(() => { vi.clearAllMocks(); });
+
+  it('returns red for empty host', async () => {
+    const result = await runPop3Check('', {});
+    expect(result.ok).toBe(false);
+    expect(result.level).toBe('red');
+    expect(result.statusCode).toBe(400);
+    expect(result.message).toContain('POP3 target');
+  });
+
+  it('returns red for port out of range', async () => {
+    const result = await runPop3Check('mail.example.com:99999', {});
+    expect(result.ok).toBe(false);
+    expect(result.statusCode).toBe(400);
+  });
+
+  it('strips pop3:// prefix', async () => {
+    const mockSocket = {
+      write: vi.fn(), destroy: vi.fn(),
+      on: vi.fn(), once: vi.fn((event: string, cb: (err: Error) => void) => {
+        if (event === 'error') setTimeout(() => cb(new Error('ECONNREFUSED')), 0);
+      }),
+    };
+    vi.mocked(net.createConnection).mockReturnValue(mockSocket as unknown as ReturnType<typeof net.createConnection>);
+    const result = await runPop3Check('pop3://mail.example.com:110', {});
+    expect(result.statusCode).not.toBe(400);
+  });
+
+  it('defaults to port 110 when no port given', async () => {
+    let capturedPort: number | undefined;
+    const mockSocket = {
+      write: vi.fn(), destroy: vi.fn(),
+      on: vi.fn(), once: vi.fn((event: string, cb: (err: Error) => void) => {
+        if (event === 'error') setTimeout(() => cb(new Error('ECONNREFUSED')), 0);
+      }),
+    };
+    vi.mocked(net.createConnection).mockImplementation((opts: unknown) => {
+      capturedPort = (opts as { port: number }).port;
+      return mockSocket as unknown as ReturnType<typeof net.createConnection>;
+    });
+    await runPop3Check('mail.example.com', {});
+    expect(capturedPort).toBe(110);
+  });
+
+  it('returns green on +OK greeting without STLS', async () => {
+    let dataHandler: ((buf: Buffer) => void) | null = null;
+    const mockSocket = {
+      write: vi.fn(),
+      destroy: vi.fn(),
+      on: vi.fn((event: string, cb: (buf: Buffer) => void) => {
+        if (event === 'data') dataHandler = cb;
+      }),
+      once: vi.fn(),
+    };
+    vi.mocked(net.createConnection).mockReturnValue(mockSocket as unknown as ReturnType<typeof net.createConnection>);
+
+    const promise = runPop3Check('mail.example.com:110', { checkTls: false });
+    setTimeout(() => dataHandler!(Buffer.from('+OK POP3 server ready\r\n')), 10);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    expect(result.level).toBe('green');
+    expect(result.message).toContain('POP3 ok');
+  });
+
+  it('returns green on STLS +OK response', async () => {
+    let dataHandler: ((buf: Buffer) => void) | null = null;
+    const mockSocket = {
+      write: vi.fn((chunk: string) => {
+        if (chunk.includes('STLS') && dataHandler) {
+          setTimeout(() => dataHandler!(Buffer.from('+OK Begin TLS negotiation\r\n')), 5);
+        }
+      }),
+      destroy: vi.fn(),
+      on: vi.fn((event: string, cb: (buf: Buffer) => void) => {
+        if (event === 'data') dataHandler = cb;
+      }),
+      once: vi.fn(),
+    };
+    vi.mocked(net.createConnection).mockReturnValue(mockSocket as unknown as ReturnType<typeof net.createConnection>);
+
+    const promise = runPop3Check('mail.example.com:110', { checkTls: true });
+    setTimeout(() => dataHandler!(Buffer.from('+OK POP3 server ready\r\n')), 10);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    expect(result.level).toBe('green');
+    expect(result.message).toContain('STLS accepted');
+  });
+
+  it('returns yellow when STLS -ERR response', async () => {
+    let dataHandler: ((buf: Buffer) => void) | null = null;
+    const mockSocket = {
+      write: vi.fn((chunk: string) => {
+        if (chunk.includes('STLS') && dataHandler) {
+          setTimeout(() => dataHandler!(Buffer.from('-ERR STLS command not supported\r\n')), 5);
+        }
+      }),
+      destroy: vi.fn(),
+      on: vi.fn((event: string, cb: (buf: Buffer) => void) => {
+        if (event === 'data') dataHandler = cb;
+      }),
+      once: vi.fn(),
+    };
+    vi.mocked(net.createConnection).mockReturnValue(mockSocket as unknown as ReturnType<typeof net.createConnection>);
+
+    const promise = runPop3Check('mail.example.com:110', { checkTls: true });
+    setTimeout(() => dataHandler!(Buffer.from('+OK POP3 server ready\r\n')), 10);
+    const result = await promise;
+
+    expect(result.ok).toBe(true);
+    expect(result.level).toBe('yellow');
+    expect(result.message).toContain('STLS not supported');
+  });
+
+  it('returns red on connection error', async () => {
+    const mockSocket = {
+      write: vi.fn(), destroy: vi.fn(),
+      on: vi.fn(),
+      once: vi.fn((event: string, cb: (err: Error) => void) => {
+        if (event === 'error') setTimeout(() => cb(new Error('ETIMEDOUT')), 0);
+      }),
+    };
+    vi.mocked(net.createConnection).mockReturnValue(mockSocket as unknown as ReturnType<typeof net.createConnection>);
+    const result = await runPop3Check('mail.example.com:110', {});
+    expect(result.ok).toBe(false);
+    expect(result.level).toBe('red');
+    expect(result.message).toContain('ETIMEDOUT');
   });
 });

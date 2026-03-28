@@ -24,7 +24,7 @@ export interface MonitorItem {
   name: string;
   description?: string | null;
   runbookUrl?: string | null;
-  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER" | "WHOIS";
+  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER" | "WHOIS" | "FTP" | "IMAP" | "POP3" | "CT_LOG";
   target: string;
   intervalSec: number;
   confirmations: number;
@@ -52,6 +52,19 @@ export interface MonitorItem {
   pinned?: boolean;
   pausedUntil?: string | null;
   mutedUntil?: string | null;
+  geoRegions?: string[];
+  /** JSONPath to extract a numeric metric from response body (HTTP/BROWSER only) */
+  metricPath?: string | null;
+  /** Human-readable label for the captured metric */
+  metricName?: string | null;
+  /** Optional unit label for the captured metric */
+  metricUnit?: string | null;
+  /** Alert yellow when captured metric value drops below this minimum */
+  metricAlertMin?: number | null;
+  /** Alert yellow when captured metric value exceeds this maximum */
+  metricAlertMax?: number | null;
+  /** Header assertions — array of { header, op, value? } to evaluate on every HTTP check */
+  headerAssertions?: Array<{ header: string; op: string; value?: string }> | null;
 }
 
 export interface MonitorRun {
@@ -65,6 +78,16 @@ export interface MonitorRun {
   level?: "green" | "yellow" | "red";
   /** First 500 chars of response body on failure, for debugging */
   responseBody?: string | null;
+  /** HTTP redirect chain: URLs followed before reaching final response */
+  redirectChain?: string[];
+  /** Header assertion failures — populated when headerAssertions are configured and at least one fails */
+  headerAssertionsFailed?: Array<{
+    header: string;
+    op: string;
+    expected?: string;
+    actual?: string | null;
+    message: string;
+  }> | null;
 }
 
 export interface AlertChannel {
@@ -97,7 +120,7 @@ export type MonitorFormData = {
   name: string;
   description: string;
   runbookUrl: string;
-  type: "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER" | "WHOIS";
+  type: "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER" | "WHOIS" | "FTP" | "IMAP" | "POP3" | "CT_LOG";
   target: string;
   intervalSec: number;
   confirmations: number;
@@ -128,6 +151,26 @@ export type MonitorFormData = {
   scheduleEndHour: number;
   /** Per-monitor HTTP/TCP/SSL request timeout in milliseconds (overrides default 5000ms) */
   timeoutMs: number | null;
+  /** Optional webhook URL called on every status change */
+  statusWebhookUrl?: string;
+  /** Optional HMAC-SHA256 signing secret for statusWebhookUrl */
+  statusWebhookSecret?: string;
+  /** Minimum ms between consecutive checks (throttle). Min 1000, max 3600000. */
+  throttleMs?: number | null;
+  /** Hard cap on checks per hour. Max 360. */
+  maxChecksPerHour?: number | null;
+  /** Geo region tags for simulated multi-region monitoring (round-robin). */
+  geoRegions?: string[];
+  /** JSONPath to extract a numeric metric from response body (HTTP/BROWSER only) */
+  metricPath?: string | null;
+  /** Human-readable label for the captured metric */
+  metricName?: string | null;
+  /** Optional unit label for the captured metric (e.g. "items", "ms", "%") */
+  metricUnit?: string | null;
+  /** Alert yellow when captured metric value drops below this minimum */
+  metricAlertMin?: number | null;
+  /** Alert yellow when captured metric value exceeds this maximum */
+  metricAlertMax?: number | null;
 };
 
 export type MonitorFormDataExtended = MonitorFormData & {
@@ -160,4 +203,22 @@ export type MonitorFormDataExtended = MonitorFormData & {
   authApiKeyName?: string;
   authApiKeyValue?: string;
   authApiKeyIn?: string;
+  // Pre-request auth step
+  preAuthUrl?: string;
+  preAuthBody?: string;
+  preAuthExtractCookie?: string;
+  preAuthExtractToken?: string;
+  // Response size constraints
+  minResponseBodyBytes?: number;
+  maxResponseBodyBytes?: number;
+  // Header assertion
+  assertResponseHeader?: string;
+  assertResponseHeaderValue?: string;
+  // Redirect behavior
+  followRedirects?: boolean;
+  maxRedirects?: number;
+  // Header tracking
+  trackedHeaders?: string;
+  // Header assertions
+  headerAssertions?: Array<{ header: string; op: string; value?: string }>;
 };

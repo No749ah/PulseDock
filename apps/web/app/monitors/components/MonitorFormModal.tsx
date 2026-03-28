@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useRef, useState } from "react";
 import { X } from "lucide-react";
 import { API_BASE } from "../../../lib/api";
 import { Button } from "../../components/Button";
@@ -10,6 +10,87 @@ import { HelpTooltip } from "../../../components/help-tooltip";
 import { brand } from "../../../lib/brand";
 import { inputClass } from "../constants";
 import type { MonitorPlugin, TagItem, MonitorFormData } from "../types";
+
+// ── Geo Regions Tag Input ─────────────────────────────────────────────────────
+
+interface GeoRegionsInputProps {
+  regions: string[];
+  onChange: (regions: string[]) => void;
+}
+
+function GeoRegionsInput({ regions, onChange }: GeoRegionsInputProps) {
+  const [inputValue, setInputValue] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  const addRegion = (value: string) => {
+    const trimmed = value.trim().slice(0, 50);
+    if (!trimmed || regions.includes(trimmed) || regions.length >= 10) return;
+    onChange([...regions, trimmed]);
+  };
+
+  const removeRegion = (region: string) => {
+    onChange(regions.filter((r) => r !== region));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if ((e.key === "Enter" || e.key === ",") && inputValue.trim()) {
+      e.preventDefault();
+      addRegion(inputValue.replace(/,+$/, "").trim());
+      setInputValue("");
+    } else if (e.key === "Backspace" && !inputValue && regions.length > 0) {
+      removeRegion(regions[regions.length - 1]);
+    }
+  };
+
+  return (
+    <div className="border-t border-border pt-4 mt-2">
+      <label className="block text-sm font-semibold text-text-primary mb-2">Geo Regions</label>
+      <div
+        className="min-h-[42px] flex flex-wrap gap-1.5 items-center px-3 py-2 rounded-xl border border-border bg-surface focus-within:ring-1 focus-within:ring-accent cursor-text"
+        onClick={() => inputRef.current?.focus()}
+      >
+        {regions.map((region) => (
+          <span
+            key={region}
+            className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-accent/15 text-accent border border-accent/30"
+          >
+            {region}
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); removeRegion(region); }}
+              className="hover:text-danger transition-colors ml-0.5"
+              aria-label={`Remove region ${region}`}
+            >
+              <X className="w-3 h-3" />
+            </button>
+          </span>
+        ))}
+        <input
+          ref={inputRef}
+          type="text"
+          value={inputValue}
+          onChange={(e) => setInputValue(e.target.value)}
+          onKeyDown={handleKeyDown}
+          onBlur={() => {
+            if (inputValue.trim()) {
+              addRegion(inputValue.trim());
+              setInputValue("");
+            }
+          }}
+          placeholder={regions.length === 0 ? "e.g. us-east-1 — press Enter or comma to add" : regions.length >= 10 ? "Max 10 regions" : "Add region…"}
+          disabled={regions.length >= 10}
+          className="flex-1 min-w-[140px] bg-transparent text-sm text-text-primary placeholder-text-muted outline-none"
+        />
+      </div>
+      <p className="text-xs text-text-muted mt-1.5">
+        Assign region labels to checks for multi-region analysis. Labels are applied round-robin to each check run.{" "}
+        <span className="text-text-secondary">{regions.length}/10 regions · max 50 chars each</span>
+      </p>
+    </div>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 interface MonitorFormModalProps {
   isOpen: boolean;
@@ -153,8 +234,12 @@ export function MonitorFormModal({
               <option value="DNS">DNS Lookup</option>
               <option value="PING">ICMP Ping</option>
               <option value="SMTP">SMTP Email Server</option>
+              <option value="FTP">FTP Server</option>
+              <option value="IMAP">IMAP Mail Server</option>
+              <option value="POP3">POP3 Mail Server</option>
               <option value="BROWSER">Browser / Page Check</option>
               <option value="WHOIS">WHOIS Domain Expiry</option>
+              <option value="CT_LOG">CT Log Monitor</option>
             </select>
           </div>
 
@@ -512,6 +597,132 @@ export function MonitorFormModal({
           </>
         )}
 
+        {/* FTP-specific config */}
+        {formData.type === "FTP" && (
+          <>
+            <div className="rounded-xl border border-accent/20 bg-accent/5 p-3">
+              <p className="text-xs text-text-secondary leading-relaxed">
+                <span className="font-medium text-text-primary">FTP Server</span> — connects to the FTP server and reads the 220 banner. Optionally tests AUTH TLS support. Enter <code className="bg-surface-2 px-1 rounded">host:port</code> (default port: 21).
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="ftpCheckTls"
+                checked={(formData as unknown as { checkTls?: boolean }).checkTls ?? false}
+                onChange={(e) => onSetFormData({ ...formData, checkTls: e.target.checked } as typeof formData & { checkTls?: boolean })}
+                className="w-4 h-4 rounded border border-border bg-surface accent-accent"
+              />
+              <label htmlFor="ftpCheckTls" className="text-sm text-text-primary cursor-pointer">
+                Test AUTH TLS (FTPS explicit)
+              </label>
+            </div>
+            <p className="text-xs text-text-secondary -mt-1">When enabled, sends AUTH TLS after banner. Warns if TLS is not supported, fails if connection error occurs.</p>
+          </>
+        )}
+
+        {/* IMAP-specific config */}
+        {formData.type === "IMAP" && (
+          <>
+            <div className="rounded-xl border border-accent/20 bg-accent/5 p-3">
+              <p className="text-xs text-text-secondary leading-relaxed">
+                <span className="font-medium text-text-primary">IMAP Mail Server</span> — connects to the IMAP server and reads the greeting. Optionally tests STARTTLS support. Enter <code className="bg-surface-2 px-1 rounded">host:port</code> (default port: 143 plain, 993 TLS).
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="imapCheckTls"
+                checked={(formData as unknown as { checkTls?: boolean }).checkTls ?? false}
+                onChange={(e) => onSetFormData({ ...formData, checkTls: e.target.checked } as typeof formData & { checkTls?: boolean })}
+                className="w-4 h-4 rounded border border-border bg-surface accent-accent"
+              />
+              <label htmlFor="imapCheckTls" className="text-sm text-text-primary cursor-pointer">
+                Test STARTTLS upgrade
+              </label>
+            </div>
+            <p className="text-xs text-text-secondary -mt-1">When enabled, sends STARTTLS after greeting. Warns if not supported.</p>
+          </>
+        )}
+
+        {/* POP3-specific config */}
+        {formData.type === "POP3" && (
+          <>
+            <div className="rounded-xl border border-accent/20 bg-accent/5 p-3">
+              <p className="text-xs text-text-secondary leading-relaxed">
+                <span className="font-medium text-text-primary">POP3 Mail Server</span> — connects to the POP3 server and reads the +OK greeting. Optionally tests STLS support. Enter <code className="bg-surface-2 px-1 rounded">host:port</code> (default port: 110 plain, 995 TLS).
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="pop3CheckTls"
+                checked={(formData as unknown as { checkTls?: boolean }).checkTls ?? false}
+                onChange={(e) => onSetFormData({ ...formData, checkTls: e.target.checked } as typeof formData & { checkTls?: boolean })}
+                className="w-4 h-4 rounded border border-border bg-surface accent-accent"
+              />
+              <label htmlFor="pop3CheckTls" className="text-sm text-text-primary cursor-pointer">
+                Test STLS upgrade
+              </label>
+            </div>
+            <p className="text-xs text-text-secondary -mt-1">When enabled, sends STLS command after greeting. Warns if not supported.</p>
+          </>
+        )}
+
+        {/* CT Log-specific config */}
+        {formData.type === "CT_LOG" && (
+          <>
+            <div className="rounded-xl border border-accent/20 bg-accent/5 p-3">
+              <p className="text-xs text-text-secondary leading-relaxed">
+                <span className="font-medium text-text-primary">CT Log Monitor</span> — watches{" "}
+                <a href="https://crt.sh" target="_blank" rel="noopener noreferrer" className="text-accent hover:underline">crt.sh</a>{" "}
+                (Certificate Transparency logs) for new SSL/TLS certificates issued for your domain.
+                Detects unauthorized certs, new subdomains, and wildcard issuance.
+                Enter just the domain name (e.g. <code className="bg-surface-2 px-1 rounded">example.com</code>).
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-text-secondary mb-1">
+                Lookback window (days)
+              </label>
+              <input
+                type="number"
+                min={1}
+                max={30}
+                value={(formData as unknown as { ctLogLookbackDays?: number }).ctLogLookbackDays ?? 7}
+                onChange={(e) => onSetFormData({ ...formData, ctLogLookbackDays: Math.min(30, Math.max(1, parseInt(e.target.value, 10) || 7)) } as typeof formData & { ctLogLookbackDays?: number })}
+                className={inputClass}
+                placeholder="7"
+              />
+              <p className="text-xs text-text-secondary mt-1">Certificates issued within this window trigger a yellow alert. Range: 1–30 days.</p>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="ctLogAlertOnNewSubdomains"
+                checked={(formData as unknown as { ctLogAlertOnNewSubdomains?: boolean }).ctLogAlertOnNewSubdomains ?? true}
+                onChange={(e) => onSetFormData({ ...formData, ctLogAlertOnNewSubdomains: e.target.checked } as typeof formData & { ctLogAlertOnNewSubdomains?: boolean })}
+                className="w-4 h-4 rounded border border-border bg-surface accent-accent"
+              />
+              <label htmlFor="ctLogAlertOnNewSubdomains" className="text-sm text-text-primary cursor-pointer">
+                Alert on new subdomains
+              </label>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="checkbox"
+                id="ctLogAlertOnWildcard"
+                checked={(formData as unknown as { ctLogAlertOnWildcard?: boolean }).ctLogAlertOnWildcard ?? true}
+                onChange={(e) => onSetFormData({ ...formData, ctLogAlertOnWildcard: e.target.checked } as typeof formData & { ctLogAlertOnWildcard?: boolean })}
+                className="w-4 h-4 rounded border border-border bg-surface accent-accent"
+              />
+              <label htmlFor="ctLogAlertOnWildcard" className="text-sm text-text-primary cursor-pointer">
+                Alert on wildcard certificates
+              </label>
+            </div>
+          </>
+        )}
+
         {/* HTTP-specific config */}
         {formData.type === "HTTP" && (
           <>
@@ -624,6 +835,66 @@ export function MonitorFormModal({
                 </div>
               </div>
             )}
+            {/* Pre-Request Authentication Step */}
+            <div className="space-y-3 p-3 rounded-lg border border-border/60 bg-surface-elevated/40">
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-semibold text-text-secondary">Pre-Request Auth Step</label>
+                <span className="text-[10px] uppercase tracking-wider bg-accent/10 text-accent px-1.5 py-0.5 rounded font-medium">Optional</span>
+              </div>
+              <p className="text-xs text-text-muted">Login first, then carry the session cookie or token to the main check. Useful for apps behind authentication.</p>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Login URL <span className="text-[10px] text-text-muted">(POST)</span></label>
+                <input
+                  type="text"
+                  value={(formData as unknown as { preAuthUrl?: string }).preAuthUrl ?? ""}
+                  onChange={(e) => onSetFormData({ ...formData, preAuthUrl: e.target.value } as typeof formData & { preAuthUrl?: string })}
+                  className={inputClass}
+                  placeholder="https://app.example.com/api/auth/login"
+                  autoComplete="off"
+                />
+              </div>
+              {(formData as unknown as { preAuthUrl?: string }).preAuthUrl?.trim() && (
+                <>
+                  <div>
+                    <label className="block text-xs font-medium text-text-secondary mb-1">Login Payload <span className="text-[10px] text-text-muted">(JSON body)</span></label>
+                    <textarea
+                      rows={2}
+                      value={(formData as unknown as { preAuthBody?: string }).preAuthBody ?? ""}
+                      onChange={(e) => onSetFormData({ ...formData, preAuthBody: e.target.value } as typeof formData & { preAuthBody?: string })}
+                      className={`${inputClass} font-mono text-xs resize-y`}
+                      placeholder={'{"email":"monitor@example.com","password":"secret"}'}
+                      spellCheck={false}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs font-medium text-text-secondary mb-1">Extract Cookie <span className="text-[10px] text-text-muted">(name)</span></label>
+                      <input
+                        type="text"
+                        value={(formData as unknown as { preAuthExtractCookie?: string }).preAuthExtractCookie ?? ""}
+                        onChange={(e) => onSetFormData({ ...formData, preAuthExtractCookie: e.target.value } as typeof formData & { preAuthExtractCookie?: string })}
+                        className={inputClass}
+                        placeholder="session"
+                        autoComplete="off"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-text-secondary mb-1">Extract Token <span className="text-[10px] text-text-muted">(JSON path)</span></label>
+                      <input
+                        type="text"
+                        value={(formData as unknown as { preAuthExtractToken?: string }).preAuthExtractToken ?? ""}
+                        onChange={(e) => onSetFormData({ ...formData, preAuthExtractToken: e.target.value } as typeof formData & { preAuthExtractToken?: string })}
+                        className={inputClass}
+                        placeholder="data.accessToken"
+                        autoComplete="off"
+                      />
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-text-muted">Set either <em>Extract Cookie</em> (cookie name from Set-Cookie) or <em>Extract Token</em> (JSON dot-path to bearer token) — not both.</p>
+                </>
+              )}
+            </div>
+
             <div>
               <label className="block text-sm font-medium text-text-secondary mb-1">
                 Request Headers <span className="text-xs text-text-muted">(optional)</span>
@@ -881,6 +1152,119 @@ export function MonitorFormModal({
               )}
             </div>
 
+            {/* Header Assertions */}
+            {(() => {
+              const assertions: Array<{ header: string; op: string; value?: string }> =
+                (formData as unknown as { headerAssertions?: Array<{ header: string; op: string; value?: string }> }).headerAssertions ?? [];
+              const setAssertions = (next: Array<{ header: string; op: string; value?: string }>) =>
+                onSetFormData({ ...formData, headerAssertions: next } as typeof formData & { headerAssertions?: Array<{ header: string; op: string; value?: string }> });
+
+              const SUGGESTIONS = [
+                { header: 'strict-transport-security', op: 'exists' },
+                { header: 'x-frame-options', op: 'exists' },
+                { header: 'content-security-policy', op: 'exists' },
+                { header: 'x-content-type-options', op: 'equals', value: 'nosniff' },
+              ];
+
+              const inputClass = "w-full px-2 py-1.5 text-xs bg-surface border border-border rounded text-text-primary focus:outline-none focus:ring-1 focus:ring-accent";
+
+              return (
+                <div className="flex flex-col gap-2 p-3 rounded-lg bg-surface-2 border border-border">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-medium text-text-primary flex items-center gap-1.5">
+                      🔍 Header Assertions
+                    </span>
+                    {assertions.length < 10 && (
+                      <button
+                        type="button"
+                        onClick={() => setAssertions([...assertions, { header: '', op: 'exists' }])}
+                        className="text-xs text-accent hover:text-accent/80 transition-colors font-medium"
+                      >
+                        + Add assertion
+                      </button>
+                    )}
+                  </div>
+                  <p className="text-xs text-text-secondary">Assert specific response headers on every check — alert yellow when a header is missing, has the wrong value, or contains unexpected content.</p>
+
+                  {/* Suggestion chips */}
+                  {assertions.length === 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-1">
+                      {SUGGESTIONS.map((s, i) => (
+                        <button
+                          key={i}
+                          type="button"
+                          onClick={() => setAssertions([...assertions, s])}
+                          className="text-xs px-2 py-1 rounded bg-surface border border-border text-text-secondary hover:text-text-primary hover:border-accent/50 transition-colors"
+                        >
+                          {s.header}: {s.op}{s.value ? `: ${s.value}` : ''}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Assertion rows */}
+                  {assertions.map((a, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <input
+                        type="text"
+                        value={a.header}
+                        onChange={(e) => {
+                          const next = [...assertions];
+                          next[i] = { ...next[i], header: e.target.value };
+                          setAssertions(next);
+                        }}
+                        className={inputClass + " flex-1"}
+                        placeholder="header name (e.g. x-frame-options)"
+                      />
+                      <select
+                        value={a.op}
+                        onChange={(e) => {
+                          const next = [...assertions];
+                          next[i] = { ...next[i], op: e.target.value };
+                          setAssertions(next);
+                        }}
+                        className={inputClass + " w-36 shrink-0"}
+                      >
+                        <option value="exists">exists</option>
+                        <option value="not-exists">does not exist</option>
+                        <option value="equals">equals</option>
+                        <option value="contains">contains</option>
+                      </select>
+                      <input
+                        type="text"
+                        value={a.value ?? ''}
+                        onChange={(e) => {
+                          const next = [...assertions];
+                          next[i] = { ...next[i], value: e.target.value || undefined };
+                          setAssertions(next);
+                        }}
+                        disabled={a.op === 'exists' || a.op === 'not-exists'}
+                        className={inputClass + " flex-1 disabled:opacity-40 disabled:cursor-not-allowed"}
+                        placeholder="expected value"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setAssertions(assertions.filter((_, j) => j !== i))}
+                        className="text-text-muted hover:text-danger transition-colors text-sm font-bold shrink-0 w-5"
+                        title="Remove assertion"
+                      >
+                        ×
+                      </button>
+                    </div>
+                  ))}
+                  {assertions.length > 0 && assertions.length < 10 && (
+                    <button
+                      type="button"
+                      onClick={() => setAssertions([...assertions, { header: '', op: 'exists' }])}
+                      className="text-xs text-text-muted hover:text-accent transition-colors self-start"
+                    >
+                      + Add another
+                    </button>
+                  )}
+                </div>
+              );
+            })()}
+
             {/* Redirect Following */}
             <div className="flex items-start gap-3 p-3 rounded-lg bg-surface-2 border border-border">
               <input
@@ -1109,6 +1493,180 @@ export function MonitorFormModal({
           </div>
           <p className="text-xs text-white/40 mt-1">Alert breach when recovery takes longer than this target</p>
         </div>
+
+        {/* Status Webhook */}
+        <div className="border border-border rounded-lg p-4 space-y-3">
+          <div>
+            <label className="block text-sm font-semibold text-text-primary">Status Change Webhook</label>
+            <p className="mt-0.5 text-xs text-text-secondary">
+              POST to this URL whenever this monitor&apos;s status changes (green↔yellow/red). Useful for CI/CD integrations and automation.
+            </p>
+          </div>
+          <div>
+            <label htmlFor="statusWebhookUrl" className="text-xs text-text-secondary block mb-1">Webhook URL</label>
+            <input
+              id="statusWebhookUrl"
+              type="url"
+              placeholder="https://example.com/hooks/monitor-status"
+              value={(formData as unknown as { statusWebhookUrl?: string }).statusWebhookUrl ?? ''}
+              onChange={(e) => (onSetFormData as (d: typeof formData & { statusWebhookUrl?: string }) => void)({ ...formData, statusWebhookUrl: e.target.value || '' })}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30"
+            />
+          </div>
+          {!!((formData as unknown as { statusWebhookUrl?: string }).statusWebhookUrl) && (
+            <div>
+              <label htmlFor="statusWebhookSecret" className="text-xs text-text-secondary block mb-1">Signing Secret <span className="text-white/30">(optional — adds X-PulseDock-Signature header)</span></label>
+              <input
+                id="statusWebhookSecret"
+                type="password"
+                placeholder="Leave blank to skip signature"
+                value={(formData as unknown as { statusWebhookSecret?: string }).statusWebhookSecret ?? ''}
+                onChange={(e) => (onSetFormData as (d: typeof formData & { statusWebhookSecret?: string }) => void)({ ...formData, statusWebhookSecret: e.target.value || '' })}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30"
+              />
+              <p className="text-xs text-white/40 mt-1">HMAC-SHA256: verify with <code className="bg-white/10 px-1 rounded">sha256=&lt;hex&gt;</code> from the X-PulseDock-Signature header</p>
+            </div>
+          )}
+        </div>
+
+        {/* Rate Limiting */}
+        <div className="border border-border rounded-lg p-4 space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-text-primary">Rate Limiting</label>
+            <p className="mt-0.5 text-xs text-text-secondary">
+              Prevent thundering herds and be a good citizen to monitored services.
+            </p>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs text-text-secondary mb-1">Min. delay between checks (ms)</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  min="1000"
+                  max="3600000"
+                  step="1000"
+                  placeholder="e.g. 5000"
+                  value={(formData as MonitorFormData).throttleMs ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value === "" ? null : parseInt(e.target.value, 10);
+                    onSetFormData({ ...formData, throttleMs: val && val >= 1000 ? val : null });
+                  }}
+                  className="w-36 px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+                <span className="text-sm text-text-muted">ms</span>
+              </div>
+              <p className="text-xs text-text-muted mt-1">Prevents rapid successive checks after interval drift. Min 1000ms.</p>
+            </div>
+            <div>
+              <label className="block text-xs text-text-secondary mb-1">Max checks per hour</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  min="1"
+                  max="360"
+                  step="1"
+                  placeholder="e.g. 60"
+                  value={(formData as MonitorFormData).maxChecksPerHour ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value === "" ? null : parseInt(e.target.value, 10);
+                    onSetFormData({ ...formData, maxChecksPerHour: val && val >= 1 ? val : null });
+                  }}
+                  className="w-36 px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+                <span className="text-sm text-text-muted">checks/hr</span>
+              </div>
+              <p className="text-xs text-text-muted mt-1">Hard cap regardless of interval. Max 360.</p>
+            </div>
+          </div>
+
+          {/* Geo Regions */}
+          <GeoRegionsInput
+            regions={(formData as MonitorFormData).geoRegions ?? []}
+            onChange={(regions) => onSetFormData({ ...formData, geoRegions: regions })}
+          />
+        </div>
+
+        {/* Custom Metric Capture — HTTP/BROWSER only */}
+        {(formData.type === "HTTP" || formData.type === "BROWSER") && (
+          <div className="border border-border rounded-lg p-4 space-y-4">
+            <div>
+              <label className="block text-sm font-semibold text-text-primary">Custom Metric Capture</label>
+              <p className="mt-0.5 text-xs text-text-secondary">
+                Extract a numeric value from the JSON response body on every check. Track business metrics (queue depth, error count, active users) without a separate metrics system.
+              </p>
+            </div>
+            <div className="space-y-3">
+              <div>
+                <label className="block text-xs text-text-secondary mb-1">JSON Path <span className="text-white/40">(e.g. $.queue.depth, $.metrics.errors)</span></label>
+                <input
+                  type="text"
+                  placeholder="$.queue.depth"
+                  value={(formData as MonitorFormData).metricPath ?? ""}
+                  onChange={(e) => onSetFormData({ ...formData, metricPath: e.target.value || null })}
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent placeholder:text-white/30"
+                />
+              </div>
+              {(formData as MonitorFormData).metricPath && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-xs text-text-secondary mb-1">Metric Name</label>
+                      <input
+                        type="text"
+                        placeholder="Queue Depth"
+                        value={(formData as MonitorFormData).metricName ?? ""}
+                        onChange={(e) => onSetFormData({ ...formData, metricName: e.target.value || null })}
+                        className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent placeholder:text-white/30"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs text-text-secondary mb-1">Unit <span className="text-white/40">(optional)</span></label>
+                      <input
+                        type="text"
+                        placeholder="items"
+                        value={(formData as MonitorFormData).metricUnit ?? ""}
+                        onChange={(e) => onSetFormData({ ...formData, metricUnit: e.target.value || null })}
+                        className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent placeholder:text-white/30"
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-xs text-text-secondary mb-1">Alert thresholds <span className="text-white/40">(optional — turns check yellow when outside range)</span></label>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-text-muted">Min</span>
+                        <input
+                          type="number"
+                          placeholder="—"
+                          value={(formData as MonitorFormData).metricAlertMin ?? ""}
+                          onChange={(e) => {
+                            const val = e.target.value === "" ? null : parseFloat(e.target.value);
+                            onSetFormData({ ...formData, metricAlertMin: val !== null && !isNaN(val) ? val : null });
+                          }}
+                          className="w-24 px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-text-muted">Max</span>
+                        <input
+                          type="number"
+                          placeholder="—"
+                          value={(formData as MonitorFormData).metricAlertMax ?? ""}
+                          onChange={(e) => {
+                            const val = e.target.value === "" ? null : parseFloat(e.target.value);
+                            onSetFormData({ ...formData, metricAlertMax: val !== null && !isNaN(val) ? val : null });
+                          }}
+                          className="w-24 px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
+          </div>
+        )}
 
         {/* Auto-Incident */}
         <div className="border border-border rounded-lg p-4 space-y-3">

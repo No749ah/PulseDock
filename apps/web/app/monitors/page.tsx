@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, PauseCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, Layers, Filter, Clock, Tag, Copy, Pin, Zap } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, PauseCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, Layers, Filter, Clock, Tag, Copy, Pin, Zap, Globe, Settings } from "lucide-react";
 import { API_BASE, api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -19,7 +19,7 @@ import Link from "next/link";
 import { MonitorStatusCell } from "../components/MonitorStatusCell";
 import { MiniSparkline } from "../../components/charts";
 import { brand } from "../../lib/brand";
-import type { MonitorTag, TagItem, AlertChannelSummary, MonitorItem, MonitorRun, AlertChannel, PluginField, MonitorPlugin } from "./types";
+import type { MonitorTag, TagItem, AlertChannelSummary, MonitorItem, MonitorRun, AlertChannel, PluginField, MonitorPlugin, MonitorFormDataExtended } from "./types";
 import { CHANNEL_TYPE_COLORS, NOTIFY_ON_LABELS } from "./constants";
 import { buildEditFormData, buildFormDataFromTemplate } from "./utils";
 import { AlertPanel } from "./components/AlertPanel";
@@ -29,6 +29,7 @@ import { MonitorFormModal } from "./components/MonitorFormModal";
 import { MonitorGridView, MonitorGroupedView } from "./components/MonitorGridView";
 import { AdvancedFiltersPanel } from "./components/AdvancedFiltersPanel";
 import { QuickAddModal } from "./components/QuickAddModal";
+import { ImportFromComposeModal } from "./components/ImportFromComposeModal";
 
 function MonitorsPageInner() {
   const router = useRouter();
@@ -52,21 +53,21 @@ function MonitorsPageInner() {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   // Advanced filter panel state
   const [filterStatuses, setFilterStatuses] = useState<Set<string>>(new Set(["up", "down", "degraded", "paused"]));
-  const [filterTypes, setFilterTypes] = useState<Set<string>>(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER", "WHOIS"]));
+  const [filterTypes, setFilterTypes] = useState<Set<string>>(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER", "WHOIS", "FTP", "IMAP", "POP3"]));
   const [filterTags, setFilterTags] = useState<Set<string>>(new Set());
   const [savedPresets, setSavedPresets] = useState<Array<{ name: string; filters: Record<string, string> }>>(() => {
     try { return JSON.parse(localStorage.getItem("monitor-filter-presets") || "[]"); } catch { return []; }
   });
-  const [sortBy, setSortBy] = useState<"name" | "status" | "latency" | "uptime" | "lastChecked" | "type" | "interval">("name");
+  const [sortBy, setSortBy] = useState<"name" | "status" | "latency" | "uptime" | "lastChecked" | "type" | "interval" | "health">("name");
   const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
   const [viewMode, setViewMode] = useState<"table" | "grid" | "grouped">("table");
   // Column visibility (persisted to localStorage)
   const [visibleCols, setVisibleCols] = useState<Record<string, boolean>>(() => {
     try {
       const stored = localStorage.getItem("monitor-col-visibility");
-      return stored ? JSON.parse(stored) : { type: true, target: true, interval: true, trend: true, alerts: true, latency: true };
+      return stored ? JSON.parse(stored) : { type: true, target: true, interval: true, trend: true, alerts: true, latency: true, health: true };
     } catch {
-      return { type: true, target: true, interval: true, trend: true, alerts: true, latency: true };
+      return { type: true, target: true, interval: true, trend: true, alerts: true, latency: true, health: true };
     }
   });
   const [showColPicker, setShowColPicker] = useState(false);
@@ -92,41 +93,7 @@ function MonitorsPageInner() {
   const [modalMode, setModalMode] = useState<"create" | "edit">("create");
   const [showTemplates, setShowTemplates] = useState(true);
   const [editingMonitor, setEditingMonitor] = useState<MonitorItem | null>(null);
-  const [formData, setFormData] = useState<{
-    name: string;
-    description: string;
-    runbookUrl: string;
-    type: "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER" | "WHOIS";
-    target: string;
-    intervalSec: number;
-    confirmations: number;
-    retryCount: number;
-    enabled: boolean;
-    pluginId: string;
-    expectedText: string;
-    heartbeatTimeoutMin: number;
-    heartbeatToken: string;
-    folderId: string;
-    slaTarget: number | "";
-    slaPeriodDays: number;
-    autoIncident: boolean;
-    autoIncidentSeverity: string;
-    flapDetectionEnabled: boolean;
-    flapWindow: number;
-    flapThreshold: number;
-    latencyAlertMs: number | null;
-    anomalyDetection: boolean;
-    anomalyMultiplier: number;
-    sliLatencyTarget: number | "";
-    sliLatencyWindow: number;
-    rtoMinutes: number | undefined;
-    timeoutMs: number | null;
-    cronExpression: string;
-    scheduleEnabled: boolean;
-    scheduleDays: string;
-    scheduleStartHour: number;
-    scheduleEndHour: number;
-  }>({
+  const [formData, setFormData] = useState<MonitorFormDataExtended>({
     name: "",
     description: "", runbookUrl: "",
     type: "HTTP",
@@ -145,6 +112,8 @@ function MonitorsPageInner() {
     autoIncident: false,
     autoIncidentSeverity: "MEDIUM",
     flapDetectionEnabled: true,
+    flapWindow: 10,
+    flapThreshold: 50,
     latencyAlertMs: null,
     anomalyDetection: false,
     anomalyMultiplier: 2.0,
@@ -181,6 +150,11 @@ function MonitorsPageInner() {
   const [bulkLoading, setBulkLoading] = useState(false);
   const [bulkTagId, setBulkTagId] = useState<string>("");
   const [bulkValue, setBulkValue] = useState<string>("");
+  const [showBulkEditModal, setShowBulkEditModal] = useState(false);
+  const [bulkEditForm, setBulkEditForm] = useState<{
+    intervalSec: string; confirmations: string; retryCount: string;
+    latencyAlertMs: string; slaTarget: string; flapDetectionEnabled: string; enabled: string;
+  }>({ intervalSec: "", confirmations: "", retryCount: "", latencyAlertMs: "", slaTarget: "", flapDetectionEnabled: "", enabled: "" });
   const [checkingNowId, setCheckingNowId] = useState<string | null>(null);
   const [snoozeMenuId, setSnoozeMenuId] = useState<string | null>(null);
   const [pauseMenuId, setPauseMenuId] = useState<string | null>(null);
@@ -190,6 +164,26 @@ function MonitorsPageInner() {
 
   // quick add (bulk URL) modal
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showComposeImport, setShowComposeImport] = useState(false);
+
+  // config export modal
+  const [showConfigExport, setShowConfigExport] = useState(false);
+  const [configExportFormat, setConfigExportFormat] = useState<"json" | "yaml">("json");
+  const [configExportIncludeAlerts, setConfigExportIncludeAlerts] = useState(false);
+  const [configExporting, setConfigExporting] = useState(false);
+
+  // config import modal
+  const [showConfigImport, setShowConfigImport] = useState(false);
+  const [configImportContent, setConfigImportContent] = useState("");
+  const [configImportFormat, setConfigImportFormat] = useState<"json" | "yaml">("json");
+  const [configImportDryRun, setConfigImportDryRun] = useState(false);
+  const [configImportOverwrite, setConfigImportOverwrite] = useState(false);
+  const [configImporting, setConfigImporting] = useState(false);
+  const configImportFileRef = useRef<HTMLInputElement>(null);
+  const [configImportResult, setConfigImportResult] = useState<{
+    created: number; updated: number; skipped: number; errors: string[];
+    monitors: { name: string; id?: string; action: string; error?: string }[];
+  } | null>(null);
 
   // row expansion
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -292,7 +286,7 @@ function MonitorsPageInner() {
       try {
         setLoading(true);
         setError("");
-        const [monitorsData, runsData, channelsData, pluginsData, tagsData, foldersData, healthSummaryData] = await Promise.all([
+        const [monitorsData, runsData, channelsData, pluginsData, tagsData, foldersData, healthSummaryData, batchHealthData] = await Promise.all([
           api<MonitorItem[]>("/v1/monitors", userId),
           api<MonitorRun[]>("/v1/monitors/runs?limit=20", userId),
           api<AlertChannel[]>("/v1/alert-channels", userId),
@@ -300,6 +294,7 @@ function MonitorsPageInner() {
           api<TagItem[]>("/v1/tags", userId),
           api<{ id: string; name: string }[]>("/v1/folders", userId),
           api<{ scores: Array<{ monitorId: string; name: string; score: number; grade: string }>; overall: { avg: number } }>("/v1/monitors/health-summary", userId).catch(() => null),
+          api<Array<{ monitorId: string; score: number | null }>>("/v1/monitors/health-scores", userId).catch(() => null),
         ]);
         setMonitors(monitorsData);
         setRuns(runsData);
@@ -308,13 +303,23 @@ function MonitorsPageInner() {
         setAllTags(tagsData);
         setFolders(foldersData);
 
+        // Build health score map — prefer batch v2 scores (uptime/latency/incidents/flapping formula)
+        const scoreMap: Record<string, { score: number; grade: string }> = {};
         if (healthSummaryData?.scores) {
-          const scoreMap: Record<string, { score: number; grade: string }> = {};
           for (const s of healthSummaryData.scores) {
             scoreMap[s.monitorId] = { score: s.score, grade: s.grade };
           }
-          setHealthScores(scoreMap);
         }
+        // Overlay v2 batch scores (override grade with numeric label)
+        if (batchHealthData) {
+          for (const s of batchHealthData) {
+            if (s.score !== null) {
+              const grade = s.score >= 90 ? "A" : s.score >= 70 ? "B" : s.score >= 50 ? "C" : s.score >= 25 ? "D" : "F";
+              scoreMap[s.monitorId] = { score: s.score, grade };
+            }
+          }
+        }
+        setHealthScores(scoreMap);
         const folderParam = searchParams.get("folder");
         if (folderParam) {
           setFolderFilter(folderParam);
@@ -525,7 +530,7 @@ function MonitorsPageInner() {
       if (fw.whoisCriticalDays !== undefined) config.criticalDays = fw.whoisCriticalDays;
     }
     if (formData.type === "HTTP") {
-      const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number; minResponseBodyBytes?: number; maxResponseBodyBytes?: number; assertResponseHeader?: string; assertResponseHeaderValue?: string; checkSecurityHeaders?: boolean; authType?: string; authUser?: string; authPassword?: string; authToken?: string; authApiKeyName?: string; authApiKeyValue?: string; authApiKeyIn?: string; followRedirects?: boolean; maxRedirects?: number };
+      const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number; minResponseBodyBytes?: number; maxResponseBodyBytes?: number; assertResponseHeader?: string; assertResponseHeaderValue?: string; checkSecurityHeaders?: boolean; authType?: string; authUser?: string; authPassword?: string; authToken?: string; authApiKeyName?: string; authApiKeyValue?: string; authApiKeyIn?: string; followRedirects?: boolean; maxRedirects?: number; preAuthUrl?: string; preAuthBody?: string; preAuthExtractCookie?: string; preAuthExtractToken?: string };
       if (f.expectedStatus) config.expectedStatus = f.expectedStatus;
       if (f.bodyContains?.trim()) config.bodyContains = f.bodyContains.trim();
       if (f.bodyJsonPath?.trim()) config.bodyJsonPath = f.bodyJsonPath.trim();
@@ -568,6 +573,13 @@ function MonitorsPageInner() {
           if (f.authApiKeyValue) config.authApiKeyValue = f.authApiKeyValue;
           config.authApiKeyIn = f.authApiKeyIn ?? 'header';
         }
+      }
+      // Pre-request auth step
+      if (f.preAuthUrl?.trim()) {
+        config.preAuthUrl = f.preAuthUrl.trim();
+        if (f.preAuthBody?.trim()) config.preAuthBody = f.preAuthBody.trim();
+        if (f.preAuthExtractCookie?.trim()) config.preAuthExtractCookie = f.preAuthExtractCookie.trim();
+        if (f.preAuthExtractToken?.trim()) config.preAuthExtractToken = f.preAuthExtractToken.trim();
       }
     }
     return config;
@@ -613,6 +625,15 @@ function MonitorsPageInner() {
           trackedHeaders: (formData as typeof formData & { trackedHeaders?: string }).trackedHeaders?.trim() || null,
           ...(formData.rtoMinutes !== undefined ? { rtoMinutes: formData.rtoMinutes } : {}),
           ...(formData.timeoutMs !== null ? { timeoutMs: formData.timeoutMs } : {}),
+          statusWebhookUrl: (formData as typeof formData & { statusWebhookUrl?: string }).statusWebhookUrl?.trim() || null,
+          statusWebhookSecret: (formData as typeof formData & { statusWebhookSecret?: string }).statusWebhookSecret?.trim() || null,
+          ...((formData as typeof formData & { throttleMs?: number | null }).throttleMs != null ? { throttleMs: (formData as typeof formData & { throttleMs?: number | null }).throttleMs } : {}),
+          ...((formData as typeof formData & { maxChecksPerHour?: number | null }).maxChecksPerHour != null ? { maxChecksPerHour: (formData as typeof formData & { maxChecksPerHour?: number | null }).maxChecksPerHour } : {}),
+          ...((formData as typeof formData & { metricPath?: string | null }).metricPath ? { metricPath: (formData as typeof formData & { metricPath?: string | null }).metricPath } : {}),
+          ...((formData as typeof formData & { metricName?: string | null }).metricName ? { metricName: (formData as typeof formData & { metricName?: string | null }).metricName } : {}),
+          ...((formData as typeof formData & { metricUnit?: string | null }).metricUnit ? { metricUnit: (formData as typeof formData & { metricUnit?: string | null }).metricUnit } : {}),
+          ...((formData as typeof formData & { metricAlertMin?: number | null }).metricAlertMin !== null && (formData as typeof formData & { metricAlertMin?: number | null }).metricAlertMin !== undefined ? { metricAlertMin: (formData as typeof formData & { metricAlertMin?: number | null }).metricAlertMin } : {}),
+          ...((formData as typeof formData & { metricAlertMax?: number | null }).metricAlertMax !== null && (formData as typeof formData & { metricAlertMax?: number | null }).metricAlertMax !== undefined ? { metricAlertMax: (formData as typeof formData & { metricAlertMax?: number | null }).metricAlertMax } : {}),
         }),
       });
       setShowModal(false);
@@ -676,6 +697,15 @@ function MonitorsPageInner() {
           trackedHeaders: (formData as typeof formData & { trackedHeaders?: string }).trackedHeaders?.trim() || null,
           rtoMinutes: formData.rtoMinutes ?? null,
           ...(formData.timeoutMs !== null ? { timeoutMs: formData.timeoutMs } : { timeoutMs: null }),
+          statusWebhookUrl: (formData as typeof formData & { statusWebhookUrl?: string }).statusWebhookUrl?.trim() || null,
+          statusWebhookSecret: (formData as typeof formData & { statusWebhookSecret?: string }).statusWebhookSecret?.trim() || null,
+          throttleMs: (formData as typeof formData & { throttleMs?: number | null }).throttleMs ?? null,
+          maxChecksPerHour: (formData as typeof formData & { maxChecksPerHour?: number | null }).maxChecksPerHour ?? null,
+          metricPath: (formData as typeof formData & { metricPath?: string | null }).metricPath ?? null,
+          metricName: (formData as typeof formData & { metricName?: string | null }).metricName ?? null,
+          metricUnit: (formData as typeof formData & { metricUnit?: string | null }).metricUnit ?? null,
+          metricAlertMin: (formData as typeof formData & { metricAlertMin?: number | null }).metricAlertMin ?? null,
+          metricAlertMax: (formData as typeof formData & { metricAlertMax?: number | null }).metricAlertMax ?? null,
         }),
       });
       setShowModal(false);
@@ -736,7 +766,7 @@ function MonitorsPageInner() {
     }
   };
 
-  const handleBulkAction = async (action: "enable" | "disable" | "delete" | "run" | "add-tag" | "remove-tag" | "update-interval" | "update-timeout" | "update-confirmations") => {
+  const handleBulkAction = async (action: "enable" | "disable" | "delete" | "run" | "add-tag" | "remove-tag" | "update-interval" | "update-timeout" | "update-confirmations" | "pause") => {
     if (!selectedIds.size) return;
     if (action === "delete" && !window.confirm(`Delete ${selectedIds.size} monitor${selectedIds.size > 1 ? "s" : ""}?`)) return;
     if ((action === "add-tag" || action === "remove-tag") && !bulkTagId) {
@@ -751,8 +781,8 @@ function MonitorsPageInner() {
     try {
       const body: Record<string, unknown> = { ids: Array.from(selectedIds), action };
       if (action === "add-tag" || action === "remove-tag") body.tagId = bulkTagId;
-      if (action === "update-interval" || action === "update-timeout" || action === "update-confirmations") {
-        body.value = Number(bulkValue);
+      if (action === "update-interval" || action === "update-timeout" || action === "update-confirmations" || action === "pause") {
+        body.value = Number(bulkValue) || (action === "pause" ? 60 : undefined);
       }
       const result = await api<{ ok: boolean; affected: number }>("/v1/monitors/bulk", user?.id, {
         method: "POST",
@@ -782,10 +812,45 @@ function MonitorsPageInner() {
       }
       setSelectedIds(new Set());
       const tagName = allTags.find((t) => t.id === bulkTagId)?.name;
-      const actionLabel = action === "delete" ? "deleted" : action === "enable" ? "enabled" : action === "disable" ? "disabled" : action === "run" ? "queued for check" : action === "add-tag" ? `tagged "${tagName}"` : `tag "${tagName}" removed`;
+      const pauseMin = action === "pause" ? (bulkValue ? Number(bulkValue) : 60) : 0;
+      const actionLabel = action === "delete" ? "deleted" : action === "enable" ? "enabled" : action === "disable" ? "disabled" : action === "run" ? "queued for check" : action === "pause" ? `paused for ${pauseMin}m` : action === "add-tag" ? `tagged "${tagName}"` : `tag "${tagName}" removed`;
       success(`${result.affected} monitor${result.affected !== 1 ? "s" : ""} ${actionLabel}`);
     } catch (e) {
       toastError(e instanceof Error ? e.message : "Bulk action failed");
+    } finally {
+      setBulkLoading(false);
+    }
+  };
+
+  const handleBulkEdit = async () => {
+    if (!selectedIds.size) return;
+    setBulkLoading(true);
+    try {
+      const body: Record<string, unknown> = { ids: Array.from(selectedIds) };
+      if (bulkEditForm.intervalSec) body.intervalSec = parseInt(bulkEditForm.intervalSec, 10);
+      if (bulkEditForm.confirmations) body.confirmations = parseInt(bulkEditForm.confirmations, 10);
+      if (bulkEditForm.retryCount !== "") body.retryCount = parseInt(bulkEditForm.retryCount, 10);
+      if (bulkEditForm.latencyAlertMs) body.latencyAlertMs = parseInt(bulkEditForm.latencyAlertMs, 10);
+      if (bulkEditForm.slaTarget) body.slaTarget = parseFloat(bulkEditForm.slaTarget);
+      if (bulkEditForm.flapDetectionEnabled !== "") body.flapDetectionEnabled = bulkEditForm.flapDetectionEnabled === "true";
+      if (bulkEditForm.enabled !== "") body.enabled = bulkEditForm.enabled === "true";
+      const result = await api<{ ok: boolean; affected: number; errors: Array<{ id: string; error: string }> }>("/v1/monitors/bulk-edit", user?.id, {
+        method: "PATCH",
+        body: JSON.stringify(body),
+      });
+      // Optimistic updates for enabled field
+      if (body.enabled !== undefined) {
+        setMonitors((prev) => prev.map((m) => selectedIds.has(m.id) ? { ...m, enabled: body.enabled as boolean } : m));
+      }
+      if (body.intervalSec !== undefined) {
+        setMonitors((prev) => prev.map((m) => selectedIds.has(m.id) ? { ...m, intervalSec: body.intervalSec as number } : m));
+      }
+      setShowBulkEditModal(false);
+      setBulkEditForm({ intervalSec: "", confirmations: "", retryCount: "", latencyAlertMs: "", slaTarget: "", flapDetectionEnabled: "", enabled: "" });
+      setSelectedIds(new Set());
+      success(`${result.affected} monitor${result.affected !== 1 ? "s" : ""} updated`);
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Bulk edit failed");
     } finally {
       setBulkLoading(false);
     }
@@ -978,6 +1043,76 @@ function MonitorsPageInner() {
     }
   };
 
+  const handleConfigExport = async () => {
+    if (configExporting) return;
+    setConfigExporting(true);
+    try {
+      const selectedList = Array.from(selectedIds);
+      const params = new URLSearchParams({ format: configExportFormat });
+      if (configExportIncludeAlerts) params.set("includeAlertChannels", "true");
+      if (selectedList.length > 0) params.set("ids", selectedList.join(","));
+
+      const resp = await fetch(`${API_BASE}/v1/monitors/export?${params.toString()}`, {
+        credentials: "include",
+      });
+      if (!resp.ok) throw new Error(`Export failed: ${resp.status}`);
+      const blob = await resp.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `pulsedock-monitors-${new Date().toISOString().slice(0, 10)}.${configExportFormat}`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setShowConfigExport(false);
+      success(`Monitors exported as ${configExportFormat.toUpperCase()}`);
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Export failed");
+    } finally {
+      setConfigExporting(false);
+    }
+  };
+
+  const handleConfigImport = async () => {
+    if (configImporting || !configImportContent.trim()) return;
+    setConfigImporting(true);
+    setConfigImportResult(null);
+    try {
+      const result = await api<{
+        created: number; updated: number; skipped: number; errors: string[];
+        monitors: { name: string; id?: string; action: string; error?: string }[];
+      }>("/v1/monitors/import-config", user?.id, {
+        method: "POST",
+        body: JSON.stringify({
+          format: configImportFormat,
+          content: configImportContent,
+          dryRun: configImportDryRun,
+          overwriteExisting: configImportOverwrite,
+        }),
+      });
+      setConfigImportResult(result);
+      if (!configImportDryRun) {
+        const monitorsData = await api<MonitorItem[]>("/v1/monitors", user?.id);
+        setMonitors(monitorsData);
+      }
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Import failed");
+    } finally {
+      setConfigImporting(false);
+    }
+  };
+
+  const handleConfigImportFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const text = await file.text();
+    setConfigImportContent(text);
+    if (file.name.endsWith(".yaml") || file.name.endsWith(".yml")) {
+      setConfigImportFormat("yaml");
+    } else {
+      setConfigImportFormat("json");
+    }
+  };
+
   const unassignedChannels = allChannels.filter(
     (c) => !assignedChannels.some((a) => a.id === c.id)
   );
@@ -987,7 +1122,7 @@ function MonitorsPageInner() {
 
   // Compute active filter count for badge
   const defaultStatuses = new Set(["up", "down", "degraded", "paused"]);
-  const defaultTypes = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER", "WHOIS"]);
+  const defaultTypes = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER", "WHOIS", "FTP", "IMAP", "POP3"]);
   const activeFilterCount =
     (filterStatuses.size < defaultStatuses.size ? 1 : 0) +
     (filterTypes.size < defaultTypes.size ? 1 : 0) +
@@ -1088,6 +1223,11 @@ function MonitorsPageInner() {
         return dir * a.type.localeCompare(b.type);
       case "interval":
         return dir * (a.intervalSec - b.intervalSec);
+      case "health": {
+        const ha = healthScores[a.id]?.score ?? -1;
+        const hb = healthScores[b.id]?.score ?? -1;
+        return dir * (ha - hb);
+      }
       default:
         return 0;
     }
@@ -1226,7 +1366,7 @@ function MonitorsPageInner() {
                   {showColPicker && (
                     <div className="absolute right-0 top-full mt-1 z-30 w-48 rounded-xl border border-border bg-surface shadow-xl shadow-black/30 p-2 space-y-1">
                       <p className="text-[10px] font-semibold text-text-muted uppercase tracking-wider px-2 py-1">Visible Columns</p>
-                      {([ ["type", "Type"], ["target", "Target"], ["interval", "Interval"], ["latency", "Latency"], ["trend", "Trend"], ["alerts", "Alerts"] ] as [string, string][]).map(([col, label]) => (
+                      {([ ["type", "Type"], ["target", "Target"], ["interval", "Interval"], ["latency", "Latency"], ["trend", "Trend"], ["alerts", "Alerts"], ["health", "Health"] ] as [string, string][]).map(([col, label]) => (
                         <button
                           key={col}
                           onClick={() => toggleCol(col)}
@@ -1301,12 +1441,42 @@ function MonitorsPageInner() {
               <Button
                 variant="secondary"
                 size="sm"
+                onClick={() => { setShowConfigExport(true); }}
+                className="flex items-center gap-2"
+                title="Export monitor configs as JSON or YAML (GitOps)"
+              >
+                <Download className="w-4 h-4" />
+                <span className="hidden sm:inline">Export Config</span>
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => { setShowConfigImport(true); setConfigImportResult(null); setConfigImportContent(""); }}
+                className="flex items-center gap-2"
+                title="Import monitor configs from JSON or YAML"
+              >
+                <Upload className="w-4 h-4" />
+                <span className="hidden sm:inline">Import Config</span>
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => setShowQuickAdd(true)}
                 className="flex items-center gap-2"
                 title="Paste multiple URLs to create monitors in bulk"
               >
                 <Zap className="w-4 h-4" />
                 <span className="hidden sm:inline">Quick Add</span>
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowComposeImport(true)}
+                className="flex items-center gap-2"
+                title="Import monitors from a Docker Compose file"
+              >
+                <Globe className="w-4 h-4" />
+                <span className="hidden sm:inline">From Compose</span>
               </Button>
               <Button
                 size="sm"
@@ -1410,7 +1580,7 @@ function MonitorsPageInner() {
             onDeletePreset={deletePreset}
             onClearFilters={() => {
               setFilterStatuses(new Set(["up", "down", "degraded", "paused"]));
-              setFilterTypes(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER", "WHOIS"]));
+              setFilterTypes(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER", "WHOIS", "FTP", "IMAP", "POP3"]));
               setFilterTags(new Set());
               setTypeFilter("all");
               setStatusFilter("all");
@@ -1529,6 +1699,9 @@ function MonitorsPageInner() {
                 <Button size="sm" variant="secondary" onClick={() => handleBulkAction("run")} disabled={bulkLoading} className="flex items-center gap-1.5">
                   <PlayCircle className="w-3.5 h-3.5" />Run now
                 </Button>
+                <Button size="sm" variant="secondary" onClick={() => handleBulkAction("pause")} disabled={bulkLoading} className="flex items-center gap-1.5" title={`Pause for ${bulkValue || 60} minutes`}>
+                  <PauseCircle className="w-3.5 h-3.5" />Pause
+                </Button>
                 {allTags.length > 0 && (
                   <div className="flex items-center gap-1.5 ml-1 pl-2 border-l border-border">
                     <Tag className="w-3.5 h-3.5 text-text-muted shrink-0" />
@@ -1567,6 +1740,9 @@ function MonitorsPageInner() {
                       Set confirms
                     </Button>
                   </div>
+                <Button size="sm" variant="secondary" onClick={() => setShowBulkEditModal(true)} disabled={bulkLoading} className="flex items-center gap-1.5 ml-1 pl-2 border-l border-border">
+                  <Settings className="w-3.5 h-3.5" />Bulk Edit
+                </Button>
                 <Button size="sm" variant="ghost" onClick={() => handleBulkAction("delete")} disabled={bulkLoading} className="flex items-center gap-1.5 text-danger hover:text-danger ml-auto">
                   <Trash2 className="w-3.5 h-3.5" />Delete
                 </Button>
@@ -1664,7 +1840,12 @@ function MonitorsPageInner() {
                       </TableHeader>}
                       {visibleCols.trend && <TableHeader className="hidden xl:table-cell">Trend</TableHeader>}
                       {visibleCols.alerts && <TableHeader className="hidden sm:table-cell">Alerts</TableHeader>}
-                      <TableHeader className="hidden md:table-cell">Health</TableHeader>
+                      {visibleCols.health && <TableHeader className="hidden md:table-cell">
+                        <button onClick={() => handleSort("health")} className="flex items-center gap-1 hover:text-text-primary transition-colors">
+                          Health
+                          {sortBy === "health" ? (sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}
+                        </button>
+                      </TableHeader>}
                       <TableHeader>
                         <button onClick={() => handleSort("lastChecked")} className="flex items-center gap-1 hover:text-text-primary transition-colors">
                           Last Check
@@ -1682,7 +1863,7 @@ function MonitorsPageInner() {
                       const recentRuns = [...monitorRuns].sort((a, b) => new Date(b.checkedAt).getTime() - new Date(a.checkedAt).getTime()).slice(0, 5);
                       const intervalLabel = monitor.intervalSec < 60 ? `${monitor.intervalSec}s` : monitor.intervalSec < 3600 ? `${Math.round(monitor.intervalSec / 60)}m` : `${Math.round(monitor.intervalSec / 3600)}h`;
                       // count visible columns for colspan
-                      const visColCount = [visibleCols.type, visibleCols.target, visibleCols.interval, visibleCols.latency, visibleCols.trend, visibleCols.alerts].filter(Boolean).length;
+                      const visColCount = [visibleCols.type, visibleCols.target, visibleCols.interval, visibleCols.latency, visibleCols.trend, visibleCols.alerts, visibleCols.health].filter(Boolean).length;
                       const totalCols = 1 + 1 + 1 + visColCount + 2; // expand + checkbox + name + vis + lastCheck + actions
                       return (
                         <React.Fragment key={monitor.id}>
@@ -1735,6 +1916,14 @@ function MonitorsPageInner() {
                               {(monitor as typeof monitor & { scheduleEnabled?: boolean }).scheduleEnabled && (
                                 <span title="Business hours schedule active" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-purple-500/15 text-purple-400 border border-purple-500/30 whitespace-nowrap">
                                   📅
+                                </span>
+                              )}
+                              {monitor.geoRegions && monitor.geoRegions.length > 0 && (
+                                <span
+                                  title={`Geo regions: ${monitor.geoRegions.join(", ")}`}
+                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-teal-500/15 text-teal-400 border border-teal-500/30 whitespace-nowrap cursor-help"
+                                >
+                                  <Globe className="w-3 h-3" />
                                 </span>
                               )}
                             </div>
@@ -1837,7 +2026,7 @@ function MonitorsPageInner() {
                             </button>
                           </TableCell>}
                           {/* Health score badge */}
-                          <TableCell className="hidden md:table-cell">
+                          {visibleCols.health && <TableCell className="hidden md:table-cell">
                             {(() => {
                               const hs = healthScores[monitor.id];
                               if (!hs) return <span className="text-text-muted text-xs">—</span>;
@@ -1856,7 +2045,7 @@ function MonitorsPageInner() {
                                 </span>
                               );
                             })()}
-                          </TableCell>
+                          </TableCell>}
                           <TableCell>
                             <div className="flex items-center gap-2 group-hover/row:opacity-0 group-hover/row:pointer-events-none transition-opacity">
                               <Button
@@ -2310,6 +2499,84 @@ function MonitorsPageInner() {
           onCopySuccess={success}
         />
       )}
+      {/* ── Bulk Edit Modal ─────────────────────────────────────────────── */}
+      {showBulkEditModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowBulkEditModal(false)}>
+          <div className="bg-surface border border-border rounded-2xl shadow-2xl w-full max-w-md mx-4 p-6 space-y-5" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-semibold text-text-primary">Bulk Edit</h2>
+                <p className="text-sm text-text-secondary mt-0.5">Update {selectedIds.size} monitor{selectedIds.size !== 1 ? "s" : ""}. Leave fields blank to keep existing values.</p>
+              </div>
+              <button onClick={() => setShowBulkEditModal(false)} className="p-1.5 rounded-lg hover:bg-surface-elevated text-text-secondary hover:text-text-primary"><X className="w-4 h-4" /></button>
+            </div>
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Check interval (sec)</label>
+                  <input type="number" min="10" max="86400" placeholder="e.g. 60"
+                    value={bulkEditForm.intervalSec}
+                    onChange={(e) => setBulkEditForm((f) => ({ ...f, intervalSec: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Confirmations (1–10)</label>
+                  <input type="number" min="1" max="10" placeholder="e.g. 1"
+                    value={bulkEditForm.confirmations}
+                    onChange={(e) => setBulkEditForm((f) => ({ ...f, confirmations: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Retry count (0–3)</label>
+                  <input type="number" min="0" max="3" placeholder="e.g. 1"
+                    value={bulkEditForm.retryCount}
+                    onChange={(e) => setBulkEditForm((f) => ({ ...f, retryCount: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Latency alert (ms)</label>
+                  <input type="number" min="1" max="60000" placeholder="e.g. 2000"
+                    value={bulkEditForm.latencyAlertMs}
+                    onChange={(e) => setBulkEditForm((f) => ({ ...f, latencyAlertMs: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">SLA target (%)</label>
+                  <input type="number" min="0" max="100" step="0.01" placeholder="e.g. 99.9"
+                    value={bulkEditForm.slaTarget}
+                    onChange={(e) => setBulkEditForm((f) => ({ ...f, slaTarget: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">Enabled</label>
+                  <select value={bulkEditForm.enabled} onChange={(e) => setBulkEditForm((f) => ({ ...f, enabled: e.target.value }))}
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent">
+                    <option value="">— no change —</option>
+                    <option value="true">Enabled</option>
+                    <option value="false">Disabled</option>
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">Flap Detection</label>
+                <select value={bulkEditForm.flapDetectionEnabled} onChange={(e) => setBulkEditForm((f) => ({ ...f, flapDetectionEnabled: e.target.value }))}
+                  className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent">
+                  <option value="">— no change —</option>
+                  <option value="true">Enabled</option>
+                  <option value="false">Disabled</option>
+                </select>
+              </div>
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button variant="secondary" onClick={() => setShowBulkEditModal(false)} className="flex-1">Cancel</Button>
+              <Button onClick={handleBulkEdit} disabled={bulkLoading} className="flex-1">
+                {bulkLoading ? "Updating…" : `Update ${selectedIds.size} monitor${selectedIds.size !== 1 ? "s" : ""}`}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showQuickAdd && (
         <QuickAddModal
           folders={folders}
@@ -2317,6 +2584,155 @@ function MonitorsPageInner() {
           onClose={() => setShowQuickAdd(false)}
           onSubmit={handleQuickAdd}
         />
+      )}
+
+      {showComposeImport && (
+        <ImportFromComposeModal
+          userId={user?.id}
+          onClose={() => setShowComposeImport(false)}
+          onCreated={async () => {
+            const u = getUser();
+            if (u) {
+              const monitorsData = await api<MonitorItem[]>("/v1/monitors", u.id).catch(() => [] as MonitorItem[]);
+              setMonitors(monitorsData);
+            }
+            success("Monitors created from Docker Compose");
+          }}
+        />
+      )}
+
+      {/* ── Config Export Modal ─────────────────────────────────────────── */}
+      {showConfigExport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowConfigExport(false)}>
+          <div className="bg-surface border border-border rounded-xl w-full max-w-md p-6 space-y-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-primary">Export Monitor Config</h2>
+              <button onClick={() => setShowConfigExport(false)} className="text-muted hover:text-primary"><X className="w-5 h-5" /></button>
+            </div>
+            <p className="text-sm text-muted">Export monitor configurations as JSON or YAML for GitOps, backups, or migrations.</p>
+            <div className="space-y-3">
+              <div>
+                <label className="text-xs font-medium text-muted uppercase tracking-wide">Format</label>
+                <div className="flex gap-2 mt-1">
+                  {(["json", "yaml"] as const).map(f => (
+                    <button
+                      key={f}
+                      onClick={() => setConfigExportFormat(f)}
+                      className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${configExportFormat === f ? "border-accent bg-accent/10 text-accent" : "border-border text-muted hover:border-accent/40"}`}
+                    >
+                      {f.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <label className="flex items-center gap-3 cursor-pointer">
+                <input type="checkbox" checked={configExportIncludeAlerts} onChange={e => setConfigExportIncludeAlerts(e.target.checked)} className="w-4 h-4 accent-accent" />
+                <span className="text-sm text-secondary">Include alert channel names</span>
+              </label>
+              {selectedIds.size > 0 && (
+                <p className="text-xs text-accent">↳ Exporting {selectedIds.size} selected monitor{selectedIds.size !== 1 ? "s" : ""}</p>
+              )}
+            </div>
+            <div className="flex gap-3 pt-2">
+              <Button variant="secondary" size="sm" onClick={() => setShowConfigExport(false)} className="flex-1">Cancel</Button>
+              <Button size="sm" onClick={handleConfigExport} disabled={configExporting} className="flex-1 flex items-center justify-center gap-2">
+                <Download className="w-4 h-4" />
+                {configExporting ? "Exporting…" : selectedIds.size > 0 ? `Export ${selectedIds.size} Selected` : "Export All"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Config Import Modal ─────────────────────────────────────────── */}
+      {showConfigImport && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => setShowConfigImport(false)}>
+          <div className="bg-surface border border-border rounded-xl w-full max-w-lg p-6 space-y-5 shadow-2xl" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-primary">Import Monitor Config</h2>
+              <button onClick={() => setShowConfigImport(false)} className="text-muted hover:text-primary"><X className="w-5 h-5" /></button>
+            </div>
+            <p className="text-sm text-muted">Import monitors from a JSON or YAML config file (GitOps format).</p>
+
+            {!configImportResult ? (
+              <div className="space-y-4">
+                <div className="flex gap-2">
+                  {(["json", "yaml"] as const).map(f => (
+                    <button
+                      key={f}
+                      onClick={() => setConfigImportFormat(f)}
+                      className={`flex-1 py-2 rounded-lg border text-sm font-medium transition-colors ${configImportFormat === f ? "border-accent bg-accent/10 text-accent" : "border-border text-muted hover:border-accent/40"}`}
+                    >
+                      {f.toUpperCase()}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <input type="file" ref={configImportFileRef} accept=".json,.yaml,.yml" className="hidden" onChange={handleConfigImportFile} />
+                  <Button variant="secondary" size="sm" onClick={() => configImportFileRef.current?.click()} className="flex items-center gap-2">
+                    <Upload className="w-4 h-4" />
+                    Choose File
+                  </Button>
+                  <span className="text-xs text-muted">or paste below</span>
+                </div>
+
+                <textarea
+                  value={configImportContent}
+                  onChange={e => setConfigImportContent(e.target.value)}
+                  placeholder={`Paste ${configImportFormat.toUpperCase()} config here…`}
+                  rows={8}
+                  className="w-full bg-bg border border-border rounded-lg px-3 py-2 text-sm font-mono text-secondary placeholder:text-muted focus:outline-none focus:border-accent resize-none"
+                />
+
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={configImportDryRun} onChange={e => setConfigImportDryRun(e.target.checked)} className="w-4 h-4 accent-accent" />
+                    <span className="text-sm text-secondary">Dry Run</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" checked={configImportOverwrite} onChange={e => setConfigImportOverwrite(e.target.checked)} className="w-4 h-4 accent-accent" />
+                    <span className="text-sm text-secondary">Overwrite existing</span>
+                  </label>
+                </div>
+
+                <div className="flex gap-3 pt-1">
+                  <Button variant="secondary" size="sm" onClick={() => setShowConfigImport(false)} className="flex-1">Cancel</Button>
+                  <Button size="sm" onClick={handleConfigImport} disabled={configImporting || !configImportContent.trim()} className="flex-1 flex items-center justify-center gap-2">
+                    <Upload className="w-4 h-4" />
+                    {configImporting ? "Importing…" : configImportDryRun ? "Dry Run" : "Import"}
+                  </Button>
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="flex gap-4 text-sm">
+                  <span className="text-green-400">✓ {configImportResult.created} created</span>
+                  {configImportResult.updated > 0 && <span className="text-blue-400">↺ {configImportResult.updated} updated</span>}
+                  <span className="text-muted">— {configImportResult.skipped} skipped</span>
+                  {configImportResult.errors.length > 0 && <span className="text-red-400">✕ {configImportResult.errors.length} errors</span>}
+                </div>
+                {configImportDryRun && <p className="text-xs text-amber-400">Dry run — no changes were made.</p>}
+                <div className="max-h-48 overflow-y-auto rounded-lg border border-border divide-y divide-border">
+                  {configImportResult.monitors.map((m, i) => (
+                    <div key={i} className="flex items-center justify-between px-3 py-2 text-sm">
+                      <span className="text-secondary truncate">{m.name}</span>
+                      <span className={`text-xs ml-2 shrink-0 ${m.action === "created" ? "text-green-400" : m.action === "updated" ? "text-blue-400" : m.action === "skipped" ? "text-muted" : "text-red-400"}`}>
+                        {m.action}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+                {configImportResult.errors.length > 0 && (
+                  <div className="text-xs text-red-400 space-y-1">
+                    {configImportResult.errors.map((e, i) => <div key={i}>{e}</div>)}
+                  </div>
+                )}
+                <Button size="sm" onClick={() => setShowConfigImport(false)} className="w-full">Done</Button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </AppFrame>
   );

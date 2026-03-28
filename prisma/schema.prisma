@@ -25,6 +25,10 @@ enum MonitorType {
   SMTP
   BROWSER
   WHOIS
+  FTP
+  IMAP
+  POP3
+  CT_LOG
 }
 
 model User {
@@ -147,10 +151,24 @@ model Monitor {
   rtoMinutes          Int?                         // Recovery Time Objective in minutes (null = no target)
   shareToken          String?     @unique          // public share token for status.json endpoint (no auth required)
   pinned              Boolean     @default(false)  // pinned monitors appear at the top of the list
+  statusWebhookUrl    String?                      // optional per-monitor webhook URL called on every status change
+  statusWebhookSecret String?                      // optional HMAC-SHA256 secret for X-PulseDock-Signature header
   // Response Header Tracking: alert when tracked header values change
   trackedHeaders      String?     // comma-separated header names to track (e.g. "x-frame-options,content-security-policy")
   headerBaseline      Json?       // snapshot of tracked header values at baseline time {header: value|null, capturedAt: ISO}
   headerBaselineSetAt DateTime?   // when the header baseline was captured
+  // Rate Limiting / Throttling
+  throttleMs          Int?        // min ms between consecutive checks (null = no throttle)
+  maxChecksPerHour    Int?        // hard cap on checks/hour (null = no cap, max 360)
+  geoRegions          String[]    @default([])  // configured regions to round-robin through (e.g. ["us-east-1", "eu-west-1"])
+  // Custom Metric Capture (HTTP/BROWSER monitors only)
+  metricPath          String?     // JSONPath to extract from response body (e.g. "$.queue.depth")
+  metricName          String?     // Human-readable label for the captured metric (e.g. "Queue Depth")
+  metricUnit          String?     // Optional unit label (e.g. "items", "ms", "%")
+  metricAlertMin      Float?      // Alert yellow when captured value < this (null = no min alert)
+  metricAlertMax      Float?      // Alert yellow when captured value > this (null = no max alert)
+  // Header Assertions: assert response headers exist/equal/contain on every HTTP check
+  headerAssertions    Json?       // Array of { header: string, op: 'exists'|'equals'|'contains'|'not-exists', value?: string }
   createdAt           DateTime    @default(now())
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -263,6 +281,11 @@ model MonitorRun {
   responseBody String?  // First 500 chars of response body on failure, for debug
   timingsJson  Json?    // HTTP timing breakdown: { dnsMs, tcpMs, tlsMs, ttfbMs, downloadMs }
   securityAuditJson Json? // Security headers audit: { grade, score, headers[] } — only on HTTP monitors with checkSecurityHeaders=true
+  responseSizeBytes Int?  // UTF-8 byte length of the response body; populated for HTTP/BROWSER monitors
+  redirectChain String[] // HTTP redirect chain: URLs followed before reaching final response
+  geoRegion    String?  // simulated geo region tag (e.g. "us-east-1", "eu-west-1", "ap-southeast-1")
+  capturedMetricValue Float?   // numeric value extracted from response body via monitor.metricPath
+  headerAssertionsFailed Json?  // Array of header assertion failures: [{ header, op, expected?, actual?, message }]
   checkedAt    DateTime @default(now())
 
   monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
@@ -287,6 +310,10 @@ model AlertChannel {
   groupByTag       Boolean  @default(false)  // group alerts from same tag
   /// Custom message template with {{token}} substitution. null = use default message.
   messageTemplate  String?  @db.Text
+  /// JSON schedule config. null = always active. Format: { enabled: boolean, timezone: string, days: number[], startHour: number, endHour: number }
+  /// days: 0=Sun, 1=Mon, ..., 6=Sat. hours are 0–23 in the given timezone.
+  scheduleJson     Json?
+  batchWindowSec   Int?  // if set, batch DOWN/DEGRADED alerts for this many seconds before delivering (max 300)
 
   user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   monitorAlerts MonitorAlert[]

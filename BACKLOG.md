@@ -1,3 +1,270 @@
+## Status Summary (2026-03-28 10:10 UTC)
+- **Build/Test:** ✅ Clean build + 3930 API (+5 header assertion tests) + 756 web + 10 CLI + 12 agent = 4708 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (10:10 UTC cycle):**
+  - [x] **HTTP Header Assertions** — New `headerAssertions` field on Monitor model (JSON array of `{ header, op, value? }`). Supports 4 operators: `exists`, `not-exists`, `equals`, `contains`. HTTP runner evaluates assertions after successful status check — failures set `ok=false`, `level=yellow` with detailed failure messages. `HeaderAssertionDto` with validation (max 100 char header, max 500 char value). `evaluateHeaderAssertions()` exported as testable pure function. `headerAssertionsFailed` stored on MonitorRun for historical tracking. Frontend: Header Assertions UI in monitor form Advanced Settings — add/remove rows with header name, operator select, value input; suggestion chips for common security headers (HSTS, X-Frame-Options, CSP, X-Content-Type-Options). Monitor detail page: expandable amber "⚠ N header assertion(s) failed" section on runs with failures. 5 new unit tests. 2 Prisma migrations.
+
+## Status Summary (2026-03-28 09:57 UTC)
+- **Build/Test:** ✅ Clean build + 3925 API + 756 web + 10 CLI + 12 agent = 4703 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (09:57 UTC cycle):**
+  - [x] **NOC Wallboard Mode** — Full-screen monitor status grid at `/dashboard/wallboard`. Dark bg, no sidebar/header, auto-refresh every 30s (configurable via `?refresh=N`). Cards show name, status dot (animated for down/degraded), type badge, uptime 24h, avg latency, last check time. Color-coded borders/glows (red=down, yellow=degraded, green=up). Down monitors pulsing red with alert banner. Sorting: down → degraded → up → alphabetical. Header: PulseDock logo, live clock, total/down/degraded counts, last updated time. URL params: `?refresh=`, `?tag=`, `?cols=`. Fullscreen toggle. Sidebar nav link added under Overview. "Wallboard" button added to dashboard header controls.
+
+## Status Summary (2026-03-28 09:50 UTC)
+- **Build/Test:** ✅ Clean build + 3925 API (+5 batch tests) + 756 web + 10 CLI + 12 agent = 4703 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Latest:** feat: alert batching / digest mode — batchWindowSec per AlertChannel, in-memory queue, batched delivery with monitor list; recoveries always immediate
+
+## Status Summary (2026-03-28 09:55 UTC)
+- **Build/Test:** ✅ Clean build + 3925 API (+10 new tests) + 756 web + 10 CLI + 12 agent = 4703 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (09:55 UTC cycle):**
+  - [x] **Monitor Bulk Edit** — `PATCH /v1/monitors/bulk-edit` endpoint updating multiple fields across selected monitors at once: intervalSec, timeoutMs, confirmations, retryCount, flapDetectionEnabled, latencyAlertMs, slaTarget, enabled, folderId, alertChannelIds. `BulkEditDto` with validation. Only provided fields are updated — omit a field to keep existing values. Per-monitor alertChannelIds replacement with individual error tracking. Frontend: "Bulk Edit" button in the bulk action bar (appears when monitors are selected). Modal with 6-field form (interval, confirmations, retry count, latency alert, SLA target, enabled/flap dropdowns) + optimistic UI updates. `Settings` icon from lucide. 5 new unit tests covering empty ids, scalar field updates, channel replacement, channel clear, and no-field skip.
+
+## Status Summary (2026-03-28 09:37 UTC)
+- **Build/Test:** ✅ Clean build + 3920 API (+5 SLA dashboard tests) + 756 web + 10 CLI + 12 agent = 4698 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (09:37 UTC cycle):**
+  - [x] **SLA Management Dashboard** — `GET /v1/monitors/sla-dashboard` endpoint computing per-monitor SLA compliance for current calendar month: uptime%, error budget used/remaining, compliant/atRisk/breached status, rolling 3-month history. `/monitors/sla` frontend page: 4 summary stat cards (Compliant/At Risk/Breached/No Target), sortable table with monitor info + SLA target pill + uptime% (color-coded) + error budget progress bar + 3-month history badges + compliance status badges. Inline SLA target editing via popover with preset values (99.0–99.99%) or custom input, saves via PATCH. Sidebar nav "SLA Dashboard" link. 5 new unit tests covering compliance true/false, null target handling, error budget calculation, and summary counts.
+
+## Status Summary (2026-03-28 09:36 UTC)
+- **Build/Test:** ✅ Clean build + 3915 API (+5 postmortem tests) + 756 web + 10 CLI + 12 agent = 4693 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (09:36 UTC cycle):**
+  - [x] **Incident Post-Mortem Auto-Generation** — `POST /v1/incidents/:id/generate-postmortem` generates a structured markdown post-mortem from incident data: duration, severity, timeline of updates, per-monitor check failure stats, and all standard sections (Summary, Impact, Timeline, Root Cause, Contributing Factors, Resolution, Action Items, Lessons Learned). Auto-saves to `postmortemNotes` if not already set. Frontend: "✨ Auto-generate" button in post-mortem section of each incident row, populates edit form pre-filled with generated content. 5 new unit tests.
+
+## Status Summary (2026-03-28 09:19 UTC)
+- **Build/Test:** ✅ Clean build + 3905 API (+5 coverage tests) + 756 web + 10 CLI + 12 agent = 4683 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (09:19 UTC cycle):**
+  - [x] **Monitor Coverage Analysis** — `GET /v1/monitors/coverage` endpoint computing per-monitor configuration completeness. Scoring: alert channels (2pt, most critical), SLA target (1pt), description (1pt), runbook URL (1pt) = 0–100% per monitor + fleet aggregate. `/monitors/coverage` frontend page: overall score with color-coded gauge, 5 criteria stat cards with progress bars (alerts, SLA, description, runbook, tags), sortable gap table with ✓/✗ indicators, row highlighting for worst monitors, score footer showing methodology. Sidebar nav "Coverage" link. 5 new unit tests.
+
+## Status Summary (2026-03-28 09:02 UTC)
+- **Build/Test:** ✅ Clean build + 3900 API (was 3889 → +11 with simulate-alerts) + 756 web + 10 CLI + 12 agent = 4678 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (09:02 UTC cycle):**
+  - [x] **Alert Rules Simulator** — `POST /v1/monitors/:id/simulate-alerts` endpoint. Pure function `simulateAlertRules()` replays last 7 days of check history through configurable alert rules (confirmations, flap detection with window/threshold, business hours schedule filter). Returns alertsFired, recoverysFired, flappingAlertsFired, alertsPerDay, noiseScore (low/medium/high), full timeline, and currentConfig. New "Simulate" tab on monitor detail page: left column with settings sliders/toggles (confirmations 1-5, flap detection toggle + window/threshold, business hours toggle + start/end hour), right column with noise score badge, stats grid, scrollable timeline. "Apply to Monitor" button with confirmation dialog PATCHes monitor settings. 6 new unit tests covering: single failure, confirmations threshold, recovery alerts, flap detection, schedule filtering, all-ok runs.
+
+## Status Summary (2026-03-28 09:05 UTC)
+- **Build/Test:** ✅ Clean build + 3900 API + 756 web + 10 CLI + 12 agent = 4678 total (+11 new tests); 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (09:05 UTC cycle):**
+  - [x] **Custom Metric Capture on HTTP monitors** — New fields on Monitor: `metricPath` (JSONPath, e.g. `$.queue.depth`), `metricName`, `metricUnit`, `metricAlertMin`, `metricAlertMax`. HTTP runner extracts numeric value from response body on every check via JSONPath; fires yellow alert when value is outside min/max bounds. `capturedMetricValue Float?` stored on MonitorRun. `GET /v1/monitors/:id/metric-history?periodDays=30&limit=200` returns time-series with min/max/avg/latest stats. Frontend: "Custom Metric Capture" section in Advanced Settings (HTTP/BROWSER only) — JSONPath input, metric name/unit, optional threshold inputs. Edit form pre-populates all metric fields. Prisma migration applied. 5 new unit tests for metricHistory service method.
+
+## Status Summary (2026-03-28 08:48 UTC)
+- **Build/Test:** ✅ Clean build + 3889 API + 756 web + 10 CLI + 12 agent = 4667 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last:** feat: import monitors from Docker Compose — YAML parse, service detection, suggested monitors, import modal
+
+## Status Summary (2026-03-28 08:40 UTC)
+- **Build/Test:** ✅ Clean build + 3873 API + 756 web + 10 CLI + 12 agent = 4651 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (08:40 UTC cycle):**
+  - [x] **Geo-Region Frontend UI** — Monitor form: upgraded geo regions input from plain text to tag-style pill input (Enter/comma to add, ×-button to remove, max 10 tags, 50 chars each, hint text). Monitor detail page: geo tab now has 1d/7d/30d period selector (default 7d, refetches on change), table sorted by uptime% ascending (worst-first), proper "no geo data" info box matching spec, fixed color classes (text-danger). Monitors list: globe icon indicator with tooltip showing configured region names for monitors with geoRegions.length > 0. No regressions.
+
+## Status Summary (2026-03-28 10:05 UTC)
+- **Build/Test:** ✅ Clean build + 3933 API + 756 web + 10 CLI + 12 agent = 4711 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (10:05 UTC cycle):**
+  - [x] **Daily Latency Percentile History** — `GET /v1/monitors/:id/latency-history?days=N` endpoint (1–90 days, default 30). Returns per-day P50/P95/P99/avg latency and uptime%. Pre-fills all buckets so days with no data show null. Monitor Performance tab: new "Daily Latency Trends" card with SVG multi-line chart (green P50, orange P95, red P99), day-tick x-axis, period selector (14d/30d/60d), peak/avg-P95/trend summary cards. 8 new unit tests.
+
+## Status Summary (2026-03-28 08:50 UTC)
+- **Build/Test:** ✅ Clean build + 3889 API + 756 web + 10 CLI + 12 agent = 4667 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (08:50 UTC cycle):**
+  - [x] **Failure Pattern Analysis** — `GET /v1/monitors/:id/failure-patterns?periodDays=N` endpoint. Normalizes failed check messages into error patterns (strips IPs, UUIDs, HTTP codes, timestamps, ports into placeholders). Returns top-20 patterns sorted by frequency, with count, %, firstSeen, lastSeen, exampleMessage, and a 7-bucket weekly trend. New "Failures" tab on monitor detail page: summary cards (total failures, unique patterns, top pattern %), sortable pattern table with inline mini sparklines, period selector (7d/30d/90d). 10 new unit tests.
+
+## Status Summary (2026-03-28 08:35 UTC)
+- **Build/Test:** ✅ Clean build + 3873 API + 756 web + 10 CLI + 12 agent = 4651 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (08:35 UTC cycle):**
+  - [x] **Monitor Geo-Distribution (full)** — Prisma migration: `geoRegions String[]` on Monitor, `geoRegion String?` on MonitorRun. Backend: round-robin geo tagging in ChecksService, `GET /v1/monitors/:id/geo-stats?periodDays=7` returns per-region uptime%, avgLatencyMs, p95LatencyMs. DTOs with validation (max 10 regions, 50 chars each). Frontend: Geo Regions comma input in Advanced Settings of monitor form. Geo tab on monitor detail page with per-region stats table (color-coded latency). 5 new geo-stats unit tests, all passing.
+
+## Status Summary (2026-03-28 08:28 UTC)
+- **Build/Test:** ✅ Clean build + 3873 API + 756 web + 10 CLI + 12 agent = 4651 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (08:28 UTC cycle):**
+  - [x] **Geo-region tagging** — `geoRegions` field on Monitor (array of strings, max 10, 50 chars each). Round-robin region assignment to MonitorRun.geoRegion on each check. `GET /v1/monitors/:id/geo-stats?periodDays=7` returns per-region uptime%, avgLatencyMs, p95LatencyMs. Prisma migration applied. DTOs updated. 11 new tests (geo-stats + status-timeline specs).
+
+## Status Summary (2026-03-28 08:15 UTC)
+- **Build/Test:** ✅ Clean build + 3832 API + 756 web + 10 CLI + 12 agent = 4610 total (5 new check-rate tests); 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (08:15 UTC cycle):**
+  - [x] **Monitor check rate limiting & throttling** — New `throttleMs` (min ms between consecutive checks) and `maxChecksPerHour` (hard cap) fields on Monitor model. Prisma migration applied. DTOs validated (1000–3600000ms throttle, 1–360 max/hr). ChecksScheduler enforces throttleMs per-monitor and batch-counts hourly runs for maxChecksPerHour cap. New `GET /v1/monitors/:id/check-rate` API endpoint returns effective rate info (intervalSec, throttleMs, maxChecksPerHour, checksLastHour, effectiveChecksPerHour, isThrottled). Frontend: Rate Limiting section in Advanced Settings with two number inputs. 5 new unit tests for checkRate service method.
+
+## Status Summary (2026-03-28 08:19 UTC)
+- **Build/Test:** ✅ Clean build + 3862 API (+5 trends tests) + 756 web + 10 CLI + 12 agent = 4640 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (08:19 UTC cycle):**
+  - [x] **Monitor Trend Analysis** — `GET /v1/monitors/trends` endpoint computing week-over-week uptime% and avg latency deltas for all monitors. Returns `uptimeTrend` / `latencyTrend` as `improving | degrading | stable | new` with numeric deltas. `/monitors/trends` frontend page: 4 summary stat cards (total/degrading/improving/new), full sortable table with trend badges, colored delta arrows, previous-period context values. Sidebar nav "Trends" link in Monitoring section. 5 new unit tests.
+
+## Status Summary (2026-03-28 08:32 UTC)
+- **Build/Test:** ✅ Clean build + 3873 API + 756 web + 10 CLI + 12 agent = 4651 total (+6 timeline tests); 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (08:32 UTC cycle):**
+  - [x] **Global Status Timeline** — `GET /v1/monitors/status-timeline?hours=N` (1–168h, default 24h). Returns per-monitor segments (start/end/level) computed from state transitions. `/monitors/timeline` frontend: Gantt-style horizontal timeline bars (green/yellow/red), time axis with adaptive tick intervals, period selector (1h/3h/6h/12h/24h/48h/7d), search + level filter, summary stat cards (total/operational/degraded/down), avg uptime footer, clickable rows to monitor detail. Sidebar nav link. 6 new unit tests.
+
+## Status Summary (2026-03-28 08:21 UTC)
+- **Build/Test:** ✅ Clean build + 3860 API + 756 web + 10 CLI + 12 agent = 4638 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (08:21 UTC cycle):**
+  - [x] **Monitor Trends Page** — `GET /v1/monitors/trends`: week-over-week uptime + latency trend analysis per monitor (improving/degrading/stable/new). `/monitors/trends` frontend page: sortable table with TrendingUp/TrendingDown/Minus icons, delta %, current vs prior 7-day stats, color-coded badges. Sidebar nav link. 8 new unit tests.
+  - [x] **FTP/IMAP/POP3 test coverage** — 28 new tests in `network.runner.spec.ts` covering: banner+TLS happy paths, STARTTLS/STLS yes/no responses, invalid input, default port fallbacks, protocol prefix stripping (ftp://, imap://, pop3://), connection error paths. File now has 85 tests.
+  - [x] **Mail protocol config display cards** — FTP/IMAP/POP3 monitor detail page now shows a config card (host, port, TLS mode, encryption label) matching the existing SMTP config card design.
+
+## Status Summary (2026-03-28 08:05 UTC)
+- **Build/Test:** ✅ Clean build + 3827 API + 756 web + 10 CLI + 12 agent = 4605 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (08:05 UTC cycle):**
+  - [x] **Fix TS errors** — `alerts.controller.ts` used wrong `alertDeliveryLogs` field name (should be `deliveryLogs`). Fixed + updated spec mock. `activity/page.tsx` getUser called as Promise (sync fn). `ssl/page.tsx` Badge `secondary` variant + toast signature + AppFrame missing title + TableHeader children optionality. `mttr/page.tsx` showToast shape mismatch. `monitors/[id]/components/types.ts` missing `pinned`/`redirectChain`/`timeoutMs` fields. `monitors/types.ts` missing `MonitorFormDataExtended` fields. 0 TS errors after fixes.
+  - [x] **Monitor health column visibility + sort** — Health column now in `visibleCols` toggle system (default on), sortable by click on header. Sort by health score uses `healthScores[id].score` with `-1` fallback for no-data. Column picker includes Health. `visColCount` colspan calculation updated.
+  - [x] **MTTR/MTTF reliability analytics page** — `/mttr` page with trend chart, per-monitor breakdown table (incidents, downtime, MTTR, MTTF), period selector (7d/30d/90d/1y), sortable columns, worst performers highlighted. `GET /v1/incidents/mttr-report` API + 5 new tests.
+  - [x] **CT Log monitor type** — Certificate Transparency monitoring via crt.sh API. Tracks new certificates issued for a domain. Alerts on unexpected issuance.
+
+## Status Summary (2026-03-28 07:55 UTC)
+- **Build/Test:** ✅ Clean build + 3827 API + 756 web + 10 CLI + 12 agent = 4605 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (07:55 UTC cycle):**
+  - [x] **MTTR/MTTF Reliability Analytics Page** — Dedicated `/mttr` page with full reliability engineering view. Backend: `GET /v1/incidents/mttr-report` endpoint with overall MTTR/MTTF stats, per-monitor breakdown, and weekly trend data. Frontend: period selector (7d/30d/90d/365d), 4 stat cards (MTTR, MTTF, Total Incidents, Resolution Rate), sortable per-monitor table with color-coded MTTR, Recharts bar chart for weekly trend. Dark glassmorphism design. Added to sidebar nav under Insights. 5 new unit tests.
+
+## Status Summary (2026-03-28 07:43 UTC)
+- **Build/Test:** ✅ Clean build + 3822 API + 756 web + 10 CLI + 12 agent = 4600 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (07:43 UTC cycle):**
+  - [x] **Certificate Transparency (CT) Log Monitor** — New `CT_LOG` monitor type. Queries crt.sh for certificates issued for a domain. Runner with lookback window filtering, unique domain extraction (CN + SAN), green/yellow/red level mapping. `GET /v1/monitors/:id/ct-log-history` API endpoint. Frontend: form with lookback days slider, subdomain + wildcard alert checkboxes, explanation blurb. Detail page CT Logs tab with color-coded history. Prisma migration. 5 new unit tests.
+
+## Status Summary (2026-03-28 07:42 UTC)
+- **Build/Test:** ✅ Clean build + 3822 API (+5 delivery-stats tests) + 756 web + 10 CLI + 12 agent = 4600 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (07:42 UTC cycle):**
+  - [x] **Alert Channel Delivery Stats & Diagnostics** — `GET /v1/alert-channels/:id/delivery-stats` endpoint with success rate, 24h counts, last delivery timestamps, recent 10 log entries. List endpoint now includes `deliveryCount` via `_count`. Frontend: inline expandable Stats panel per channel row with colored success rate, relative timestamps, dot-row visualization, error snippet. 5 new unit tests.
+
+## Status Summary (2026-03-28 07:25 UTC)
+- **Build/Test:** ✅ Clean build + 3812 API (+6 heatmap tests) + 10 e2e + 12 agent = 3834 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; all routes 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (07:25 UTC cycle):**
+  - [x] **Uptime Heatmap Page** — `GET /v1/monitors/heatmap?days=N` API (1-90 day window). `/monitors/heatmap` frontend: color-coded per-monitor × per-day grid (green ≥99.9% / yellow 95-99% / orange 80-95% / red <80% / grey no-data), period selector (7/14/30/60/90d), folder grouping, search filter, summary cards (avg uptime, perfect days, most issues monitor), hover tooltips, sidebar nav link. 6 new tests.
+  - [x] **FTP/IMAP/POP3 monitor types** — `runFtpCheck()` (banner + optional AUTH TLS), `runImapCheck()` (banner + optional STARTTLS), `runPop3Check()` (banner + optional STLS). All wired in ChecksService + DTOs. UI form support.
+  - [x] **Fix MonitorType union drift** — `types.ts` was missing FTP/IMAP/POP3 while Prisma schema had them. Fixed.
+
+## Status Summary (2026-03-28 06:58 UTC)
+- **Build/Test:** ✅ Clean build + 3801 API (+6 export/import tests) + 10 e2e + 12 agent = 3823 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; all routes 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (06:58 UTC cycle):**
+  - [x] **Monitor Config Export/Import (GitOps)** — `GET /v1/monitors/export` (JSON/YAML, optional filter by IDs, optional alert channel names). `POST /v1/monitors/import-config` (JSON/YAML, dry-run, overwrite toggle). Frontend: Export modal (format + include-alerts + selected/all), Import Config modal (file picker + textarea, dry-run, overwrite, results table). 6 new tests.
+
+## Status Summary (2026-03-28 06:47 UTC)
+- **Build/Test:** ✅ Clean build + 3795 API (+6 redirect-chain tests) + 10 e2e + 12 agent = 3817 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; all routes 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (06:47 UTC cycle):**
+  - [x] **HTTP Redirect Chain Tracking** — `redirectChain String[]` on MonitorRun (Prisma migration). Captured from `runHttpWithRedirects()` on every HTTP/BROWSER check. `GET /v1/monitors/:id/redirect-chain-stats` API (avg/max hops, top-5 common chains). Frontend: amber "→ N" column in check history, full chain on row expand, Redirect Stats card on Performance tab. 5 new tests.
+
+## Status Summary (2026-03-28 06:40 UTC)
+- **Build/Test:** ✅ Clean build + 3789 API (+8 schedule tests) + 10 e2e + 12 agent = 3811 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; all routes 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (06:40 UTC cycle):**
+  - [x] **Per-Alert-Channel Active Schedules** — `AlertChannel.scheduleJson` (JSONB). `isChannelActive()` utility with IANA timezone support. AlertsService skips dispatch outside window. Frontend: day-of-week pills + timezone select + hour range in create/edit modal. 🕐 schedule summary badge in channel list. 8 new unit tests.
+
+## Status Summary (2026-03-28 06:15 UTC)
+- **Build/Test:** ✅ Clean build + 3781 API (+6 dependency suppression tests) + 10 e2e + 12 agent = 3803 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; all routes 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (06:15 UTC cycle):**
+  - [x] **Monitor Dependency Chaining** — `MonitorDependency` model. Full CRUD API `GET/POST/DELETE /v1/monitors/:id/dependencies`. Alert suppression: child alerts are silenced when any parent dependency is in outage. Frontend Dependencies tab on monitor detail. 6 new tests covering suppression edge cases (no deps, parent outage, parent ok, recovery, multi-parent, no runs).
+- **Last changes (06:02 UTC cycle):**
+  - [x] **SSL Certificate Dashboard** — `/ssl` page: unified SSL certificate overview across all SSL monitors. Shows days remaining, expiry date, color-coded severity (green >30d / yellow 10-30d / red <10d), folder grouping, search/filter, CSV export. New `GET /v1/monitors/ssl-summary` API. Sidebar nav link. 4 new tests.
+  - [x] **Per-Monitor Status Webhooks** — `statusWebhookUrl` + `statusWebhookSecret` on Monitor model (Prisma migration). Fires HTTPS POST on every level change. HMAC-SHA256 signature. Config in monitor form Advanced Settings. 4 new tests.
+
+## Status Summary (2026-03-28 03:20 UTC)
+- **Build/Test:** ✅ Clean build + 3753 API (+8 response-size tests) + 10 e2e + 12 agent = 3775 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; all routes 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (03:20 UTC cycle):**
+  - [x] **Response Size Bytes Tracking** — `responseSizeBytes Int?` on MonitorRun (Prisma migration 20260328030900). HTTP runner computes UTF-8 byte length on every request. Stored in MonitorRun, returned in GET /v1/monitors/:id/runs API, included in CSV export. Frontend: "Size" column in check history table (HTTP/BROWSER monitors, hidden on mobile, auto-formats to B/KB/MB). Response Size Trend card on performance tab: latest/avg/range stats + bar sparkline of last 60 checks with color-coded deviation from average (warning when >30% off). 8 new tests.
+
+## Status Summary (2026-03-28 02:02 UTC)
+- **Build/Test:** ✅ Clean build + 3745 API (+13 mattermost/zulip tests) + 756 web + 10 e2e + 12 agent = 4523 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; all routes 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (02:02 UTC cycle):**
+  - [x] **Mattermost alert channel** — POST to Mattermost Incoming Webhook URL. Slack-compatible attachment payload with color-coded status (#36a64f green/#ffa500 yellow/#cc0000 red), facts list (monitor name/type/latency/target), configurable channel override and username display name. Self-hosted-friendly. 6 new tests.
+  - [x] **Zulip alert channel** — POST to Zulip bot REST API `/api/v1/messages`. Supports stream messages (stream + topic) and direct messages (DM to user email). Basic auth with bot email + API key. Formatted Zulip markdown content with level emoji and facts. Trailing-slash guard on serverUrl. 7 new tests.
+  - [x] **Fix TS error (Monitor.level)** — `monitors.controller.ts` compare endpoint was selecting `level` from Monitor model (field doesn't exist on Monitor, only on MonitorRun). Fixed Prisma select and return mapping.
+
+## Status Summary (2026-03-28 02:15 UTC)
+- **Build/Test:** ✅ Clean build + 3745 API + 10 e2e + 12 agent = 3767 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (02:15 UTC cycle):**
+  - **Multi-Monitor Comparison** — `POST /v1/monitors/compare` (2–5 monitors, configurable period). Frontend `/monitors/compare` page: monitor picker, period selector, comparison table (uptime%, avg latency, incidents, downtime, MTTR, total checks), uptime bar chart, latency bar chart, "Best"/"Needs attention" badges. Sidebar nav link added. 13 new tests.
+
+## Status Summary (2026-03-28 01:02 UTC)
+- **Build/Test:** ✅ Clean build + 3732 API (+10 rocketchat/apprise tests) + 756 web + 10 e2e + 12 agent = 4510 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (01:02 UTC cycle):**
+  - [x] **Rocket.Chat alert channel** — POST to Incoming Webhook URL, Slack-compatible attachment payload with color-coded status (red/yellow/green), facts list (monitor name/type/latency/target). Self-hosted-friendly. 4 new tests.
+  - [x] **Apprise alert channel** — POST to Apprise API `/notify` or `/notify/{tag}` endpoint. Maps level to Apprise severity type (failure/warning/success). Optional tag config for service scoping. Trailing-slash guard on serverUrl. 6 new tests.
+
 ## Status Summary (2026-03-27 20:20 UTC)
 - **Build/Test:** ✅ Clean build + 3707 API (+11 ntfy/gotify tests) + 747 web + 10 e2e + 12 agent = 4476 total; 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
@@ -110,6 +377,10 @@
 **Do not propose new projects. PulseDock is the focus until it's genuinely world-class.**
 
 ---
+
+## Recently Completed (2026-03-28 02:15 UTC)
+
+- [x] **Multi-Monitor Comparison** — `POST /v1/monitors/compare` (2–5 monitors, period 1d/7d/30d/90d). Frontend `/monitors/compare` page: multi-select monitor picker, period selector, comparison table (uptime%, avg latency, incidents, downtime, MTTR, total checks), uptime progress bar chart, latency bar chart (normalized to max), "Best"/"Needs attention" badges on top/bottom performers. Sidebar nav link. 13 new tests. *(2026-03-28)*
 
 ## Recently Completed (2026-03-27 16:20 UTC)
 

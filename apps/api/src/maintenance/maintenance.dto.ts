@@ -2,15 +2,26 @@ import { ApiProperty, ApiPropertyOptional, PartialType } from '@nestjs/swagger';
 import {
   IsArray,
   IsDateString,
+  IsEnum,
+  IsInt,
   IsOptional,
   IsString,
+  Max,
   MaxLength,
+  Min,
   MinLength,
   Validate,
   ValidatorConstraint,
   ValidatorConstraintInterface,
   ValidationArguments,
 } from 'class-validator';
+
+export enum MaintenanceRecurrence {
+  NONE = 'NONE',
+  DAILY = 'DAILY',
+  WEEKLY = 'WEEKLY',
+  MONTHLY = 'MONTHLY',
+}
 
 @ValidatorConstraint({ name: 'EndAfterStart', async: false })
 class EndAfterStartConstraint implements ValidatorConstraintInterface {
@@ -54,6 +65,42 @@ export class CreateMaintenanceWindowDto {
   @IsArray()
   @IsString({ each: true })
   monitorIds?: string[];
+
+  @ApiPropertyOptional({
+    description: 'Recurrence pattern: NONE (one-shot), DAILY, WEEKLY, MONTHLY',
+    enum: MaintenanceRecurrence,
+    default: MaintenanceRecurrence.NONE,
+  })
+  @IsOptional()
+  @IsEnum(MaintenanceRecurrence)
+  recurrence?: MaintenanceRecurrence;
+
+  @ApiPropertyOptional({
+    description: 'Comma-separated day-of-week numbers for WEEKLY recurrence (0=Sun … 6=Sat)',
+    example: '0,6',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(13)
+  recurrenceDays?: string;
+
+  @ApiPropertyOptional({
+    description: 'Duration in minutes for each occurrence window (derived from startsAt/endsAt if omitted)',
+    example: 120,
+  })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(10080)
+  durationMinutes?: number;
+
+  @ApiPropertyOptional({
+    description: 'ISO 8601 date after which no new occurrences are generated',
+    example: '2027-01-01T00:00:00.000Z',
+  })
+  @IsOptional()
+  @IsDateString()
+  recurrenceEndsAt?: string;
 }
 
 export class UpdateMaintenanceWindowDto extends PartialType(CreateMaintenanceWindowDto) {}

@@ -147,6 +147,8 @@ model Monitor {
   rtoMinutes          Int?                         // Recovery Time Objective in minutes (null = no target)
   shareToken          String?     @unique          // public share token for status.json endpoint (no auth required)
   pinned              Boolean     @default(false)  // pinned monitors appear at the top of the list
+  statusWebhookUrl    String?                      // optional per-monitor webhook URL called on every status change
+  statusWebhookSecret String?                      // optional HMAC-SHA256 secret for X-PulseDock-Signature header
   // Response Header Tracking: alert when tracked header values change
   trackedHeaders      String?     // comma-separated header names to track (e.g. "x-frame-options,content-security-policy")
   headerBaseline      Json?       // snapshot of tracked header values at baseline time {header: value|null, capturedAt: ISO}

@@ -1170,6 +1170,41 @@ export function MonitorFormModal({
           <p className="text-xs text-white/40 mt-1">Alert breach when recovery takes longer than this target</p>
         </div>
 
+        {/* Status Webhook */}
+        <div className="border border-border rounded-lg p-4 space-y-3">
+          <div>
+            <label className="block text-sm font-semibold text-text-primary">Status Change Webhook</label>
+            <p className="mt-0.5 text-xs text-text-secondary">
+              POST to this URL whenever this monitor&apos;s status changes (green↔yellow/red). Useful for CI/CD integrations and automation.
+            </p>
+          </div>
+          <div>
+            <label htmlFor="statusWebhookUrl" className="text-xs text-text-secondary block mb-1">Webhook URL</label>
+            <input
+              id="statusWebhookUrl"
+              type="url"
+              placeholder="https://example.com/hooks/monitor-status"
+              value={(formData as unknown as { statusWebhookUrl?: string }).statusWebhookUrl ?? ''}
+              onChange={(e) => (onSetFormData as (d: typeof formData & { statusWebhookUrl?: string }) => void)({ ...formData, statusWebhookUrl: e.target.value || '' })}
+              className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30"
+            />
+          </div>
+          {!!((formData as unknown as { statusWebhookUrl?: string }).statusWebhookUrl) && (
+            <div>
+              <label htmlFor="statusWebhookSecret" className="text-xs text-text-secondary block mb-1">Signing Secret <span className="text-white/30">(optional — adds X-PulseDock-Signature header)</span></label>
+              <input
+                id="statusWebhookSecret"
+                type="password"
+                placeholder="Leave blank to skip signature"
+                value={(formData as unknown as { statusWebhookSecret?: string }).statusWebhookSecret ?? ''}
+                onChange={(e) => (onSetFormData as (d: typeof formData & { statusWebhookSecret?: string }) => void)({ ...formData, statusWebhookSecret: e.target.value || '' })}
+                className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white placeholder:text-white/30"
+              />
+              <p className="text-xs text-white/40 mt-1">HMAC-SHA256: verify with <code className="bg-white/10 px-1 rounded">sha256=&lt;hex&gt;</code> from the X-PulseDock-Signature header</p>
+            </div>
+          )}
+        </div>
+
         {/* Auto-Incident */}
         <div className="border border-border rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">

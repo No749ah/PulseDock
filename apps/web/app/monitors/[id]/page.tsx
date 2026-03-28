@@ -3305,6 +3305,7 @@ export default function MonitorDetailPage() {
          (monitor.confirmations != null && monitor.confirmations > 1) ||
          monitor.autoIncident ||
          monitor.runbookUrl ||
+         (monitor as typeof monitor & { statusWebhookUrl?: string | null }).statusWebhookUrl ||
          (monitor.timeoutMs && monitor.timeoutMs > 0) ? (
           <Card className="p-4 space-y-3">
             <div className="flex items-center justify-between">
@@ -3379,6 +3380,14 @@ export default function MonitorDetailPage() {
                   >
                     Open runbook →
                   </a>
+                </div>
+              )}
+              {(monitor as typeof monitor & { statusWebhookUrl?: string | null }).statusWebhookUrl && (
+                <div className="flex flex-col gap-0.5 p-2.5 rounded-lg bg-surface-elevated/60 border border-border/60">
+                  <span className="text-[10px] font-semibold text-text-muted uppercase tracking-wider">Status Webhook</span>
+                  <span className="text-xs text-text-secondary truncate" title={(monitor as typeof monitor & { statusWebhookUrl?: string | null }).statusWebhookUrl!}>
+                    🔔 Active — fires on status change
+                  </span>
                 </div>
               )}
             </div>

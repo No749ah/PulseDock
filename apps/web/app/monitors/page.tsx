@@ -620,6 +620,8 @@ function MonitorsPageInner() {
           trackedHeaders: (formData as typeof formData & { trackedHeaders?: string }).trackedHeaders?.trim() || null,
           ...(formData.rtoMinutes !== undefined ? { rtoMinutes: formData.rtoMinutes } : {}),
           ...(formData.timeoutMs !== null ? { timeoutMs: formData.timeoutMs } : {}),
+          statusWebhookUrl: (formData as typeof formData & { statusWebhookUrl?: string }).statusWebhookUrl?.trim() || null,
+          statusWebhookSecret: (formData as typeof formData & { statusWebhookSecret?: string }).statusWebhookSecret?.trim() || null,
         }),
       });
       setShowModal(false);
@@ -683,6 +685,8 @@ function MonitorsPageInner() {
           trackedHeaders: (formData as typeof formData & { trackedHeaders?: string }).trackedHeaders?.trim() || null,
           rtoMinutes: formData.rtoMinutes ?? null,
           ...(formData.timeoutMs !== null ? { timeoutMs: formData.timeoutMs } : { timeoutMs: null }),
+          statusWebhookUrl: (formData as typeof formData & { statusWebhookUrl?: string }).statusWebhookUrl?.trim() || null,
+          statusWebhookSecret: (formData as typeof formData & { statusWebhookSecret?: string }).statusWebhookSecret?.trim() || null,
         }),
       });
       setShowModal(false);

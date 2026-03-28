@@ -13,6 +13,7 @@ import {
   ClipboardList,
   ScrollText,
   CalendarClock,
+  ShieldCheck,
 
   ChevronDown,
   Folder,
@@ -54,6 +55,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
     items: [
       { href: '/monitors', label: 'Uptime Checks', icon: Activity },
       { href: '/monitors/compare', label: 'Compare', icon: BarChart2 },
+      { href: '/ssl', label: 'SSL Certificates', icon: ShieldCheck },
       { href: '/versions', label: 'Version Tracking', icon: GitBranch },
     ],
   },

@@ -82,6 +82,8 @@ export interface Monitor {
   trackedHeaders?: string | null;
   headerBaseline?: Record<string, string | null> | null;
   headerBaselineSetAt?: string | null;
+  statusWebhookUrl?: string | null;
+  statusWebhookSecret?: string | null;
   createdAt: string;
 }
 

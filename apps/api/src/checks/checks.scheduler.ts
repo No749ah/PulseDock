@@ -176,6 +176,8 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         trackedHeaders: true,
         headerBaseline: true,
         headerBaselineSetAt: true,
+        statusWebhookUrl: true,
+        statusWebhookSecret: true,
         runs: {
           take: 1,
           orderBy: { checkedAt: 'desc' },
@@ -297,6 +299,8 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
     scheduleDays?: string;
     scheduleStartHour?: number;
     scheduleEndHour?: number;
+    statusWebhookUrl?: string | null;
+    statusWebhookSecret?: string | null;
   }): Promise<void> {
     const jitterMs = Math.floor(Math.random() * MAX_JITTER_MS);
     if (jitterMs > 0) {
@@ -350,6 +354,8 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         scheduleDays: monitor.scheduleDays ?? '1,2,3,4,5',
         scheduleStartHour: monitor.scheduleStartHour ?? 8,
         scheduleEndHour: monitor.scheduleEndHour ?? 18,
+        statusWebhookUrl: monitor.statusWebhookUrl ?? null,
+        statusWebhookSecret: monitor.statusWebhookSecret ?? null,
       });
     } finally {
       this.queueDepth--;

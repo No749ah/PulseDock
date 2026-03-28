@@ -733,7 +733,87 @@ export class ChecksService {
       }
     }
 
+    // ── Per-monitor Status Webhook ────────────────────────────────────────────────────
+    // When statusWebhookUrl is set on the monitor, fire a POST to that URL on every
+    // status change (levelChanged). Includes HMAC-SHA256 signature when statusWebhookSecret
+    // is configured. Useful for CI/CD integrations, custom dashboards, and automation.
+    if (levelChanged) {
+      const monitorWithWebhook = monitor as typeof monitor & {
+        statusWebhookUrl?: string | null;
+        statusWebhookSecret?: string | null;
+      };
+      if (monitorWithWebhook.statusWebhookUrl) {
+        void this.fireMonitorStatusWebhook(
+          monitorWithWebhook.statusWebhookUrl,
+          monitorWithWebhook.statusWebhookSecret ?? null,
+          monitor,
+          run,
+          prev?.level ?? null,
+        );
+      }
+    }
+    // ─────────────────────────────────────────────────────────────────────────────────
+
     return run;
+  }
+
+  /**
+   * Fires a per-monitor status webhook when the monitor's level changes.
+   * Posts a JSON payload to statusWebhookUrl with monitor details and the level change.
+   * If statusWebhookSecret is set, adds an X-PulseDock-Signature header (HMAC-SHA256).
+   *
+   * @param url - The webhook URL to POST to
+   * @param secret - Optional HMAC-SHA256 signing secret
+   * @param monitor - The monitor that changed state
+   * @param run - The current check result
+   * @param previousLevel - The previous run's level (null if first run)
+   */
+  private async fireMonitorStatusWebhook(
+    url: string,
+    secret: string | null,
+    monitor: Monitor,
+    run: MonitorRun,
+    previousLevel: string | null,
+  ): Promise<void> {
+    try {
+      const payload = {
+        event: 'monitor.status_changed',
+        monitorId: monitor.id,
+        monitorName: monitor.name,
+        monitorType: monitor.type,
+        target: monitor.target,
+        level: run.level,
+        previousLevel,
+        ok: run.ok,
+        latencyMs: run.latencyMs,
+        message: run.message,
+        checkedAt: typeof run.checkedAt === 'string' ? run.checkedAt : new Date(run.checkedAt as unknown as Date).toISOString(),
+      };
+      const body = JSON.stringify(payload);
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'PulseDock-Monitor/1.0',
+        'X-PulseDock-Event': 'monitor.status_changed',
+      };
+
+      if (secret) {
+        const { createHmac } = await import('node:crypto');
+        const sig = createHmac('sha256', secret).update(body).digest('hex');
+        headers['X-PulseDock-Signature'] = `sha256=${sig}`;
+      }
+
+      const fetchImpl = globalThis.fetch;
+      if (typeof fetchImpl === 'function') {
+        const resp = await (fetchImpl as typeof fetch)(url, { method: 'POST', headers, body, signal: AbortSignal.timeout(10_000) });
+        if (!resp.ok) {
+          this.logger.warn(`[StatusWebhook] Monitor ${monitor.id} webhook returned ${resp.status} for ${url}`);
+        }
+      }
+    } catch (err) {
+      this.logger.warn(
+        `[StatusWebhook] Failed to fire webhook for monitor ${monitor.id}: ${err instanceof Error ? err.message : String(err)}`,
+      );
+    }
   }
 
   /**

@@ -368,6 +368,33 @@ export class MonitorsController {
     return this.monitorsService.getHealthSummary(req.user.id);
   }
 
+  @Get('ssl-summary')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'SSL / TLS certificate inventory',
+    description:
+      'Returns an inventory of all SSL_CERT, HTTP, and BROWSER monitors with certificate expiry information. ' +
+      'SSL_CERT monitors include parsed days-remaining from their latest check run. ' +
+      'Sorted by urgency: expired first, then soonest expiry.',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Certificate inventory returned.',
+    schema: {
+      example: {
+        total: 5,
+        expired: 0,
+        critical: 1,
+        warning: 2,
+        healthy: 2,
+        certs: [{ monitorId: 'abc', name: 'My Site', target: 'https://example.com', type: 'SSL_CERT', daysRemaining: 7, expiresAt: '2025-04-05', level: 'red' }],
+      },
+    },
+  })
+  sslSummary(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.getSslSummary(req.user.id);
+  }
+
   @Get('export')
   @ApiOperation({
     summary: 'Export monitors',

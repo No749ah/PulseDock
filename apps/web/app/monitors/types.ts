@@ -128,6 +128,10 @@ export type MonitorFormData = {
   scheduleEndHour: number;
   /** Per-monitor HTTP/TCP/SSL request timeout in milliseconds (overrides default 5000ms) */
   timeoutMs: number | null;
+  /** Optional webhook URL called on every status change */
+  statusWebhookUrl?: string;
+  /** Optional HMAC-SHA256 signing secret for statusWebhookUrl */
+  statusWebhookSecret?: string;
 };
 
 export type MonitorFormDataExtended = MonitorFormData & {

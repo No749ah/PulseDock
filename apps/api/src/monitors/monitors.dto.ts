@@ -235,6 +235,18 @@ export class CreateMonitorDto {
   @Max(10080)
   rtoMinutes?: number;
 
+  @ApiPropertyOptional({ description: 'Optional per-monitor webhook URL. PulseDock will POST a status change payload to this URL whenever the monitor level changes (e.g. green→red, red→green). Useful for CI/CD integrations and automation.', example: 'https://example.com/hooks/monitor-status' })
+  @IsOptional()
+  @IsUrl()
+  @MaxLength(2048)
+  statusWebhookUrl?: string | null;
+
+  @ApiPropertyOptional({ description: 'Optional HMAC-SHA256 secret for the status webhook. When set, PulseDock adds an X-PulseDock-Signature header to each webhook call (sha256=<hex> format). Use this to verify the payload origin.', example: 'super-secret-string' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
+  statusWebhookSecret?: string | null;
+
 }
 
 export class UpdateMonitorDto {
@@ -402,6 +414,16 @@ export class UpdateMonitorDto {
   @Min(1)
   @Max(10080)
   rtoMinutes?: number;
+
+  @IsOptional()
+  @IsUrl()
+  @MaxLength(2048)
+  statusWebhookUrl?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(256)
+  statusWebhookSecret?: string | null;
 
 }
 

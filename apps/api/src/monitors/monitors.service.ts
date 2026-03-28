@@ -117,6 +117,7 @@ export class MonitorsService {
       trackedHeaders: (m as typeof m & { trackedHeaders?: string | null }).trackedHeaders ?? null,
       headerBaseline: (m as typeof m & { headerBaseline?: unknown }).headerBaseline ?? null,
       headerBaselineSetAt: (m as typeof m & { headerBaselineSetAt?: Date | null }).headerBaselineSetAt?.toISOString() ?? null,
+      statusWebhookUrl: (m as typeof m & { statusWebhookUrl?: string | null }).statusWebhookUrl ?? null,
       isAcknowledged: (m as typeof m & { acknowledgements?: unknown[] }).acknowledgements?.length > 0,
 
       createdAt: m.createdAt.toISOString(),
@@ -189,6 +190,7 @@ export class MonitorsService {
       trackedHeaders: (m as typeof m & { trackedHeaders?: string | null }).trackedHeaders ?? null,
       headerBaseline: (m as typeof m & { headerBaseline?: unknown }).headerBaseline ?? null,
       headerBaselineSetAt: (m as typeof m & { headerBaselineSetAt?: Date | null }).headerBaselineSetAt?.toISOString() ?? null,
+      statusWebhookUrl: (m as typeof m & { statusWebhookUrl?: string | null }).statusWebhookUrl ?? null,
       createdAt: m.createdAt.toISOString(),
     };
   }
@@ -235,6 +237,8 @@ export class MonitorsService {
     sliLatencyWindow?: number;
     trackedHeaders?: string | null;
     rtoMinutes?: number | null;
+    statusWebhookSecret?: string | null;
+    statusWebhookUrl?: string | null;
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -288,6 +292,8 @@ export class MonitorsService {
         scheduleEndHour: body.scheduleEndHour ?? 18,
         ...(body.trackedHeaders !== undefined ? { trackedHeaders: body.trackedHeaders ?? null } : {}),
         ...(body.rtoMinutes !== undefined ? { rtoMinutes: body.rtoMinutes ?? null } : {}),
+        ...(body.statusWebhookUrl !== undefined ? { statusWebhookUrl: body.statusWebhookUrl ?? null } : {}),
+        ...(body.statusWebhookSecret !== undefined ? { statusWebhookSecret: body.statusWebhookSecret ?? null } : {}),
         monitorAlerts: {
           create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),
         },
@@ -349,6 +355,7 @@ export class MonitorsService {
       sliLatencyTarget: created.sliLatencyTarget ?? null,
       sliLatencyWindow: created.sliLatencyWindow,
       trackedHeaders: (created as typeof created & { trackedHeaders?: string | null }).trackedHeaders ?? null,
+      statusWebhookUrl: (created as typeof created & { statusWebhookUrl?: string | null }).statusWebhookUrl ?? null,
       createdAt: created.createdAt.toISOString(),
     };
 
@@ -401,6 +408,8 @@ export class MonitorsService {
     sliLatencyWindow?: number;
     trackedHeaders?: string | null;
     rtoMinutes?: number | null;
+    statusWebhookSecret?: string | null;
+    statusWebhookUrl?: string | null;
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -460,6 +469,8 @@ export class MonitorsService {
         ...(body.sliLatencyWindow !== undefined ? { sliLatencyWindow: body.sliLatencyWindow } : {}),
         ...(body.trackedHeaders !== undefined ? { trackedHeaders: body.trackedHeaders ?? null } : {}),
         ...(body.rtoMinutes !== undefined ? { rtoMinutes: body.rtoMinutes ?? null } : {}),
+        ...(body.statusWebhookUrl !== undefined ? { statusWebhookUrl: body.statusWebhookUrl ?? null } : {}),
+        ...(body.statusWebhookSecret !== undefined ? { statusWebhookSecret: body.statusWebhookSecret ?? null } : {}),
       },
     });
 
@@ -2824,5 +2835,127 @@ export class MonitorsService {
       data: { pinned: !monitor.pinned },
     });
     return { pinned: updated.pinned };
+  }
+
+  /**
+   * Returns a SSL / TLS certificate inventory for all SSL_CERT and HTTP monitors.
+   * Parses days-remaining from the latest run message for SSL_CERT monitors.
+   * HTTP monitors return certificate details live on the `/certificate` endpoint;
+   * here we only return their latest run status.
+   *
+   * @param userId - Owner's user ID
+   */
+  async getSslSummary(userId: string): Promise<{
+    total: number;
+    expired: number;
+    critical: number;
+    warning: number;
+    healthy: number;
+    certs: Array<{
+      monitorId: string;
+      name: string;
+      target: string;
+      type: string;
+      enabled: boolean;
+      folderId: string | null;
+      folderName: string | null;
+      status: string;
+      daysRemaining: number | null;
+      expiresAt: string | null;
+      lastCheckedAt: string | null;
+      lastMessage: string;
+      level: string;
+    }>;
+  }> {
+    // Fetch all SSL_CERT + HTTP monitors
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, type: { in: ['SSL_CERT', 'HTTP', 'BROWSER'] } },
+      select: {
+        id: true,
+        name: true,
+        target: true,
+        type: true,
+        enabled: true,
+        folderId: true,
+        folder: { select: { name: true } },
+        runs: {
+          orderBy: { checkedAt: 'desc' },
+          take: 1,
+          select: { level: true, message: true, checkedAt: true, ok: true },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    const daysRemainingRegex = /expires?\s+in\s+(\d+)\s*days?/i;
+    const expiresAtRegex = /\((\d{4}-\d{2}-\d{2})\)/;
+    const expiredRegex = /expired?\s+(\d+)\s*days?\s*ago/i;
+
+    const certs = monitors.map((m) => {
+      const latestRun = m.runs[0] ?? null;
+      const message = latestRun?.message ?? '';
+      const level = latestRun?.level ?? 'unknown';
+
+      let daysRemaining: number | null = null;
+      let expiresAt: string | null = null;
+
+      if (m.type === 'SSL_CERT') {
+        // Try to parse days from message like "SSL cert expires in 42 days (2025-12-31)"
+        const daysMatch = daysRemainingRegex.exec(message);
+        if (daysMatch) daysRemaining = parseInt(daysMatch[1], 10);
+
+        const expiredMatch = expiredRegex.exec(message);
+        if (expiredMatch) daysRemaining = -parseInt(expiredMatch[1], 10);
+
+        const dateMatch = expiresAtRegex.exec(message);
+        if (dateMatch) expiresAt = dateMatch[1];
+
+        // If level is red and no days parsed, assume expired/unknown
+        if (daysRemaining === null && level === 'red' && message.toLowerCase().includes('expir')) {
+          daysRemaining = 0;
+        }
+      }
+
+      return {
+        monitorId: m.id,
+        name: m.name,
+        target: m.target,
+        type: m.type,
+        enabled: m.enabled,
+        folderId: m.folderId,
+        folderName: m.folder?.name ?? null,
+        status: latestRun?.ok ? 'up' : latestRun ? 'down' : 'unknown',
+        daysRemaining,
+        expiresAt,
+        lastCheckedAt: latestRun?.checkedAt?.toISOString() ?? null,
+        lastMessage: message,
+        level,
+      };
+    });
+
+    // Sort: expired first, then by daysRemaining ascending (soonest first), then unknown, then HTTP without days
+    certs.sort((a, b) => {
+      const aHasDays = a.daysRemaining !== null;
+      const bHasDays = b.daysRemaining !== null;
+      if (aHasDays && bHasDays) return (a.daysRemaining ?? 0) - (b.daysRemaining ?? 0);
+      if (aHasDays) return -1;
+      if (bHasDays) return 1;
+      return a.name.localeCompare(b.name);
+    });
+
+    const sslCerts = certs.filter((c) => c.type === 'SSL_CERT');
+    const expired = sslCerts.filter((c) => c.daysRemaining !== null && c.daysRemaining < 0).length;
+    const critical = sslCerts.filter((c) => c.daysRemaining !== null && c.daysRemaining >= 0 && c.daysRemaining < 10).length;
+    const warning = sslCerts.filter((c) => c.daysRemaining !== null && c.daysRemaining >= 10 && c.daysRemaining <= 30).length;
+    const healthy = sslCerts.filter((c) => c.daysRemaining !== null && c.daysRemaining > 30).length;
+
+    return {
+      total: certs.length,
+      expired,
+      critical,
+      warning,
+      healthy,
+      certs,
+    };
   }
 }

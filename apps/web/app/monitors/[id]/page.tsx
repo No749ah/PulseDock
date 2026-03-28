@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi, Shield, Globe, CheckCircle, XCircle, FileText, GitCompare, MessageSquare, Pin, List } from "lucide-react";
+import { AlertCircle, AlertTriangle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi, Shield, Globe, CheckCircle, XCircle, FileText, GitCompare, MessageSquare, Pin, List } from "lucide-react";
 import { Breadcrumb } from "../../../components/breadcrumb";
 import { api } from "../../../lib/api";
 import { createRealtimeSocket } from "../../../lib/realtime";
@@ -224,7 +224,26 @@ export default function MonitorDetailPage() {
   const [depLoading, setDepLoading] = useState(false);
   const [errorBudget, setErrorBudget] = useState<ErrorBudget | null>(null);
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate" | "domain" | "security" | "content" | "headers" | "diff" | "annotations" | "ctlog" | "geo">("overview");
+  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate" | "domain" | "security" | "content" | "headers" | "diff" | "annotations" | "ctlog" | "geo" | "failures">("overview");
+
+  // Failure pattern analysis
+  type FailurePattern = {
+    pattern: string;
+    count: number;
+    percentage: number;
+    firstSeen: string;
+    lastSeen: string;
+    exampleMessage: string;
+    weeklyTrend: number[];
+  };
+  type FailurePatternsData = {
+    totalFailures: number;
+    uniquePatterns: number;
+    patterns: FailurePattern[];
+  };
+  const [failurePatterns, setFailurePatterns] = useState<FailurePatternsData | null>(null);
+  const [failurePatternsLoading, setFailurePatternsLoading] = useState(false);
+  const [failuresPeriod, setFailuresPeriod] = useState<7 | 30 | 90>(30);
 
   // Annotations
   type Annotation = { id: string; text: string; color: string; annotatedAt: string; createdAt: string };
@@ -443,6 +462,19 @@ export default function MonitorDetailPage() {
       .finally(() => setGeoStatsLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeMainTab, id, geoPeriod]);
+
+  // Load failure patterns when failures tab becomes active or period changes
+  useEffect(() => {
+    if (activeMainTab !== "failures" || !monitor) return;
+    const user = getUser();
+    if (!user) return;
+    setFailurePatternsLoading(true);
+    api<FailurePatternsData>(`/v1/monitors/${id}/failure-patterns?periodDays=${failuresPeriod}`, user.id)
+      .then((data) => setFailurePatterns(data))
+      .catch(() => setFailurePatterns({ totalFailures: 0, uniquePatterns: 0, patterns: [] }))
+      .finally(() => setFailurePatternsLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMainTab, id, failuresPeriod]);
 
   // Load runs with optional status filter (resets pagination)
   const loadFilteredRuns = useCallback(async (statusFilter: "all" | "ok" | "failed" | "degraded") => {
@@ -1193,6 +1225,17 @@ export default function MonitorDetailPage() {
               Geo
             </button>
           )}
+          <button
+            onClick={() => setActiveMainTab("failures")}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+              activeMainTab === "failures"
+                ? "bg-white/10 text-text-primary"
+                : "text-text-muted hover:text-text-secondary"
+            }`}
+          >
+            <AlertTriangle className="w-3.5 h-3.5" />
+            Failures
+          </button>
         </div>
 
         {/* SLO Tab Content */}
@@ -2359,6 +2402,132 @@ export default function MonitorDetailPage() {
                   </tbody>
                 </table>
               </div>
+            )}
+          </Card>
+        )}
+
+        {/* Failure Patterns Tab */}
+        {activeMainTab === "failures" && (
+          <Card className="p-6 space-y-5">
+            {/* Header */}
+            <div className="flex items-center justify-between flex-wrap gap-3">
+              <div>
+                <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4" />
+                  Failure Pattern Analysis
+                </h2>
+                <p className="text-xs text-text-muted mt-1">
+                  Normalized error patterns from failed checks. Helps identify recurring failure causes.
+                </p>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-text-muted font-medium">Period:</span>
+                {([7, 30, 90] as const).map((p) => (
+                  <button
+                    key={p}
+                    onClick={() => setFailuresPeriod(p)}
+                    className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                      failuresPeriod === p
+                        ? "bg-accent text-white"
+                        : "bg-white/5 text-text-muted hover:text-text-secondary border border-white/10"
+                    }`}
+                  >
+                    {p}d
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {failurePatternsLoading ? (
+              <div className="flex items-center justify-center py-12">
+                <div className="w-6 h-6 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+              </div>
+            ) : !failurePatterns || failurePatterns.totalFailures === 0 ? (
+              <div className="flex items-start gap-3 p-4 rounded-xl border border-border bg-surface-elevated/40">
+                <CheckCircle className="w-4 h-4 text-success mt-0.5 flex-shrink-0" />
+                <p className="text-sm text-text-secondary">
+                  No failures found in the last {failuresPeriod} days. This monitor is healthy!
+                </p>
+              </div>
+            ) : (
+              <>
+                {/* Summary row */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                  <div className="rounded-xl border border-border bg-surface-elevated/40 px-4 py-3">
+                    <p className="text-xs text-text-muted mb-1 uppercase tracking-wider">Total Failures</p>
+                    <p className="text-2xl font-bold tabular-nums text-danger">{failurePatterns.totalFailures}</p>
+                  </div>
+                  <div className="rounded-xl border border-border bg-surface-elevated/40 px-4 py-3">
+                    <p className="text-xs text-text-muted mb-1 uppercase tracking-wider">Unique Patterns</p>
+                    <p className="text-2xl font-bold tabular-nums text-text-primary">{failurePatterns.uniquePatterns}</p>
+                  </div>
+                  <div className="rounded-xl border border-border bg-surface-elevated/40 px-4 py-3 col-span-2 sm:col-span-1">
+                    <p className="text-xs text-text-muted mb-1 uppercase tracking-wider">Top Pattern %</p>
+                    <p className="text-2xl font-bold tabular-nums text-warning">
+                      {failurePatterns.patterns[0]?.percentage ?? 0}%
+                    </p>
+                  </div>
+                </div>
+
+                {/* Pattern table */}
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="text-left text-xs text-text-muted border-b border-border">
+                        <th className="pb-2 pr-4 font-medium">Pattern</th>
+                        <th className="pb-2 pr-4 font-medium text-right">Count</th>
+                        <th className="pb-2 pr-4 font-medium text-right">%</th>
+                        <th className="pb-2 pr-4 font-medium text-right hidden sm:table-cell">First Seen</th>
+                        <th className="pb-2 font-medium text-right hidden sm:table-cell">Last Seen</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border">
+                      {failurePatterns.patterns.map((p, i) => (
+                        <tr key={i} className="hover:bg-white/5 transition-colors group">
+                          <td className="py-3 pr-4 max-w-xs">
+                            <p className="font-mono text-xs text-text-primary truncate" title={p.pattern}>
+                              {p.pattern}
+                            </p>
+                            <p className="text-xs text-text-muted mt-0.5 truncate" title={p.exampleMessage}>
+                              e.g. {p.exampleMessage}
+                            </p>
+                            {/* Inline mini sparkline */}
+                            <div className="flex items-end gap-[2px] mt-1.5 h-4">
+                              {p.weeklyTrend.map((v, wi) => {
+                                const maxVal = Math.max(...p.weeklyTrend, 1);
+                                const h = Math.max(2, Math.round((v / maxVal) * 16));
+                                return (
+                                  <div
+                                    key={wi}
+                                    className="flex-1 rounded-sm"
+                                    style={{
+                                      height: h,
+                                      backgroundColor: v === 0 ? 'rgba(255,255,255,0.08)' : `rgba(248,113,113,${0.3 + (v / maxVal) * 0.7})`,
+                                    }}
+                                    title={`Week ${wi + 1}: ${v} failures`}
+                                  />
+                                );
+                              })}
+                            </div>
+                          </td>
+                          <td className="py-3 pr-4 text-right font-semibold tabular-nums text-danger">{p.count}</td>
+                          <td className="py-3 pr-4 text-right tabular-nums">
+                            <span className={`font-medium ${p.percentage > 50 ? "text-danger" : p.percentage > 20 ? "text-warning" : "text-text-secondary"}`}>
+                              {p.percentage}%
+                            </span>
+                          </td>
+                          <td className="py-3 pr-4 text-right text-text-muted text-xs tabular-nums hidden sm:table-cell">
+                            {relativeTime(p.firstSeen)}
+                          </td>
+                          <td className="py-3 text-right text-text-muted text-xs tabular-nums hidden sm:table-cell">
+                            {relativeTime(p.lastSeen)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </>
             )}
           </Card>
         )}

@@ -681,3 +681,10 @@ export class CreateMonitorEventDto {
   @IsIn(['deploy', 'note', 'incident', 'maintenance', 'config'])
   eventType?: 'deploy' | 'note' | 'incident' | 'maintenance' | 'config';
 }
+
+export class ImportFromComposeDto {
+  @ApiProperty({ description: 'Raw YAML content of a docker-compose.yml file', maxLength: 102400 })
+  @IsString()
+  @MaxLength(102400)
+  compose!: string;
+}

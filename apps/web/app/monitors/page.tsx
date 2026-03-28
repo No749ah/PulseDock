@@ -29,6 +29,7 @@ import { MonitorFormModal } from "./components/MonitorFormModal";
 import { MonitorGridView, MonitorGroupedView } from "./components/MonitorGridView";
 import { AdvancedFiltersPanel } from "./components/AdvancedFiltersPanel";
 import { QuickAddModal } from "./components/QuickAddModal";
+import { ImportFromComposeModal } from "./components/ImportFromComposeModal";
 
 function MonitorsPageInner() {
   const router = useRouter();
@@ -158,6 +159,7 @@ function MonitorsPageInner() {
 
   // quick add (bulk URL) modal
   const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showComposeImport, setShowComposeImport] = useState(false);
 
   // config export modal
   const [showConfigExport, setShowConfigExport] = useState(false);
@@ -1418,6 +1420,16 @@ function MonitorsPageInner() {
                 <span className="hidden sm:inline">Quick Add</span>
               </Button>
               <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowComposeImport(true)}
+                className="flex items-center gap-2"
+                title="Import monitors from a Docker Compose file"
+              >
+                <Globe className="w-4 h-4" />
+                <span className="hidden sm:inline">From Compose</span>
+              </Button>
+              <Button
                 size="sm"
                 onClick={() => {
                   setModalMode("create");
@@ -2441,6 +2453,14 @@ function MonitorsPageInner() {
           channels={allChannels}
           onClose={() => setShowQuickAdd(false)}
           onSubmit={handleQuickAdd}
+        />
+      )}
+
+      {showComposeImport && (
+        <ImportFromComposeModal
+          userId={user?.id}
+          onClose={() => setShowComposeImport(false)}
+          onCreated={() => { fetchMonitors(); success("Monitors created from Docker Compose"); }}
         />
       )}
 

@@ -3789,4 +3789,358 @@ export class MonitorsService {
 
     return { regions, hasGeoData: true };
   }
+
+  /**
+   * Analyzes failed MonitorRun records for a monitor and groups them into
+   * normalized error patterns (by stripping dynamic values like IPs, timestamps,
+   * HTTP status codes, UUIDs). Returns frequency, first/last seen, and a
+   * 7-bucket weekly trend for each distinct pattern.
+   *
+   * @param userId     - Owner's user ID
+   * @param monitorId  - Target monitor
+   * @param periodDays - Look-back window in days (1–365, default 30)
+   */
+  async failurePatterns(userId: string, monitorId: string, periodDays: number = 30): Promise<{
+    totalFailures: number;
+    uniquePatterns: number;
+    patterns: Array<{
+      pattern: string;
+      count: number;
+      percentage: number;
+      firstSeen: Date;
+      lastSeen: Date;
+      exampleMessage: string;
+      weeklyTrend: number[]; // 7 buckets, oldest→newest
+    }>;
+  }> {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const days = Math.min(Math.max(1, periodDays), 365);
+    const since = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+
+    const failedRuns = await this.prisma.monitorRun.findMany({
+      where: { monitorId, ok: false, checkedAt: { gte: since } },
+      select: { message: true, checkedAt: true },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    if (failedRuns.length === 0) {
+      return { totalFailures: 0, uniquePatterns: 0, patterns: [] };
+    }
+
+    // ── Normalize message into a pattern ────────────────────────────────────
+    const normalize = (msg: string): string => {
+      return (msg ?? '')
+        .replace(/\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b/g, '<IP>') // IPv4
+        .replace(/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/gi, '<UUID>') // UUID
+        .replace(/\b\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/g, '<TS>') // ISO timestamps
+        .replace(/\b\d{10,13}\b/g, '<EPOCH>') // Unix epoch timestamps
+        .replace(/\bhttps?:\/\/[^\s"')]+/g, '<URL>') // URLs
+        .replace(/\bport \d+\b/gi, 'port <PORT>') // port numbers
+        .replace(/\b(status|code|http)\s*[:=]?\s*\d{3}\b/gi, (m) => m.replace(/\d{3}/, '<CODE>')) // HTTP codes
+        .replace(/in \d+(\.\d+)?ms/gi, 'in <MS>ms') // timing values
+        .replace(/\btimeout after \d+/gi, 'timeout after <N>') // timeout values
+        .replace(/\b\d{5,}\b/g, '<NUM>') // large numbers
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 200);
+    };
+
+    // ── Build pattern buckets ────────────────────────────────────────────────
+    const now = Date.now();
+    const weekMs = 7 * 24 * 60 * 60 * 1000;
+    const bucketCount = 7;
+    const bucketDurationMs = (days * 24 * 60 * 60 * 1000) / bucketCount;
+
+    const patternMap = new Map<string, {
+      count: number;
+      firstSeen: Date;
+      lastSeen: Date;
+      exampleMessage: string;
+      weekly: number[];
+    }>();
+
+    for (const run of failedRuns) {
+      const pattern = normalize(run.message ?? 'Unknown error');
+      const existing = patternMap.get(pattern);
+      const checkedMs = run.checkedAt.getTime();
+      const bucketIdx = Math.min(
+        bucketCount - 1,
+        Math.floor((checkedMs - since.getTime()) / bucketDurationMs),
+      );
+
+      if (!existing) {
+        patternMap.set(pattern, {
+          count: 1,
+          firstSeen: run.checkedAt,
+          lastSeen: run.checkedAt,
+          exampleMessage: run.message ?? 'Unknown error',
+          weekly: Array(bucketCount).fill(0).map((_, i) => (i === bucketIdx ? 1 : 0)),
+        });
+      } else {
+        existing.count++;
+        if (run.checkedAt < existing.firstSeen) existing.firstSeen = run.checkedAt;
+        if (run.checkedAt > existing.lastSeen) existing.lastSeen = run.checkedAt;
+        existing.weekly[bucketIdx]++;
+      }
+    }
+
+    const totalFailures = failedRuns.length;
+    const patterns = Array.from(patternMap.entries())
+      .sort((a, b) => b[1].count - a[1].count)
+      .slice(0, 20)
+      .map(([pattern, data]) => ({
+        pattern,
+        count: data.count,
+        percentage: Math.round((data.count / totalFailures) * 1000) / 10,
+        firstSeen: data.firstSeen,
+        lastSeen: data.lastSeen,
+        exampleMessage: data.exampleMessage,
+        weeklyTrend: data.weekly,
+      }));
+
+    return { totalFailures, uniquePatterns: patternMap.size, patterns };
+  }
+
+  // ── Import from Docker Compose ──────────────────────────────────────────────
+
+  /**
+   * Parses a docker-compose YAML string and returns suggested monitors for each service.
+   * Does NOT persist anything — returns suggestions only.
+   */
+  importFromCompose(compose: string): SuggestedMonitor[] {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const yaml = require('js-yaml') as typeof import('js-yaml');
+
+    let parsed: unknown;
+    try {
+      parsed = yaml.load(compose);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      throw new BadRequestException(`Invalid YAML: ${msg}`);
+    }
+
+    if (
+      !parsed ||
+      typeof parsed !== 'object' ||
+      !('services' in parsed) ||
+      typeof (parsed as Record<string, unknown>).services !== 'object'
+    ) {
+      return [];
+    }
+
+    const services = (parsed as { services: Record<string, unknown> }).services;
+    const suggestions: SuggestedMonitor[] = [];
+
+    for (const [serviceName, serviceDef] of Object.entries(services)) {
+      if (!serviceDef || typeof serviceDef !== 'object') continue;
+
+      const svc = serviceDef as {
+        image?: string;
+        ports?: Array<string | { published?: string | number; target?: string | number }>;
+      };
+
+      const image = (svc.image ?? '').toLowerCase();
+
+      // Parse port mappings → list of host ports
+      const hostPorts: number[] = [];
+      if (Array.isArray(svc.ports)) {
+        for (const p of svc.ports) {
+          if (typeof p === 'string') {
+            // "hostPort:containerPort" or just "containerPort"
+            const parts = p.split(':');
+            const hostPart = parts.length >= 2 ? parts[parts.length - 2] : parts[0];
+            const portNum = parseInt(hostPart.replace(/[^0-9]/g, ''), 10);
+            if (!isNaN(portNum)) hostPorts.push(portNum);
+          } else if (typeof p === 'object' && p !== null) {
+            const pub = p.published;
+            if (pub !== undefined) {
+              const portNum = typeof pub === 'number' ? pub : parseInt(String(pub), 10);
+              if (!isNaN(portNum)) hostPorts.push(portNum);
+            }
+          }
+        }
+      }
+
+      const firstPort = hostPorts[0];
+      const hasPort = (port: number) => hostPorts.includes(port);
+
+      // Helper: build HTTP target
+      const httpTarget = (port: number) => `http://localhost:${port}`;
+      // Helper: build TCP target
+      const tcpTarget = (port: number) => `localhost:${port}`;
+
+      // ── Image-based heuristics ───────────────────────────────────────────
+      if (/nginx|traefik|caddy|haproxy/.test(image)) {
+        const port = hasPort(443) ? 443 : hasPort(80) ? 80 : firstPort;
+        if (port !== undefined) {
+          const proto = port === 443 ? 'https' : 'http';
+          suggestions.push({
+            name: serviceName,
+            type: 'HTTP',
+            target: `${proto}://localhost:${port}`,
+            reason: `${image.match(/nginx|traefik|caddy|haproxy/)?.[0] ?? 'proxy'} image detected on port ${port}`,
+            intervalSec: 60,
+          });
+        }
+        continue;
+      }
+
+      if (/postgres/.test(image)) {
+        const port = firstPort ?? 5432;
+        suggestions.push({
+          name: serviceName,
+          type: 'TCP',
+          target: tcpTarget(port),
+          reason: `postgres image detected on port ${port}`,
+          intervalSec: 60,
+        });
+        continue;
+      }
+
+      if (/redis/.test(image)) {
+        const port = firstPort ?? 6379;
+        suggestions.push({
+          name: serviceName,
+          type: 'TCP',
+          target: tcpTarget(port),
+          reason: `redis image detected on port ${port}`,
+          intervalSec: 60,
+        });
+        continue;
+      }
+
+      if (/mysql|mariadb/.test(image)) {
+        const port = firstPort ?? 3306;
+        suggestions.push({
+          name: serviceName,
+          type: 'TCP',
+          target: tcpTarget(port),
+          reason: `${image.match(/mysql|mariadb/)?.[0] ?? 'mysql'} image detected on port ${port}`,
+          intervalSec: 60,
+        });
+        continue;
+      }
+
+      if (/mongo/.test(image)) {
+        const port = firstPort ?? 27017;
+        suggestions.push({
+          name: serviceName,
+          type: 'TCP',
+          target: tcpTarget(port),
+          reason: `mongo image detected on port ${port}`,
+          intervalSec: 60,
+        });
+        continue;
+      }
+
+      if (/rabbitmq/.test(image)) {
+        const tcpPort = firstPort ?? 5672;
+        suggestions.push({
+          name: serviceName,
+          type: 'TCP',
+          target: tcpTarget(tcpPort),
+          reason: `rabbitmq image detected on port ${tcpPort}`,
+          intervalSec: 60,
+        });
+        // Also suggest management UI if port 15672 is mapped
+        if (hasPort(15672)) {
+          suggestions.push({
+            name: `${serviceName}-management`,
+            type: 'HTTP',
+            target: httpTarget(15672),
+            reason: `rabbitmq management UI on port 15672`,
+            intervalSec: 60,
+          });
+        }
+        continue;
+      }
+
+      if (/elasticsearch/.test(image)) {
+        const port = firstPort ?? 9200;
+        suggestions.push({
+          name: serviceName,
+          type: 'HTTP',
+          target: httpTarget(port),
+          reason: `elasticsearch image detected on port ${port}`,
+          intervalSec: 60,
+        });
+        continue;
+      }
+
+      if (/grafana/.test(image)) {
+        const port = firstPort ?? 3000;
+        suggestions.push({
+          name: serviceName,
+          type: 'HTTP',
+          target: httpTarget(port),
+          reason: `grafana image detected on port ${port}`,
+          intervalSec: 60,
+        });
+        continue;
+      }
+
+      if (/prometheus/.test(image)) {
+        const port = firstPort ?? 9090;
+        suggestions.push({
+          name: serviceName,
+          type: 'HTTP',
+          target: httpTarget(port),
+          reason: `prometheus image detected on port ${port}`,
+          intervalSec: 60,
+        });
+        continue;
+      }
+
+      if (/minio/.test(image)) {
+        const port = hasPort(9001) ? 9001 : firstPort ?? 9000;
+        suggestions.push({
+          name: serviceName,
+          type: 'HTTP',
+          target: httpTarget(port),
+          reason: `minio image detected on port ${port}`,
+          intervalSec: 60,
+        });
+        continue;
+      }
+
+      // ── Port-based fallback heuristics ───────────────────────────────────
+      if (hasPort(80) || hasPort(443)) {
+        const port = hasPort(443) ? 443 : 80;
+        const proto = port === 443 ? 'https' : 'http';
+        suggestions.push({
+          name: serviceName,
+          type: 'HTTP',
+          target: `${proto}://localhost:${port}`,
+          reason: `port ${port} exposed (HTTP)`,
+          intervalSec: 60,
+        });
+        continue;
+      }
+
+      if (firstPort !== undefined) {
+        suggestions.push({
+          name: serviceName,
+          type: 'TCP',
+          target: tcpTarget(firstPort),
+          reason: `port ${firstPort} exposed`,
+          intervalSec: 60,
+        });
+        continue;
+      }
+
+      // No ports → skip
+    }
+
+    return suggestions;
+  }
+}
+
+export interface SuggestedMonitor {
+  name: string;
+  type: 'HTTP' | 'TCP';
+  target: string;
+  reason: string;
+  intervalSec: number;
 }

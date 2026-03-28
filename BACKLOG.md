@@ -6,6 +6,14 @@
 - **Last changes (08:40 UTC cycle):**
   - [x] **Geo-Region Frontend UI** — Monitor form: upgraded geo regions input from plain text to tag-style pill input (Enter/comma to add, ×-button to remove, max 10 tags, 50 chars each, hint text). Monitor detail page: geo tab now has 1d/7d/30d period selector (default 7d, refetches on change), table sorted by uptime% ascending (worst-first), proper "no geo data" info box matching spec, fixed color classes (text-danger). Monitors list: globe icon indicator with tooltip showing configured region names for monitors with geoRegions.length > 0. No regressions.
 
+## Status Summary (2026-03-28 08:50 UTC)
+- **Build/Test:** ✅ Clean build + 3889 API + 756 web + 10 CLI + 12 agent = 4667 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (08:50 UTC cycle):**
+  - [x] **Failure Pattern Analysis** — `GET /v1/monitors/:id/failure-patterns?periodDays=N` endpoint. Normalizes failed check messages into error patterns (strips IPs, UUIDs, HTTP codes, timestamps, ports into placeholders). Returns top-20 patterns sorted by frequency, with count, %, firstSeen, lastSeen, exampleMessage, and a 7-bucket weekly trend. New "Failures" tab on monitor detail page: summary cards (total failures, unique patterns, top pattern %), sortable pattern table with inline mini sparklines, period selector (7d/30d/90d). 10 new unit tests.
+
 ## Status Summary (2026-03-28 08:35 UTC)
 - **Build/Test:** ✅ Clean build + 3873 API + 756 web + 10 CLI + 12 agent = 4651 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

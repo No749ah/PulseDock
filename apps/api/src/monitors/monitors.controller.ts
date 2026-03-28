@@ -12,7 +12,7 @@ import { ApiKeyScope } from '../apikeys/apikeys.dto';
 import { MonitorsService } from './monitors.service';
 import { PlanService } from '../settings/plan.service';
 import { PrismaService } from '../common/prisma.service';
-import { BulkActionDto, BulkCreateFromUrlsDto, CreateMonitorDto, CreateMonitorEventDto, DiscoverVersionDto, ImportExternalDto, ImportMonitorsDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
+import { BulkActionDto, BulkCreateFromUrlsDto, CreateMonitorDto, CreateMonitorEventDto, DiscoverVersionDto, ImportExternalDto, ImportFromComposeDto, ImportMonitorsDto, RunMonitorDto, TestVersionConnectionDto, UpdateMonitorDto } from './monitors.dto';
 import { MuteMonitorDto } from './dto/mute-monitor.dto';
 import { PauseMonitorDto } from './dto/pause-monitor.dto';
 import { AcknowledgeMonitorDto } from './dto/acknowledge-monitor.dto';
@@ -530,6 +530,18 @@ export class MonitorsController {
   @ApiResponse({ status: 200, description: 'Import result with count of imported, skipped, and errors.' })
   importExternal(@Req() req: { user: { id: string } }, @Body() body: ImportExternalDto) {
     return this.monitorsService.importExternal(req.user.id, body.source, body.payload);
+  }
+
+  @Post('import-from-compose')
+  @HttpCode(200)
+  @ApiOperation({
+    summary: 'Parse a Docker Compose YAML and suggest monitors',
+    description: 'Returns suggested monitors based on service images and port mappings. Does not create monitors.',
+  })
+  @ApiResponse({ status: 200, description: 'Suggested monitors array' })
+  @ApiResponse({ status: 400, description: 'Invalid YAML' })
+  importFromCompose(@Req() req: { user: { id: string } }, @Body() body: ImportFromComposeDto) {
+    return this.monitorsService.importFromCompose(body.compose);
   }
 
   @Get(':id/alerts')
@@ -1623,5 +1635,25 @@ export class MonitorsController {
     @Query('periodDays') periodDays?: string,
   ) {
     return this.monitorsService.geoStats(req.user.id, id, periodDays ? parseInt(periodDays, 10) : 7);
+  }
+
+  // ─── Failure Pattern Analysis ─────────────────────────────────────────────────────
+
+  @Get(':id/failure-patterns')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Failure pattern analysis for a monitor',
+    description: 'Groups failed check messages into normalized patterns. Returns frequency, first/last seen, and a weekly trend for each pattern. Useful for diagnosing recurring failure causes.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'periodDays', required: false, type: Number, description: 'Number of days to look back (default 30, max 365)' })
+  @ApiResponse({ status: 200, description: 'Failure pattern analysis returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  failurePatterns(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('periodDays') periodDays?: string,
+  ) {
+    return this.monitorsService.failurePatterns(req.user.id, id, periodDays ? parseInt(periodDays, 10) : 30);
   }
 }

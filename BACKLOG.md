@@ -1,3 +1,11 @@
+## Status Summary (2026-03-28 06:40 UTC)
+- **Build/Test:** ✅ Clean build + 3789 API (+8 schedule tests) + 10 e2e + 12 agent = 3811 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; all routes 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (06:40 UTC cycle):**
+  - [x] **Per-Alert-Channel Active Schedules** — `AlertChannel.scheduleJson` (JSONB). `isChannelActive()` utility with IANA timezone support. AlertsService skips dispatch outside window. Frontend: day-of-week pills + timezone select + hour range in create/edit modal. 🕐 schedule summary badge in channel list. 8 new unit tests.
+
 ## Status Summary (2026-03-28 06:15 UTC)
 - **Build/Test:** ✅ Clean build + 3781 API (+6 dependency suppression tests) + 10 e2e + 12 agent = 3803 total; 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities

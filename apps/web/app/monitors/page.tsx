@@ -168,6 +168,7 @@ function MonitorsPageInner() {
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showComposeImport, setShowComposeImport] = useState(false);
   const [showOpenApiImport, setShowOpenApiImport] = useState(false);
+  const [showPlayground, setShowPlayground] = useState(false);
 
   // config export modal
   const [showConfigExport, setShowConfigExport] = useState(false);
@@ -1472,6 +1473,16 @@ function MonitorsPageInner() {
               <Button
                 variant="secondary"
                 size="sm"
+                onClick={() => setShowPlayground(true)}
+                className="flex items-center gap-2"
+                title="Test any endpoint before creating a monitor"
+              >
+                <TestTube2 className="w-4 h-4" />
+                <span className="hidden sm:inline">Try it</span>
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => setShowQuickAdd(true)}
                 className="flex items-center gap-2"
                 title="Paste multiple URLs to create monitors in bulk"
@@ -2618,6 +2629,65 @@ function MonitorsPageInner() {
               setMonitors(monitorsData);
             }
             success("Monitors created from Docker Compose");
+          }}
+        />
+      )}
+
+      {showPlayground && (
+        <PlaygroundModal
+          onClose={() => setShowPlayground(false)}
+          onCreateMonitor={(prefill) => {
+            setShowPlayground(false);
+            setModalMode("create");
+            setEditingMonitor(null);
+            setFormData({
+              name: "",
+              description: "",
+              runbookUrl: "",
+              type: "HTTP",
+              target: prefill.url,
+              intervalSec: 60,
+              confirmations: 1,
+              retryCount: 0,
+              enabled: true,
+              pluginId: "",
+              expectedText: "",
+              heartbeatTimeoutMin: 5,
+              heartbeatToken: "",
+              folderId: "",
+              slaTarget: "",
+              slaPeriodDays: 30,
+              autoIncident: false,
+              autoIncidentSeverity: "MEDIUM",
+              flapDetectionEnabled: true,
+              flapWindow: 10,
+              flapThreshold: 0.5,
+              latencyAlertMs: null,
+              anomalyDetection: false,
+              anomalyMultiplier: 2.0,
+              cronExpression: "",
+              scheduleEnabled: false,
+              scheduleDays: "1,2,3,4,5",
+              scheduleStartHour: 8,
+              scheduleEndHour: 18,
+              sliLatencyTarget: "",
+              sliLatencyWindow: 7,
+              rtoMinutes: undefined,
+              timeoutMs: null,
+              httpMethod: prefill.method,
+              requestHeaders: prefill.headers ? JSON.stringify(prefill.headers) : undefined,
+              requestBody: prefill.body,
+              expectedStatus: prefill.expectedStatus,
+              bodyContains: prefill.bodyContains,
+              bodyJsonPath: prefill.bodyJsonPath,
+              bodyJsonPathExpected: prefill.bodyJsonPathExpected,
+            } as typeof formData);
+            setFormErrors({});
+            setFormTouched({});
+            setSelectedTags([]);
+            setTagInput("");
+            setShowModal(true);
+            setShowTemplates(false);
           }}
         />
       )}

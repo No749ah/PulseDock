@@ -368,6 +368,14 @@ export class MonitorsController {
     return this.monitorsService.getHealthSummary(req.user.id);
   }
 
+  @Get('health-scores')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'Get health scores for all monitors (batch)' })
+  @ApiResponse({ status: 200, description: 'Batch health scores returned.' })
+  healthScores(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.allHealthScores(req.user.id);
+  }
+
   @Get('ssl-summary')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({
@@ -393,6 +401,19 @@ export class MonitorsController {
   })
   sslSummary(@Req() req: { user: { id: string } }) {
     return this.monitorsService.getSslSummary(req.user.id);
+  }
+
+  @Get('heatmap')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'Uptime heatmap', description: 'Returns a per-monitor × per-day uptime heatmap for the last N days (1-90). Each cell contains uptimePct, total checks, and failed checks. Monitors ordered by pinned-first then creation date.' })
+  @ApiQuery({ name: 'days', required: false, description: '1-90 (default 30)' })
+  @ApiResponse({ status: 200, description: 'Heatmap data returned.' })
+  uptimeHeatmap(
+    @Req() req: { user: { id: string } },
+    @Query('days') daysParam?: string,
+  ) {
+    const days = Math.min(90, Math.max(1, parseInt(daysParam ?? '30', 10) || 30));
+    return this.monitorsService.uptimeHeatmap(req.user.id, days);
   }
 
   @Get('export')

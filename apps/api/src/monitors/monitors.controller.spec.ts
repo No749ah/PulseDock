@@ -23,6 +23,7 @@ function makeMonitorsService() {
     monitorChart: vi.fn(),
     versionSummary: vi.fn(),
     exportMonitors: vi.fn(),
+    exportMonitorsConfig: vi.fn(),
     importMonitors: vi.fn(),
     importExternal: vi.fn(),
     listMonitorAlerts: vi.fn(),

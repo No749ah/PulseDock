@@ -311,7 +311,7 @@ function MonitorsPageInner() {
       try {
         setLoading(true);
         setError("");
-        const [monitorsData, runsData, channelsData, pluginsData, tagsData, foldersData, healthSummaryData] = await Promise.all([
+        const [monitorsData, runsData, channelsData, pluginsData, tagsData, foldersData, healthSummaryData, batchHealthData] = await Promise.all([
           api<MonitorItem[]>("/v1/monitors", userId),
           api<MonitorRun[]>("/v1/monitors/runs?limit=20", userId),
           api<AlertChannel[]>("/v1/alert-channels", userId),
@@ -319,6 +319,7 @@ function MonitorsPageInner() {
           api<TagItem[]>("/v1/tags", userId),
           api<{ id: string; name: string }[]>("/v1/folders", userId),
           api<{ scores: Array<{ monitorId: string; name: string; score: number; grade: string }>; overall: { avg: number } }>("/v1/monitors/health-summary", userId).catch(() => null),
+          api<Array<{ monitorId: string; score: number | null }>>("/v1/monitors/health-scores", userId).catch(() => null),
         ]);
         setMonitors(monitorsData);
         setRuns(runsData);
@@ -327,13 +328,23 @@ function MonitorsPageInner() {
         setAllTags(tagsData);
         setFolders(foldersData);
 
+        // Build health score map — prefer batch v2 scores (uptime/latency/incidents/flapping formula)
+        const scoreMap: Record<string, { score: number; grade: string }> = {};
         if (healthSummaryData?.scores) {
-          const scoreMap: Record<string, { score: number; grade: string }> = {};
           for (const s of healthSummaryData.scores) {
             scoreMap[s.monitorId] = { score: s.score, grade: s.grade };
           }
-          setHealthScores(scoreMap);
         }
+        // Overlay v2 batch scores (override grade with numeric label)
+        if (batchHealthData) {
+          for (const s of batchHealthData) {
+            if (s.score !== null) {
+              const grade = s.score >= 90 ? "A" : s.score >= 70 ? "B" : s.score >= 50 ? "C" : s.score >= 25 ? "D" : "F";
+              scoreMap[s.monitorId] = { score: s.score, grade };
+            }
+          }
+        }
+        setHealthScores(scoreMap);
         const folderParam = searchParams.get("folder");
         if (folderParam) {
           setFolderFilter(folderParam);

@@ -3135,7 +3135,7 @@ describe('AlertsService', () => {
       const prisma = makePrisma();
       const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
 
-      await service.send(channel, 'test', {
+      await (service as unknown as { send: (...args: unknown[]) => Promise<void> }).send(channel, 'test', {
         monitor: { name: 'API', type: 'HTTP', target: 'https://api.example.com' },
         run: { level: 'green', message: 'Recovered', latencyMs: 50, checkedAt: new Date().toISOString() },
       });
@@ -3213,7 +3213,7 @@ describe('AlertsService', () => {
       const prisma = makePrisma();
       const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
 
-      await service.send(channel, 'Recovered', {
+      await (service as unknown as { send: (...args: unknown[]) => Promise<void> }).send(channel, 'Recovered', {
         monitor: { name: 'API', type: 'HTTP', target: 'https://api.example.com' },
         run: { level: 'green', message: 'OK', latencyMs: 30, checkedAt: new Date().toISOString() },
       });
@@ -3307,7 +3307,7 @@ describe('AlertsService', () => {
       const prisma = makePrisma();
       const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
 
-      await service.send(channel, 'Down', {
+      await (service as unknown as { send: (...args: unknown[]) => Promise<void> }).send(channel, 'Down', {
         monitor: { name: 'API', type: 'HTTP', target: 'https://api.example.com' },
         run: { level: 'red', message: 'Connection refused', latencyMs: null, checkedAt: new Date().toISOString() },
       });
@@ -3326,7 +3326,7 @@ describe('AlertsService', () => {
       const prisma = makePrisma();
       const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
 
-      await service.send(channel, 'Recovered', {
+      await (service as unknown as { send: (...args: unknown[]) => Promise<void> }).send(channel, 'Recovered', {
         monitor: { name: 'API', type: 'HTTP', target: 'https://api.example.com' },
         run: { level: 'green', message: 'OK', latencyMs: 45, checkedAt: new Date().toISOString() },
       });

@@ -596,7 +596,7 @@ describe('MonitorsService', () => {
 
   describe('exportMonitors()', () => {
     it('returns correct shape with version and exportedAt', async () => {
-      const result = await service.exportMonitors('user-1');
+      const result = await service.exportMonitors('user-1') as { version: string; exportedAt: string; monitors: unknown[] };
       expect(result).toHaveProperty('version', '1');
       expect(result).toHaveProperty('exportedAt');
       expect(typeof result.exportedAt).toBe('string');
@@ -604,7 +604,7 @@ describe('MonitorsService', () => {
     });
 
     it('includes monitor fields in export', async () => {
-      const result = await service.exportMonitors('user-1');
+      const result = await service.exportMonitors('user-1') as { version: string; exportedAt: string; monitors: Record<string, unknown>[] };
       expect(result.monitors).toHaveLength(1);
       expect(result.monitors[0]).toHaveProperty('name', 'Test Monitor');
       expect(result.monitors[0]).toHaveProperty('type', 'GIT_RELEASE');
@@ -616,7 +616,7 @@ describe('MonitorsService', () => {
     it('returns empty monitors array when user has none', async () => {
       const p = makePrisma(null);
       const svc = makeService(p);
-      const result = await svc.exportMonitors('user-1');
+      const result = await svc.exportMonitors('user-1') as { version: string; exportedAt: string; monitors: unknown[] };
       expect(result.monitors).toHaveLength(0);
     });
   });

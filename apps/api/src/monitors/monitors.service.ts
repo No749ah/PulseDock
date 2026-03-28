@@ -3146,4 +3146,221 @@ export class MonitorsService {
       commonChains,
     };
   }
+
+  // ─── Monitor Health Score (v2: uptime/latency/incidents/flapping) ─────────
+
+  /**
+   * Computes a 0–100 health score for a single monitor.
+   * Components:
+   *   - Uptime (50 pts): based on last 24h uptime %
+   *   - Latency (30 pts): p95 latency vs 7d baseline
+   *   - Incidents (20 pts): deducted per active incident
+   *   - Flapping penalty (-15): if monitor.isFlapping
+   *
+   * Returns null score when no runs in last 24h.
+   */
+  async healthScore(
+    userId: string,
+    monitorId: string,
+  ): Promise<{
+    score: number | null;
+    breakdown: { uptime: number; latency: number; incidents: number; flapping: number; total: number } | null;
+  }> {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+
+    const runs24h = await this.prisma.monitorRun.findMany({
+      where: { monitorId, checkedAt: { gte: since24h } },
+      select: { ok: true, latencyMs: true },
+      orderBy: { checkedAt: 'desc' },
+    });
+
+    if (runs24h.length === 0) return { score: null, breakdown: null };
+
+    // Uptime component (50 pts max)
+    const okCount = runs24h.filter(r => r.ok).length;
+    const uptimePct = (okCount / runs24h.length) * 100;
+    const uptimeScore = Math.round((uptimePct / 100) * 50);
+
+    // Latency component (30 pts max)
+    const runs7d = await this.prisma.monitorRun.findMany({
+      where: { monitorId, checkedAt: { gte: since7d }, latencyMs: { not: null } },
+      select: { latencyMs: true },
+      orderBy: { checkedAt: 'desc' },
+      take: 500,
+    });
+
+    let latencyScore = 30;
+    if (runs7d.length >= 10) {
+      const latencies = runs7d.map(r => r.latencyMs!).sort((a, b) => a - b);
+      const p95Idx = Math.floor(latencies.length * 0.95);
+      const baselineP95 = latencies[p95Idx] ?? latencies[latencies.length - 1];
+
+      const recent = runs24h.filter(r => r.latencyMs != null).map(r => r.latencyMs!).sort((a, b) => a - b);
+      if (recent.length > 0) {
+        const recentP95Idx = Math.floor(recent.length * 0.95);
+        const recentP95 = recent[recentP95Idx] ?? recent[recent.length - 1];
+        if (baselineP95 > 0) {
+          const penalty = Math.floor(((recentP95 - baselineP95) / baselineP95) * 30);
+          latencyScore = Math.max(0, 30 - Math.max(0, penalty));
+        }
+      }
+    }
+
+    // Incident component (20 pts max)
+    const activeIncidents = await this.prisma.incident.count({
+      where: {
+        userId,
+        status: { not: 'RESOLVED' },
+        monitors: { some: { monitorId } },
+      },
+    });
+    const incidentScore = Math.max(0, 20 - activeIncidents * 10);
+
+    // Flapping penalty (-15 if flapping)
+    const flappingPenalty = monitor.isFlapping ? 15 : 0;
+
+    const total = Math.max(0, Math.min(100, uptimeScore + latencyScore + incidentScore - flappingPenalty));
+
+    return {
+      score: total,
+      breakdown: { uptime: uptimeScore, latency: latencyScore, incidents: incidentScore, flapping: flappingPenalty === 0 ? 0 : -flappingPenalty, total },
+    };
+  }
+
+  /**
+   * Batch health scores for all monitors belonging to a user.
+   * Skips the per-monitor latency computation for performance — gives full 30 pts.
+   */
+  async allHealthScores(userId: string): Promise<{ monitorId: string; score: number | null }[]> {
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId },
+      select: { id: true, isFlapping: true },
+    });
+
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const runStats = await this.prisma.monitorRun.groupBy({
+      by: ['monitorId'],
+      where: { userId, checkedAt: { gte: since24h } },
+      _count: { _all: true },
+    });
+
+    const okStats = await this.prisma.monitorRun.groupBy({
+      by: ['monitorId'],
+      where: { userId, checkedAt: { gte: since24h }, ok: true },
+      _count: { _all: true },
+    });
+
+    const activeIncidentsByMonitor = await this.prisma.incidentMonitor.groupBy({
+      by: ['monitorId'],
+      where: {
+        incident: { userId, status: { not: 'RESOLVED' } },
+      },
+      _count: { _all: true },
+    });
+
+    return monitors.map(m => {
+      const total = runStats.find(r => r.monitorId === m.id)?._count._all ?? 0;
+      if (total === 0) return { monitorId: m.id, score: null };
+
+      const ok = okStats.find(r => r.monitorId === m.id)?._count._all ?? 0;
+      const uptimeScore = Math.round((ok / total) * 50);
+      const incidentCount = activeIncidentsByMonitor.find(r => r.monitorId === m.id)?._count._all ?? 0;
+      const incidentScore = Math.max(0, 20 - incidentCount * 10);
+      const flappingPenalty = m.isFlapping ? 15 : 0;
+      // Latency: skip in batch for performance, give full 30 pts
+      const score = Math.max(0, Math.min(100, uptimeScore + 30 + incidentScore - flappingPenalty));
+      return { monitorId: m.id, score };
+    });
+  }
+
+  // ─── Uptime Heatmap ───────────────────────────────────────────────────────
+
+  /**
+   * Returns a per-monitor × per-day uptime heatmap for the last N days.
+   * Each cell has: uptimePct (0-100 | null), total checks, failed checks.
+   * Used by the /monitors/heatmap page.
+   */
+  async uptimeHeatmap(userId: string, days: number): Promise<{
+    monitors: Array<{
+      id: string;
+      name: string;
+      type: string;
+      folder: string | null;
+      days: Array<{ date: string; uptimePct: number | null; total: number; failed: number }>;
+    }>;
+    dates: string[];
+  }> {
+    const clampedDays = Math.min(90, Math.max(1, days));
+
+    // Load all uptime monitors for the user
+    const monitors = await this.prisma.monitor.findMany({
+      where: {
+        userId,
+        type: { in: ['HTTP', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING', 'SMTP', 'BROWSER'] },
+      },
+      select: { id: true, name: true, type: true, folder: { select: { name: true } } },
+      orderBy: [{ pinned: 'desc' }, { createdAt: 'asc' }],
+    });
+
+    // Build date list (oldest first, newest last)
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const since = new Date(today);
+    since.setUTCDate(today.getUTCDate() - clampedDays + 1);
+
+    const dates: string[] = [];
+    for (let i = 0; i < clampedDays; i++) {
+      const d = new Date(since);
+      d.setUTCDate(since.getUTCDate() + i);
+      dates.push(d.toISOString().slice(0, 10));
+    }
+
+    if (monitors.length === 0) {
+      return { monitors: [], dates };
+    }
+
+    const monitorIds = monitors.map(m => m.id);
+
+    // Single bulk query: all runs in the time window
+    const runs = await this.prisma.monitorRun.findMany({
+      where: {
+        userId,
+        monitorId: { in: monitorIds },
+        checkedAt: { gte: since },
+      },
+      select: { monitorId: true, checkedAt: true, level: true },
+    });
+
+    // Aggregate into monitorId → date → { total, failed }
+    const agg = new Map<string, Map<string, { total: number; failed: number }>>();
+    for (const run of runs) {
+      const dateStr = run.checkedAt.toISOString().slice(0, 10);
+      if (!agg.has(run.monitorId)) agg.set(run.monitorId, new Map());
+      const dayMap = agg.get(run.monitorId)!;
+      if (!dayMap.has(dateStr)) dayMap.set(dateStr, { total: 0, failed: 0 });
+      const cell = dayMap.get(dateStr)!;
+      cell.total++;
+      if (run.level !== 'green') cell.failed++;
+    }
+
+    const result = monitors.map(m => ({
+      id: m.id,
+      name: m.name,
+      type: m.type,
+      folder: m.folder?.name ?? null,
+      days: dates.map(date => {
+        const cell = agg.get(m.id)?.get(date);
+        if (!cell || cell.total === 0) return { date, uptimePct: null, total: 0, failed: 0 };
+        const uptimePct = Math.round(((cell.total - cell.failed) / cell.total) * 10000) / 100;
+        return { date, uptimePct, total: cell.total, failed: cell.failed };
+      }),
+    }));
+
+    return { monitors: result, dates };
+  }
 }

@@ -71,6 +71,14 @@
   - [x] **GraphQL monitor detail card** — Config card on monitor detail page showing endpoint, query, data path, expected value for GRAPHQL monitors (matching FTP/IMAP/POP3 pattern).
   - Services restarted. All pages 200.
 
+## Status Summary (2026-03-28 21:46 UTC)
+- **Build/Test:** ✅ Clean build + 4143 API + 757 web + 10 CLI + 12 agent = 4922 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-afternoon
+- **Last changes (21:46 UTC cycle):**
+  - [x] **Operations Digest Page** — `GET /v1/reports/digest?period=7|30|90` returning full fleet summary: grade (A–F), uptime%, top/worst performers, most improved/degraded, alert stats, incident stats, check counts, version update status, actionable recommendations with severity (high/medium/low). Frontend `/reports/digest`: grade hero card, stats row (4 cards), top/worst performers tables, SVG trend chart (daily fleet uptime), improvement/degradation cards, alerts & incidents stats, recommendations list with severity icons + clickable monitor links. Period selector pills (7/30/90d), Export PDF button (window.print()), print-friendly CSS. "Digest" nav item added to sidebar. 8 new unit tests.
+
 ## Status Summary (2026-03-28 21:25 UTC)
 - **Build/Test:** ✅ Clean build + 4135 API + 757 web + 10 CLI + 12 agent = 4914 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

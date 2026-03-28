@@ -1,3 +1,43 @@
+## Status Summary (2026-03-27 20:20 UTC)
+- **Build/Test:** ✅ Clean build + 3707 API (+11 ntfy/gotify tests) + 747 web + 10 e2e + 12 agent = 4476 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
+- **Branch:** heartbeat/2026-03-27-pm
+- **Last changes (20:20 UTC cycle):**
+  - [x] **ntfy alert channel** — POST to full topic URL, X-Priority (5=down/3=degraded/2=recovered), X-Title with monitor name + status, X-Tags emoji, optional Bearer token auth for protected topics. Self-hosted-friendly. 5 new tests.
+  - [x] **Gotify alert channel** — POST to /message endpoint, X-Gotify-Key header, auto-priority (9=down, 5=degraded, 1=recovered) with manual override, trailing-slash guard on serverUrl. 6 new tests.
+  - [x] **Fix teams DTO gap** — `teams` channel type was in the service + web UI but missing from `CreateAlertChannelDto`/`UpdateAlertChannelDto` — blocked creation via API. Fixed.
+
+## Status Summary (2026-03-27 19:38 UTC)
+- **Build/Test:** ✅ Clean build + 3696 API tests (+10 bulk-create); 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
+- **Branch:** heartbeat/2026-03-27-pm
+- **Last changes (19:38 UTC cycle):**
+  - [x] **Quick Add Monitors (Bulk URL import)** — `QuickAddModal` component: paste 1–50 URLs (one per line), pick folder, check interval, and alert channels, then create all in one click. Results show created/skipped/errors inline. ⚡ "Quick Add" button in monitors toolbar. handleQuickAdd() calls POST /v1/monitors/bulk-create-from-urls (already existed but had no frontend). 10 new tests for bulkCreateFromUrls logic.
+- **Last changes (19:21 UTC cycle):**
+  - [x] **Recovery Time Objective (RTO) Tracking** — `rtoMinutes Int?` on Monitor. Per-incident RTO compliance check: breach count, compliant count, RTO compliance % (compliant/total incidents). RTO card on monitor SLO tab: compliance %, within-RTO/breached counts, warning when breaches exist. RTO input in create/edit form (Advanced Settings, near SLA config). 7 new tests.
+
+## Status Summary (2026-03-27 16:20 UTC)
+- **Build/Test:** ✅ Clean build + 3664 API + 10 e2e + 12 agent = 3686 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities (brace-expansion CVE fixed via npm audit fix)
+- **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
+- **Branch:** heartbeat/2026-03-27-pm
+- **Last changes (16:20 UTC cycle):**
+  - **Microsoft Teams alert channel** — `teams` added to `AlertChannelType` union. `send()` handler builds MessageCard payload: themeColor (red/yellow/green), summary, activityTitle, activityText, facts (monitor name/type/latency/target/time). Frontend: Teams option in platform select, setup instructions for Incoming Webhook, buildConfig/edit-prefill wired. 4 new tests.
+  - **Fix PluginExecutionResult** — Added `redirectChain?: string[] | null` to interface (was missing, caused TS errors in http.runner.spec.ts redirect tests).
+  - **Fix monitors.pin.spec.ts** — Updated constructor call to pass all 5 required args to MonitorsService.
+  - **npm audit fix** — brace-expansion CVE (moderate) resolved.
+
+## Status Summary (2026-03-27 15:25 UTC)
+- **Build/Test:** ✅ Clean build + 3660 API + 10 e2e + 12 agent = 3682 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; public URL + all routes 200
+- **Branch:** heartbeat/2026-03-27-pm
+- **Last changes (15:25 UTC cycle):**
+  - **Monitor Pinning** — `pinned Boolean @default(false)` on Monitor. `POST /v1/monitors/:id/pin` toggles pin state. Pinned monitors sorted to top of list. Amber pin button per row + detail page header. 4 new tests.
+  - **Cron scheduling test coverage** — 11 unit tests for `isCronDue()`: null fallback, due/not-due by schedule, invalid/empty expression handling (fail-safe), daily/weekly schedule accuracy. Empty-string guard added to production scheduler.
+
 ## Status Summary (2026-03-27 12:20 UTC)
 - **Build/Test:** ✅ Clean build + 3628 API + 10 e2e + 12 agent = 3650 total; 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
@@ -70,6 +110,16 @@
 **Do not propose new projects. PulseDock is the focus until it's genuinely world-class.**
 
 ---
+
+## Recently Completed (2026-03-27 16:20 UTC)
+
+- [x] **Microsoft Teams alert channel** — `teams` channel type added to AlertChannelType. Backend: MessageCard payload (themeColor, summary, activityTitle, activityText, facts). Frontend: Teams option in platform select, setup instructions (create Incoming Webhook in Teams → channel → Connectors), buildConfig/edit-prefill. 4 new tests. *(2026-03-27)*
+- [x] **brace-expansion CVE fix** — `npm audit fix` resolved moderate severity vulnerability. 0 vulnerabilities remaining. *(2026-03-27)*
+
+## Recently Completed (2026-03-27 15:25 UTC)
+
+- [x] **Monitor Pinning** — `pinned Boolean @default(false)` on Monitor model. `POST /v1/monitors/:id/pin` toggles pin state. Pinned monitors sorted to top of monitors list. Amber ⭐ pin button in each list row + detail page header. 4 new tests. *(2026-03-27)*
+- [x] **Cron scheduling test coverage** — 11 unit tests for `isCronDue()` logic: null/never-checked fallback (always due), past-due detection, future-schedule not-due, invalid cron expression fail-safe, empty expression guard added to production code, daily `0 9 * * *` and weekly `0 0 * * 1` schedule accuracy. *(2026-03-27)*
 
 ## Recently Completed (2026-03-27 08:15 UTC)
 

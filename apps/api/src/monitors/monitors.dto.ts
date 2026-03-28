@@ -220,6 +220,19 @@ export class CreateMonitorDto {
   @Max(23)
   scheduleEndHour?: number;
 
+  @ApiPropertyOptional({ description: 'Comma-separated HTTP response header names to track for changes (HTTP/BROWSER monitors only). Example: "x-frame-options,content-security-policy,server"', example: 'x-frame-options,content-security-policy' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1024)
+  trackedHeaders?: string | null;
+
+  @ApiPropertyOptional({ description: 'Recovery Time Objective in minutes. Alert breach when recovery takes longer than this target (1–10080, i.e. 1 min–1 week).', minimum: 1, maximum: 10080, example: 15 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(10080)
+  rtoMinutes?: number;
+
 }
 
 export class UpdateMonitorDto {
@@ -376,6 +389,17 @@ export class UpdateMonitorDto {
   @Min(0)
   @Max(23)
   scheduleEndHour?: number;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1024)
+  trackedHeaders?: string | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(10080)
+  rtoMinutes?: number;
 
 }
 

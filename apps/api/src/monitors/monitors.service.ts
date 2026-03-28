@@ -101,6 +101,7 @@ export class MonitorsService {
       flapWindow: m.flapWindow,
       flapThreshold: m.flapThreshold,
       flapAlertedAt: m.flapAlertedAt?.toISOString() ?? null,
+      pausedUntil: m.pausedUntil?.toISOString() ?? null,
       mutedUntil: m.mutedUntil?.toISOString() ?? null,
       latencyAlertMs: m.latencyAlertMs ?? null,
       anomalyDetection: m.anomalyDetection,
@@ -113,6 +114,9 @@ export class MonitorsService {
       sliLatencyTarget: m.sliLatencyTarget ?? null,
       sliLatencyWindow: m.sliLatencyWindow,
       shareToken: m.shareToken ?? null,
+      trackedHeaders: (m as typeof m & { trackedHeaders?: string | null }).trackedHeaders ?? null,
+      headerBaseline: (m as typeof m & { headerBaseline?: unknown }).headerBaseline ?? null,
+      headerBaselineSetAt: (m as typeof m & { headerBaselineSetAt?: Date | null }).headerBaselineSetAt?.toISOString() ?? null,
       isAcknowledged: (m as typeof m & { acknowledgements?: unknown[] }).acknowledgements?.length > 0,
 
       createdAt: m.createdAt.toISOString(),
@@ -165,6 +169,7 @@ export class MonitorsService {
       flapWindow: m.flapWindow,
       flapThreshold: m.flapThreshold,
       flapAlertedAt: m.flapAlertedAt?.toISOString() ?? null,
+      pausedUntil: m.pausedUntil?.toISOString() ?? null,
       mutedUntil: m.mutedUntil?.toISOString() ?? null,
       latencyAlertMs: m.latencyAlertMs ?? null,
       isAcknowledged: m.acknowledgements.length > 0,
@@ -181,6 +186,9 @@ export class MonitorsService {
       scheduleStartHour: m.scheduleStartHour,
       scheduleEndHour: m.scheduleEndHour,
       shareToken: m.shareToken ?? null,
+      trackedHeaders: (m as typeof m & { trackedHeaders?: string | null }).trackedHeaders ?? null,
+      headerBaseline: (m as typeof m & { headerBaseline?: unknown }).headerBaseline ?? null,
+      headerBaselineSetAt: (m as typeof m & { headerBaselineSetAt?: Date | null }).headerBaselineSetAt?.toISOString() ?? null,
       createdAt: m.createdAt.toISOString(),
     };
   }
@@ -225,6 +233,8 @@ export class MonitorsService {
     scheduleEndHour?: number;
     sliLatencyTarget?: number;
     sliLatencyWindow?: number;
+    trackedHeaders?: string | null;
+    rtoMinutes?: number | null;
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -276,6 +286,8 @@ export class MonitorsService {
         scheduleDays: body.scheduleDays ?? '1,2,3,4,5',
         scheduleStartHour: body.scheduleStartHour ?? 8,
         scheduleEndHour: body.scheduleEndHour ?? 18,
+        ...(body.trackedHeaders !== undefined ? { trackedHeaders: body.trackedHeaders ?? null } : {}),
+        ...(body.rtoMinutes !== undefined ? { rtoMinutes: body.rtoMinutes ?? null } : {}),
         monitorAlerts: {
           create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),
         },
@@ -336,6 +348,7 @@ export class MonitorsService {
       scheduleEndHour: created.scheduleEndHour,
       sliLatencyTarget: created.sliLatencyTarget ?? null,
       sliLatencyWindow: created.sliLatencyWindow,
+      trackedHeaders: (created as typeof created & { trackedHeaders?: string | null }).trackedHeaders ?? null,
       createdAt: created.createdAt.toISOString(),
     };
 
@@ -386,6 +399,8 @@ export class MonitorsService {
     scheduleEndHour?: number;
     sliLatencyTarget?: number | null;
     sliLatencyWindow?: number;
+    trackedHeaders?: string | null;
+    rtoMinutes?: number | null;
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -443,6 +458,8 @@ export class MonitorsService {
         ...(body.scheduleEndHour !== undefined ? { scheduleEndHour: body.scheduleEndHour } : {}),
         ...(body.sliLatencyTarget !== undefined ? { sliLatencyTarget: body.sliLatencyTarget } : {}),
         ...(body.sliLatencyWindow !== undefined ? { sliLatencyWindow: body.sliLatencyWindow } : {}),
+        ...(body.trackedHeaders !== undefined ? { trackedHeaders: body.trackedHeaders ?? null } : {}),
+        ...(body.rtoMinutes !== undefined ? { rtoMinutes: body.rtoMinutes ?? null } : {}),
       },
     });
 
@@ -651,6 +668,7 @@ export class MonitorsService {
       flapWindow: cloned.flapWindow,
       flapThreshold: cloned.flapThreshold,
       flapAlertedAt: null,
+      pausedUntil: null,
       mutedUntil: null,
       latencyAlertMs: cloned.latencyAlertMs ?? null,
       isAcknowledged: false,
@@ -962,6 +980,7 @@ export class MonitorsService {
       flapWindow: monitor.flapWindow,
       flapThreshold: monitor.flapThreshold,
       flapAlertedAt: monitor.flapAlertedAt?.toISOString() ?? null,
+      pausedUntil: (monitor as typeof monitor & { pausedUntil?: Date | null }).pausedUntil?.toISOString() ?? null,
       mutedUntil: monitor.mutedUntil?.toISOString() ?? null,
       latencyAlertMs: (monitor as typeof monitor & { latencyAlertMs?: number | null }).latencyAlertMs ?? null,
       anomalyDetection: (monitor as typeof monitor & { anomalyDetection?: boolean }).anomalyDetection ?? false,
@@ -1226,6 +1245,25 @@ export class MonitorsService {
         ? Math.round(withLatency.reduce((sum, r) => sum + (r.latencyMs as number), 0) / withLatency.length)
         : null;
 
+    // RTO analysis: for each incident with a known duration, check if it breached the RTO target
+    let rtoBreaches = 0;
+    let rtoCompliant = 0;
+    const rto = (monitor as typeof monitor & { rtoMinutes?: number | null }).rtoMinutes ?? null;
+    if (rto !== null && rto > 0) {
+      for (const incident of incidents) {
+        if (incident.durationSec > 0) {
+          const durationMin = incident.durationSec / 60;
+          if (durationMin > rto) {
+            rtoBreaches++;
+          } else {
+            rtoCompliant++;
+          }
+        }
+      }
+    }
+    const rtoTotal = rtoBreaches + rtoCompliant;
+    const rtoCompliancePct = rto !== null && rtoTotal > 0 ? Math.round((rtoCompliant / rtoTotal) * 100) : null;
+
     return {
       monitorId,
       period,
@@ -1241,6 +1279,10 @@ export class MonitorsService {
       mttrSec,
       mtbfSec,
       avgLatencyMs,
+      rtoMinutes: rto,
+      rtoBreaches,
+      rtoCompliant,
+      rtoCompliancePct,
     };
   }
 
@@ -2755,5 +2797,19 @@ export class MonitorsService {
       runId: failedRun.id,
       baseRunId: resolvedBaseRunId,
     };
+  }
+
+  /**
+   * Toggle the pinned state of a monitor. Pinned monitors appear at the top of the list.
+   * @throws NotFoundException if monitor not found or not owned by the user
+   */
+  async togglePin(userId: string, monitorId: string): Promise<{ pinned: boolean }> {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+    const updated = await this.prisma.monitor.update({
+      where: { id: monitorId },
+      data: { pinned: !monitor.pinned },
+    });
+    return { pinned: updated.pinned };
   }
 }

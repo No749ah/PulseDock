@@ -19,11 +19,13 @@ interface MonitorStatusCellProps {
   monitorId: string;
   monitorType: string;
   enabled: boolean;
+  pausedUntil?: string | null;
   runs: Run[]; // all recent runs (multiple monitors), filtered internally
 }
 
-export function MonitorStatusCell({ monitorId, monitorType, enabled, runs }: MonitorStatusCellProps) {
+export function MonitorStatusCell({ monitorId, monitorType, enabled, pausedUntil, runs }: MonitorStatusCellProps) {
   const isVersion = VERSION_TYPES.has(monitorType);
+  const isPaused = !!pausedUntil && new Date(pausedUntil) > new Date();
 
   // Runs for this monitor — newest first (as stored)
   const monitorRuns = runs.filter((r) => r.monitorId === monitorId);
@@ -36,6 +38,9 @@ export function MonitorStatusCell({ monitorId, monitorType, enabled, runs }: Mon
   if (!enabled) {
     label = "Disabled";
     badgeColor = "text-warning bg-warning/10 border-warning/30";
+  } else if (isPaused) {
+    label = "Paused";
+    badgeColor = "text-sky-400 bg-sky-500/10 border-sky-500/30";
   } else if (latest) {
     if (isVersion) {
       if (latest.level === "green") {

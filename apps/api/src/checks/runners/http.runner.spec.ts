@@ -11,19 +11,23 @@ interface MockConfig {
   shouldError?: Error;
   delayMs?: number;
   secureConnect?: boolean;
+  headers?: Record<string, string>;
 }
 
 const mockState = vi.hoisted(() => ({
   https: { statusCode: 200, body: '' } as MockConfig,
   http: { statusCode: 200, body: '' } as MockConfig,
   lastRequestOpts: null as unknown,
+  // Queue of responses for redirect testing (consumed in order, falls back to https/http config)
+  responseQueue: [] as Array<MockConfig & { location?: string }>,
 }));
 
 function buildMockModule(getConfig: () => MockConfig) {
   return {
-    request: vi.fn((opts: unknown, callback: (res: EventEmitter & { statusCode: number }) => void) => {
+    request: vi.fn((opts: unknown, callback: (res: EventEmitter & { statusCode: number; headers: Record<string, string> }) => void) => {
       mockState.lastRequestOpts = opts;
-      const cfg = getConfig();
+      // Use queue if available, otherwise fall through to static config
+      const cfg = (mockState.responseQueue.length > 0 ? mockState.responseQueue.shift() : null) ?? getConfig();
       const req = new EventEmitter() as EventEmitter & {
         write: ReturnType<typeof vi.fn>;
         end: ReturnType<typeof vi.fn>;
@@ -65,7 +69,10 @@ function buildMockModule(getConfig: () => MockConfig) {
       function fireResponse() {
         const res = new EventEmitter() as EventEmitter & { statusCode: number; headers: Record<string, string> };
         res.statusCode = cfg.statusCode;
-        res.headers = {};
+        // Support location header for redirect testing
+        res.headers = (cfg as MockConfig & { location?: string }).location
+          ? { location: (cfg as MockConfig & { location?: string }).location!, ...(cfg.headers ?? {}) }
+          : (cfg.headers ?? {});
         callback(res);
         setTimeout(() => {
           res.emit('data', Buffer.from(cfg.body));
@@ -610,5 +617,206 @@ describe('runHttpCheck — content change detection', () => {
     });
     expect(result.ok).toBe(true);
     expect(result.responseBodyHash).toBeTypeOf('string');
+  });
+});
+
+// ─── Redirect following ───────────────────────────────────────────────────────
+describe('runHttpCheck — redirect following', () => {
+  beforeEach(() => {
+    mockState.https = { statusCode: 200, body: 'final' };
+    mockState.http = { statusCode: 200, body: 'final' };
+    mockState.responseQueue = [];
+  });
+
+  it('follows a single 301 redirect to final 200', async () => {
+    mockState.responseQueue = [
+      { statusCode: 301, body: '', location: 'https://example.com/new' },
+      { statusCode: 200, body: 'redirected landing' },
+    ];
+    const result = await runHttpCheck('https://example.com', 5000, { followRedirects: true });
+    expect(result.ok).toBe(true);
+    expect(result.redirectChain).toHaveLength(1);
+    expect(result.redirectChain![0]).toBe('https://example.com');
+  });
+
+  it('follows multiple redirects accumulating the chain', async () => {
+    mockState.responseQueue = [
+      { statusCode: 302, body: '', location: 'https://example.com/step1' },
+      { statusCode: 302, body: '', location: 'https://example.com/step2' },
+      { statusCode: 200, body: 'final page' },
+    ];
+    const result = await runHttpCheck('https://example.com', 5000, { followRedirects: true });
+    expect(result.ok).toBe(true);
+    expect(result.redirectChain).toHaveLength(2);
+  });
+
+  it('does NOT follow redirect when followRedirects=false', async () => {
+    mockState.https = { statusCode: 301, body: '' };
+    const result = await runHttpCheck('https://example.com', 5000, { followRedirects: false });
+    // 301 is not in default expected statuses so it should be red
+    expect(result.ok).toBe(false);
+    expect(result.statusCode).toBe(301);
+  });
+
+  it('default behavior follows redirects (followRedirects unset)', async () => {
+    mockState.responseQueue = [
+      { statusCode: 302, body: '', location: 'https://example.com/dest' },
+      { statusCode: 200, body: 'ok' },
+    ];
+    const result = await runHttpCheck('https://example.com', 5000, {});
+    expect(result.ok).toBe(true);
+  });
+
+  it('includes redirect info in success message', async () => {
+    mockState.responseQueue = [
+      { statusCode: 301, body: '', location: 'https://example.com/new' },
+      { statusCode: 200, body: 'done' },
+    ];
+    const result = await runHttpCheck('https://example.com', 5000, {});
+    expect(result.ok).toBe(true);
+    expect(result.message).toContain('redirect');
+  });
+
+  it('returns final non-redirect statusCode even after redirect chain', async () => {
+    mockState.responseQueue = [
+      { statusCode: 302, body: '', location: 'https://example.com/gone' },
+      { statusCode: 404, body: 'not found' },
+    ];
+    const result = await runHttpCheck('https://example.com', 5000, {});
+    expect(result.ok).toBe(false);
+    expect(result.statusCode).toBe(404);
+    expect(result.redirectChain).toHaveLength(1);
+  });
+
+  it('resolves relative redirect location against current URL', async () => {
+    mockState.responseQueue = [
+      { statusCode: 302, body: '', location: '/relative/path' },
+      { statusCode: 200, body: 'ok' },
+    ];
+    const result = await runHttpCheck('https://example.com/original', 5000, {});
+    expect(result.ok).toBe(true);
+    expect(result.redirectChain![0]).toBe('https://example.com/original');
+  });
+
+  it('no redirectChain property when no redirects occurred', async () => {
+    mockState.https = { statusCode: 200, body: 'direct' };
+    const result = await runHttpCheck('https://example.com', 5000, {});
+    // Should not have redirectChain key or it should be empty/absent
+    expect('redirectChain' in result ? (result as { redirectChain?: string[] }).redirectChain ?? [] : []).toHaveLength(0);
+  });
+});
+
+describe('runHttpCheck — header tracking', () => {
+  it('returns capturedHeaders for tracked header names', async () => {
+    mockState.https = { statusCode: 200, body: 'ok', headers: { 'x-frame-options': 'DENY', 'server': 'nginx/1.24' } };
+    const result = await runHttpCheck('https://example.com', 5000, { trackedHeaders: 'x-frame-options,server' });
+    expect((result as { capturedHeaders?: Record<string, string | null> }).capturedHeaders).toEqual({
+      'x-frame-options': 'DENY',
+      'server': 'nginx/1.24',
+    });
+  });
+
+  it('captures null for absent tracked headers', async () => {
+    mockState.https = { statusCode: 200, body: 'ok', headers: { 'x-frame-options': 'DENY' } };
+    const result = await runHttpCheck('https://example.com', 5000, { trackedHeaders: 'x-frame-options,content-security-policy' });
+    expect((result as { capturedHeaders?: Record<string, string | null> }).capturedHeaders).toEqual({
+      'x-frame-options': 'DENY',
+      'content-security-policy': null,
+    });
+  });
+
+  it('does not include capturedHeaders when trackedHeaders is empty', async () => {
+    mockState.https = { statusCode: 200, body: 'ok', headers: { 'server': 'nginx' } };
+    const result = await runHttpCheck('https://example.com', 5000, {});
+    expect('capturedHeaders' in result).toBe(false);
+  });
+
+  it('normalizes tracked header names to lowercase', async () => {
+    mockState.https = { statusCode: 200, body: 'ok', headers: { 'x-frame-options': 'SAMEORIGIN' } };
+    const result = await runHttpCheck('https://example.com', 5000, { trackedHeaders: 'X-Frame-Options' });
+    expect((result as { capturedHeaders?: Record<string, string | null> }).capturedHeaders?.['x-frame-options']).toBe('SAMEORIGIN');
+  });
+});
+
+describe('runHttpCheck — response size alerts', () => {
+  it('returns yellow when body is smaller than minResponseBodyBytes', async () => {
+    mockState.https = { statusCode: 200, body: 'hi' }; // 2 bytes
+    const result = await runHttpCheck('https://example.com', 5000, { minResponseBodyBytes: 100 });
+    expect(result.ok).toBe(false);
+    expect(result.level).toBe('yellow');
+    expect(result.message).toContain('too small');
+  });
+
+  it('returns yellow when body is larger than maxResponseBodyBytes', async () => {
+    mockState.https = { statusCode: 200, body: 'x'.repeat(200) }; // 200 bytes
+    const result = await runHttpCheck('https://example.com', 5000, { maxResponseBodyBytes: 50 });
+    expect(result.ok).toBe(false);
+    expect(result.level).toBe('yellow');
+    expect(result.message).toContain('too large');
+  });
+
+  it('returns ok when body size is within bounds', async () => {
+    mockState.https = { statusCode: 200, body: 'x'.repeat(100) }; // 100 bytes
+    const result = await runHttpCheck('https://example.com', 5000, { minResponseBodyBytes: 50, maxResponseBodyBytes: 200 });
+    expect(result.ok).toBe(true);
+    expect(result.level).toBe('green');
+  });
+
+  it('does not apply size check when neither bound is set', async () => {
+    mockState.https = { statusCode: 200, body: 'tiny' };
+    const result = await runHttpCheck('https://example.com', 5000, {});
+    expect(result.ok).toBe(true);
+  });
+
+  it('size check message includes actual byte count', async () => {
+    mockState.https = { statusCode: 200, body: 'ab' }; // 2 bytes
+    const result = await runHttpCheck('https://example.com', 5000, { minResponseBodyBytes: 1000 });
+    expect(result.message).toMatch(/2 bytes/);
+    expect(result.message).toMatch(/min 1000/);
+  });
+});
+
+describe('runHttpCheck — response header assertion', () => {
+  it('returns red when asserted header is missing', async () => {
+    mockState.https = { statusCode: 200, body: 'ok' };
+    const result = await runHttpCheck('https://example.com', 5000, { assertResponseHeader: 'x-custom-header' });
+    expect(result.ok).toBe(false);
+    expect(result.level).toBe('red');
+    expect(result.message).toContain('x-custom-header');
+    expect(result.message).toContain('missing');
+  });
+
+  it('returns ok when asserted header is present (no value check)', async () => {
+    mockState.https = { statusCode: 200, body: 'ok', headers: { 'content-type': 'application/json' } };
+    const result = await runHttpCheck('https://example.com', 5000, { assertResponseHeader: 'content-type' });
+    expect(result.ok).toBe(true);
+    expect(result.message).toContain('content-type');
+  });
+
+  it('returns red when header value does not match', async () => {
+    mockState.https = { statusCode: 200, body: 'ok', headers: { 'content-type': 'text/html' } };
+    const result = await runHttpCheck('https://example.com', 5000, { assertResponseHeader: 'content-type', assertResponseHeaderValue: 'application/json' });
+    expect(result.ok).toBe(false);
+    expect(result.level).toBe('red');
+    expect(result.message).toContain('text/html');
+    expect(result.message).toContain('application/json');
+  });
+
+  it('returns ok when header value contains expected substring (case-insensitive)', async () => {
+    mockState.https = { statusCode: 200, body: 'ok', headers: { 'content-type': 'application/json; charset=utf-8' } };
+    const result = await runHttpCheck('https://example.com', 5000, { assertResponseHeader: 'content-type', assertResponseHeaderValue: 'application/json' });
+    expect(result.ok).toBe(true);
+  });
+
+  it('header name matching is case-insensitive', async () => {
+    mockState.https = { statusCode: 200, body: 'ok', headers: { 'content-type': 'application/json' } };
+    const result = await runHttpCheck('https://example.com', 5000, { assertResponseHeader: 'Content-Type' });
+    expect(result.ok).toBe(true);
+  });
+
+  it('assertResponseHeaderValue alone (no header name) has no effect', async () => {
+    mockState.https = { statusCode: 200, body: 'ok' };
+    const result = await runHttpCheck('https://example.com', 5000, { assertResponseHeaderValue: 'application/json' });
+    expect(result.ok).toBe(true);
   });
 });

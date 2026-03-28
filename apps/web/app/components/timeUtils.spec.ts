@@ -77,6 +77,7 @@ describe('formatMonitorType', () => {
     ['PING', 'ICMP Ping'],
     ['SMTP', 'SMTP Email'],
     ['BROWSER', 'Browser Check'],
+    ['WHOIS', 'WHOIS / Domain'],
   ];
 
   it.each(cases)('maps %s → %s', (input, expected) => {

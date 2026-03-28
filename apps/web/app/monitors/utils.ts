@@ -34,6 +34,7 @@ export function buildEditFormData(monitor: MonitorItem): MonitorFormDataExtended
     scheduleEndHour: (monitor as typeof monitor & { scheduleEndHour?: number }).scheduleEndHour ?? 18,
     sliLatencyTarget: monitor.sliLatencyTarget ?? "",
     sliLatencyWindow: monitor.sliLatencyWindow ?? 7,
+    rtoMinutes: (monitor as typeof monitor & { rtoMinutes?: number | null }).rtoMinutes ?? undefined,
     expectedStatus: monitor.config?.expectedStatus ? Number(monitor.config.expectedStatus) : undefined,
     bodyContains: String(monitor.config?.bodyContains ?? ""),
     httpMethod: String(monitor.config?.httpMethod ?? "GET"),
@@ -43,6 +44,12 @@ export function buildEditFormData(monitor: MonitorItem): MonitorFormDataExtended
     requestBody: String(monitor.config?.requestBody ?? ""),
     responseTimeThresholdMs: monitor.config?.responseTimeThresholdMs ? Number(monitor.config.responseTimeThresholdMs) : undefined,
     checkSecurityHeaders: Boolean(monitor.config?.checkSecurityHeaders),
+    minResponseBodyBytes: monitor.config?.minResponseBodyBytes ? Number(monitor.config.minResponseBodyBytes) : undefined,
+    maxResponseBodyBytes: monitor.config?.maxResponseBodyBytes ? Number(monitor.config.maxResponseBodyBytes) : undefined,
+    assertResponseHeader: monitor.config?.assertResponseHeader ? String(monitor.config.assertResponseHeader) : undefined,
+    assertResponseHeaderValue: monitor.config?.assertResponseHeaderValue ? String(monitor.config.assertResponseHeaderValue) : undefined,
+    followRedirects: monitor.config?.followRedirects !== false,
+    maxRedirects: monitor.config?.maxRedirects !== undefined ? Number(monitor.config.maxRedirects) : 10,
     bodyJsonPath: String(monitor.config?.bodyJsonPath ?? ""),
     bodyJsonPathExpected: String(monitor.config?.bodyJsonPathExpected ?? ""),
     ehlo: String(monitor.config?.ehlo ?? "pulsedock.monitor"),
@@ -66,6 +73,8 @@ export function buildEditFormData(monitor: MonitorItem): MonitorFormDataExtended
     authApiKeyName: String(monitor.config?.authApiKeyName ?? ""),
     authApiKeyValue: String(monitor.config?.authApiKeyValue ?? ""),
     authApiKeyIn: String(monitor.config?.authApiKeyIn ?? "header"),
+    trackedHeaders: (monitor as typeof monitor & { trackedHeaders?: string | null }).trackedHeaders ?? "",
+    timeoutMs: (monitor as typeof monitor & { timeoutMs?: number | null }).timeoutMs ?? null,
   };
 }
 
@@ -106,6 +115,8 @@ export function buildFormDataFromTemplate(t: MonitorTemplate): MonitorFormDataEx
     scheduleEndHour: 18,
     sliLatencyTarget: "",
     sliLatencyWindow: 7,
+    rtoMinutes: undefined,
+    timeoutMs: null,
     ...(cfg.checkTls !== undefined ? { checkTls: Boolean(cfg.checkTls) } : {}),
     ...(typeof cfg.ehlo === "string" ? { ehlo: cfg.ehlo } : {}),
     ...(typeof cfg.recordType === "string" ? { dnsRecordType: cfg.recordType } : {}),

@@ -134,6 +134,10 @@ export interface UptimeStats {
   mttrSec: number;
   mtbfSec: number;
   avgLatencyMs: number | null;
+  rtoMinutes?: number | null;
+  rtoBreaches?: number;
+  rtoCompliant?: number;
+  rtoCompliancePct?: number | null;
 }
 
 export interface ErrorBudget {

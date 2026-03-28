@@ -59,6 +59,17 @@ export interface PluginExecutionResult {
    * Only populated for HTTP/BROWSER monitors when `detectContentChanges` is enabled.
    */
   responseBodyHash?: string | null;
+  /**
+   * List of URLs visited during HTTP redirect chains.
+   * Only populated for HTTP/BROWSER monitors when redirects are followed.
+   */
+  redirectChain?: string[] | null;
+  /**
+   * Snapshot of tracked response header values.
+   * Only populated for HTTP/BROWSER monitors when `trackedHeaders` is configured.
+   * Keys are lowercase header names, values are the header value or null if absent.
+   */
+  capturedHeaders?: Record<string, string | null> | null;
 }
 
 export interface PluginConfigField {

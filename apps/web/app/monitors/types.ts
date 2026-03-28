@@ -49,6 +49,9 @@ export interface MonitorItem {
   flapAlertedAt?: string | null;
   latencyAlertMs?: number | null;
   shareToken?: string | null;
+  pinned?: boolean;
+  pausedUntil?: string | null;
+  mutedUntil?: string | null;
 }
 
 export interface MonitorRun {
@@ -117,11 +120,14 @@ export type MonitorFormData = {
   anomalyMultiplier: number;
   sliLatencyTarget: number | "";
   sliLatencyWindow: number;
+  rtoMinutes: number | undefined;
   cronExpression: string;
   scheduleEnabled: boolean;
   scheduleDays: string;
   scheduleStartHour: number;
   scheduleEndHour: number;
+  /** Per-monitor HTTP/TCP/SSL request timeout in milliseconds (overrides default 5000ms) */
+  timeoutMs: number | null;
 };
 
 export type MonitorFormDataExtended = MonitorFormData & {

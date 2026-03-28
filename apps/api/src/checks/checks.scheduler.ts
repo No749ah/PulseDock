@@ -15,6 +15,7 @@ import { EscalationService } from '../escalation/escalation.service';
  */
 function isCronDue(cronExpression: string, lastCheckedAt: Date | null): boolean {
   try {
+    if (!cronExpression.trim()) return false; // empty expression → skip
     const interval = CronExpressionParser.parse(cronExpression, { tz: 'UTC' });
     const prev = interval.prev().toDate();
     if (!lastCheckedAt) return true; // never checked → run now
@@ -161,6 +162,7 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         flapWindow: true,
         flapThreshold: true,
         flapAlertedAt: true,
+        pausedUntil: true,
         latencyAlertMs: true,
         anomalyDetection: true,
         anomalyMultiplier: true,
@@ -171,6 +173,9 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         scheduleDays: true,
         scheduleStartHour: true,
         scheduleEndHour: true,
+        trackedHeaders: true,
+        headerBaseline: true,
+        headerBaselineSetAt: true,
         runs: {
           take: 1,
           orderBy: { checkedAt: 'desc' },
@@ -185,6 +190,9 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
 
     const total = monitors.length;
     const due = monitors.filter((monitor) => {
+      // Temporary pause: skip checks while pausedUntil is in the future
+      if (monitor.pausedUntil && monitor.pausedUntil.getTime() > cycleStart) return false;
+
       // Schedule check: skip if outside configured window
       if (monitor.scheduleEnabled) {
         const allowedDays = (monitor.scheduleDays ?? '1,2,3,4,5').split(',').map(Number);
@@ -280,6 +288,7 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
     flapWindow?: number;
     flapThreshold?: number;
     flapAlertedAt?: Date | null;
+    pausedUntil?: Date | null;
     mutedUntil?: Date | null;
     latencyAlertMs?: number | null;
     anomalyDetection?: boolean;
@@ -336,6 +345,7 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         anomalyMultiplier: (monitor as typeof monitor & { anomalyMultiplier?: number }).anomalyMultiplier ?? 2.0,
         sliLatencyTarget: (monitor as typeof monitor & { sliLatencyTarget?: number | null }).sliLatencyTarget ?? null,
         sliLatencyWindow: (monitor as typeof monitor & { sliLatencyWindow?: number }).sliLatencyWindow ?? 7,
+        pausedUntil: monitor.pausedUntil ? monitor.pausedUntil.toISOString() : null,
         scheduleEnabled: monitor.scheduleEnabled ?? false,
         scheduleDays: monitor.scheduleDays ?? '1,2,3,4,5',
         scheduleStartHour: monitor.scheduleStartHour ?? 8,

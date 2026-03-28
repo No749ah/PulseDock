@@ -2,11 +2,18 @@ export const inputClass =
   "w-full px-4 py-3 bg-surface-elevated border border-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent";
 
 export const CHANNEL_TYPE_COLORS: Record<string, string> = {
-  discord: "text-indigo-400",
-  slack: "text-green-400",
-  webhook: "text-blue-400",
-  telegram: "text-sky-400",
-  email: "text-yellow-400",
+  discord:   "text-indigo-400",
+  slack:     "text-green-400",
+  webhook:   "text-blue-400",
+  telegram:  "text-sky-400",
+  email:     "text-yellow-400",
+  pagerduty: "text-emerald-400",
+  opsgenie:  "text-orange-400",
+  sms:       "text-lime-400",
+  teams:     "text-blue-500",
+  ntfy:      "text-violet-400",
+  gotify:    "text-teal-400",
+  matrix:    "text-pink-400",
 };
 
 export const NOTIFY_ON_LABELS: Record<string, string> = {

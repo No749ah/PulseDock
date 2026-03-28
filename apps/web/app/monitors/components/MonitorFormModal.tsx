@@ -737,6 +737,81 @@ export function MonitorFormModal({
               <p className="mt-1 text-xs text-text-secondary">Mark as <span className="text-warning font-medium">degraded</span> if response takes longer than this many milliseconds. Leave blank to disable.</p>
             </div>
 
+            {/* Response Size Bounds */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Min response size (bytes) <span className="text-xs text-text-muted">(optional)</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={(formData as unknown as { minResponseBodyBytes?: number }).minResponseBodyBytes ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value === "" ? undefined : parseInt(e.target.value);
+                    onSetFormData({ ...formData, minResponseBodyBytes: val } as typeof formData & { minResponseBodyBytes?: number });
+                  }}
+                  className={inputClass}
+                  placeholder="e.g. 500"
+                />
+                <p className="mt-1 text-xs text-text-secondary">Alert if body smaller than this.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Max response size (bytes) <span className="text-xs text-text-muted">(optional)</span>
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  value={(formData as unknown as { maxResponseBodyBytes?: number }).maxResponseBodyBytes ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value === "" ? undefined : parseInt(e.target.value);
+                    onSetFormData({ ...formData, maxResponseBodyBytes: val } as typeof formData & { maxResponseBodyBytes?: number });
+                  }}
+                  className={inputClass}
+                  placeholder="e.g. 5000000"
+                />
+                <p className="mt-1 text-xs text-text-secondary">Alert if body larger than this.</p>
+              </div>
+            </div>
+
+            {/* Response Header Assertion */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Assert header name <span className="text-xs text-text-muted">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={(formData as unknown as { assertResponseHeader?: string }).assertResponseHeader ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value || undefined;
+                    onSetFormData({ ...formData, assertResponseHeader: val } as typeof formData & { assertResponseHeader?: string });
+                  }}
+                  className={inputClass}
+                  placeholder="e.g. content-type"
+                />
+                <p className="mt-1 text-xs text-text-secondary">Alert if this header is missing.</p>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-text-secondary mb-1">
+                  Assert header value <span className="text-xs text-text-muted">(optional)</span>
+                </label>
+                <input
+                  type="text"
+                  value={(formData as unknown as { assertResponseHeaderValue?: string }).assertResponseHeaderValue ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value || undefined;
+                    onSetFormData({ ...formData, assertResponseHeaderValue: val } as typeof formData & { assertResponseHeaderValue?: string });
+                  }}
+                  className={inputClass}
+                  placeholder="e.g. application/json"
+                  disabled={!(formData as unknown as { assertResponseHeader?: string }).assertResponseHeader}
+                />
+                <p className="mt-1 text-xs text-text-secondary">Alert if header value doesn&apos;t contain this.</p>
+              </div>
+            </div>
+
             {/* Security Headers Audit */}
             <div className="flex items-start gap-3 p-3 rounded-lg bg-surface-2 border border-border">
               <input
@@ -768,6 +843,76 @@ export function MonitorFormModal({
                   📄 Detect content changes
                 </span>
                 <span className="text-xs text-text-secondary mt-0.5 block">Alerts when the page content changes from the established baseline. Useful for detecting deployments, defacements, or unexpected changes.</span>
+              </label>
+            </div>
+
+            {/* Response Header Tracking */}
+            <div className="flex flex-col gap-2 p-3 rounded-lg bg-surface-2 border border-border">
+              <div className="flex items-start gap-3">
+                <input
+                  type="checkbox"
+                  id="enableHeaderTracking"
+                  checked={!!((formData as unknown as { trackedHeaders?: string }).trackedHeaders)}
+                  onChange={(e) => onSetFormData({ ...formData, trackedHeaders: e.target.checked ? 'x-frame-options,content-security-policy,server' : '' } as typeof formData & { trackedHeaders?: string })}
+                  className="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent cursor-pointer"
+                />
+                <label htmlFor="enableHeaderTracking" className="cursor-pointer select-none">
+                  <span className="text-sm font-medium text-text-primary flex items-center gap-1.5">
+                    📋 Track response header changes
+                  </span>
+                  <span className="text-xs text-text-secondary mt-0.5 block">Alerts yellow when specified response headers change from baseline. Useful for detecting security header regressions, CDN configuration changes, or server version updates.</span>
+                </label>
+              </div>
+              {!!((formData as unknown as { trackedHeaders?: string }).trackedHeaders) && (
+                <div className="mt-1 ml-7">
+                  <label htmlFor="trackedHeaders" className="text-xs text-text-secondary block mb-1">
+                    Header names to track (comma-separated, case-insensitive):
+                  </label>
+                  <input
+                    id="trackedHeaders"
+                    type="text"
+                    value={(formData as unknown as { trackedHeaders?: string }).trackedHeaders ?? ''}
+                    onChange={(e) => onSetFormData({ ...formData, trackedHeaders: e.target.value } as typeof formData & { trackedHeaders?: string })}
+                    placeholder="e.g. x-frame-options,content-security-policy,server"
+                    className="w-full px-2 py-1.5 text-xs bg-surface border border-border rounded text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                  />
+                  <p className="text-xs text-text-secondary mt-1">Common: <code className="text-accent">server</code>, <code className="text-accent">x-frame-options</code>, <code className="text-accent">content-security-policy</code>, <code className="text-accent">strict-transport-security</code>, <code className="text-accent">x-powered-by</code></p>
+                </div>
+              )}
+            </div>
+
+            {/* Redirect Following */}
+            <div className="flex items-start gap-3 p-3 rounded-lg bg-surface-2 border border-border">
+              <input
+                type="checkbox"
+                id="followRedirects"
+                checked={(formData as unknown as { followRedirects?: boolean }).followRedirects !== false}
+                onChange={(e) => onSetFormData({ ...formData, followRedirects: e.target.checked } as typeof formData & { followRedirects?: boolean })}
+                className="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent cursor-pointer"
+              />
+              <label htmlFor="followRedirects" className="cursor-pointer select-none flex-1">
+                <span className="text-sm font-medium text-text-primary flex items-center gap-1.5">
+                  🔀 Follow redirects
+                </span>
+                <span className="text-xs text-text-secondary mt-0.5 block">Automatically follow HTTP 3xx redirects up to the configured limit. Disable to assert the first response code directly (useful for monitoring redirect chains).</span>
+                {(formData as unknown as { followRedirects?: boolean }).followRedirects !== false && (
+                  <div className="mt-2 flex items-center gap-2">
+                    <label htmlFor="maxRedirects" className="text-xs text-text-secondary whitespace-nowrap">Max redirects:</label>
+                    <input
+                      id="maxRedirects"
+                      type="number"
+                      min={1}
+                      max={20}
+                      value={(formData as unknown as { maxRedirects?: number }).maxRedirects ?? 10}
+                      onChange={(e) => {
+                        const val = Math.min(20, Math.max(1, parseInt(e.target.value) || 10));
+                        onSetFormData({ ...formData, maxRedirects: val } as typeof formData & { maxRedirects?: number });
+                      }}
+                      className="w-16 px-2 py-1 text-xs bg-surface border border-border rounded text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                    />
+                    <span className="text-xs text-text-secondary">(1–20, default 10)</span>
+                  </div>
+                )}
               </label>
             </div>
           </>
@@ -941,6 +1086,30 @@ export function MonitorFormModal({
           <p className="mt-1 text-xs text-text-secondary">Rolling window for Latency SLI measurement.</p>
         </div>
 
+        {/* RTO */}
+        <div>
+          <label className="text-sm font-medium text-white">
+            Recovery Time Objective (RTO)
+            <span className="ml-1 text-xs text-white/40">(optional)</span>
+          </label>
+          <div className="flex items-center gap-2 mt-1">
+            <input
+              type="number"
+              min={1}
+              max={10080}
+              placeholder="e.g. 15"
+              value={formData.rtoMinutes ?? ''}
+              onChange={e => {
+                const v = e.target.value === '' ? undefined : parseInt(e.target.value);
+                onSetFormData({ ...formData, rtoMinutes: v });
+              }}
+              className="w-32 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+            />
+            <span className="text-sm text-white/50">minutes</span>
+          </div>
+          <p className="text-xs text-white/40 mt-1">Alert breach when recovery takes longer than this target</p>
+        </div>
+
         {/* Auto-Incident */}
         <div className="border border-border rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">
@@ -1068,6 +1237,37 @@ export function MonitorFormModal({
               <span className="text-sm text-text-muted">ms</span>
               {formData.latencyAlertMs && formData.latencyAlertMs > 0 && (
                 <span className="text-xs text-warning">⚠ Alert if response &gt; {formData.latencyAlertMs}ms</span>
+              )}
+            </div>
+          </div>
+        )}
+
+        {/* Request Timeout Override */}
+        {(formData.type === "HTTP" || formData.type === "TCP" || formData.type === "SSL_CERT" || formData.type === "BROWSER") && (
+          <div className="border border-border rounded-lg p-4 space-y-3">
+            <div>
+              <label className="block text-sm font-semibold text-text-primary">Request Timeout</label>
+              <p className="mt-0.5 text-xs text-text-secondary">
+                Override the default {formData.type === "BROWSER" ? "15,000ms" : "5,000ms"} request timeout. Useful for slow endpoints or strict SLA requirements. Leave blank to use the default.
+              </p>
+            </div>
+            <div className="flex items-center gap-3">
+              <input
+                type="number"
+                min="500"
+                max="60000"
+                step="500"
+                placeholder={formData.type === "BROWSER" ? "15000" : "5000"}
+                value={(formData as MonitorFormData).timeoutMs ?? ""}
+                onChange={(e) => {
+                  const val = e.target.value === "" ? null : parseInt(e.target.value, 10);
+                  onSetFormData({ ...formData, timeoutMs: val && val >= 500 ? val : null });
+                }}
+                className="w-36 px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+              <span className="text-sm text-text-muted">ms</span>
+              {(formData as MonitorFormData).timeoutMs && (formData as MonitorFormData).timeoutMs! > 0 && (
+                <span className="text-xs text-accent">✓ Times out after {(formData as MonitorFormData).timeoutMs}ms</span>
               )}
             </div>
           </div>

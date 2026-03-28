@@ -133,6 +133,7 @@ model Monitor {
   autoIncidentSeverity String     @default("MEDIUM") // severity: CRITICAL, HIGH, MEDIUM, LOW
   activeAutoIncidentId String?    // ID of the currently open auto-created incident (null = none)
   mutedUntil          DateTime?   // if set and in future, all alerts suppressed
+  pausedUntil         DateTime?   // if set and in future, checks are skipped (temporary pause)
   latencyAlertMs      Int?        // if set, alert when latency exceeds this threshold (ms) even on success
   anomalyDetection    Boolean     @default(false) // enable dynamic latency anomaly detection
   anomalyMultiplier   Float       @default(2.0)   // alert when latency > multiplier × P95 baseline
@@ -143,7 +144,13 @@ model Monitor {
   scheduleDays        String      @default("1,2,3,4,5") // comma-sep day-of-week: 0=Sun..6=Sat
   scheduleStartHour   Int         @default(8)      // UTC hour (0-23) to start checking
   scheduleEndHour     Int         @default(18)     // UTC hour (0-23) to stop checking
+  rtoMinutes          Int?                         // Recovery Time Objective in minutes (null = no target)
   shareToken          String?     @unique          // public share token for status.json endpoint (no auth required)
+  pinned              Boolean     @default(false)  // pinned monitors appear at the top of the list
+  // Response Header Tracking: alert when tracked header values change
+  trackedHeaders      String?     // comma-separated header names to track (e.g. "x-frame-options,content-security-policy")
+  headerBaseline      Json?       // snapshot of tracked header values at baseline time {header: value|null, capturedAt: ISO}
+  headerBaselineSetAt DateTime?   // when the header baseline was captured
   createdAt           DateTime    @default(now())
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)

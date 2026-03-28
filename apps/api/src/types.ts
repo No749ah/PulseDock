@@ -1,5 +1,5 @@
 export type MonitorType = 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT' | 'DNS' | 'PING' | 'SMTP' | 'BROWSER' | 'WHOIS';
-export type AlertChannelType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms';
+export type AlertChannelType = 'discord' | 'webhook' | 'slack' | 'telegram' | 'email' | 'pagerduty' | 'opsgenie' | 'sms' | 'teams' | 'ntfy' | 'gotify' | 'matrix';
 export type MonitorLevel = 'green' | 'yellow' | 'red';
 
 export interface User {
@@ -66,6 +66,7 @@ export interface Monitor {
   flapWindow: number;
   flapThreshold: number;
   flapAlertedAt: string | null;
+  pausedUntil: string | null;
   mutedUntil: string | null;
   latencyAlertMs: number | null;
   anomalyDetection: boolean;
@@ -77,6 +78,10 @@ export interface Monitor {
   scheduleStartHour: number;
   scheduleEndHour: number;
   isAcknowledged?: boolean;
+  pinned?: boolean;
+  trackedHeaders?: string | null;
+  headerBaseline?: Record<string, string | null> | null;
+  headerBaselineSetAt?: string | null;
   createdAt: string;
 }
 

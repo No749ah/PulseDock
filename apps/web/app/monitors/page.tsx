@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, Layers, Filter, Clock, Tag, Copy } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, PauseCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, Layers, Filter, Clock, Tag, Copy, Pin, Zap } from "lucide-react";
 import { API_BASE, api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -28,6 +28,7 @@ import { BadgeModal } from "./components/BadgeModal";
 import { MonitorFormModal } from "./components/MonitorFormModal";
 import { MonitorGridView, MonitorGroupedView } from "./components/MonitorGridView";
 import { AdvancedFiltersPanel } from "./components/AdvancedFiltersPanel";
+import { QuickAddModal } from "./components/QuickAddModal";
 
 function MonitorsPageInner() {
   const router = useRouter();
@@ -118,6 +119,8 @@ function MonitorsPageInner() {
     anomalyMultiplier: number;
     sliLatencyTarget: number | "";
     sliLatencyWindow: number;
+    rtoMinutes: number | undefined;
+    timeoutMs: number | null;
     cronExpression: string;
     scheduleEnabled: boolean;
     scheduleDays: string;
@@ -152,6 +155,8 @@ function MonitorsPageInner() {
     scheduleEndHour: 18,
     sliLatencyTarget: "",
     sliLatencyWindow: 7,
+    rtoMinutes: undefined,
+    timeoutMs: null,
   });
   const [tagInput, setTagInput] = useState("");
   const [selectedTags, setSelectedTags] = useState<string[]>([]);
@@ -178,9 +183,13 @@ function MonitorsPageInner() {
   const [bulkValue, setBulkValue] = useState<string>("");
   const [checkingNowId, setCheckingNowId] = useState<string | null>(null);
   const [snoozeMenuId, setSnoozeMenuId] = useState<string | null>(null);
+  const [pauseMenuId, setPauseMenuId] = useState<string | null>(null);
 
   // badge modal
   const [badgeMonitor, setBadgeMonitor] = useState<MonitorItem | null>(null);
+
+  // quick add (bulk URL) modal
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
 
   // row expansion
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -261,6 +270,13 @@ function MonitorsPageInner() {
     document.addEventListener("keydown", handler);
     return () => document.removeEventListener("keydown", handler);
   }, [snoozeMenuId]);
+
+  useEffect(() => {
+    if (!pauseMenuId) return;
+    const handler = (e: KeyboardEvent) => { if (e.key === "Escape") setPauseMenuId(null); };
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, [pauseMenuId]);
 
   useEffect(() => {
     const currentUser = getUser();
@@ -509,7 +525,7 @@ function MonitorsPageInner() {
       if (fw.whoisCriticalDays !== undefined) config.criticalDays = fw.whoisCriticalDays;
     }
     if (formData.type === "HTTP") {
-      const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number; checkSecurityHeaders?: boolean; authType?: string; authUser?: string; authPassword?: string; authToken?: string; authApiKeyName?: string; authApiKeyValue?: string; authApiKeyIn?: string };
+      const f = formData as typeof formData & { expectedStatus?: number; bodyContains?: string; bodyJsonPath?: string; bodyJsonPathExpected?: string; httpMethod?: string; requestHeaders?: string; requestBody?: string; responseTimeThresholdMs?: number; minResponseBodyBytes?: number; maxResponseBodyBytes?: number; assertResponseHeader?: string; assertResponseHeaderValue?: string; checkSecurityHeaders?: boolean; authType?: string; authUser?: string; authPassword?: string; authToken?: string; authApiKeyName?: string; authApiKeyValue?: string; authApiKeyIn?: string; followRedirects?: boolean; maxRedirects?: number };
       if (f.expectedStatus) config.expectedStatus = f.expectedStatus;
       if (f.bodyContains?.trim()) config.bodyContains = f.bodyContains.trim();
       if (f.bodyJsonPath?.trim()) config.bodyJsonPath = f.bodyJsonPath.trim();
@@ -531,7 +547,14 @@ function MonitorsPageInner() {
       }
       if (f.requestBody?.trim()) config.requestBody = f.requestBody.trim();
       if (f.responseTimeThresholdMs && f.responseTimeThresholdMs > 0) config.responseTimeThresholdMs = f.responseTimeThresholdMs;
+      if (f.minResponseBodyBytes && f.minResponseBodyBytes > 0) config.minResponseBodyBytes = f.minResponseBodyBytes;
+      if (f.maxResponseBodyBytes && f.maxResponseBodyBytes > 0) config.maxResponseBodyBytes = f.maxResponseBodyBytes;
+      if (f.assertResponseHeader?.trim()) config.assertResponseHeader = f.assertResponseHeader.trim();
+      if (f.assertResponseHeaderValue?.trim()) config.assertResponseHeaderValue = f.assertResponseHeaderValue.trim();
       if (f.checkSecurityHeaders) config.checkSecurityHeaders = true;
+      // Redirect following (only store when NOT default, except followRedirects=false)
+      if (f.followRedirects === false) config.followRedirects = false;
+      if (f.followRedirects !== false && f.maxRedirects !== undefined && f.maxRedirects !== 10) config.maxRedirects = f.maxRedirects;
       // Authentication
       if (f.authType && f.authType !== 'none') {
         config.authType = f.authType;
@@ -587,6 +610,9 @@ function MonitorsPageInner() {
           scheduleEndHour: formData.scheduleEndHour,
           ...(formData.sliLatencyTarget !== "" ? { sliLatencyTarget: formData.sliLatencyTarget } : {}),
           sliLatencyWindow: formData.sliLatencyWindow,
+          trackedHeaders: (formData as typeof formData & { trackedHeaders?: string }).trackedHeaders?.trim() || null,
+          ...(formData.rtoMinutes !== undefined ? { rtoMinutes: formData.rtoMinutes } : {}),
+          ...(formData.timeoutMs !== null ? { timeoutMs: formData.timeoutMs } : {}),
         }),
       });
       setShowModal(false);
@@ -594,7 +620,7 @@ function MonitorsPageInner() {
     cronExpression: "", scheduleEnabled: false,
     scheduleDays: "1,2,3,4,5",
     scheduleStartHour: 8,
-    scheduleEndHour: 18, sliLatencyTarget: "", sliLatencyWindow: 7 });
+    scheduleEndHour: 18, sliLatencyTarget: "", sliLatencyWindow: 7, rtoMinutes: undefined, timeoutMs: null });
       setSelectedTags([]);
       setTagInput("");
       const [monitorsData, tagsData] = await Promise.all([
@@ -647,6 +673,9 @@ function MonitorsPageInner() {
           scheduleEndHour: formData.scheduleEndHour,
           sliLatencyTarget: formData.sliLatencyTarget !== "" ? formData.sliLatencyTarget : null,
           sliLatencyWindow: formData.sliLatencyWindow,
+          trackedHeaders: (formData as typeof formData & { trackedHeaders?: string }).trackedHeaders?.trim() || null,
+          rtoMinutes: formData.rtoMinutes ?? null,
+          ...(formData.timeoutMs !== null ? { timeoutMs: formData.timeoutMs } : { timeoutMs: null }),
         }),
       });
       setShowModal(false);
@@ -772,6 +801,26 @@ function MonitorsPageInner() {
     }
   };
 
+  const handleQuickAdd = async (payload: {
+    urls: string[];
+    folderId?: string;
+    alertChannelIds?: string[];
+    intervalSec?: number;
+  }) => {
+    const res = await api<{ created: number; skipped: number; errors: Array<{ url: string; error: string }> }>(
+      "/v1/monitors/bulk-create-from-urls",
+      user?.id,
+      { method: "POST", body: JSON.stringify(payload) }
+    );
+    if (res.created > 0) {
+      // Refresh monitor list
+      const updated = await api<MonitorItem[]>("/v1/monitors", user?.id);
+      setMonitors(updated);
+      success(`${res.created} monitor${res.created !== 1 ? "s" : ""} created`);
+    }
+    return res;
+  };
+
   const handleCheckNow = async (monitorId: string) => {
     if (checkingNowId) return;
     setCheckingNowId(monitorId);
@@ -799,6 +848,31 @@ function MonitorsPageInner() {
       success(`Monitor snoozed for ${label}`);
     } catch (e) {
       toastError(e instanceof Error ? e.message : "Failed to snooze monitor");
+    }
+  };
+
+  const handlePause = async (monitorId: string, minutes: number) => {
+    setPauseMenuId(null);
+    try {
+      const res = await api<{ pausedUntil: string }>(`/v1/monitors/${monitorId}/pause`, user?.id, {
+        method: "POST",
+        body: JSON.stringify({ minutes }),
+      });
+      const label = minutes >= 1440 ? `${Math.round(minutes / 1440)}d` : minutes >= 60 ? `${Math.round(minutes / 60)}h` : `${minutes}m`;
+      setMonitors((prev) => prev.map((m) => m.id === monitorId ? { ...m, pausedUntil: res.pausedUntil } : m));
+      success(`Monitor checks paused for ${label}`);
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Failed to pause monitor");
+    }
+  };
+
+  const handleResumePause = async (monitorId: string) => {
+    try {
+      await api(`/v1/monitors/${monitorId}/pause`, user?.id, { method: "DELETE" });
+      setMonitors((prev) => prev.map((m) => m.id === monitorId ? { ...m, pausedUntil: null } : m));
+      success("Monitor checks resumed");
+    } catch (e) {
+      toastError(e instanceof Error ? e.message : "Failed to resume monitor");
     }
   };
 
@@ -1020,12 +1094,34 @@ function MonitorsPageInner() {
   });
 
   // Paginated slice
-  const totalFiltered = sortedMonitors.length;
+  // Sort pinned monitors to top (secondary sort, preserves primary sort within each group)
+  const sortedWithPins = [...sortedMonitors].sort((a, b) => {
+    if (a.pinned && !b.pinned) return -1;
+    if (!a.pinned && b.pinned) return 1;
+    return 0;
+  });
+
+  const totalFiltered = sortedWithPins.length;
   const totalPages = pageSize === "all" ? 1 : Math.max(1, Math.ceil(totalFiltered / (pageSize as number)));
   const safePage = Math.min(currentPage, totalPages);
   const paginatedMonitors = pageSize === "all"
-    ? sortedMonitors
-    : sortedMonitors.slice((safePage - 1) * (pageSize as number), safePage * (pageSize as number));
+    ? sortedWithPins
+    : sortedWithPins.slice((safePage - 1) * (pageSize as number), safePage * (pageSize as number));
+
+  // Summary stats computed from ALL uptime monitors (not filtered)
+  const uptimeMonitors = monitors.filter((m) => m.type !== "GIT_RELEASE" && m.type !== "DOCKER_IMAGE");
+  const monitorSummary = uptimeMonitors.reduce(
+    (acc, m) => {
+      if (!m.enabled) { acc.paused++; return acc; }
+      const lastRun = runs.find((r) => r.monitorId === m.id);
+      if (!lastRun || lastRun.level === "green") { acc.up++; return acc; }
+      if (lastRun.level === "yellow") { acc.degraded++; return acc; }
+      if (lastRun.level === "red") { acc.down++; return acc; }
+      acc.up++;
+      return acc;
+    },
+    { up: 0, degraded: 0, down: 0, paused: 0 },
+  );
 
   if (!user) return null;
   if (loading)
@@ -1057,9 +1153,39 @@ function MonitorsPageInner() {
           <div className="flex items-center justify-between gap-3">
             <div>
               <h2 className="text-2xl font-bold text-text-primary">Uptime Checks</h2>
-              <p className="text-text-secondary text-sm mt-1">
-                {monitors.filter((m) => m.type !== "GIT_RELEASE" && m.type !== "DOCKER_IMAGE").length} monitors
-              </p>
+              <div className="flex items-center gap-3 mt-1">
+                <p className="text-text-secondary text-sm">
+                  {uptimeMonitors.length} monitors
+                </p>
+                {uptimeMonitors.length > 0 && (
+                  <div className="flex items-center gap-2 text-xs">
+                    {monitorSummary.up > 0 && (
+                      <span className="flex items-center gap-1 text-success font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-success inline-block" />
+                        {monitorSummary.up} up
+                      </span>
+                    )}
+                    {monitorSummary.degraded > 0 && (
+                      <span className="flex items-center gap-1 text-warning font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-warning inline-block" />
+                        {monitorSummary.degraded} degraded
+                      </span>
+                    )}
+                    {monitorSummary.down > 0 && (
+                      <span className="flex items-center gap-1 text-danger font-medium animate-pulse">
+                        <span className="w-1.5 h-1.5 rounded-full bg-danger inline-block" />
+                        {monitorSummary.down} down
+                      </span>
+                    )}
+                    {monitorSummary.paused > 0 && (
+                      <span className="flex items-center gap-1 text-text-muted font-medium">
+                        <span className="w-1.5 h-1.5 rounded-full bg-text-muted inline-block" />
+                        {monitorSummary.paused} paused
+                      </span>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
             <div className="flex items-center gap-2">
               {/* View toggle */}
@@ -1173,6 +1299,16 @@ function MonitorsPageInner() {
                 <span className="hidden sm:inline">Import from…</span>
               </Button>
               <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowQuickAdd(true)}
+                className="flex items-center gap-2"
+                title="Paste multiple URLs to create monitors in bulk"
+              >
+                <Zap className="w-4 h-4" />
+                <span className="hidden sm:inline">Quick Add</span>
+              </Button>
+              <Button
                 size="sm"
                 onClick={() => {
                   setModalMode("create");
@@ -1181,7 +1317,7 @@ function MonitorsPageInner() {
     cronExpression: "", scheduleEnabled: false,
     scheduleDays: "1,2,3,4,5",
     scheduleStartHour: 8,
-    scheduleEndHour: 18, sliLatencyTarget: "", sliLatencyWindow: 7 });
+    scheduleEndHour: 18, sliLatencyTarget: "", sliLatencyWindow: 7, rtoMinutes: undefined, timeoutMs: null });
                   setFormErrors({});
                   setFormTouched({});
                   setSelectedTags([]);
@@ -1354,7 +1490,7 @@ function MonitorsPageInner() {
     cronExpression: "", scheduleEnabled: false,
     scheduleDays: "1,2,3,4,5",
     scheduleStartHour: 8,
-    scheduleEndHour: 18, sliLatencyTarget: "", sliLatencyWindow: 7 });
+    scheduleEndHour: 18, sliLatencyTarget: "", sliLatencyWindow: 7, rtoMinutes: undefined, timeoutMs: null });
                       setFormErrors({});
                       setFormTouched({});
                       setSelectedTags([]);
@@ -1586,6 +1722,11 @@ function MonitorsPageInner() {
                                   🔇
                                 </span>
                               )}
+                              {monitor.pausedUntil && new Date(monitor.pausedUntil) > new Date() && (
+                                <span title={`Checks paused until ${new Date(monitor.pausedUntil).toLocaleString()}`} className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-sky-500/15 text-sky-400 border border-sky-500/30 whitespace-nowrap cursor-help">
+                                  ⏸ Paused
+                                </span>
+                              )}
                               {(monitor as typeof monitor & { isAcknowledged?: boolean }).isAcknowledged && (
                                 <span title="Alert acknowledged" className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-blue-500/15 text-blue-400 border border-blue-500/30 whitespace-nowrap">
                                   🔔
@@ -1629,6 +1770,7 @@ function MonitorsPageInner() {
                               monitorId={monitor.id}
                               monitorType={monitor.type}
                               enabled={monitor.enabled}
+                              pausedUntil={monitor.pausedUntil}
                               runs={runs}
                             />
                           </TableCell>
@@ -1756,9 +1898,44 @@ function MonitorsPageInner() {
                                   </div>
                                 )}
                               </div>
+                              <div className="relative">
+                                {monitor.pausedUntil && new Date(monitor.pausedUntil) > new Date() ? (
+                                  <Button variant="ghost" size="sm" onClick={() => handleResumePause(monitor.id)} className="text-sky-400 hover:text-sky-300" aria-label={`Resume checks for ${monitor.name}`} title="Resume checks">
+                                    <PlayCircle className="w-4 h-4" />
+                                  </Button>
+                                ) : (
+                                  <Button variant="ghost" size="sm" onClick={() => setPauseMenuId(pauseMenuId === monitor.id ? null : monitor.id)} className="text-text-secondary hover:text-sky-400" aria-label={`Pause checks for ${monitor.name}`} title="Pause checks">
+                                    <PauseCircle className="w-4 h-4" />
+                                  </Button>
+                                )}
+                                {pauseMenuId === monitor.id && (
+                                  <div className="absolute right-0 top-full mt-1 z-50 bg-bg-card border border-border rounded-xl shadow-lg min-w-[160px] py-1" role="menu">
+                                    <p className="px-3 py-1 text-[10px] font-semibold text-text-muted uppercase tracking-wider">Pause checks for</p>
+                                    {[[30, "30 minutes"], [60, "1 hour"], [240, "4 hours"], [480, "8 hours"], [1440, "24 hours"], [10080, "7 days"]].map(([m, label]) => (
+                                      <button key={m} onClick={() => handlePause(monitor.id, m as number)} className="w-full text-left px-3 py-1.5 text-sm text-text-primary hover:bg-bg-surface transition-colors" role="menuitem">
+                                        {label}
+                                      </button>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                               <Button variant="ghost" size="sm" onClick={() => setBadgeMonitor(monitor)} className="text-text-secondary hover:text-text-primary" aria-label={`Get embed badge for ${monitor.name}`} title="Embed badge">
                                 <Shield className="w-4 h-4" />
                               </Button>
+                              <button
+                                title={monitor.pinned ? "Unpin monitor" : "Pin monitor to top"}
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const user = getUser();
+                                  if (!user) return;
+                                  await api(`/v1/monitors/${monitor.id}/pin`, user.id, { method: 'POST' });
+                                  setMonitors(prev => prev.map(m => m.id === monitor.id ? { ...m, pinned: !m.pinned } : m));
+                                }}
+                                className={`p-1.5 rounded hover:bg-white/10 transition-colors ${monitor.pinned ? 'text-amber-400' : 'text-text-muted hover:text-text-primary'}`}
+                                aria-label={monitor.pinned ? "Unpin" : "Pin"}
+                              >
+                                <Pin className="w-3.5 h-3.5" />
+                              </button>
                               <Button variant="ghost" size="sm" onClick={() => handleDelete(monitor.id)} className="text-danger hover:text-danger" aria-label={`Delete monitor ${monitor.name}`} title="Delete monitor">
                                 <Trash2 className="w-4 h-4" />
                               </Button>
@@ -2131,6 +2308,14 @@ function MonitorsPageInner() {
           monitor={badgeMonitor}
           onClose={() => setBadgeMonitor(null)}
           onCopySuccess={success}
+        />
+      )}
+      {showQuickAdd && (
+        <QuickAddModal
+          folders={folders}
+          channels={allChannels}
+          onClose={() => setShowQuickAdd(false)}
+          onSubmit={handleQuickAdd}
         />
       )}
     </AppFrame>

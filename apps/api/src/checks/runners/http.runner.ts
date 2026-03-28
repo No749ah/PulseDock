@@ -361,6 +361,44 @@ async function runPreAuth(
   }
 }
 
+// ─── Header Assertions ───────────────────────────────────────────────────────
+
+export interface HeaderAssertion {
+  header: string;
+  op: 'exists' | 'not-exists' | 'equals' | 'contains';
+  value?: string;
+}
+
+export interface HeaderAssertionFailure {
+  header: string;
+  op: string;
+  expected?: string;
+  actual?: string | null;
+  message: string;
+}
+
+export function evaluateHeaderAssertions(
+  headers: Record<string, string>,
+  assertions: Array<{ header: string; op: string; value?: string }>,
+): HeaderAssertionFailure[] {
+  const failures: HeaderAssertionFailure[] = [];
+  for (const assertion of assertions) {
+    const headerKey = assertion.header.toLowerCase();
+    const actual = headers[headerKey] ?? null;
+
+    if (assertion.op === 'exists' && !actual) {
+      failures.push({ header: assertion.header, op: assertion.op, actual, message: `Header "${assertion.header}" missing` });
+    } else if (assertion.op === 'not-exists' && actual) {
+      failures.push({ header: assertion.header, op: assertion.op, actual, message: `Header "${assertion.header}" present (expected absent)` });
+    } else if (assertion.op === 'equals' && actual !== assertion.value) {
+      failures.push({ header: assertion.header, op: assertion.op, expected: assertion.value, actual, message: `Header "${assertion.header}" = "${actual}", expected "${assertion.value}"` });
+    } else if (assertion.op === 'contains' && (!actual || !actual.includes(assertion.value ?? ''))) {
+      failures.push({ header: assertion.header, op: assertion.op, expected: assertion.value, actual, message: `Header "${assertion.header}" = "${actual}", expected to contain "${assertion.value}"` });
+    }
+  }
+  return failures;
+}
+
 export async function runHttpCheck(
   url: string,
   timeoutMs = 5000,
@@ -402,6 +440,13 @@ export async function runHttpCheck(
   }
   const requestBody = typeof config['requestBody'] === 'string' ? config['requestBody'] : undefined;
   const checkSecurityHeaders = config['checkSecurityHeaders'] === true;
+
+  // ─── Multi-Header Assertions ─────────────────────────────────────────────────
+  const headerAssertions: Array<{ header: string; op: string; value?: string }> = Array.isArray(config['headerAssertions'])
+    ? (config['headerAssertions'] as Array<{ header: string; op: string; value?: string }>).filter(
+        (a) => a && typeof a.header === 'string' && typeof a.op === 'string',
+      )
+    : [];
 
   // ─── Header Tracking ──────────────────────────────────────────────────────────
   const trackedHeaderNames: string[] = typeof config['trackedHeaders'] === 'string' && config['trackedHeaders'].trim()
@@ -569,6 +614,25 @@ export async function runHttpCheck(
             ...(capturedHeaders ? { capturedHeaders } : {}),
           };
         }
+      }
+    }
+
+    // ─── Multi-Header Assertions ─────────────────────────────────────────────
+    if (headerAssertions.length > 0) {
+      const assertionFailures = evaluateHeaderAssertions(responseHeaders, headerAssertions);
+      if (assertionFailures.length > 0) {
+        const failMessages = assertionFailures.map((f) => f.message).join('; ');
+        return {
+          ok: false,
+          statusCode,
+          latencyMs,
+          message: `HTTP ${statusCode} — header assertion failed: ${failMessages}`,
+          level: 'yellow' as const,
+          timings,
+          securityHeadersAudit: securityAudit,
+          headerAssertionsFailed: assertionFailures,
+          ...(capturedHeaders ? { capturedHeaders } : {}),
+        };
       }
     }
 

@@ -80,6 +80,17 @@ export interface PluginExecutionResult {
    * Only populated when metricPath is configured and the extraction succeeds.
    */
   capturedMetricValue?: number | null;
+  /**
+   * List of header assertion failures from the headerAssertions check.
+   * Only populated when headerAssertions are configured and at least one fails.
+   */
+  headerAssertionsFailed?: Array<{
+    header: string;
+    op: string;
+    expected?: string;
+    actual?: string | null;
+    message: string;
+  }> | null;
 }
 
 export interface PluginConfigField {

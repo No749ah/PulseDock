@@ -167,6 +167,8 @@ model Monitor {
   metricUnit          String?     // Optional unit label (e.g. "items", "ms", "%")
   metricAlertMin      Float?      // Alert yellow when captured value < this (null = no min alert)
   metricAlertMax      Float?      // Alert yellow when captured value > this (null = no max alert)
+  // Header Assertions: assert response headers exist/equal/contain on every HTTP check
+  headerAssertions    Json?       // Array of { header: string, op: 'exists'|'equals'|'contains'|'not-exists', value?: string }
   createdAt           DateTime    @default(now())
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)

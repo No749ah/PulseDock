@@ -301,6 +301,20 @@ export default function MonitorDetailPage() {
   const [transitionsData, setTransitionsData] = useState<StatusTransitionsData | null>(null);
   const [perfComparison, setPerfComparison] = useState<PeriodComparisonData | null>(null);
 
+  // Daily latency percentile history (P50/P95/P99)
+  type LatencyHistoryDay = {
+    date: string;
+    p50: number | null;
+    p95: number | null;
+    p99: number | null;
+    avgMs: number | null;
+    uptimePct: number | null;
+    totalChecks: number;
+  };
+  const [latencyHistory, setLatencyHistory] = useState<LatencyHistoryDay[] | null>(null);
+  const [latencyHistoryLoading, setLatencyHistoryLoading] = useState(false);
+  const [latencyHistoryDays, setLatencyHistoryDays] = useState<14 | 30 | 60>(30);
+
   // Certificate details (SSL/HTTP monitors)
   const [certDetails, setCertDetails] = useState<Record<string, unknown> | null>(null);
   const [certLoading, setCertLoading] = useState(false);
@@ -514,6 +528,19 @@ export default function MonitorDetailPage() {
       .finally(() => setFailurePatternsLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeMainTab, id, failuresPeriod]);
+
+  // Load latency history when performance tab is active or days change
+  useEffect(() => {
+    if (activeMainTab !== "performance" || !monitor) return;
+    const user = getUser();
+    if (!user) return;
+    setLatencyHistoryLoading(true);
+    api<{ days: LatencyHistoryDay[] }>(`/v1/monitors/${id}/latency-history?days=${latencyHistoryDays}`, user.id)
+      .then((data) => setLatencyHistory(data.days))
+      .catch(() => setLatencyHistory([]))
+      .finally(() => setLatencyHistoryLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMainTab, id, latencyHistoryDays]);
 
   // Load runs with optional status filter (resets pagination)
   const loadFilteredRuns = useCallback(async (statusFilter: "all" | "ok" | "failed" | "degraded") => {
@@ -2217,6 +2244,149 @@ export default function MonitorDetailPage() {
                     </Card>
                   );
                 })()}
+
+                {/* G. Daily Latency Percentile History (P50/P95/P99) */}
+                <Card className="p-5 space-y-4">
+                  <div className="flex items-center justify-between flex-wrap gap-3">
+                    <div>
+                      <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                        <TrendingUp className="w-4 h-4" />
+                        Daily Latency Trends
+                      </h3>
+                      <p className="text-xs text-text-muted mt-1">P50 / P95 / P99 per day over the selected period</p>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {([14, 30, 60] as const).map((d) => (
+                        <button
+                          key={d}
+                          onClick={() => setLatencyHistoryDays(d)}
+                          className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${
+                            latencyHistoryDays === d
+                              ? "bg-accent text-white"
+                              : "bg-white/5 text-text-muted hover:text-text-secondary border border-white/10"
+                          }`}
+                        >
+                          {d}d
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {latencyHistoryLoading ? (
+                    <div className="flex items-center justify-center py-8">
+                      <div className="w-5 h-5 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+                    </div>
+                  ) : !latencyHistory || latencyHistory.every((d) => d.p50 === null) ? (
+                    <p className="text-sm text-text-muted text-center py-6">No latency data for this period.</p>
+                  ) : (() => {
+                    const withData = latencyHistory.filter((d) => d.p50 !== null || d.p95 !== null);
+                    const maxVal = Math.max(...latencyHistory.map((d) => d.p99 ?? d.p95 ?? d.p50 ?? 0), 1);
+                    const formatDate = (iso: string) => {
+                      const d = new Date(iso + 'T00:00:00Z');
+                      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+                    };
+                    // Show tick every ~7 days
+                    const tickInterval = Math.max(1, Math.floor(latencyHistory.length / 6));
+
+                    return (
+                      <div>
+                        {/* SVG chart */}
+                        <div className="relative h-40 w-full" aria-label="Latency percentile trend chart">
+                          <svg viewBox={`0 0 ${latencyHistory.length * 10} 100`} className="w-full h-full" preserveAspectRatio="none">
+                            {/* Grid lines */}
+                            {[25, 50, 75, 100].map((pct) => (
+                              <line
+                                key={pct}
+                                x1="0" y1={100 - pct} x2={latencyHistory.length * 10} y2={100 - pct}
+                                stroke="rgba(255,255,255,0.06)" strokeWidth="0.5"
+                              />
+                            ))}
+                            {/* P99 area */}
+                            {latencyHistory.some((d) => d.p99 !== null) && (
+                              <polyline
+                                points={latencyHistory
+                                  .map((d, i) => d.p99 !== null ? `${i * 10 + 5},${100 - Math.min(98, (d.p99 / maxVal) * 98)}` : null)
+                                  .filter(Boolean)
+                                  .join(' ')}
+                                fill="none"
+                                stroke="rgba(248,113,113,0.5)"
+                                strokeWidth="1"
+                              />
+                            )}
+                            {/* P95 line */}
+                            <polyline
+                              points={latencyHistory
+                                .map((d, i) => d.p95 !== null ? `${i * 10 + 5},${100 - Math.min(98, (d.p95 / maxVal) * 98)}` : null)
+                                .filter(Boolean)
+                                .join(' ')}
+                              fill="none"
+                              stroke="rgba(251,146,60,0.8)"
+                              strokeWidth="1.5"
+                            />
+                            {/* P50 line */}
+                            <polyline
+                              points={latencyHistory
+                                .map((d, i) => d.p50 !== null ? `${i * 10 + 5},${100 - Math.min(98, (d.p50 / maxVal) * 98)}` : null)
+                                .filter(Boolean)
+                                .join(' ')}
+                              fill="none"
+                              stroke="rgba(74,222,128,0.9)"
+                              strokeWidth="1.5"
+                            />
+                          </svg>
+                        </div>
+
+                        {/* X-axis date labels */}
+                        <div className="flex justify-between mt-1 px-1">
+                          {latencyHistory
+                            .filter((_, i) => i % tickInterval === 0 || i === latencyHistory.length - 1)
+                            .map((d) => (
+                              <span key={d.date} className="text-[10px] text-text-muted">{formatDate(d.date)}</span>
+                            ))}
+                        </div>
+
+                        {/* Legend */}
+                        <div className="flex items-center gap-4 mt-3 text-xs text-text-secondary">
+                          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 rounded bg-green-400 inline-block" />P50 (median)</span>
+                          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 rounded bg-orange-400 inline-block" />P95</span>
+                          <span className="flex items-center gap-1.5"><span className="w-3 h-0.5 rounded bg-red-400 inline-block" />P99</span>
+                          <span className="ml-auto text-text-muted">
+                            Peak: {maxVal}ms
+                          </span>
+                        </div>
+
+                        {/* Summary stats */}
+                        {withData.length > 0 && (() => {
+                          const p95vals = latencyHistory.filter(d => d.p95 !== null).map(d => d.p95!);
+                          const avgP95 = p95vals.length > 0 ? Math.round(p95vals.reduce((s,v) => s + v, 0) / p95vals.length) : null;
+                          const trend = p95vals.length >= 2
+                            ? p95vals[p95vals.length - 1] > p95vals[0] ? '↑ worsening' : '↓ improving'
+                            : null;
+                          return (
+                            <div className="grid grid-cols-3 gap-3 mt-3">
+                              <div className="p-2.5 rounded-lg bg-surface-2 border border-border text-center">
+                                <p className="text-[10px] text-text-muted uppercase tracking-wider">Avg P95</p>
+                                <p className="text-sm font-bold tabular-nums text-orange-400 mt-0.5">{avgP95 !== null ? `${avgP95}ms` : '—'}</p>
+                              </div>
+                              <div className="p-2.5 rounded-lg bg-surface-2 border border-border text-center">
+                                <p className="text-[10px] text-text-muted uppercase tracking-wider">Peak P99</p>
+                                <p className="text-sm font-bold tabular-nums text-red-400 mt-0.5">
+                                  {latencyHistory.some(d => d.p99 !== null) ? `${Math.max(...latencyHistory.filter(d => d.p99 !== null).map(d => d.p99!))}ms` : '—'}
+                                </p>
+                              </div>
+                              <div className="p-2.5 rounded-lg bg-surface-2 border border-border text-center">
+                                <p className="text-[10px] text-text-muted uppercase tracking-wider">P95 Trend</p>
+                                <p className={`text-sm font-bold mt-0.5 ${trend?.includes('worsening') ? 'text-red-400' : trend?.includes('improving') ? 'text-green-400' : 'text-text-muted'}`}>
+                                  {trend ?? '—'}
+                                </p>
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    );
+                  })()}
+                </Card>
             </>
             )}
           </div>

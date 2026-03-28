@@ -4004,6 +4004,80 @@ export class MonitorsService {
   }
 
   /**
+   * Returns per-day P50 / P95 / P99 latency and uptime% for the last N days.
+   * Useful for rendering a multi-line trend chart on the Performance tab.
+   * Days with zero successful latency data return null for all percentile fields.
+   *
+   * @param userId  - Owner's user ID
+   * @param monitorId - Target monitor
+   * @param days    - Number of days to look back (1–90, default 30)
+   */
+  async latencyHistory(userId: string, monitorId: string, days: number = 30): Promise<{
+    days: Array<{
+      date: string; // YYYY-MM-DD UTC
+      p50: number | null;
+      p95: number | null;
+      p99: number | null;
+      avgMs: number | null;
+      uptimePct: number | null;
+      totalChecks: number;
+    }>;
+  }> {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const clampedDays = Math.min(Math.max(1, days), 90);
+    const since = new Date(Date.now() - clampedDays * 24 * 60 * 60 * 1000);
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId, checkedAt: { gte: since } },
+      select: { ok: true, latencyMs: true, checkedAt: true },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    // Group by UTC date
+    const buckets = new Map<string, { latencies: number[]; ok: number; total: number }>();
+
+    // Pre-fill all days so we get entries even for days with no data
+    for (let i = 0; i < clampedDays; i++) {
+      const d = new Date(since.getTime() + i * 24 * 60 * 60 * 1000);
+      const key = d.toISOString().split('T')[0];
+      if (!buckets.has(key)) buckets.set(key, { latencies: [], ok: 0, total: 0 });
+    }
+
+    for (const run of runs) {
+      const key = run.checkedAt.toISOString().split('T')[0];
+      if (!buckets.has(key)) buckets.set(key, { latencies: [], ok: 0, total: 0 });
+      const b = buckets.get(key)!;
+      b.total++;
+      if (run.ok) b.ok++;
+      if (run.latencyMs !== null) b.latencies.push(run.latencyMs);
+    }
+
+    const pct = (arr: number[], p: number): number | null => {
+      if (arr.length === 0) return null;
+      const sorted = [...arr].sort((a, b) => a - b);
+      return sorted[Math.max(0, Math.ceil(sorted.length * (p / 100)) - 1)];
+    };
+
+    const result = Array.from(buckets.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, b]) => ({
+        date,
+        p50: pct(b.latencies, 50),
+        p95: pct(b.latencies, 95),
+        p99: pct(b.latencies, 99),
+        avgMs: b.latencies.length > 0
+          ? Math.round(b.latencies.reduce((s, v) => s + v, 0) / b.latencies.length)
+          : null,
+        uptimePct: b.total > 0 ? Math.round((b.ok / b.total) * 1000) / 10 : null,
+        totalChecks: b.total,
+      }));
+
+    return { days: result };
+  }
+
+  /**
    * Analyzes failed MonitorRun records for a monitor and groups them into
    * normalized error patterns (by stripping dynamic values like IPs, timestamps,
    * HTTP status codes, UUIDs). Returns frequency, first/last seen, and a

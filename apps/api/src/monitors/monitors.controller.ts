@@ -1692,6 +1692,26 @@ export class MonitorsController {
     return this.monitorsService.geoStats(req.user.id, id, periodDays ? parseInt(periodDays, 10) : 7);
   }
 
+  // ─── Daily Latency Percentile History ────────────────────────────────────────────
+
+  @Get(':id/latency-history')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Daily P50/P95/P99 latency history',
+    description: 'Returns per-day latency percentiles (P50, P95, P99) and uptime% for the last N days. Useful for rendering multi-line performance trend charts.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'days', required: false, type: Number, description: 'Number of days to look back (default 30, max 90)' })
+  @ApiResponse({ status: 200, description: 'Daily latency history returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  latencyHistory(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('days') days?: string,
+  ) {
+    return this.monitorsService.latencyHistory(req.user.id, id, days ? parseInt(days, 10) : 30);
+  }
+
   // ─── Failure Pattern Analysis ─────────────────────────────────────────────────────
 
   @Get(':id/failure-patterns')

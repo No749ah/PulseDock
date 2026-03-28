@@ -1,6 +1,22 @@
-import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsIn, IsInt, IsNumber, IsObject, IsOptional, IsString, IsUrl, Max, MaxLength, Min, MinLength } from 'class-validator';
+import { ArrayMaxSize, ArrayMinSize, IsArray, IsBoolean, IsIn, IsInt, IsNotEmpty, IsNumber, IsObject, IsOptional, IsString, IsUrl, Max, MaxLength, Min, MinLength, ValidateNested } from 'class-validator';
+import { Type } from 'class-transformer';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { SanitizeHtml } from '../common/sanitize';
+
+export class HeaderAssertionDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  header!: string;
+
+  @IsIn(['exists', 'not-exists', 'equals', 'contains'])
+  op!: 'exists' | 'not-exists' | 'equals' | 'contains';
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  value?: string;
+}
 
 export class CreateMonitorDto {
   @ApiProperty({ description: 'Display name for the monitor', maxLength: 255, example: 'My API Health' })
@@ -297,6 +313,16 @@ export class CreateMonitorDto {
   @IsNumber()
   metricAlertMax?: number | null;
 
+  @ApiPropertyOptional({
+    description: 'Array of header assertions to evaluate on every HTTP check. Each assertion can check if a header exists, is absent, equals a value, or contains a substring. Alert yellow on any failure.',
+    type: [HeaderAssertionDto],
+  })
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => HeaderAssertionDto)
+  headerAssertions?: HeaderAssertionDto[];
+
 }
 
 export class UpdateMonitorDto {
@@ -516,6 +542,12 @@ export class UpdateMonitorDto {
   @IsOptional()
   @IsNumber()
   metricAlertMax?: number | null;
+
+  @IsOptional()
+  @IsArray()
+  @ValidateNested({ each: true })
+  @Type(() => HeaderAssertionDto)
+  headerAssertions?: HeaderAssertionDto[];
 
 }
 

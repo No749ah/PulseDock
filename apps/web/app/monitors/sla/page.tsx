@@ -220,7 +220,7 @@ export default function SlaPage() {
   const [error, setError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const { showToast } = useToast();
+  const { success: showSuccess } = useToast();
 
   const load = useCallback(async () => {
     try {
@@ -241,14 +241,15 @@ export default function SlaPage() {
 
   const handleSetTarget = async (id: string, value: number) => {
     try {
-      await api(`/v1/monitors/${id}`, {
+      const u = await getUser();
+      await api(`/v1/monitors/${id}`, u?.id, {
         method: 'PATCH',
         body: JSON.stringify({ slaTarget: value }),
       });
-      showToast('SLA target updated', 'success');
+      showSuccess('SLA target updated');
       await load();
     } catch {
-      showToast('Failed to update SLA target', 'error');
+      showSuccess('Failed to update SLA target');
     }
   };
 
@@ -284,7 +285,7 @@ export default function SlaPage() {
     : '—';
 
   return (
-    <AppFrame>
+    <AppFrame title="SLA Dashboard">
       <div className="p-6 max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">

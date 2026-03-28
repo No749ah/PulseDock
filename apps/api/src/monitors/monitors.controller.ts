@@ -16,6 +16,7 @@ import { BulkActionDto, BulkCreateFromUrlsDto, BulkEditDto, CreateMonitorDto, Cr
 import { MuteMonitorDto } from './dto/mute-monitor.dto';
 import { PauseMonitorDto } from './dto/pause-monitor.dto';
 import { AcknowledgeMonitorDto } from './dto/acknowledge-monitor.dto';
+import { OpenApiImportDto, OpenApiPreviewDto } from './import-openapi.dto';
 
 @ApiTags('Monitors')
 @ApiBearerAuth()
@@ -589,6 +590,32 @@ export class MonitorsController {
   @ApiResponse({ status: 400, description: 'Invalid YAML' })
   importFromCompose(@Req() req: { user: { id: string } }, @Body() body: ImportFromComposeDto) {
     return this.monitorsService.importFromCompose(body.compose);
+  }
+
+  @Post('import-from-openapi/preview')
+  @HttpCode(200)
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Preview monitors from OpenAPI/Swagger spec',
+    description: 'Parses an OpenAPI 3.x or Swagger 2.x spec and returns monitor suggestions without creating them.',
+  })
+  @ApiResponse({ status: 200, description: 'Suggestions array returned.' })
+  @ApiResponse({ status: 400, description: 'Invalid spec or URL fetch failed.' })
+  importFromOpenApiPreview(@Req() req: { user: { id: string } }, @Body() body: OpenApiPreviewDto) {
+    return this.monitorsService.previewFromOpenApi(body);
+  }
+
+  @Post('import-from-openapi')
+  @HttpCode(200)
+  @RequireScope(ApiKeyScope.WRITE)
+  @ApiOperation({
+    summary: 'Import monitors from OpenAPI/Swagger spec',
+    description: 'Creates monitors for selected paths from an OpenAPI/Swagger spec.',
+  })
+  @ApiResponse({ status: 200, description: 'Created monitors returned.' })
+  @ApiResponse({ status: 400, description: 'Invalid spec or URL fetch failed.' })
+  importFromOpenApi(@Req() req: { user: { id: string } }, @Body() body: OpenApiImportDto) {
+    return this.monitorsService.importFromOpenApi(req.user.id, body);
   }
 
   @Get(':id/alerts')

@@ -30,6 +30,7 @@ import { MonitorGridView, MonitorGroupedView } from "./components/MonitorGridVie
 import { AdvancedFiltersPanel } from "./components/AdvancedFiltersPanel";
 import { QuickAddModal } from "./components/QuickAddModal";
 import { ImportFromComposeModal } from "./components/ImportFromComposeModal";
+import { OpenApiImportModal } from "./components/OpenApiImportModal";
 
 function MonitorsPageInner() {
   const router = useRouter();
@@ -165,6 +166,7 @@ function MonitorsPageInner() {
   // quick add (bulk URL) modal
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showComposeImport, setShowComposeImport] = useState(false);
+  const [showOpenApiImport, setShowOpenApiImport] = useState(false);
 
   // config export modal
   const [showConfigExport, setShowConfigExport] = useState(false);
@@ -1487,6 +1489,16 @@ function MonitorsPageInner() {
                 <span className="hidden sm:inline">From Compose</span>
               </Button>
               <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowOpenApiImport(true)}
+                className="flex items-center gap-2"
+                title="Import monitors from an OpenAPI/Swagger spec"
+              >
+                <Globe className="w-4 h-4" />
+                <span className="hidden sm:inline">From OpenAPI</span>
+              </Button>
+              <Button
                 size="sm"
                 onClick={() => {
                   setModalMode("create");
@@ -2605,6 +2617,21 @@ function MonitorsPageInner() {
               setMonitors(monitorsData);
             }
             success("Monitors created from Docker Compose");
+          }}
+        />
+      )}
+
+      {showOpenApiImport && (
+        <OpenApiImportModal
+          userId={user?.id}
+          onClose={() => setShowOpenApiImport(false)}
+          onCreated={async () => {
+            const u = getUser();
+            if (u) {
+              const monitorsData = await api<MonitorItem[]>("/v1/monitors", u.id).catch(() => [] as MonitorItem[]);
+              setMonitors(monitorsData);
+            }
+            success("Monitors imported from OpenAPI spec");
           }}
         />
       )}

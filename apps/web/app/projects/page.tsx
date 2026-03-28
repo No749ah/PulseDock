@@ -195,7 +195,8 @@ export default function FoldersPage() {
     const mins = Math.max(1, Math.min(1440, Number(muteMinutes) || 60));
     setSaving(true);
     try {
-      const res = await api(`/v1/folders/${selected.id}/mute`, { minutes: mins }, { method: 'POST' }) as { monitorCount: number; mutedUntil: string };
+      const u = await getUser();
+      const res = await api(`/v1/folders/${selected.id}/mute`, u?.id, { method: 'POST', body: JSON.stringify({ minutes: mins }) }) as { monitorCount: number; mutedUntil: string };
       success(`Muted ${res.monitorCount} monitor${res.monitorCount !== 1 ? 's' : ''} in "${selected.name}" for ${mins} min`);
       setMuteOpen(false);
     } catch {

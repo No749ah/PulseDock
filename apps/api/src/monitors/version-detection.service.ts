@@ -257,7 +257,7 @@ export class VersionDetectionService {
    * @returns { ok, message, latestVersion } — ok=false if the connection failed
    * @throws Error when an upstream request fails unexpectedly
    */
-  async testVersionConnection(input: { provider: 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'maven' | 'helm'; target: string; token?: string; host?: string }) {
+  async testVersionConnection(input: { provider: 'github' | 'gitlab' | 'forgejo' | 'gitea' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'nuget' | 'rubygems' | 'gem' | 'go' | 'golang' | 'gomod' | 'maven' | 'helm'; target: string; token?: string; host?: string }) {
     if (input.provider === 'github') {
       const repo = this.parseGithubRepo(input.target);
       if (!repo) return { ok: false, message: 'Invalid GitHub target. Use owner/repo or GitHub URL.' };
@@ -341,6 +341,64 @@ export class VersionDetectionService {
       return { ok: true, message: 'APT package lookup successful', latestVersion: stable ?? versions[0] ?? null };
     }
 
+    if (input.provider === 'nuget') {
+      const pkg = input.target.replace(/^nuget:/i, '').trim();
+      if (!pkg) return { ok: false, message: 'Invalid NuGet package name.' };
+      const resp = await fetch(
+        `https://api.nuget.org/v3-flatcontainer/${encodeURIComponent(pkg.toLowerCase())}/index.json`,
+        { headers: { 'User-Agent': 'PulseDock' } },
+      );
+      if (!resp.ok) return { ok: false, message: `NuGet API ${resp.status}` };
+      const data = await resp.json() as { versions?: string[] };
+      const versions = data.versions ?? [];
+      const stable = versions.filter((v) => !/(alpha|beta|preview|rc|pre)/i.test(v));
+      const latestVersion = stable.at(-1) ?? versions.at(-1) ?? null;
+      if (!latestVersion) return { ok: false, message: 'No NuGet versions found.' };
+      return { ok: true, message: 'NuGet API reachable', latestVersion };
+    }
+
+    if (input.provider === 'rubygems' || input.provider === 'gem') {
+      const gem = input.target.replace(/^(rubygems:|gem:)/i, '').trim();
+      if (!gem) return { ok: false, message: 'Invalid gem name.' };
+      const resp = await fetch(`https://rubygems.org/api/v1/gems/${encodeURIComponent(gem)}.json`, {
+        headers: { 'User-Agent': 'PulseDock' },
+      });
+      if (!resp.ok) return { ok: false, message: `RubyGems API ${resp.status}` };
+      const data = await resp.json() as { version?: string };
+      return { ok: true, message: 'RubyGems API reachable', latestVersion: data.version ?? null };
+    }
+
+    if (input.provider === 'go' || input.provider === 'golang' || input.provider === 'gomod') {
+      const module = input.target.replace(/^(go:|golang:|gomod:)/i, '').trim();
+      if (!module) return { ok: false, message: 'Invalid Go module path.' };
+      const resp = await fetch(`https://proxy.golang.org/${encodeURIComponent(module)}/@latest`, {
+        headers: { 'User-Agent': 'PulseDock' },
+      });
+      if (!resp.ok) return { ok: false, message: `Go proxy API ${resp.status}` };
+      const data = await resp.json() as { Version?: string; Error?: string };
+      if (data.Error) return { ok: false, message: `Go module error: ${data.Error}` };
+      return { ok: true, message: 'Go module proxy reachable', latestVersion: data.Version ?? null };
+    }
+
+    if (input.provider === 'forgejo' || input.provider === 'gitea') {
+      const rawTarget = input.target.replace(/^(forgejo:|gitea:)/i, '').trim();
+      const defaultHost = input.provider === 'forgejo' ? 'codeberg.org' : 'localhost:3000';
+      let host = defaultHost;
+      let repoPath = rawTarget;
+      const parts = rawTarget.split('/');
+      if (parts.length >= 3 && parts[0].includes('.')) {
+        host = parts[0];
+        repoPath = parts.slice(1).join('/');
+      }
+      if (!repoPath.includes('/')) return { ok: false, message: `Invalid ${input.provider} target. Use "owner/repo" format.` };
+      const headers: Record<string, string> = { 'User-Agent': 'PulseDock', Accept: 'application/json' };
+      if (input.token) headers['Authorization'] = `token ${input.token}`;
+      const resp = await fetch(`https://${host}/api/v1/repos/${repoPath}/releases?limit=1&page=1`, { headers });
+      if (!resp.ok) return { ok: false, message: `${input.provider} API ${resp.status}` };
+      const releases = await resp.json() as Array<{ tag_name?: string }>;
+      return { ok: true, message: `${input.provider} API reachable`, latestVersion: releases[0]?.tag_name ?? null };
+    }
+
     if (input.provider === 'maven') {
       const parts = input.target.trim().split(':');
       if (parts.length < 2) return { ok: false, message: 'Invalid Maven target. Use "groupId:artifactId" format.' };
@@ -386,7 +444,7 @@ export class VersionDetectionService {
    * @returns { currentVersion, strategy, tried, detectedFrom } — strategy indicates how version was found
    * @throws Error when probing endpoints fails unexpectedly
    */
-  async discoverCurrentVersion(input: { provider: 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'maven' | 'helm'; target: string; token?: string; host?: string; appUrl?: string; appToken?: string; appVersionEndpoint?: string; appAuthType?: 'none' | 'token' | 'openvpn'; openvpnUsername?: string; openvpnPassword?: string; endpointFallbacks?: string[]; jsonPath?: string; jsonPathExtractors?: string[] }) {
+  async discoverCurrentVersion(input: { provider: 'github' | 'gitlab' | 'forgejo' | 'gitea' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'nuget' | 'rubygems' | 'gem' | 'go' | 'golang' | 'gomod' | 'maven' | 'helm'; target: string; token?: string; host?: string; appUrl?: string; appToken?: string; appVersionEndpoint?: string; appAuthType?: 'none' | 'token' | 'openvpn'; openvpnUsername?: string; openvpnPassword?: string; endpointFallbacks?: string[]; jsonPath?: string; jsonPathExtractors?: string[] }) {
     const hasAppUrl = Boolean(input.appUrl && input.appUrl.trim());
     const deployed = await this.detectDeployedVersion({
       appUrl: input.appUrl,

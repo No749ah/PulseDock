@@ -1,3 +1,16 @@
+## Status Summary (2026-03-28 12:20 UTC)
+- **Build/Test:** ✅ Clean build + 4008 API (+41 coverage tests) + 10 CLI + 12 agent = 4030 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 14 pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-afternoon (new branch post-merge)
+- **Last changes (12:20 UTC cycle):**
+  - [x] **Branch management** — Merged heartbeat/2026-03-28-noon → dev, deleted old branch, created heartbeat/2026-03-28-afternoon.
+  - [x] **Test coverage boost +41 tests** — Added targeted unit tests for previously uncovered code paths:
+    - `alerts.service.extended.spec.ts` (27 tests): `previewPayload` (default payload, channel template, template override, invalid JSON, syntax error), `retryDelivery` (not found, wrong channel, with/without monitorName, send failure), `retryAllFailed` (empty, max 10, deliveryId included), `notifySlaBreached` (sends to channels, skips wrong user), `notifySlaRecovered`, `notifyBurnRateAlert` (Critical/High/Elevated classification), `deliveryStats` (NotFoundException, 100% default, rate calculation, log shape), `sendToChannel` (with/without monitor info), `flushExpiredAlertGroups` (no channels, single-monitor group marked sent)
+    - `notifications.controller.extended.spec.ts` (4 tests): `getDigestQueue`, `triggerDigest` for all 3 frequency branches (hourly_digest, daily_digest, instant)
+    - `search.controller.spec.ts` (10 tests): limit clamping (max 20, min via negative), default 5, type set construction, query trimming, whitespace trim in types, non-numeric limit, result pass-through
+  - Alerts service function coverage: 54% → ~80%+; Notifications controller: 36% → ~100%; Search controller: 33% → ~100%
+
 ## Status Summary (2026-03-28 11:17 UTC)
 - **Build/Test:** ✅ Clean build + 3967 API (+18 recurrence tests) + 10 CLI + 12 agent = 3989 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

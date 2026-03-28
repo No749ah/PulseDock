@@ -13,6 +13,7 @@ import { RealtimeEvents } from '../realtime/realtime.events';
 import { VersionDetectionService } from './version-detection.service';
 import type { PlaygroundDto, PlaygroundResult } from './playground.dto';
 import { extractByPath } from '../checks/version-extractor.util';
+import { computeMonitorDiff, buildSummary } from './monitors.config-history';
 
 @Injectable()
 export class MonitorsService {
@@ -536,6 +537,57 @@ export class MonitorsService {
       },
     });
 
+    // ── Config Change History ─────────────────────────────────────────────
+    const afterState: Record<string, unknown> = {
+      name: body.name ?? current.name,
+      description: body.description !== undefined ? body.description : current.description,
+      target: body.target ?? current.target,
+      type: body.type ?? current.type,
+      intervalSec: body.intervalSec ?? current.intervalSec,
+      timeoutMs: body.timeoutMs ?? current.timeoutMs,
+      confirmations: body.confirmations !== undefined ? Math.max(1, Math.min(10, body.confirmations)) : current.confirmations,
+      retryCount: body.retryCount !== undefined ? Math.max(0, Math.min(3, body.retryCount)) : current.retryCount,
+      enabled: body.enabled ?? current.enabled,
+      slaTarget: body.slaTarget !== undefined ? body.slaTarget : current.slaTarget,
+      slaPeriodDays: body.slaPeriodDays !== undefined ? body.slaPeriodDays : current.slaPeriodDays,
+      autoIncident: body.autoIncident !== undefined ? body.autoIncident : current.autoIncident,
+      autoIncidentSeverity: body.autoIncidentSeverity !== undefined ? body.autoIncidentSeverity : current.autoIncidentSeverity,
+      flapDetectionEnabled: body.flapDetectionEnabled !== undefined ? body.flapDetectionEnabled : current.flapDetectionEnabled,
+      flapWindow: body.flapWindow !== undefined ? body.flapWindow : current.flapWindow,
+      flapThreshold: body.flapThreshold !== undefined ? body.flapThreshold : current.flapThreshold,
+      latencyAlertMs: body.latencyAlertMs !== undefined ? body.latencyAlertMs : current.latencyAlertMs,
+      anomalyDetection: body.anomalyDetection !== undefined ? body.anomalyDetection : current.anomalyDetection,
+      anomalyMultiplier: body.anomalyMultiplier !== undefined ? body.anomalyMultiplier : current.anomalyMultiplier,
+      cronExpression: body.cronExpression !== undefined ? body.cronExpression : current.cronExpression,
+      scheduleEnabled: body.scheduleEnabled !== undefined ? body.scheduleEnabled : current.scheduleEnabled,
+      scheduleDays: body.scheduleDays !== undefined ? body.scheduleDays : current.scheduleDays,
+      scheduleStartHour: body.scheduleStartHour !== undefined ? body.scheduleStartHour : current.scheduleStartHour,
+      scheduleEndHour: body.scheduleEndHour !== undefined ? body.scheduleEndHour : current.scheduleEndHour,
+      sliLatencyTarget: body.sliLatencyTarget !== undefined ? body.sliLatencyTarget : current.sliLatencyTarget,
+      rtoMinutes: body.rtoMinutes !== undefined ? body.rtoMinutes : current.rtoMinutes,
+      throttleMs: body.throttleMs !== undefined ? body.throttleMs : current.throttleMs,
+      maxChecksPerHour: body.maxChecksPerHour !== undefined ? body.maxChecksPerHour : current.maxChecksPerHour,
+      metricPath: body.metricPath !== undefined ? body.metricPath : current.metricPath,
+      metricName: body.metricName !== undefined ? body.metricName : current.metricName,
+      metricAlertMin: body.metricAlertMin !== undefined ? body.metricAlertMin : current.metricAlertMin,
+      metricAlertMax: body.metricAlertMax !== undefined ? body.metricAlertMax : current.metricAlertMax,
+      graphqlQuery: body.graphqlQuery !== undefined ? body.graphqlQuery : current.graphqlQuery,
+      graphqlDataPath: body.graphqlDataPath !== undefined ? body.graphqlDataPath : current.graphqlDataPath,
+      graphqlExpectedValue: body.graphqlExpectedValue !== undefined ? body.graphqlExpectedValue : current.graphqlExpectedValue,
+    };
+    const configDiff = computeMonitorDiff(current as unknown as Record<string, unknown>, afterState);
+    if (configDiff.length > 0) {
+      await this.prisma.monitorConfigChange.create({
+        data: {
+          monitorId,
+          userId,
+          changes: configDiff as unknown as Prisma.InputJsonValue,
+          summary: buildSummary(configDiff),
+        },
+      });
+    }
+    // ─────────────────────────────────────────────────────────────────────
+
     if (body.alertChannelIds) {
       await this.prisma.monitorAlert.deleteMany({ where: { monitorId } });
       if (body.alertChannelIds.length > 0) {
@@ -561,6 +613,31 @@ export class MonitorsService {
     const updated = await this.list(userId).then((items) => items.find((m) => m.id === monitorId));
     if (updated) this.realtime.monitorUpdated(userId, updated);
     return updated;
+  }
+
+  /**
+   * Returns config change history for a monitor (newest first).
+   * Each entry contains a field-level diff captured at update time.
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The monitor's ID
+   * @param limit - Max entries to return (default 50, max 200)
+   */
+  async getConfigHistory(userId: string, monitorId: string, limit = 50) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    return this.prisma.monitorConfigChange.findMany({
+      where: { monitorId },
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(limit, 200),
+      select: {
+        id: true,
+        changes: true,
+        summary: true,
+        createdAt: true,
+        userId: true,
+      },
+    });
   }
 
   /**

@@ -5928,3 +5928,121 @@ describe('retryCount — automatic check retries on failure', () => {
     expect(vi.mocked(global.fetch)).toHaveBeenCalledTimes(1);
   });
 });
+
+// ─── runMonitor() — GRAPHQL type ─────────────────────────────────────────────
+
+describe('runMonitor() — GRAPHQL type', () => {
+  it('dispatches GraphQL check and saves run', async () => {
+    const prisma = makePrisma();
+    const service = makeService({ prisma });
+
+    // Stub fetch to return a minimal valid GraphQL response
+    globalThis.fetch = mockFetch([{
+      ok: true,
+      status: 200,
+      json: () => ({ data: { status: 'ok' } }),
+    }]);
+
+    const monitor = makeMonitor({
+      type: 'GRAPHQL',
+      target: 'https://api.example.com/graphql',
+      graphqlQuery: '{ status }',
+      graphqlDataPath: undefined,
+      graphqlVariables: undefined,
+      graphqlExpectedValue: undefined,
+    } as never);
+
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(true);
+    expect(run.level).toBe('green');
+    expect(prisma.monitorRun.create).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns yellow when GraphQL response contains errors', async () => {
+    const prisma = makePrisma();
+    const service = makeService({ prisma });
+
+    globalThis.fetch = mockFetch([{
+      ok: true,
+      status: 200,
+      json: () => ({ errors: [{ message: 'Resolver failed' }] }),
+    }]);
+
+    const monitor = makeMonitor({
+      type: 'GRAPHQL',
+      target: 'https://api.example.com/graphql',
+    } as never);
+
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(false);
+    expect(run.level).toBe('yellow');
+  });
+
+  it('returns red when GraphQL endpoint returns HTTP 500', async () => {
+    const prisma = makePrisma();
+    const service = makeService({ prisma });
+
+    globalThis.fetch = mockFetch([{ ok: false, status: 500 }]);
+
+    const monitor = makeMonitor({
+      type: 'GRAPHQL',
+      target: 'https://api.example.com/graphql',
+    } as never);
+
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(false);
+    expect(run.level).toBe('red');
+  });
+});
+
+// ─── runMonitor() — TRANSACTION type ─────────────────────────────────────────
+
+describe('runMonitor() — TRANSACTION type', () => {
+  it('returns red when transaction has no steps configured', async () => {
+    const prisma = makePrisma();
+    const service = makeService({ prisma });
+
+    const monitor = makeMonitor({
+      type: 'TRANSACTION',
+      target: 'https://api.example.com',
+      config: { transactionSteps: [] },
+    } as never);
+
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(false);
+    expect(run.level).toBe('red');
+    expect(run.message).toContain('no steps');
+  });
+
+  it('returns red when transaction config has no transactionSteps key', async () => {
+    const prisma = makePrisma();
+    const service = makeService({ prisma });
+
+    const monitor = makeMonitor({
+      type: 'TRANSACTION',
+      target: 'https://api.example.com',
+      config: {}, // no transactionSteps key → defaults to []
+    } as never);
+
+    const run = await service.runMonitor(monitor);
+    expect(run.ok).toBe(false);
+    expect(run.level).toBe('red');
+    expect(run.message).toContain('no steps');
+  });
+
+  it('saves MonitorRun record even when transaction has no steps', async () => {
+    const prisma = makePrisma();
+    const service = makeService({ prisma });
+
+    const monitor = makeMonitor({
+      type: 'TRANSACTION',
+      target: 'https://api.example.com',
+      config: { transactionSteps: [] },
+    } as never);
+
+    await service.runMonitor(monitor);
+    expect(prisma.monitorRun.create).toHaveBeenCalledTimes(1);
+    const savedRun = (prisma.monitorRun.create as ReturnType<typeof vi.fn>).mock.calls[0][0].data;
+    expect(savedRun.ok).toBe(false);
+  });
+});

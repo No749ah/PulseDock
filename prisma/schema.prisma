@@ -84,6 +84,7 @@ model User {
   escalationPolicies      EscalationPolicy[]
   alertGroups             AlertGroup[]
   annotations             MonitorAnnotation[]
+  monitorConfigChanges    MonitorConfigChange[]
 }
 
 model Session {
@@ -193,6 +194,7 @@ model Monitor {
   events        MonitorEvent[]
   acknowledgements AlertAcknowledgement[]
   annotations   MonitorAnnotation[]
+  configChanges MonitorConfigChange[]
 
 
   @@index([userId])
@@ -256,6 +258,25 @@ model MonitorTag {
   tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([monitorId, tagId])
+}
+
+/// Field-level diff recorded every time a monitor config is updated.
+/// Enables a full audit trail of configuration changes per monitor.
+model MonitorConfigChange {
+  id        String   @id @default(cuid())
+  monitorId String
+  userId    String
+  /// JSON array of { field, from, to } objects — only changed fields included
+  changes   Json     @default("[]")
+  /// Human-readable summary e.g. "intervalSec: 60 → 120, target: http://old... → http://new..."
+  summary   String
+  createdAt DateTime @default(now())
+
+  monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([monitorId, createdAt])
+  @@index([userId])
 }
 
 /// Timestamped annotations / events on a monitor timeline (deploys, notes, incidents, etc.)

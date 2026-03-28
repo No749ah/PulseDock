@@ -224,7 +224,7 @@ export default function MonitorDetailPage() {
   const [depLoading, setDepLoading] = useState(false);
   const [errorBudget, setErrorBudget] = useState<ErrorBudget | null>(null);
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate" | "domain" | "security" | "content" | "headers" | "diff" | "annotations" | "ctlog" | "geo" | "failures" | "simulate" | "metric" | "transaction">("overview");
+  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate" | "domain" | "security" | "content" | "headers" | "diff" | "annotations" | "ctlog" | "geo" | "failures" | "simulate" | "metric" | "transaction" | "config-history">("overview");
 
   // Custom Metric state
   type MetricPoint = { checkedAt: string; value: number; level: string };
@@ -238,6 +238,17 @@ export default function MonitorDetailPage() {
   const [metricLoading, setMetricLoading] = useState(false);
   const [metricError, setMetricError] = useState<string | null>(null);
   const [metricPeriod, setMetricPeriod] = useState(30);
+
+  // Config History state
+  const [configHistory, setConfigHistory] = useState<Array<{
+    id: string;
+    summary: string;
+    createdAt: string;
+    changes: Array<{ field: string; from: unknown; to: unknown }>;
+  }>>([]);
+  const [configHistoryLoaded, setConfigHistoryLoaded] = useState(false);
+  const [configHistoryLoading, setConfigHistoryLoading] = useState(false);
+  const [expandedConfigChange, setExpandedConfigChange] = useState<string | null>(null);
 
   // Simulate Alerts state
   const [simConfirmations, setSimConfirmations] = useState(1);
@@ -528,6 +539,25 @@ export default function MonitorDetailPage() {
       .finally(() => setFailurePatternsLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeMainTab, id, failuresPeriod]);
+
+  // Load config history when config-history tab is first opened
+  useEffect(() => {
+    if (activeMainTab !== "config-history" || configHistoryLoaded || configHistoryLoading || !monitor) return;
+    const user = getUser();
+    if (!user) return;
+    setConfigHistoryLoading(true);
+    api<Array<{ id: string; summary: string; createdAt: string; changes: Array<{ field: string; from: unknown; to: unknown }> }>>(
+      `/v1/monitors/${id}/config-history`,
+      user.id,
+    )
+      .then((data) => {
+        setConfigHistory(data ?? []);
+        setConfigHistoryLoaded(true);
+      })
+      .catch(() => setConfigHistory([]))
+      .finally(() => setConfigHistoryLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMainTab, id, configHistoryLoaded, configHistoryLoading]);
 
   // Load latency history when performance tab is active or days change
   useEffect(() => {
@@ -1354,6 +1384,20 @@ export default function MonitorDetailPage() {
               Metric
             </button>
           )}
+          {/* Config History tab button */}
+          <button
+            onClick={() => setActiveMainTab("config-history")}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+              activeMainTab === "config-history"
+                ? "bg-white/10 text-text-primary"
+                : "text-text-muted hover:text-text-secondary"
+            }`}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Config History
+          </button>
         </div>
 
         {/* Simulate Alerts Tab */}
@@ -2889,6 +2933,126 @@ export default function MonitorDetailPage() {
                 })}
               </div>
             </Card>
+          );
+        })()}
+
+        {/* Config History Tab */}
+        {(activeMainTab as string) === "config-history" && ((): React.ReactNode => {
+          const FIELD_LABELS: Record<string, string> = {
+            name: "Name", description: "Description", target: "Target URL", type: "Monitor Type",
+            intervalSec: "Check Interval (s)", timeoutMs: "Timeout (ms)", confirmations: "Confirmations",
+            retryCount: "Retry Count", enabled: "Enabled", slaTarget: "SLA Target (%)",
+            slaPeriodDays: "SLA Period (days)", autoIncident: "Auto-Create Incidents",
+            autoIncidentSeverity: "Incident Severity", flapDetectionEnabled: "Flap Detection",
+            flapWindow: "Flap Window", flapThreshold: "Flap Threshold",
+            latencyAlertMs: "Latency Alert Threshold (ms)", anomalyDetection: "Anomaly Detection",
+            anomalyMultiplier: "Anomaly Multiplier", cronExpression: "Cron Expression",
+            scheduleEnabled: "Business Hours Schedule", scheduleDays: "Schedule Days",
+            scheduleStartHour: "Schedule Start Hour", scheduleEndHour: "Schedule End Hour",
+            sliLatencyTarget: "Latency SLI Target (ms)", rtoMinutes: "RTO (minutes)",
+            throttleMs: "Throttle (ms)", maxChecksPerHour: "Max Checks/Hour",
+            metricPath: "Metric JSONPath", metricName: "Metric Name",
+            metricAlertMin: "Metric Min Alert", metricAlertMax: "Metric Max Alert",
+            graphqlQuery: "GraphQL Query", graphqlDataPath: "GraphQL Data Path",
+            graphqlExpectedValue: "GraphQL Expected Value",
+          };
+
+          const formatVal = (v: unknown): string => {
+            if (v === null || v === undefined) return "—";
+            if (typeof v === "boolean") return v ? "true" : "false";
+            const s = String(v);
+            return s.length > 80 ? s.slice(0, 77) + "…" : s;
+          };
+
+          const relTime = (iso: string) => {
+            const diffMs = Date.now() - new Date(iso).getTime();
+            const m = Math.floor(diffMs / 60000);
+            if (m < 1) return "just now";
+            if (m < 60) return `${m}m ago`;
+            const h = Math.floor(m / 60);
+            if (h < 24) return `${h}h ago`;
+            return `${Math.floor(h / 24)}d ago`;
+          };
+
+          return (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-text-primary">Config Change History</h3>
+                <span className="text-xs text-text-muted">
+                  {configHistory.length} change{configHistory.length !== 1 ? "s" : ""} recorded
+                </span>
+              </div>
+
+              {configHistoryLoading && (
+                <div className="text-sm text-text-muted py-8 text-center">Loading history…</div>
+              )}
+
+              {!configHistoryLoading && configHistory.length === 0 && (
+                <div className="rounded-lg border border-border bg-surface/50 p-8 text-center">
+                  <div className="text-2xl mb-2">📋</div>
+                  <p className="text-sm font-medium text-text-secondary">No config changes recorded yet</p>
+                  <p className="text-xs text-text-muted mt-1">
+                    Config changes are tracked automatically when you edit this monitor.
+                  </p>
+                </div>
+              )}
+
+              {!configHistoryLoading && configHistory.map((entry) => {
+                const isExpanded = expandedConfigChange === entry.id;
+                const changes = (entry.changes ?? []) as Array<{ field: string; from: unknown; to: unknown }>;
+                return (
+                  <div key={entry.id} className="rounded-lg border border-border bg-surface/50 overflow-hidden">
+                    <button
+                      onClick={() => setExpandedConfigChange(isExpanded ? null : entry.id)}
+                      className="w-full flex items-start justify-between p-3 hover:bg-surface/80 transition-colors text-left"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                          <span className="text-xs font-semibold text-brand-accent">
+                            {changes.length} field{changes.length !== 1 ? "s" : ""} changed
+                          </span>
+                          <span className="text-xs text-text-muted">·</span>
+                          <span className="text-xs text-text-muted">{relTime(entry.createdAt)}</span>
+                          <span className="text-xs text-text-muted">·</span>
+                          <span className="text-xs text-text-muted">{new Date(entry.createdAt).toLocaleString()}</span>
+                        </div>
+                        <p className="text-xs text-text-secondary truncate">{entry.summary}</p>
+                      </div>
+                      <span className="text-text-muted text-xs ml-2 mt-0.5 shrink-0">{isExpanded ? "▲" : "▼"}</span>
+                    </button>
+
+                    {isExpanded && (
+                      <div className="border-t border-border p-3">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="text-text-muted">
+                              <th className="text-left pb-2 font-medium w-1/4">Field</th>
+                              <th className="text-left pb-2 font-medium w-[37.5%]">Before</th>
+                              <th className="text-left pb-2 font-medium w-[37.5%]">After</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border/50">
+                            {changes.map((change, i) => (
+                              <tr key={i}>
+                                <td className="py-1.5 pr-3 font-medium text-text-secondary">
+                                  {FIELD_LABELS[change.field] ?? change.field}
+                                </td>
+                                <td className="py-1.5 pr-3 font-mono text-red-400/80 line-through">
+                                  {formatVal(change.from)}
+                                </td>
+                                <td className="py-1.5 font-mono text-green-400">
+                                  {formatVal(change.to)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
           );
         })()}
 

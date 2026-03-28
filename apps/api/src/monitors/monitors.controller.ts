@@ -1857,4 +1857,25 @@ export class MonitorsController {
   fleetHealthReport(@Req() req: { user: { id: string } }) {
     return this.monitorsService.fleetHealthReport(req.user.id);
   }
+
+  // ─── Config Change History ──────────────────────────────────────────────
+
+  @Get(':id/config-history')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Get config change history for a monitor',
+    description:
+      'Returns a field-level audit trail of all configuration changes made to a monitor. Newest entries first. Each entry includes changed fields with before/after values and a human-readable summary.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'limit', required: false, type: Number, description: 'Max entries to return (default 50, max 200)' })
+  @ApiResponse({ status: 200, description: 'Config change history entries, newest first.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  getConfigHistory(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('limit') limit?: string,
+  ) {
+    return this.monitorsService.getConfigHistory(req.user.id, id, limit ? parseInt(limit, 10) : 50);
+  }
 }

@@ -14,6 +14,8 @@ import {
   Gauge,
   Flame,
   TrendingDown,
+  Mail,
+  Send,
 } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Card } from '../components/Card';
@@ -129,6 +131,17 @@ function statusBadgeVariant(status: string): 'success' | 'warning' | 'danger' | 
   return 'default';
 }
 
+interface ScheduledReportConfig {
+  id: string;
+  enabled: boolean;
+  frequency: 'daily' | 'weekly';
+  dayOfWeek: number;
+  hourUtc: number;
+  lastSentAt: string | null;
+}
+
+const DAY_NAMES = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+
 export default function ReportsPage() {
   const router = useRouter();
   const toastCtx = useToast();
@@ -139,10 +152,92 @@ export default function ReportsPage() {
   const [exporting, setExporting] = useState(false);
   const tableRef = useRef<HTMLDivElement>(null);
 
+  // Scheduled report state
+  const [reportConfig, setReportConfig] = useState<ScheduledReportConfig | null>(null);
+  const [reportLoading, setReportLoading] = useState(true);
+  const [reportSaving, setReportSaving] = useState(false);
+  const [reportSendingNow, setReportSendingNow] = useState(false);
+  const [reportForm, setReportForm] = useState<{ enabled: boolean; frequency: 'daily' | 'weekly'; dayOfWeek: number; hourUtc: number }>({
+    enabled: true,
+    frequency: 'weekly',
+    dayOfWeek: 1,
+    hourUtc: 8,
+  });
+
   useEffect(() => {
     const u = getUser();
     if (!u) router.replace('/login');
   }, [router]);
+
+  // Load scheduled report config
+  useEffect(() => {
+    const u = getUser();
+    if (!u) return;
+    setReportLoading(true);
+    api<ScheduledReportConfig | null>('/v1/reports', u.id)
+      .then((cfg) => {
+        setReportConfig(cfg ?? null);
+        if (cfg) {
+          setReportForm({
+            enabled: cfg.enabled,
+            frequency: cfg.frequency as 'daily' | 'weekly',
+            dayOfWeek: cfg.dayOfWeek,
+            hourUtc: cfg.hourUtc,
+          });
+        }
+      })
+      .catch(() => setReportConfig(null))
+      .finally(() => setReportLoading(false));
+  }, []);
+
+  async function handleSaveReport() {
+    const u = getUser();
+    if (!u) return;
+    setReportSaving(true);
+    try {
+      const cfg = await api<ScheduledReportConfig>('/v1/reports', u.id, {
+        method: 'PUT',
+        body: JSON.stringify(reportForm),
+      });
+      setReportConfig(cfg);
+      toastCtx.success('Report schedule saved');
+    } catch {
+      toastCtx.error('Failed to save report schedule');
+    } finally {
+      setReportSaving(false);
+    }
+  }
+
+  async function handleDeleteReport() {
+    const u = getUser();
+    if (!u) return;
+    if (!confirm('Disable scheduled reports? Your config will be deleted.')) return;
+    setReportSaving(true);
+    try {
+      await api('/v1/reports', u.id, { method: 'DELETE' });
+      setReportConfig(null);
+      setReportForm({ enabled: true, frequency: 'weekly', dayOfWeek: 1, hourUtc: 8 });
+      toastCtx.success('Scheduled reports disabled');
+    } catch {
+      toastCtx.error('Failed to delete report schedule');
+    } finally {
+      setReportSaving(false);
+    }
+  }
+
+  async function handleSendNow() {
+    const u = getUser();
+    if (!u) return;
+    setReportSendingNow(true);
+    try {
+      await api('/v1/reports/send-now', u.id, { method: 'POST' });
+      toastCtx.success('Test report sent to your email');
+    } catch {
+      toastCtx.error('Failed to send test report');
+    } finally {
+      setReportSendingNow(false);
+    }
+  }
 
   async function fetchData(p: Period) {
     setLoadingMonitors(true);
@@ -656,6 +751,118 @@ export default function ReportsPage() {
             </Card>
           )}
         </div>
+
+        {/* ── Scheduled Email Reports ───────────────────────────────── */}
+        <Card className="mt-6">
+          <div className="flex items-center gap-2 mb-5">
+            <Mail className="w-4 h-4 text-accent" />
+            <h2 className="text-sm font-semibold text-text-primary">Scheduled Email Reports</h2>
+            {reportConfig?.lastSentAt && (
+              <span className="ml-auto text-xs text-text-muted">
+                Last sent: {new Date(reportConfig.lastSentAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+              </span>
+            )}
+          </div>
+
+          {reportLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="w-5 h-5 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <p className="text-sm text-text-secondary">
+                Receive an automated uptime digest email with your fleet health summary — uptime stats, top outages, SLA compliance, and monitors needing attention.
+              </p>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Frequency */}
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1.5">Frequency</label>
+                  <select
+                    value={reportForm.frequency}
+                    onChange={(e) => setReportForm((f) => ({ ...f, frequency: e.target.value as 'daily' | 'weekly' }))}
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                  >
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                  </select>
+                </div>
+
+                {/* Day of week (weekly only) */}
+                {reportForm.frequency === 'weekly' && (
+                  <div>
+                    <label className="block text-xs font-medium text-text-secondary mb-1.5">Day of week</label>
+                    <select
+                      value={reportForm.dayOfWeek}
+                      onChange={(e) => setReportForm((f) => ({ ...f, dayOfWeek: Number(e.target.value) }))}
+                      className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                    >
+                      {DAY_NAMES.map((d, i) => (
+                        <option key={i} value={i}>{d}</option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                {/* Hour */}
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1.5">Send time (UTC)</label>
+                  <select
+                    value={reportForm.hourUtc}
+                    onChange={(e) => setReportForm((f) => ({ ...f, hourUtc: Number(e.target.value) }))}
+                    className="w-full px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                  >
+                    {Array.from({ length: 24 }, (_, h) => (
+                      <option key={h} value={h}>{String(h).padStart(2, '0')}:00 UTC</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Schedule summary */}
+              <div className="text-xs text-text-muted p-3 rounded-lg bg-surface-elevated/40 border border-border">
+                {reportForm.frequency === 'weekly'
+                  ? `📅 Sends every ${DAY_NAMES[reportForm.dayOfWeek]} at ${String(reportForm.hourUtc).padStart(2, '0')}:00 UTC — covers the previous 7 days.`
+                  : `📅 Sends daily at ${String(reportForm.hourUtc).padStart(2, '0')}:00 UTC — covers the previous 24 hours.`}
+              </div>
+
+              {/* Actions */}
+              <div className="flex items-center gap-2 flex-wrap pt-1">
+                <button
+                  onClick={handleSaveReport}
+                  disabled={reportSaving}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium bg-accent text-white hover:bg-accent/90 disabled:opacity-50 transition-colors"
+                >
+                  {reportSaving ? 'Saving…' : reportConfig ? '✓ Update Schedule' : '+ Enable Scheduled Reports'}
+                </button>
+                <button
+                  onClick={handleSendNow}
+                  disabled={reportSendingNow}
+                  className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium border border-border text-text-secondary hover:text-text-primary hover:border-accent/40 disabled:opacity-50 transition-colors"
+                >
+                  <Send className="w-3.5 h-3.5" />
+                  {reportSendingNow ? 'Sending…' : 'Send Test Email Now'}
+                </button>
+                {reportConfig && (
+                  <button
+                    onClick={handleDeleteReport}
+                    disabled={reportSaving}
+                    className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-medium border border-danger/30 text-danger/70 hover:text-danger hover:border-danger/60 disabled:opacity-50 transition-colors"
+                  >
+                    Disable
+                  </button>
+                )}
+              </div>
+
+              {reportConfig && (
+                <div className="flex items-center gap-2 p-2.5 rounded-lg bg-success/5 border border-success/20 text-xs text-success">
+                  <span>✓</span>
+                  <span>Scheduled reports active — {reportForm.frequency === 'weekly' ? `every ${DAY_NAMES[reportConfig.dayOfWeek]} at ${String(reportConfig.hourUtc).padStart(2, '0')}:00 UTC` : `daily at ${String(reportConfig.hourUtc).padStart(2, '0')}:00 UTC`}</span>
+                </div>
+              )}
+            </div>
+          )}
+        </Card>
       </FadeIn>
     </AppFrame>
   );

@@ -24,6 +24,7 @@ import { runHttpCheck } from './runners/http.runner';
 import { runBrowserCheck } from './runners/http.runner';
 import { runTcpCheck, runSslCheck, runDnsCheck, runPingCheck, runSmtpCheck, runFtpCheck, runImapCheck, runPop3Check } from './runners/network.runner';
 import { runWhoisCheck } from './runners/whois.runner';
+import { runCtLogCheck } from './runners/ct-log.runner';
 import { runGitReleaseCheck, runDockerCheck } from './runners/version.runner';
 
 @Injectable()
@@ -172,6 +173,8 @@ export class ChecksService {
         return runImapCheck(monitor.target, monitor.config, monitor.timeoutMs);
       case 'POP3':
         return runPop3Check(monitor.target, monitor.config, monitor.timeoutMs);
+      case 'CT_LOG':
+        return runCtLogCheck(monitor.target, monitor.config ?? {}, monitor.timeoutMs);
       default:
         return runHttpCheck(monitor.target, monitor.timeoutMs);
     }

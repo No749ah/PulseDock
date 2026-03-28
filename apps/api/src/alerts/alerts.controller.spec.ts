@@ -28,6 +28,13 @@ function makeChannel(overrides: Record<string, unknown> = {}) {
     type: 'discord',
     configJson: { url: 'https://discord.com/api/webhooks/test' },
     createdAt: new Date('2026-01-01'),
+    alertGrouping: false,
+    groupWindowSec: 300,
+    groupByFolder: false,
+    groupByTag: false,
+    messageTemplate: null,
+    scheduleJson: null,
+    _count: { deliveryLogs: 0 },
     ...overrides,
   };
 }

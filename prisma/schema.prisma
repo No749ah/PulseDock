@@ -28,6 +28,7 @@ enum MonitorType {
   FTP
   IMAP
   POP3
+  CT_LOG
 }
 
 model User {

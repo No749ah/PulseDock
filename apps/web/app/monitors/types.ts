@@ -24,7 +24,7 @@ export interface MonitorItem {
   name: string;
   description?: string | null;
   runbookUrl?: string | null;
-  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER" | "WHOIS" | "FTP" | "IMAP" | "POP3";
+  type: "HTTP" | "GIT_RELEASE" | "DOCKER_IMAGE" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER" | "WHOIS" | "FTP" | "IMAP" | "POP3" | "CT_LOG";
   target: string;
   intervalSec: number;
   confirmations: number;
@@ -99,7 +99,7 @@ export type MonitorFormData = {
   name: string;
   description: string;
   runbookUrl: string;
-  type: "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER" | "WHOIS" | "FTP" | "IMAP" | "POP3";
+  type: "HTTP" | "TCP" | "SSL_CERT" | "HEARTBEAT" | "DNS" | "PING" | "SMTP" | "BROWSER" | "WHOIS" | "FTP" | "IMAP" | "POP3" | "CT_LOG";
   target: string;
   intervalSec: number;
   confirmations: number;

@@ -86,7 +86,7 @@ export function buildEditFormData(monitor: MonitorItem): MonitorFormDataExtended
 }
 
 export function buildFormDataFromTemplate(t: MonitorTemplate): MonitorFormDataExtended {
-  const safeType = (["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "BROWSER", "FTP", "IMAP", "POP3"] as string[]).includes(t.type)
+  const safeType = (["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "BROWSER", "FTP", "IMAP", "POP3", "CT_LOG"] as string[]).includes(t.type)
     ? (t.type as MonitorFormData["type"])
     : "HTTP";
   const cfg = (t.config ?? {}) as Record<string, unknown>;

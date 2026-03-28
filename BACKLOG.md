@@ -1,3 +1,11 @@
+## Status Summary (2026-03-28 07:42 UTC)
+- **Build/Test:** ✅ Clean build + 3822 API (+5 delivery-stats tests) + 756 web + 10 CLI + 12 agent = 4600 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (07:42 UTC cycle):**
+  - [x] **Alert Channel Delivery Stats & Diagnostics** — `GET /v1/alert-channels/:id/delivery-stats` endpoint with success rate, 24h counts, last delivery timestamps, recent 10 log entries. List endpoint now includes `deliveryCount` via `_count`. Frontend: inline expandable Stats panel per channel row with colored success rate, relative timestamps, dot-row visualization, error snippet. 5 new unit tests.
+
 ## Status Summary (2026-03-28 07:25 UTC)
 - **Build/Test:** ✅ Clean build + 3812 API (+6 heatmap tests) + 10 e2e + 12 agent = 3834 total; 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities

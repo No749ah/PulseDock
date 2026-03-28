@@ -56,7 +56,11 @@ export class AlertsController {
   @ApiOperation({ summary: 'List alert channels', description: 'Returns all configured alert channels for the authenticated user.' })
   @ApiResponse({ status: 200, description: 'Alert channels returned.' })
   async list(@Req() req: { user: { id: string } }) {
-    const channels = await this.prisma.alertChannel.findMany({ where: { userId: req.user.id }, orderBy: { createdAt: 'desc' } });
+    const channels = await this.prisma.alertChannel.findMany({
+      where: { userId: req.user.id },
+      orderBy: { createdAt: 'desc' },
+      include: { _count: { select: { deliveryLogs: true } } },
+    });
     return channels.map((c) => ({
       id: c.id,
       userId: c.userId,
@@ -70,6 +74,7 @@ export class AlertsController {
       groupByTag: c.groupByTag,
       messageTemplate: c.messageTemplate ?? null,
       scheduleJson: c.scheduleJson ?? null,
+      deliveryCount: c._count.deliveryLogs,
     }));
   }
 
@@ -317,6 +322,15 @@ export class AlertsController {
         groupedCount: l.groupedCount,
       })),
     };
+  }
+
+  @Get(':id/delivery-stats')
+  @ApiOperation({ summary: 'Get alert channel delivery stats', description: 'Returns aggregated delivery statistics and recent logs for a specific alert channel.' })
+  @ApiParam({ name: 'id', description: 'Alert channel ID' })
+  @ApiResponse({ status: 200, description: 'Delivery stats returned.' })
+  @ApiResponse({ status: 404, description: 'Channel not found.' })
+  async deliveryStats(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.alertsService.deliveryStats(req.user.id, id);
   }
 
   @Get(':id/deliveries')

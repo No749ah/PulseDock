@@ -1533,4 +1533,22 @@ export class MonitorsController {
   ) {
     return this.monitorsService.redirectChainStats(req.user.id, id);
   }
+
+  // ─── CT Log History ──────────────────────────────────────────────────────
+
+  @Get(':id/ct-log-history')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'CT log check history for a monitor',
+    description: 'Returns the last 50 CT log check results for a CT_LOG monitor, showing certificate counts and detected domains per run.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'CT log history returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  ctLogHistory(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    return this.monitorsService.ctLogHistory(req.user.id, id);
+  }
 }

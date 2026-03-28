@@ -33,6 +33,7 @@ export function formatMonitorType(type: string): string {
     SMTP: "SMTP Email",
     BROWSER: "Browser Check",
     WHOIS: "WHOIS / Domain",
+    CT_LOG: "CT Log Monitor",
   };
   return map[type] ?? type;
 }
@@ -70,6 +71,7 @@ export function targetPlaceholder(type: string): string {
     case "POP3": return "mail.example.com:110 or mail.example.com:995";
     case "BROWSER": return "https://example.com";
     case "WHOIS": return "example.com";
+    case "CT_LOG": return "example.com";
     default: return "https://api.example.com/health";
   }
 }
@@ -89,6 +91,7 @@ export function targetHelperText(type: string): string {
     case "SMTP": return "Connects to the mail server, reads the 220 banner, and optionally tests STARTTLS.";
     case "BROWSER": return "Fetches the page with a browser-like User-Agent. Optionally assert expected text or CSS selector presence.";
     case "WHOIS": return "Queries the WHOIS registry for the domain expiry date. Alerts when expiry is approaching.";
+    case "CT_LOG": return "Monitors Certificate Transparency logs via crt.sh. Detects new certificates issued for your domain.";
     default: return "PulseDock will send an HTTP request to this URL and check the response.";
   }
 }

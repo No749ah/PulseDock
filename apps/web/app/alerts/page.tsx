@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Plus, Edit, Trash2, Activity, CheckCircle2, XCircle, Clock, Bell, Mail, MessageSquare, Hash, Globe, Send, Eye, Smartphone, X, RefreshCw } from 'lucide-react';
+import { Plus, Edit, Trash2, Activity, CheckCircle2, XCircle, Clock, Bell, Mail, MessageSquare, Hash, Globe, Send, Eye, Smartphone, X, RefreshCw, BarChart2, ChevronDown, ChevronUp } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
@@ -41,6 +41,27 @@ type AlertChannel = {
   groupByTag?: boolean;
   messageTemplate?: string | null;
   scheduleJson?: ChannelSchedule | null;
+  deliveryCount?: number;
+};
+
+type DeliveryStats = {
+  totalDeliveries: number;
+  successCount: number;
+  failureCount: number;
+  successRate: number;
+  lastDeliveryAt: string | null;
+  lastSuccessAt: string | null;
+  lastFailureAt: string | null;
+  last24hSuccess: number;
+  last24hFailure: number;
+  recentLogs: Array<{
+    id: string;
+    triggeredAt: string;
+    success: boolean;
+    statusCode: number | null;
+    errorMessage: string | null;
+    monitorName: string | null;
+  }>;
 };
 
 function ChannelTypeIcon({ type }: { type: AlertType }) {
@@ -189,6 +210,66 @@ function ChannelScheduleSection({
   );
 }
 
+function DeliveryStatsPanel({ stats }: { stats: DeliveryStats }) {
+  const rateColor =
+    stats.successRate >= 90 ? 'text-green-400' :
+    stats.successRate >= 70 ? 'text-yellow-400' :
+    'text-red-400';
+
+  return (
+    <div className="space-y-3">
+      {/* Summary row */}
+      <div className="flex flex-wrap items-center gap-6 text-sm">
+        <div className="flex flex-col">
+          <span className="text-xs text-text-secondary mb-0.5">Success Rate</span>
+          <span className={`text-lg font-bold ${rateColor}`}>{stats.successRate}%</span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-xs text-text-secondary mb-0.5">Total Deliveries</span>
+          <span className="text-sm font-semibold text-text-primary">{stats.totalDeliveries}</span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-xs text-text-secondary mb-0.5">Last Delivery</span>
+          <span className="text-sm text-text-primary">
+            {stats.lastDeliveryAt ? relativeTime(stats.lastDeliveryAt) : 'Never'}
+          </span>
+        </div>
+        <div className="flex flex-col">
+          <span className="text-xs text-text-secondary mb-0.5">Last 24h</span>
+          <span className="text-sm text-text-primary">
+            <span className="text-green-400">{stats.last24hSuccess}✓</span>
+            {' '}
+            <span className="text-red-400">{stats.last24hFailure}✗</span>
+          </span>
+        </div>
+      </div>
+
+      {/* Recent deliveries dot row */}
+      {stats.recentLogs.length > 0 && (
+        <div className="space-y-1">
+          <span className="text-xs text-text-secondary">Recent deliveries (newest first)</span>
+          <div className="flex items-center gap-1.5 flex-wrap">
+            {stats.recentLogs.map((log) => (
+              <span
+                key={log.id}
+                title={`${log.success ? 'Success' : 'Failed'}${log.monitorName ? ` — ${log.monitorName}` : ''}${log.errorMessage ? `: ${log.errorMessage}` : ''}\n${relativeTime(log.triggeredAt)}`}
+                className={`w-3 h-3 rounded-full cursor-default transition-opacity hover:opacity-70 ${log.success ? 'bg-green-400' : 'bg-red-400'}`}
+              />
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Last failure error */}
+      {stats.lastFailureAt && stats.recentLogs.find(l => !l.success)?.errorMessage && (
+        <div className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 rounded px-3 py-1.5 font-mono truncate max-w-lg">
+          {stats.recentLogs.find(l => !l.success)?.errorMessage}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AlertsPage() {
   const router = useRouter();
   const { success, error: toastError } = useToast();
@@ -288,6 +369,11 @@ export default function AlertsPage() {
   // Retry state
   const [retryingDeliveryId, setRetryingDeliveryId] = useState<string | null>(null);
   const [retryingAll, setRetryingAll] = useState(false);
+
+  // Delivery stats panel state
+  const [expandedStatsId, setExpandedStatsId] = useState<string | null>(null);
+  const [statsCache, setStatsCache] = useState<Record<string, DeliveryStats>>({});
+  const [statsLoading, setStatsLoading] = useState<string | null>(null);
 
   useEffect(() => {
     const user = getUser();
@@ -420,6 +506,24 @@ export default function AlertsPage() {
       toastError(e instanceof Error ? e.message : 'Retry all failed');
     } finally {
       setRetryingAll(false);
+    }
+  }
+
+  async function toggleStats(channelId: string) {
+    if (expandedStatsId === channelId) {
+      setExpandedStatsId(null);
+      return;
+    }
+    setExpandedStatsId(channelId);
+    if (statsCache[channelId]) return; // already loaded
+    setStatsLoading(channelId);
+    try {
+      const data = await api<DeliveryStats>(`/v1/alert-channels/${channelId}/delivery-stats`);
+      setStatsCache((prev) => ({ ...prev, [channelId]: data }));
+    } catch {
+      // silently fail — panel will show empty state
+    } finally {
+      setStatsLoading(null);
     }
   }
 
@@ -1744,6 +1848,7 @@ export default function AlertsPage() {
               </TableHead>
               <TableBody>
                 {pageRows.map((c) => (
+                  <>
                   <TableRow key={c.id}>
                     <TableCell className={visibleCols.name ? '' : 'hidden'}>
                       <div className="flex items-center gap-2">
@@ -1770,6 +1875,20 @@ export default function AlertsPage() {
                     <TableCell className={visibleCols.actions ? '' : 'hidden'}>
                       <div className="flex items-center gap-2">
                         <Button variant="secondary" size="sm" onClick={() => testChannel(c)}>Test</Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleStats(c.id)}
+                          aria-label={`Delivery stats for ${c.name}`}
+                          title="Stats"
+                          className={expandedStatsId === c.id ? 'text-accent' : ''}
+                        >
+                          <span className="flex items-center gap-1.5">
+                            <BarChart2 className="w-4 h-4" />
+                            <span className="hidden sm:inline text-xs">Stats</span>
+                            {expandedStatsId === c.id ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+                          </span>
+                        </Button>
                         <Button variant="ghost" size="sm" onClick={() => openDeliveries(c)} aria-label={`Delivery history for ${c.name}`} title="History">
                           <span className="flex items-center gap-1.5">
                             <Activity className="w-4 h-4" />
@@ -1785,6 +1904,23 @@ export default function AlertsPage() {
                       </div>
                     </TableCell>
                   </TableRow>
+                  {expandedStatsId === c.id && (
+                    <tr key={`stats-${c.id}`} className="bg-surface-elevated/50">
+                      <td colSpan={5} className="px-6 py-4">
+                        {statsLoading === c.id ? (
+                          <div className="flex items-center gap-2 text-text-secondary text-sm">
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            Loading stats…
+                          </div>
+                        ) : statsCache[c.id] ? (
+                          <DeliveryStatsPanel stats={statsCache[c.id]} />
+                        ) : (
+                          <span className="text-sm text-text-secondary">No stats available.</span>
+                        )}
+                      </td>
+                    </tr>
+                  )}
+                  </>
                 ))}
               </TableBody>
             </Table>

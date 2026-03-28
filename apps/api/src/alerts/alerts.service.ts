@@ -1,5 +1,5 @@
 import { createHmac } from 'node:crypto';
-import { Injectable, Logger, Optional } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException, Optional } from '@nestjs/common';
 import { isChannelActive } from './alert-channel-schedule';
 import { PrismaService } from '../common/prisma.service';
 import { MailerService } from '../common/mailer.service';
@@ -1493,6 +1493,81 @@ export class AlertsService {
       `${burnRate1h.toFixed(1)}× faster than sustainable (1h), ${burnRate6h.toFixed(1)}× (6h). ` +
       `Budget ${budgetConsumedPct.toFixed(1)}% consumed. SLA target: ${slaTarget}%`;
     await this.sendSlaNotification(monitorId, monitorName, userId, text, 'sla_burn_rate');
+  }
+
+  /**
+   * Returns aggregated delivery statistics for a specific alert channel.
+   * Includes total counts, success rate, 24h window stats, and recent 10 log entries.
+   */
+  async deliveryStats(userId: string, channelId: string): Promise<{
+    totalDeliveries: number;
+    successCount: number;
+    failureCount: number;
+    successRate: number;
+    lastDeliveryAt: Date | null;
+    lastSuccessAt: Date | null;
+    lastFailureAt: Date | null;
+    last24hSuccess: number;
+    last24hFailure: number;
+    recentLogs: Array<{
+      id: string;
+      triggeredAt: Date;
+      success: boolean;
+      statusCode: number | null;
+      errorMessage: string | null;
+      monitorName: string | null;
+    }>;
+  }> {
+    const channel = await this.prisma.alertChannel.findFirst({ where: { id: channelId, userId } });
+    if (!channel) throw new NotFoundException('Alert channel not found');
+
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const [totalDeliveries, successCount, failureCount, last24h, recentLogs] = await Promise.all([
+      this.prisma.alertDeliveryLog.count({ where: { alertChannelId: channelId } }),
+      this.prisma.alertDeliveryLog.count({ where: { alertChannelId: channelId, status: 'success' } }),
+      this.prisma.alertDeliveryLog.count({ where: { alertChannelId: channelId, status: 'failed' } }),
+      this.prisma.alertDeliveryLog.findMany({
+        where: { alertChannelId: channelId, createdAt: { gte: since24h } },
+        select: { status: true },
+      }),
+      this.prisma.alertDeliveryLog.findMany({
+        where: { alertChannelId: channelId },
+        orderBy: { createdAt: 'desc' },
+        take: 10,
+        select: {
+          id: true,
+          createdAt: true,
+          status: true,
+          errorMessage: true,
+          monitorName: true,
+        },
+      }),
+    ]);
+
+    const lastDelivery = recentLogs[0] ?? null;
+    const lastSuccess = recentLogs.find(l => l.status === 'success') ?? null;
+    const lastFailure = recentLogs.find(l => l.status === 'failed') ?? null;
+
+    return {
+      totalDeliveries,
+      successCount,
+      failureCount,
+      successRate: totalDeliveries > 0 ? Math.round((successCount / totalDeliveries) * 100) : 100,
+      lastDeliveryAt: lastDelivery?.createdAt ?? null,
+      lastSuccessAt: lastSuccess?.createdAt ?? null,
+      lastFailureAt: lastFailure?.createdAt ?? null,
+      last24hSuccess: last24h.filter(l => l.status === 'success').length,
+      last24hFailure: last24h.filter(l => l.status === 'failed').length,
+      recentLogs: recentLogs.map(l => ({
+        id: l.id,
+        triggeredAt: l.createdAt,
+        success: l.status === 'success',
+        statusCode: null,
+        errorMessage: l.errorMessage,
+        monitorName: l.monitorName,
+      })),
+    };
   }
 
   /**

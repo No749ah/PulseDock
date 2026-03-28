@@ -3363,4 +3363,49 @@ export class MonitorsService {
 
     return { monitors: result, dates };
   }
+
+  // ─── CT Log History ──────────────────────────────────────────────────────
+
+  async ctLogHistory(userId: string, monitorId: string): Promise<{
+    entries: Array<{
+      checkedAt: Date;
+      newCertCount: number;
+      domains: string[];
+      message: string;
+      level: string;
+    }>;
+  }> {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId },
+      orderBy: { checkedAt: 'desc' },
+      take: 50,
+      select: { checkedAt: true, message: true, level: true },
+    });
+
+    return {
+      entries: runs.map((r) => {
+        const msg = r.message ?? '';
+        // Try to parse cert count from message: "N new certificate(s) found..."
+        const countMatch = msg.match(/^(\d+) new certificate/i);
+        const newCertCount = countMatch ? parseInt(countMatch[1], 10) : 0;
+
+        // Extract domain list from message: "...: domain1, domain2 (+N more)"
+        const domainsMatch = msg.match(/:\s+(.+?)(\s+\(\+\d+ more\))?$/);
+        const domains = domainsMatch
+          ? domainsMatch[1].split(',').map((d) => d.trim()).filter(Boolean)
+          : [];
+
+        return {
+          checkedAt: r.checkedAt,
+          message: msg,
+          newCertCount,
+          domains,
+          level: r.level ?? 'green',
+        };
+      }),
+    };
+  }
 }

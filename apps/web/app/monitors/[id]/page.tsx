@@ -224,7 +224,7 @@ export default function MonitorDetailPage() {
   const [depLoading, setDepLoading] = useState(false);
   const [errorBudget, setErrorBudget] = useState<ErrorBudget | null>(null);
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate" | "domain" | "security" | "content" | "headers" | "diff" | "annotations">("overview");
+  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate" | "domain" | "security" | "content" | "headers" | "diff" | "annotations" | "ctlog">("overview");
 
   // Annotations
   type Annotation = { id: string; text: string; color: string; annotatedAt: string; createdAt: string };
@@ -1058,6 +1058,19 @@ export default function MonitorDetailPage() {
               Domain
             </button>
           )}
+          {monitor.type === "CT_LOG" && (
+            <button
+              onClick={() => setActiveMainTab("ctlog")}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                activeMainTab === "ctlog"
+                  ? "bg-white/10 text-text-primary"
+                  : "text-text-muted hover:text-text-secondary"
+              }`}
+            >
+              <Shield className="w-3.5 h-3.5" />
+              CT Logs
+            </button>
+          )}
           {(monitor.type === "HTTP" || monitor.type === "BROWSER") && !!(monitor.config as Record<string, unknown>)?.checkSecurityHeaders && (
             <button
               onClick={() => setActiveMainTab("security")}
@@ -1850,6 +1863,82 @@ export default function MonitorDetailPage() {
                   No checks yet — trigger a manual check to see domain expiry data.
                 </div>
               )}
+            </Card>
+          );
+        })()}
+
+        {/* CT Log History Tab */}
+        {(activeMainTab as string) === "ctlog" && monitor.type === "CT_LOG" && ((): React.ReactNode => {
+          const ctRuns = runs.slice(0, 20);
+
+          const levelColor = (level: string) => {
+            if (level === "green") return "text-success";
+            if (level === "yellow") return "text-warning";
+            return "text-error";
+          };
+
+          const levelBg = (level: string) => {
+            if (level === "green") return "bg-success/10 border-success/20";
+            if (level === "yellow") return "bg-warning/10 border-warning/20";
+            return "bg-error/10 border-error/20";
+          };
+
+          const levelLabel = (level: string) => {
+            if (level === "green") return "No new certs";
+            if (level === "yellow") return "New certs found";
+            return "Check failed";
+          };
+
+          return (
+            <Card className="p-6 space-y-4">
+              <div>
+                <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Certificate Transparency Log History</h2>
+                <p className="text-xs text-text-muted mt-1">
+                  Showing the last {ctRuns.length} CT log check results. Yellow = new certificates detected, Green = no new certs, Red = check failed.
+                </p>
+              </div>
+
+              {ctRuns.length === 0 && (
+                <div className="text-center py-6 text-text-muted text-sm">
+                  No checks yet — trigger a manual check to see CT log data.
+                </div>
+              )}
+
+              <div className="space-y-2">
+                {ctRuns.map((run, i) => {
+                  const level = (run as typeof run & { level?: string }).level ?? "green";
+                  const msg = (run as typeof run & { message?: string }).message ?? "";
+                  const checkedAt = (run as typeof run & { checkedAt?: string }).checkedAt;
+
+                  return (
+                    <div
+                      key={i}
+                      className={`rounded-lg border p-3 flex items-start gap-3 ${levelBg(level)}`}
+                    >
+                      <div className="mt-0.5 shrink-0">
+                        {level === "green" && <div className="w-2 h-2 rounded-full bg-success" />}
+                        {level === "yellow" && <div className="w-2 h-2 rounded-full bg-warning" />}
+                        {level === "red" && <div className="w-2 h-2 rounded-full bg-error" />}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className={`text-xs font-semibold ${levelColor(level)}`}>
+                            {levelLabel(level)}
+                          </span>
+                          {checkedAt && (
+                            <span className="text-xs text-text-muted">
+                              {new Date(checkedAt).toLocaleString()}
+                            </span>
+                          )}
+                        </div>
+                        {msg && (
+                          <p className="text-xs text-text-secondary mt-1 leading-relaxed">{msg}</p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </Card>
           );
         })()}

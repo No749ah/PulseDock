@@ -70,6 +70,11 @@ export interface PluginExecutionResult {
    * Keys are lowercase header names, values are the header value or null if absent.
    */
   capturedHeaders?: Record<string, string | null> | null;
+  /**
+   * Byte length of the response body (UTF-8).
+   * Populated for HTTP/BROWSER monitors on every successful check.
+   */
+  responseSizeBytes?: number | null;
 }
 
 export interface PluginConfigField {

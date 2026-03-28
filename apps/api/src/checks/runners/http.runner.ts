@@ -488,6 +488,9 @@ export async function runHttpCheck(
     const securityAudit = checkSecurityHeaders ? auditSecurityHeaders(responseHeaders) : null;
     const responseBodyHash = detectContentChanges && body ? createHash('sha256').update(body).digest('hex').slice(0, 64) : null;
 
+    // ─── Response size (always captured for HTTP/BROWSER monitors) ────────────
+    const responseSizeBytes = body ? Buffer.byteLength(body, 'utf8') : 0;
+
     // ─── Capture tracked headers ──────────────────────────────────────────────
     const capturedHeaders: Record<string, string | null> | null = trackedHeaderNames.length > 0
       ? Object.fromEntries(trackedHeaderNames.map((h) => [h, responseHeaders[h] ?? null]))
@@ -602,26 +605,27 @@ export async function runHttpCheck(
 
       // ─── Response size check ──────────────────────────────────────────────────
       if (checkResponseSize) {
-        const sizeBytes = Buffer.byteLength(body, 'utf8');
-        if (minResponseBodyBytes !== undefined && sizeBytes < minResponseBodyBytes) {
+        if (minResponseBodyBytes !== undefined && responseSizeBytes < minResponseBodyBytes) {
           return {
             ok: false,
             statusCode,
             latencyMs,
-            message: `Response too small — ${sizeBytes} bytes (min ${minResponseBodyBytes})`,
+            message: `Response too small — ${responseSizeBytes} bytes (min ${minResponseBodyBytes})`,
             level: 'yellow' as const,
             timings,
+            responseSizeBytes,
             ...(capturedHeaders ? { capturedHeaders } : {}),
           };
         }
-        if (maxResponseBodyBytes !== undefined && sizeBytes > maxResponseBodyBytes) {
+        if (maxResponseBodyBytes !== undefined && responseSizeBytes > maxResponseBodyBytes) {
           return {
             ok: false,
             statusCode,
             latencyMs,
-            message: `Response too large — ${sizeBytes} bytes (max ${maxResponseBodyBytes})`,
+            message: `Response too large — ${responseSizeBytes} bytes (max ${maxResponseBodyBytes})`,
             level: 'yellow' as const,
             timings,
+            responseSizeBytes,
             ...(capturedHeaders ? { capturedHeaders } : {}),
           };
         }
@@ -651,6 +655,7 @@ export async function runHttpCheck(
         timings,
         securityHeadersAudit: securityAudit,
         responseBodyHash,
+        responseSizeBytes,
         ...(capturedHeaders ? { capturedHeaders } : {}),
       };
     }
@@ -665,6 +670,7 @@ export async function runHttpCheck(
         timings,
         securityHeadersAudit: securityAudit,
         responseBodyHash,
+        responseSizeBytes,
         ...(capturedHeaders ? { capturedHeaders } : {}),
       };
     }
@@ -684,6 +690,7 @@ export async function runHttpCheck(
       timings,
       securityHeadersAudit: securityAudit,
       responseBodyHash,
+      responseSizeBytes,
       ...(redirectChain.length > 0 ? { redirectChain } : {}),
       ...(capturedHeaders ? { capturedHeaders } : {}),
     };

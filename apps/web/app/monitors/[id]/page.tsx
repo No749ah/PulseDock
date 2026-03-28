@@ -1416,7 +1416,63 @@ export default function MonitorDetailPage() {
                     )}
                   </Card>
                 )}
-              </>
+                {/* F. Response Size Trend (HTTP/BROWSER only) */}
+                {(monitor?.type === "HTTP" || monitor?.type === "BROWSER") && (() => {
+                  const sizeRuns = runs.filter((r) => r.responseSizeBytes != null && r.ok);
+                  if (sizeRuns.length < 2) return null;
+                  const sizes = sizeRuns.slice(0, 60).reverse().map((r) => r.responseSizeBytes as number);
+                  const maxSize = Math.max(...sizes, 1);
+                  const minSize = Math.min(...sizes);
+                  const avgSize = Math.round(sizes.reduce((s, v) => s + v, 0) / sizes.length);
+                  const latestSize = sizes[sizes.length - 1];
+                  const formatBytes = (b: number) =>
+                    b >= 1048576 ? `${(b / 1048576).toFixed(1)} MB` : b >= 1024 ? `${(b / 1024).toFixed(1)} KB` : `${b} B`;
+                  const deltaVsAvg = avgSize > 0 ? Math.round(((latestSize - avgSize) / avgSize) * 100) : 0;
+                  return (
+                    <Card className="p-5">
+                      <div className="flex items-center justify-between mb-4">
+                        <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                          <Activity className="w-4 h-4" />
+                          Response Size Trend
+                        </h2>
+                        <span className="text-xs text-text-muted">{sizeRuns.length} samples</span>
+                      </div>
+                      {/* Stats row */}
+                      <div className="grid grid-cols-3 gap-3 mb-4">
+                        {[
+                          { label: "Latest", value: formatBytes(latestSize), sub: deltaVsAvg !== 0 ? `${deltaVsAvg > 0 ? "+" : ""}${deltaVsAvg}% vs avg` : "≈ avg", color: Math.abs(deltaVsAvg) > 20 ? "text-warning" : "text-success" },
+                          { label: "Average", value: formatBytes(avgSize), sub: `of last ${sizes.length} checks` },
+                          { label: "Range", value: formatBytes(maxSize - minSize), sub: `${formatBytes(minSize)} – ${formatBytes(maxSize)}` },
+                        ].map(({ label, value, sub, color }) => (
+                          <div key={label} className="p-3 rounded-lg bg-surface-2 border border-border">
+                            <p className="text-xs text-text-muted uppercase tracking-wider">{label}</p>
+                            <p className={`text-lg font-bold tabular-nums mt-0.5 ${color ?? "text-text-primary"}`}>{value}</p>
+                            <p className="text-xs text-text-muted mt-0.5">{sub}</p>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Bar sparkline */}
+                      <div className="flex items-end gap-[2px] h-16">
+                        {sizes.map((s, i) => {
+                          const pct = maxSize > 0 ? (s / maxSize) * 100 : 0;
+                          const isLatest = i === sizes.length - 1;
+                          const devPct = avgSize > 0 ? Math.abs((s - avgSize) / avgSize) * 100 : 0;
+                          const barColor = devPct > 30 ? "bg-warning" : devPct > 60 ? "bg-danger" : isLatest ? "bg-accent" : "bg-accent/40";
+                          return (
+                            <div
+                              key={i}
+                              className={`flex-1 rounded-t ${barColor} transition-all`}
+                              style={{ height: `${Math.max(pct, 4)}%` }}
+                              title={formatBytes(s)}
+                            />
+                          );
+                        })}
+                      </div>
+                      <p className="text-[10px] text-text-muted mt-1 text-center">Last {sizes.length} successful checks (oldest → newest)</p>
+                    </Card>
+                  );
+                })()}
+            </>
             )}
           </div>
         )}
@@ -3041,6 +3097,9 @@ export default function MonitorDetailPage() {
                         <TableHeader>Status</TableHeader>
                         <TableHeader>Latency</TableHeader>
                         <TableHeader>HTTP Code</TableHeader>
+                        {(monitor?.type === "HTTP" || monitor?.type === "BROWSER") && (
+                          <TableHeader className="hidden md:table-cell">Size</TableHeader>
+                        )}
                         <TableHeader>Message</TableHeader>
                       </tr>
                     </TableHead>
@@ -3084,6 +3143,17 @@ export default function MonitorDetailPage() {
                           <TableCell className="text-sm font-mono text-text-secondary">
                             {run.statusCode || "—"}
                           </TableCell>
+                          {(monitor?.type === "HTTP" || monitor?.type === "BROWSER") && (
+                            <TableCell className="text-sm font-mono text-text-muted hidden md:table-cell whitespace-nowrap">
+                              {run.responseSizeBytes != null
+                                ? run.responseSizeBytes >= 1048576
+                                  ? `${(run.responseSizeBytes / 1048576).toFixed(1)} MB`
+                                  : run.responseSizeBytes >= 1024
+                                    ? `${(run.responseSizeBytes / 1024).toFixed(1)} KB`
+                                    : `${run.responseSizeBytes} B`
+                                : "—"}
+                            </TableCell>
+                          )}
                           <TableCell
                             className="text-sm text-text-secondary max-w-[300px] truncate"
                             title={run.message}

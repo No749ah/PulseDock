@@ -1121,6 +1121,7 @@ export class MonitorsService {
         responseBody: r.responseBody ?? null,
         timings: (r as typeof r & { timingsJson?: unknown }).timingsJson ?? null,
         securityAuditJson: (r as typeof r & { securityAuditJson?: unknown }).securityAuditJson ?? null,
+        responseSizeBytes: (r as typeof r & { responseSizeBytes?: number | null }).responseSizeBytes ?? null,
       })),
       hasMore,
       total: await this.prisma.monitorRun.count({ where: { userId, monitorId, ...(opts?.status === 'ok' ? { ok: true, level: 'green' } : opts?.status === 'failed' ? { ok: false } : opts?.status === 'degraded' ? { ok: true, level: 'yellow' } : {}) } }),
@@ -1146,11 +1147,12 @@ export class MonitorsService {
       take: 10_000,
     });
 
-    const header = ['id', 'checkedAt', 'ok', 'statusCode', 'latencyMs', 'level', 'message', 'dnsMs', 'tcpMs', 'tlsMs', 'ttfbMs', 'downloadMs', 'responseBody'].join(',');
+    const header = ['id', 'checkedAt', 'ok', 'statusCode', 'latencyMs', 'level', 'message', 'dnsMs', 'tcpMs', 'tlsMs', 'ttfbMs', 'downloadMs', 'responseSizeBytes', 'responseBody'].join(',');
     const rows = runs.map((r) => {
       const msg = (r.message ?? '').replace(/"/g, '""'); // escape quotes
       const body = (r.responseBody ?? '').replace(/"/g, '""');
       const timings = r.timingsJson as { dnsMs?: number | null; tcpMs?: number | null; tlsMs?: number | null; ttfbMs?: number | null; downloadMs?: number | null } | null;
+      const sizeBytes = (r as typeof r & { responseSizeBytes?: number | null }).responseSizeBytes ?? '';
       return [
         r.id,
         r.checkedAt.toISOString(),
@@ -1164,6 +1166,7 @@ export class MonitorsService {
         timings?.tlsMs ?? '',
         timings?.ttfbMs ?? '',
         timings?.downloadMs ?? '',
+        sizeBytes,
         body ? `"${body}"` : '',
       ].join(',');
     });

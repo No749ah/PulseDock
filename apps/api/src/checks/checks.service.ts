@@ -467,6 +467,10 @@ export class ChecksService {
         securityAuditJson: ((result as PluginExecutionResult).securityHeadersAudit
           ? ((result as PluginExecutionResult).securityHeadersAudit as unknown as Prisma.InputJsonValue)
           : Prisma.DbNull),
+        // Response body size in bytes (HTTP/BROWSER monitors)
+        responseSizeBytes: typeof (result as PluginExecutionResult).responseSizeBytes === 'number'
+          ? (result as PluginExecutionResult).responseSizeBytes
+          : null,
       },
     });
 

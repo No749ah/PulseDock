@@ -115,6 +115,8 @@ export interface MonitorRun {
   timings?: RunTimings | null;
   /** Security headers audit result. Only populated when checkSecurityHeaders=true on HTTP monitors. */
   securityAuditJson?: unknown | null;
+  /** UTF-8 byte length of the response body. Only for HTTP/BROWSER monitors. */
+  responseSizeBytes?: number | null;
 }
 
 export type UptimePeriod = "1d" | "7d" | "30d" | "90d";

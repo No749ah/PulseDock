@@ -263,6 +263,7 @@ model MonitorRun {
   responseBody String?  // First 500 chars of response body on failure, for debug
   timingsJson  Json?    // HTTP timing breakdown: { dnsMs, tcpMs, tlsMs, ttfbMs, downloadMs }
   securityAuditJson Json? // Security headers audit: { grade, score, headers[] } — only on HTTP monitors with checkSecurityHeaders=true
+  responseSizeBytes Int?  // UTF-8 byte length of the response body; populated for HTTP/BROWSER monitors
   checkedAt    DateTime @default(now())
 
   monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)

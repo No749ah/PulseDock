@@ -1,3 +1,13 @@
+## Status Summary (2026-03-28 10:20 UTC)
+- **Build/Test:** ✅ Clean build + 3930 API + 756 web + 10 CLI + 12 agent = 4708 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-noon (new branch post-merge)
+- **Last changes (10:20 UTC cycle):**
+  - [x] **Build fix** — Resolved TS errors in monitors.service.ts: duplicate `headerAssertions` key in list mapper and incorrect Prisma `Json?` null value for header assertions. Fixed by removing duplicate and using `Prisma.JsonNull` + `as unknown as Prisma.InputJsonValue` cast in create/update paths.
+  - [x] **Scheduled Email Reports UI** — Added configuration card to `/reports` page. Users can enable daily/weekly uptime digest emails, choose day of week, UTC hour, and send a test report immediately. Shows active schedule badge when configured. Wires to existing `GET/PUT/DELETE /v1/reports` + `POST /v1/reports/send-now` API (backend was fully implemented, frontend was missing).
+  - [x] **Branch management** — Merged heartbeat/2026-03-28-am → dev, deleted old branch, created heartbeat/2026-03-28-noon.
+
 ## Status Summary (2026-03-28 10:10 UTC)
 - **Build/Test:** ✅ Clean build + 3930 API (+5 header assertion tests) + 756 web + 10 CLI + 12 agent = 4708 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

@@ -620,6 +620,8 @@ function MonitorsPageInner() {
           ...(formData.timeoutMs !== null ? { timeoutMs: formData.timeoutMs } : {}),
           statusWebhookUrl: (formData as typeof formData & { statusWebhookUrl?: string }).statusWebhookUrl?.trim() || null,
           statusWebhookSecret: (formData as typeof formData & { statusWebhookSecret?: string }).statusWebhookSecret?.trim() || null,
+          ...((formData as typeof formData & { throttleMs?: number | null }).throttleMs != null ? { throttleMs: (formData as typeof formData & { throttleMs?: number | null }).throttleMs } : {}),
+          ...((formData as typeof formData & { maxChecksPerHour?: number | null }).maxChecksPerHour != null ? { maxChecksPerHour: (formData as typeof formData & { maxChecksPerHour?: number | null }).maxChecksPerHour } : {}),
         }),
       });
       setShowModal(false);
@@ -685,6 +687,8 @@ function MonitorsPageInner() {
           ...(formData.timeoutMs !== null ? { timeoutMs: formData.timeoutMs } : { timeoutMs: null }),
           statusWebhookUrl: (formData as typeof formData & { statusWebhookUrl?: string }).statusWebhookUrl?.trim() || null,
           statusWebhookSecret: (formData as typeof formData & { statusWebhookSecret?: string }).statusWebhookSecret?.trim() || null,
+          throttleMs: (formData as typeof formData & { throttleMs?: number | null }).throttleMs ?? null,
+          maxChecksPerHour: (formData as typeof formData & { maxChecksPerHour?: number | null }).maxChecksPerHour ?? null,
         }),
       });
       setShowModal(false);

@@ -247,6 +247,20 @@ export class CreateMonitorDto {
   @MaxLength(256)
   statusWebhookSecret?: string | null;
 
+  @ApiPropertyOptional({ description: 'Minimum milliseconds between consecutive checks for this monitor (throttle). Prevents rapid successive checks after interval drift. Min 1000ms, max 3600000ms (1 hour).', minimum: 1000, maximum: 3600000, example: 5000 })
+  @IsOptional()
+  @IsInt()
+  @Min(1000)
+  @Max(3600000)
+  throttleMs?: number;
+
+  @ApiPropertyOptional({ description: 'Hard cap on checks per hour regardless of interval. Max 360 (one check per 10 seconds).', minimum: 1, maximum: 360, example: 60 })
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(360)
+  maxChecksPerHour?: number;
+
 }
 
 export class UpdateMonitorDto {
@@ -424,6 +438,18 @@ export class UpdateMonitorDto {
   @IsString()
   @MaxLength(256)
   statusWebhookSecret?: string | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1000)
+  @Max(3600000)
+  throttleMs?: number;
+
+  @IsOptional()
+  @IsInt()
+  @Min(1)
+  @Max(360)
+  maxChecksPerHour?: number;
 
 }
 

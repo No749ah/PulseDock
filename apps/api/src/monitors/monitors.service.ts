@@ -239,6 +239,8 @@ export class MonitorsService {
     rtoMinutes?: number | null;
     statusWebhookSecret?: string | null;
     statusWebhookUrl?: string | null;
+    throttleMs?: number;
+    maxChecksPerHour?: number;
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -294,6 +296,8 @@ export class MonitorsService {
         ...(body.rtoMinutes !== undefined ? { rtoMinutes: body.rtoMinutes ?? null } : {}),
         ...(body.statusWebhookUrl !== undefined ? { statusWebhookUrl: body.statusWebhookUrl ?? null } : {}),
         ...(body.statusWebhookSecret !== undefined ? { statusWebhookSecret: body.statusWebhookSecret ?? null } : {}),
+        ...(body.throttleMs !== undefined ? { throttleMs: body.throttleMs } : {}),
+        ...(body.maxChecksPerHour !== undefined ? { maxChecksPerHour: body.maxChecksPerHour } : {}),
         monitorAlerts: {
           create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),
         },
@@ -410,6 +414,8 @@ export class MonitorsService {
     rtoMinutes?: number | null;
     statusWebhookSecret?: string | null;
     statusWebhookUrl?: string | null;
+    throttleMs?: number | null;
+    maxChecksPerHour?: number | null;
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -471,6 +477,8 @@ export class MonitorsService {
         ...(body.rtoMinutes !== undefined ? { rtoMinutes: body.rtoMinutes ?? null } : {}),
         ...(body.statusWebhookUrl !== undefined ? { statusWebhookUrl: body.statusWebhookUrl ?? null } : {}),
         ...(body.statusWebhookSecret !== undefined ? { statusWebhookSecret: body.statusWebhookSecret ?? null } : {}),
+        ...(body.throttleMs !== undefined ? { throttleMs: body.throttleMs } : {}),
+        ...(body.maxChecksPerHour !== undefined ? { maxChecksPerHour: body.maxChecksPerHour } : {}),
       },
     });
 
@@ -3406,6 +3414,54 @@ export class MonitorsService {
           level: r.level ?? 'green',
         };
       }),
+    };
+  }
+
+  /**
+   * Returns effective check rate information for a monitor.
+   * Includes throttleMs, maxChecksPerHour, checksLastHour, and whether the monitor
+   * is currently throttled (checksLastHour >= maxChecksPerHour).
+   */
+  async checkRate(userId: string, monitorId: string): Promise<{
+    intervalSec: number;
+    throttleMs: number | null;
+    maxChecksPerHour: number | null;
+    checksLastHour: number;
+    effectiveChecksPerHour: number;
+    isThrottled: boolean;
+  }> {
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, userId },
+      select: {
+        intervalSec: true,
+        throttleMs: true,
+        maxChecksPerHour: true,
+      },
+    });
+
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const since = new Date(Date.now() - 60 * 60 * 1000);
+    const checksLastHour = await this.prisma.monitorRun.count({
+      where: { monitorId, checkedAt: { gte: since } },
+    });
+
+    const intervalBasedRate = Math.floor(3600 / monitor.intervalSec);
+    const effectiveChecksPerHour = monitor.maxChecksPerHour !== null
+      ? Math.min(intervalBasedRate, monitor.maxChecksPerHour)
+      : intervalBasedRate;
+
+    const isThrottled = monitor.maxChecksPerHour !== null
+      ? checksLastHour >= monitor.maxChecksPerHour
+      : false;
+
+    return {
+      intervalSec: monitor.intervalSec,
+      throttleMs: monitor.throttleMs,
+      maxChecksPerHour: monitor.maxChecksPerHour,
+      checksLastHour,
+      effectiveChecksPerHour,
+      isThrottled,
     };
   }
 }

@@ -77,6 +77,8 @@ export function buildEditFormData(monitor: MonitorItem): MonitorFormDataExtended
     timeoutMs: (monitor as typeof monitor & { timeoutMs?: number | null }).timeoutMs ?? null,
     statusWebhookUrl: (monitor as typeof monitor & { statusWebhookUrl?: string | null }).statusWebhookUrl ?? "",
     statusWebhookSecret: "",
+    throttleMs: (monitor as typeof monitor & { throttleMs?: number | null }).throttleMs ?? null,
+    maxChecksPerHour: (monitor as typeof monitor & { maxChecksPerHour?: number | null }).maxChecksPerHour ?? null,
     // Pre-request auth step
     preAuthUrl: String(monitor.config?.preAuthUrl ?? ""),
     preAuthBody: String(monitor.config?.preAuthBody ?? ""),

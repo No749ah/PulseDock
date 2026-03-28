@@ -244,6 +244,32 @@ export class MonitorsController {
     return this.monitorsService.getHealthScore(req.user.id, id);
   }
 
+  @Get(':id/check-rate')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Get effective check rate for a monitor',
+    description: 'Returns throttleMs, maxChecksPerHour, checks in the last hour, effective checks/hour, and whether the monitor is currently rate-limited.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Check rate information returned.',
+    schema: {
+      example: {
+        intervalSec: 60,
+        throttleMs: 5000,
+        maxChecksPerHour: 30,
+        checksLastHour: 12,
+        effectiveChecksPerHour: 30,
+        isThrottled: false,
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  checkRate(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.monitorsService.checkRate(req.user.id, id);
+  }
+
   @Get(':id/runs')
   @ApiOperation({
     summary: 'Check run history for a monitor',

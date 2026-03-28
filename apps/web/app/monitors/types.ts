@@ -134,6 +134,10 @@ export type MonitorFormData = {
   statusWebhookUrl?: string;
   /** Optional HMAC-SHA256 signing secret for statusWebhookUrl */
   statusWebhookSecret?: string;
+  /** Minimum ms between consecutive checks (throttle). Min 1000, max 3600000. */
+  throttleMs?: number | null;
+  /** Hard cap on checks per hour. Max 360. */
+  maxChecksPerHour?: number | null;
 };
 
 export type MonitorFormDataExtended = MonitorFormData & {

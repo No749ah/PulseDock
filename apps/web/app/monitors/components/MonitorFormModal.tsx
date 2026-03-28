@@ -1335,6 +1335,58 @@ export function MonitorFormModal({
           )}
         </div>
 
+        {/* Rate Limiting */}
+        <div className="border border-border rounded-lg p-4 space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-text-primary">Rate Limiting</label>
+            <p className="mt-0.5 text-xs text-text-secondary">
+              Prevent thundering herds and be a good citizen to monitored services.
+            </p>
+          </div>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-xs text-text-secondary mb-1">Min. delay between checks (ms)</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  min="1000"
+                  max="3600000"
+                  step="1000"
+                  placeholder="e.g. 5000"
+                  value={(formData as MonitorFormData).throttleMs ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value === "" ? null : parseInt(e.target.value, 10);
+                    onSetFormData({ ...formData, throttleMs: val && val >= 1000 ? val : null });
+                  }}
+                  className="w-36 px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+                <span className="text-sm text-text-muted">ms</span>
+              </div>
+              <p className="text-xs text-text-muted mt-1">Prevents rapid successive checks after interval drift. Min 1000ms.</p>
+            </div>
+            <div>
+              <label className="block text-xs text-text-secondary mb-1">Max checks per hour</label>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  min="1"
+                  max="360"
+                  step="1"
+                  placeholder="e.g. 60"
+                  value={(formData as MonitorFormData).maxChecksPerHour ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value === "" ? null : parseInt(e.target.value, 10);
+                    onSetFormData({ ...formData, maxChecksPerHour: val && val >= 1 ? val : null });
+                  }}
+                  className="w-36 px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+                <span className="text-sm text-text-muted">checks/hr</span>
+              </div>
+              <p className="text-xs text-text-muted mt-1">Hard cap regardless of interval. Max 360.</p>
+            </div>
+          </div>
+        </div>
+
         {/* Auto-Incident */}
         <div className="border border-border rounded-lg p-4 space-y-3">
           <div className="flex items-center justify-between">

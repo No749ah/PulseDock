@@ -1,3 +1,11 @@
+## Status Summary (2026-03-28 08:15 UTC)
+- **Build/Test:** ✅ Clean build + 3832 API + 756 web + 10 CLI + 12 agent = 4610 total (5 new check-rate tests); 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (08:15 UTC cycle):**
+  - [x] **Monitor check rate limiting & throttling** — New `throttleMs` (min ms between consecutive checks) and `maxChecksPerHour` (hard cap) fields on Monitor model. Prisma migration applied. DTOs validated (1000–3600000ms throttle, 1–360 max/hr). ChecksScheduler enforces throttleMs per-monitor and batch-counts hourly runs for maxChecksPerHour cap. New `GET /v1/monitors/:id/check-rate` API endpoint returns effective rate info (intervalSec, throttleMs, maxChecksPerHour, checksLastHour, effectiveChecksPerHour, isThrottled). Frontend: Rate Limiting section in Advanced Settings with two number inputs. 5 new unit tests for checkRate service method.
+
 ## Status Summary (2026-03-28 08:05 UTC)
 - **Build/Test:** ✅ Clean build + 3827 API + 756 web + 10 CLI + 12 agent = 4605 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

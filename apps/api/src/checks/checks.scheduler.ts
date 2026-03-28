@@ -151,6 +151,8 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         description: true,
         runbookUrl: true,
         createdAt: true,
+        throttleMs: true,
+        maxChecksPerHour: true,
         slaTarget: true,
         slaPeriodDays: true,
         slaBreachAlertedAt: true,
@@ -206,15 +208,50 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
       const latest = monitor.runs[0] ?? null;
       // If a cron expression is configured, use it to determine due time
       if (monitor.cronExpression) {
-        return isCronDue(monitor.cronExpression, latest?.checkedAt ?? null);
+        if (!isCronDue(monitor.cronExpression, latest?.checkedAt ?? null)) return false;
+      } else {
+        // Otherwise fall back to fixed interval
+        if (latest && cycleStart - latest.checkedAt.getTime() < monitor.intervalSec * 1000) return false;
       }
-      // Otherwise fall back to fixed interval
-      return !latest || cycleStart - latest.checkedAt.getTime() >= monitor.intervalSec * 1000;
+
+      // Throttle: ensure at least throttleMs has elapsed since last check
+      const throttleMs = (monitor as typeof monitor & { throttleMs?: number | null }).throttleMs;
+      if (throttleMs && latest?.checkedAt) {
+        const minNextCheck = latest.checkedAt.getTime() + throttleMs;
+        if (cycleStart < minNextCheck) return false;
+      }
+
+      return true;
     });
 
-    const skipped = total - due.length;
+    // maxChecksPerHour enforcement: batch-count runs in the last hour only for monitors that have the cap set
+    const cappedMonitorIds = due
+      .filter((m) => (m as typeof m & { maxChecksPerHour?: number | null }).maxChecksPerHour != null)
+      .map((m) => m.id);
 
-    if (due.length === 0) {
+    let hourlyCheckCounts: Record<string, number> = {};
+    if (cappedMonitorIds.length > 0) {
+      const oneHourAgo = new Date(cycleStart - 60 * 60 * 1000);
+      const counts = await this.prisma.monitorRun.groupBy({
+        by: ['monitorId'],
+        where: { monitorId: { in: cappedMonitorIds }, checkedAt: { gte: oneHourAgo } },
+        _count: { _all: true },
+      });
+      for (const row of counts) {
+        hourlyCheckCounts[row.monitorId] = row._count._all;
+      }
+    }
+
+    const finalDue = due.filter((m) => {
+      const maxCph = (m as typeof m & { maxChecksPerHour?: number | null }).maxChecksPerHour;
+      if (maxCph == null) return true;
+      const checksLastHour = hourlyCheckCounts[m.id] ?? 0;
+      return checksLastHour < maxCph;
+    });
+
+    const skipped = total - finalDue.length;
+
+    if (finalDue.length === 0) {
       const earlyDuration = Date.now() - cycleStart;
       this.lastCycleMs = earlyDuration;
       this.logger.log(JSON.stringify({
@@ -230,14 +267,14 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
     // Run due monitors concurrently, limited to MAX_CONCURRENT_CHECKS simultaneous checks.
     // This prevents thundering-herd / CPU saturation on large deployments.
     const results = await runWithConcurrencyLimit(
-      due,
+      finalDue,
       MAX_CONCURRENT_CHECKS,
       (monitor) => this.runWithJitter(monitor),
     );
 
     const failed = results.filter((r): r is PromiseRejectedResult => r.status === 'rejected');
     if (failed.length > 0) {
-      this.logger.warn(`${failed.length}/${due.length} monitor checks failed in tick`);
+      this.logger.warn(`${failed.length}/${finalDue.length} monitor checks failed in tick`);
     }
 
     const durationMs = Date.now() - cycleStart;
@@ -246,7 +283,7 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
     this.logger.log(JSON.stringify({
       event: 'check.cycle',
       total,
-      due: due.length,
+      due: finalDue.length,
       skipped,
       durationMs,
     }));

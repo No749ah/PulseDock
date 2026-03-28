@@ -157,6 +157,9 @@ model Monitor {
   trackedHeaders      String?     // comma-separated header names to track (e.g. "x-frame-options,content-security-policy")
   headerBaseline      Json?       // snapshot of tracked header values at baseline time {header: value|null, capturedAt: ISO}
   headerBaselineSetAt DateTime?   // when the header baseline was captured
+  // Rate Limiting / Throttling
+  throttleMs          Int?        // min ms between consecutive checks (null = no throttle)
+  maxChecksPerHour    Int?        // hard cap on checks/hour (null = no cap, max 360)
   createdAt           DateTime    @default(now())
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)

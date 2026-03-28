@@ -1526,6 +1526,22 @@ export class MonitorsController {
     return this.monitorsService.slaDashboard(req.user.id);
   }
 
+  @Get('sla-compliance-report')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'SLA compliance report',
+    description: 'Generates a structured SLA compliance report for all monitors with an SLA target. Returns per-monitor monthly breakdown, incident counts, downtime estimates, and error budget consumption. Use ?months=N (1–12) to set the report period.',
+  })
+  @ApiQuery({ name: 'months', required: false, description: 'Number of months to cover (1–12, default 3)' })
+  @ApiResponse({ status: 200, description: 'Compliance report data returned.' })
+  slaComplianceReport(
+    @Req() req: { user: { id: string } },
+    @Query('months') months?: string,
+  ) {
+    const n = Math.max(1, Math.min(12, parseInt(months ?? '3', 10) || 3));
+    return this.monitorsService.slaComplianceReport(req.user.id, n);
+  }
+
   @Get(':id/status-transitions')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({

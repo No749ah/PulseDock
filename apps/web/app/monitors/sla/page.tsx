@@ -17,6 +17,7 @@ import {
   Edit2,
   X,
   Check,
+  FileDown,
 } from 'lucide-react';
 import { AppFrame } from '../../../components/app-frame';
 import { Card } from '../../components/Card';
@@ -214,13 +215,197 @@ function SlaTargetPill({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+// ─── Compliance Report Types ──────────────────────────────────────────────────
+
+type ComplianceMonthly = {
+  month: string;
+  totalChecks: number;
+  failedChecks: number;
+  uptimePct: number | null;
+  downtimeMinutes: number;
+  incidents: number;
+  compliant: boolean | null;
+  errorBudgetUsedPct: number | null;
+};
+
+type ComplianceMonitor = {
+  id: string;
+  name: string;
+  type: string;
+  target: string;
+  description: string | null;
+  slaTarget: number;
+  period: {
+    totalChecks: number;
+    failedChecks: number;
+    uptimePct: number | null;
+    downtimeMinutes: number;
+    incidents: number;
+    compliant: boolean | null;
+    errorBudgetUsedPct: number | null;
+  };
+  monthlyBreakdown: ComplianceMonthly[];
+};
+
+type ComplianceReport = {
+  generatedAt: string;
+  reportPeriod: {
+    start: string;
+    end: string;
+    months: number;
+    monthLabels: string[];
+  };
+  summary: {
+    totalMonitors: number;
+    compliant: number;
+    breached: number;
+    noData: number;
+    fleetUptimePct: number | null;
+    complianceRate: number | null;
+  };
+  monitors: ComplianceMonitor[];
+};
+
+// ─── Report HTML generator ───────────────────────────────────────────────────
+
+function generateReportHtml(report: ComplianceReport): string {
+  const fmt = (pct: number | null) => pct !== null ? `${pct.toFixed(4)}%` : 'N/A';
+  const fmtSimple = (pct: number | null) => pct !== null ? `${pct.toFixed(2)}%` : '—';
+  const statusColor = (compliant: boolean | null) => compliant === true ? '#22c55e' : compliant === false ? '#ef4444' : '#6b7280';
+  const statusLabel = (compliant: boolean | null) => compliant === true ? '✓ COMPLIANT' : compliant === false ? '✗ BREACHED' : '— NO DATA';
+
+  const monitorRows = report.monitors.map(m => `
+    <div class="monitor-card">
+      <div class="monitor-header">
+        <div>
+          <span class="monitor-name">${m.name}</span>
+          <span class="monitor-type">${m.type}</span>
+          ${m.description ? `<div class="monitor-desc">${m.description}</div>` : ''}
+          <div class="monitor-target">Endpoint: ${m.target}</div>
+        </div>
+        <div class="monitor-status" style="color:${statusColor(m.period.compliant)}">
+          ${statusLabel(m.period.compliant)}
+        </div>
+      </div>
+      <div class="period-stats">
+        <div class="stat"><div class="stat-value">${fmt(m.period.uptimePct)}</div><div class="stat-label">Uptime</div></div>
+        <div class="stat"><div class="stat-value" style="color:${m.slaTarget ? '#6366f1' : '#6b7280'}">${m.slaTarget ? `${m.slaTarget}%` : '—'}</div><div class="stat-label">SLA Target</div></div>
+        <div class="stat"><div class="stat-value">${m.period.downtimeMinutes}m</div><div class="stat-label">Est. Downtime</div></div>
+        <div class="stat"><div class="stat-value">${m.period.incidents}</div><div class="stat-label">Incidents</div></div>
+        <div class="stat"><div class="stat-value">${m.period.totalChecks.toLocaleString()}</div><div class="stat-label">Total Checks</div></div>
+        <div class="stat"><div class="stat-value">${m.period.errorBudgetUsedPct !== null ? `${m.period.errorBudgetUsedPct.toFixed(1)}%` : '—'}</div><div class="stat-label">Error Budget Used</div></div>
+      </div>
+      <table class="monthly-table">
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th>Uptime</th>
+            <th>vs Target</th>
+            <th>Checks</th>
+            <th>Failed</th>
+            <th>Downtime</th>
+            <th>Incidents</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${m.monthlyBreakdown.map(mb => `
+          <tr class="${mb.compliant === false ? 'row-breach' : mb.compliant === true ? 'row-ok' : ''}">
+            <td>${mb.month}</td>
+            <td>${fmt(mb.uptimePct)}</td>
+            <td>${mb.uptimePct !== null && m.slaTarget ? (mb.uptimePct >= m.slaTarget ? `+${(mb.uptimePct - m.slaTarget).toFixed(4)}%` : `${(mb.uptimePct - m.slaTarget).toFixed(4)}%`) : '—'}</td>
+            <td>${mb.totalChecks.toLocaleString()}</td>
+            <td>${mb.failedChecks}</td>
+            <td>${mb.downtimeMinutes}m</td>
+            <td>${mb.incidents}</td>
+            <td style="color:${statusColor(mb.compliant)};font-weight:600">${statusLabel(mb.compliant)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  `).join('');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SLA Compliance Report — PulseDock</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fff; color: #111; padding: 32px; max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 28px; font-weight: 700; color: #111; }
+  h2 { font-size: 14px; font-weight: 500; color: #555; margin-top: 4px; }
+  .report-meta { font-size: 12px; color: #888; margin-top: 4px; }
+  .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 2px solid #e5e7eb; }
+  .brand-logo { font-size: 24px; font-weight: 800; color: #6366f1; }
+  .summary-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin: 24px 0; }
+  .summary-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px; text-align: center; }
+  .summary-value { font-size: 24px; font-weight: 700; color: #111; }
+  .summary-label { font-size: 11px; color: #888; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .section-title { font-size: 16px; font-weight: 600; color: #111; margin: 28px 0 12px; padding-bottom: 6px; border-bottom: 1px solid #e5e7eb; }
+  .monitor-card { background: #fafafa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 16px; page-break-inside: avoid; }
+  .monitor-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .monitor-name { font-size: 15px; font-weight: 600; color: #111; }
+  .monitor-type { font-size: 11px; background: #f3f4f6; color: #555; padding: 2px 6px; border-radius: 4px; margin-left: 8px; }
+  .monitor-desc { font-size: 12px; color: #666; margin-top: 4px; }
+  .monitor-target { font-size: 11px; color: #888; margin-top: 2px; }
+  .monitor-status { font-size: 13px; font-weight: 700; text-align: right; }
+  .period-stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 12px; }
+  .stat { background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px; text-align: center; }
+  .stat-value { font-size: 16px; font-weight: 700; color: #111; }
+  .stat-label { font-size: 10px; color: #888; margin-top: 2px; text-transform: uppercase; }
+  .monthly-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .monthly-table th { background: #f3f4f6; text-align: left; padding: 8px 10px; font-weight: 600; color: #444; border-bottom: 1px solid #e5e7eb; }
+  .monthly-table td { padding: 7px 10px; border-bottom: 1px solid #f0f0f0; }
+  .row-breach td { background: #fef2f2; }
+  .row-ok td { background: #f0fdf4; }
+  .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #aaa; display: flex; justify-content: space-between; }
+  @media print {
+    body { padding: 16px; }
+    .monitor-card { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="brand">
+  <div class="brand-logo">⚡ PulseDock</div>
+  <div>
+    <h1>SLA Compliance Report</h1>
+    <h2>Report Period: ${report.reportPeriod.monthLabels[0]} – ${report.reportPeriod.monthLabels[report.reportPeriod.monthLabels.length - 1]} (${report.reportPeriod.months} month${report.reportPeriod.months > 1 ? 's' : ''})</h2>
+    <div class="report-meta">Generated: ${new Date(report.generatedAt).toLocaleString()} · Monitors with SLA targets: ${report.summary.totalMonitors}</div>
+  </div>
+</div>
+
+<div class="summary-grid">
+  <div class="summary-card"><div class="summary-value">${report.summary.totalMonitors}</div><div class="summary-label">Monitors</div></div>
+  <div class="summary-card"><div class="summary-value" style="color:#22c55e">${report.summary.compliant}</div><div class="summary-label">Compliant</div></div>
+  <div class="summary-card"><div class="summary-value" style="color:#ef4444">${report.summary.breached}</div><div class="summary-label">Breached</div></div>
+  <div class="summary-card"><div class="summary-value" style="color:#6366f1">${fmtSimple(report.summary.complianceRate)}</div><div class="summary-label">Compliance Rate</div></div>
+  <div class="summary-card"><div class="summary-value">${fmt(report.summary.fleetUptimePct)}</div><div class="summary-label">Fleet Uptime</div></div>
+  <div class="summary-card"><div class="summary-value">${report.summary.noData}</div><div class="summary-label">No Data</div></div>
+</div>
+
+<div class="section-title">Per-Monitor Compliance Details</div>
+${monitorRows || '<p style="color:#888;font-size:13px">No monitors with SLA targets found.</p>'}
+
+<div class="footer">
+  <span>PulseDock SLA Compliance Report</span>
+  <span>Confidential · Generated ${new Date(report.generatedAt).toISOString()}</span>
+</div>
+</body>
+</html>`;
+}
+
 export default function SlaPage() {
   const [data, setData] = useState<SlaDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const { success: showSuccess } = useToast();
+  const [reportMonths, setReportMonths] = useState(3);
+  const [reportLoading, setReportLoading] = useState(false);
+  const { success: showSuccess, error: showError } = useToast();
 
   const load = useCallback(async () => {
     try {
@@ -249,7 +434,27 @@ export default function SlaPage() {
       showSuccess('SLA target updated');
       await load();
     } catch {
-      showSuccess('Failed to update SLA target');
+      showError('Failed to update SLA target');
+    }
+  };
+
+  const handleDownloadReport = async () => {
+    try {
+      setReportLoading(true);
+      const u = await getUser();
+      const report = await api<ComplianceReport>(`/v1/monitors/sla-compliance-report?months=${reportMonths}`, u?.id);
+      const html = generateReportHtml(report);
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const win = window.open(url, '_blank');
+      if (win) {
+        win.focus();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+      }
+    } catch {
+      showError('Failed to generate compliance report');
+    } finally {
+      setReportLoading(false);
     }
   };
 
@@ -295,10 +500,38 @@ export default function SlaPage() {
               Service Level Agreement compliance across all monitors · {period}
             </p>
           </div>
-          <Button onClick={load} disabled={loading} variant="secondary" size="sm">
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Report months picker */}
+            <div className="flex items-center gap-1 bg-surface border border-border rounded-lg px-2">
+              <span className="text-xs text-text-muted">Report:</span>
+              {[1, 3, 6, 12].map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setReportMonths(m)}
+                  className={`px-2 py-1 text-xs rounded transition-colors ${reportMonths === m ? 'bg-accent text-white' : 'text-text-secondary hover:text-text-primary'}`}
+                >
+                  {m}mo
+                </button>
+              ))}
+            </div>
+            <Button
+              onClick={handleDownloadReport}
+              disabled={reportLoading || loading}
+              variant="secondary"
+              size="sm"
+              title="Generate printable SLA compliance report"
+            >
+              {reportLoading
+                ? <RefreshCw className="w-4 h-4 animate-spin" />
+                : <FileDown className="w-4 h-4" />}
+              Compliance Report
+            </Button>
+            <Button onClick={load} disabled={loading} variant="secondary" size="sm">
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {error && (

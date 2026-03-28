@@ -4878,6 +4878,172 @@ export class MonitorsService {
     };
   }
 
+  // ─── SLA Compliance Report ─────────────────────────────────────────────────
+
+  /**
+   * Generates a structured SLA compliance report for all monitors with an SLA target.
+   * Covers up to `months` calendar months (1–12, default 3) including the current partial month.
+   *
+   * @param userId - The user to generate the report for
+   * @param months - Number of months to include (1–12)
+   * @returns Compliance report with per-monitor monthly breakdown, incident stats, and summary
+   */
+  async slaComplianceReport(userId: string, months: number) {
+    const safeMonths = Math.max(1, Math.min(12, months));
+    const now = new Date();
+
+    // Build month buckets from oldest to newest (ending with current partial month)
+    const monthBuckets: Array<{ label: string; start: Date; end: Date }> = [];
+    for (let i = safeMonths - 1; i >= 0; i--) {
+      const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const end = i === 0 ? now : new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      const label = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`;
+      monthBuckets.push({ label, start, end });
+    }
+
+    const periodStart = monthBuckets[0].start;
+
+    // Load all monitors with SLA targets
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, enabled: true, slaTarget: { not: null } },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        folderId: true,
+        slaTarget: true,
+        description: true,
+        target: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    // Compute uptime per monitor per month
+    const computeUptime = async (monitorId: string, from: Date, to: Date) => {
+      const runs = await this.prisma.monitorRun.findMany({
+        where: { monitorId, checkedAt: { gte: from, lt: to } },
+        select: { ok: true },
+      });
+      const total = runs.length;
+      const failed = runs.filter((r) => !r.ok).length;
+      const uptimePct = total === 0 ? null : Math.round(((total - failed) / total) * 1000000) / 10000;
+      return { total, failed, uptimePct };
+    };
+
+    // Compute incident count for a monitor in a period
+    const computeIncidents = async (monitorId: string, from: Date, to: Date) => {
+      return this.prisma.incident.count({
+        where: {
+          monitors: { some: { monitorId } },
+          createdAt: { gte: from, lt: to },
+        },
+      });
+    };
+
+    // Approximate downtime minutes from failed checks × interval
+    const computeDowntimeRuns = async (monitorId: string, from: Date, to: Date) => {
+      const mon = await this.prisma.monitor.findUnique({
+        where: { id: monitorId },
+        select: { intervalSec: true },
+      });
+      const intervalSec = mon?.intervalSec ?? 60;
+      const failed = await this.prisma.monitorRun.count({
+        where: { monitorId, ok: false, checkedAt: { gte: from, lt: to } },
+      });
+      return Math.round((failed * intervalSec) / 60);
+    };
+
+    const monitorsData = await Promise.all(
+      monitors.map(async (m) => {
+        const slaTarget = Number(m.slaTarget);
+
+        // Per-month breakdown
+        const monthlyBreakdown = await Promise.all(
+          monthBuckets.map(async (bucket) => {
+            const { total, failed, uptimePct } = await computeUptime(m.id, bucket.start, bucket.end);
+            const incidents = await computeIncidents(m.id, bucket.start, bucket.end);
+            const downtimeMinutes = await computeDowntimeRuns(m.id, bucket.start, bucket.end);
+            const compliant = uptimePct !== null ? uptimePct >= slaTarget : null;
+            const errorBudgetUsedPct =
+              uptimePct !== null
+                ? Math.min(100, Math.max(0, Math.round(((100 - uptimePct) / Math.max(0.0001, 100 - slaTarget)) * 10000) / 100))
+                : null;
+
+            return {
+              month: bucket.label,
+              totalChecks: total,
+              failedChecks: failed,
+              uptimePct,
+              downtimeMinutes,
+              incidents,
+              compliant,
+              errorBudgetUsedPct,
+            };
+          }),
+        );
+
+        // Overall period stats
+        const { total: periodTotal, failed: periodFailed, uptimePct: periodUptime } = await computeUptime(m.id, periodStart, now);
+        const periodIncidents = await computeIncidents(m.id, periodStart, now);
+        const periodDowntime = await computeDowntimeRuns(m.id, periodStart, now);
+        const periodCompliant = periodUptime !== null ? periodUptime >= slaTarget : null;
+        const allowedDown = 100 - slaTarget;
+        const errorBudgetUsedPct =
+          periodUptime !== null && allowedDown > 0
+            ? Math.min(100, Math.max(0, Math.round(((100 - periodUptime) / allowedDown) * 10000) / 100))
+            : null;
+
+        return {
+          id: m.id,
+          name: m.name,
+          type: m.type,
+          target: m.target,
+          description: m.description ?? null,
+          slaTarget,
+          period: {
+            totalChecks: periodTotal,
+            failedChecks: periodFailed,
+            uptimePct: periodUptime,
+            downtimeMinutes: periodDowntime,
+            incidents: periodIncidents,
+            compliant: periodCompliant,
+            errorBudgetUsedPct,
+          },
+          monthlyBreakdown,
+        };
+      }),
+    );
+
+    const compliantCount = monitorsData.filter((m) => m.period.compliant === true).length;
+    const breachedCount = monitorsData.filter((m) => m.period.compliant === false).length;
+    const noDataCount = monitorsData.filter((m) => m.period.compliant === null).length;
+
+    const totalChecks = monitorsData.reduce((s, m) => s + m.period.totalChecks, 0);
+    const totalFailed = monitorsData.reduce((s, m) => s + m.period.failedChecks, 0);
+    const fleetUptimePct =
+      totalChecks > 0 ? Math.round(((totalChecks - totalFailed) / totalChecks) * 1000000) / 10000 : null;
+
+    return {
+      generatedAt: now.toISOString(),
+      reportPeriod: {
+        start: periodStart.toISOString(),
+        end: now.toISOString(),
+        months: safeMonths,
+        monthLabels: monthBuckets.map((b) => b.label),
+      },
+      summary: {
+        totalMonitors: monitors.length,
+        compliant: compliantCount,
+        breached: breachedCount,
+        noData: noDataCount,
+        fleetUptimePct,
+        complianceRate:
+          monitors.length > 0 ? Math.round((compliantCount / monitors.length) * 10000) / 100 : null,
+      },
+      monitors: monitorsData,
+    };
+  }
+
   // ─── OpenAPI Import ────────────────────────────────────────────────────────
 
   async previewFromOpenApi(opts: {

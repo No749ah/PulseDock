@@ -34,6 +34,18 @@ export interface MonitorItem {
   shareToken?: string | null;
   pinned?: boolean;
   timeoutMs?: number | null;
+  /** Geo region tags for simulated multi-region monitoring */
+  geoRegions?: string[];
+  /** JSONPath to extract a numeric metric from response body (HTTP/BROWSER only) */
+  metricPath?: string | null;
+  /** Human-readable label for the captured metric */
+  metricName?: string | null;
+  /** Optional unit label for the captured metric */
+  metricUnit?: string | null;
+  /** Alert yellow when captured metric value drops below this minimum */
+  metricAlertMin?: number | null;
+  /** Alert yellow when captured metric value exceeds this maximum */
+  metricAlertMax?: number | null;
 }
 
 export interface SloReport {

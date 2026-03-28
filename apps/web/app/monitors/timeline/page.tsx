@@ -152,7 +152,7 @@ function TimeAxis({ from, to, hours }: { from: string; to: string; hours: number
 
 export default function MonitorTimelinePage() {
   const router = useRouter();
-  const { showToast } = useToast();
+  const { error: showToastError } = useToast();
   const [data, setData] = useState<TimelineData | null>(null);
   const [loading, setLoading] = useState(true);
   const [selectedHours, setSelectedHours] = useState(24);
@@ -162,16 +162,16 @@ export default function MonitorTimelinePage() {
   const load = useCallback(async (hours: number) => {
     setLoading(true);
     try {
-      const user = await getUser();
+      const user = getUser();
       if (!user) { router.push('/login'); return; }
-      const res = await api.get(`/monitors/status-timeline?hours=${hours}`);
-      setData(res as TimelineData);
+      const res = await api<TimelineData>(`/v1/monitors/status-timeline?hours=${hours}`, user.id);
+      setData(res);
     } catch {
-      showToast('Failed to load status timeline', 'error');
+      showToastError('Failed to load status timeline');
     } finally {
       setLoading(false);
     }
-  }, [router, showToast]);
+  }, [router, showToastError]);
 
   useEffect(() => { load(selectedHours); }, [selectedHours, load]);
 

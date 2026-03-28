@@ -3616,6 +3616,122 @@ export class MonitorsService {
   }
 
   /**
+   * Analyzes monitoring configuration completeness.
+   * Returns per-monitor coverage gaps and an aggregate coverage score (0-100).
+   */
+  async monitorCoverage(userId: string): Promise<{
+    coverageScore: number;
+    totalMonitors: number;
+    monitorsWithAlerts: number;
+    monitorsWithSla: number;
+    monitorsWithDescription: number;
+    monitorsWithRunbook: number;
+    monitorsWithTags: number;
+    monitorsEnabled: number;
+    gaps: Array<{
+      id: string;
+      name: string;
+      type: string;
+      missingAlerts: boolean;
+      missingSla: boolean;
+      missingDescription: boolean;
+      missingRunbook: boolean;
+      missingTags: boolean;
+      coverageScore: number;
+    }>;
+    generatedAt: string;
+  }> {
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        enabled: true,
+        description: true,
+        runbookUrl: true,
+        slaTarget: true,
+        _count: { select: { monitorAlerts: true, monitorTags: true } },
+      },
+      orderBy: [{ pinned: 'desc' }, { name: 'asc' }],
+    });
+
+    if (monitors.length === 0) {
+      return {
+        coverageScore: 100,
+        totalMonitors: 0,
+        monitorsWithAlerts: 0,
+        monitorsWithSla: 0,
+        monitorsWithDescription: 0,
+        monitorsWithRunbook: 0,
+        monitorsWithTags: 0,
+        monitorsEnabled: 0,
+        gaps: [],
+        generatedAt: new Date().toISOString(),
+      };
+    }
+
+    // Coverage criteria weights (out of 5 points per monitor):
+    // - has alert channels: 2 pts (most critical)
+    // - has SLA target: 1 pt
+    // - has description: 1 pt
+    // - has runbook URL: 1 pt
+    const WEIGHTS = { alerts: 2, sla: 1, description: 1, runbook: 1 };
+    const MAX_SCORE = WEIGHTS.alerts + WEIGHTS.sla + WEIGHTS.description + WEIGHTS.runbook;
+
+    const gaps = monitors.map(m => {
+      const missingAlerts = m._count.monitorAlerts === 0;
+      const missingSla = m.slaTarget == null;
+      const missingDescription = !m.description?.trim();
+      const missingRunbook = !m.runbookUrl?.trim();
+      const missingTags = m._count.monitorTags === 0;
+
+      const pts =
+        (missingAlerts ? 0 : WEIGHTS.alerts) +
+        (missingSla ? 0 : WEIGHTS.sla) +
+        (missingDescription ? 0 : WEIGHTS.description) +
+        (missingRunbook ? 0 : WEIGHTS.runbook);
+      const coverageScore = Math.round((pts / MAX_SCORE) * 100);
+
+      return {
+        id: m.id,
+        name: m.name,
+        type: m.type,
+        missingAlerts,
+        missingSla,
+        missingDescription,
+        missingRunbook,
+        missingTags,
+        coverageScore,
+      };
+    });
+
+    const totalMonitors = monitors.length;
+    const monitorsWithAlerts = monitors.filter(m => m._count.monitorAlerts > 0).length;
+    const monitorsWithSla = monitors.filter(m => m.slaTarget != null).length;
+    const monitorsWithDescription = monitors.filter(m => m.description?.trim()).length;
+    const monitorsWithRunbook = monitors.filter(m => m.runbookUrl?.trim()).length;
+    const monitorsWithTags = monitors.filter(m => m._count.monitorTags > 0).length;
+    const monitorsEnabled = monitors.filter(m => m.enabled).length;
+
+    const avgCoverage = gaps.reduce((s, g) => s + g.coverageScore, 0) / totalMonitors;
+    const coverageScore = Math.round(avgCoverage);
+
+    return {
+      coverageScore,
+      totalMonitors,
+      monitorsWithAlerts,
+      monitorsWithSla,
+      monitorsWithDescription,
+      monitorsWithRunbook,
+      monitorsWithTags,
+      monitorsEnabled,
+      gaps: gaps.sort((a, b) => a.coverageScore - b.coverageScore), // worst first
+      generatedAt: new Date().toISOString(),
+    };
+  }
+
+  /**
    * Week-over-week trend analysis for all monitors.
    * Compares current 7 days vs prior 7 days: uptime% and avg latency.
    * Returns trend direction: 'improving' | 'degrading' | 'stable' | 'new'

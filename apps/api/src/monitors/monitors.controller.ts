@@ -397,6 +397,17 @@ export class MonitorsController {
     return this.monitorsService.versionSummary(req.user.id);
   }
 
+  @Get('coverage')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Monitor configuration coverage analysis',
+    description: 'Analyzes how well monitors are configured: alert channels, SLA targets, descriptions, runbook URLs, etc. Returns per-monitor gaps and aggregate score.',
+  })
+  @ApiResponse({ status: 200, description: 'Coverage analysis returned.' })
+  monitorCoverage(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.monitorCoverage(req.user.id);
+  }
+
   @Get('health-summary')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({

@@ -2470,7 +2470,14 @@ function MonitorsPageInner() {
         <ImportFromComposeModal
           userId={user?.id}
           onClose={() => setShowComposeImport(false)}
-          onCreated={() => { fetchMonitors(); success("Monitors created from Docker Compose"); }}
+          onCreated={async () => {
+            const u = getUser();
+            if (u) {
+              const monitorsData = await api<MonitorItem[]>("/v1/monitors", u.id).catch(() => [] as MonitorItem[]);
+              setMonitors(monitorsData);
+            }
+            success("Monitors created from Docker Compose");
+          }}
         />
       )}
 

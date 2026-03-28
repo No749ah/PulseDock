@@ -1,3 +1,11 @@
+## Status Summary (2026-03-28 06:58 UTC)
+- **Build/Test:** ✅ Clean build + 3801 API (+6 export/import tests) + 10 e2e + 12 agent = 3823 total; 0 TS errors; all routes 200
+- **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities
+- **Deployment:** ✅ API v1.4.0 + web running; all routes 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-am
+- **Last changes (06:58 UTC cycle):**
+  - [x] **Monitor Config Export/Import (GitOps)** — `GET /v1/monitors/export` (JSON/YAML, optional filter by IDs, optional alert channel names). `POST /v1/monitors/import-config` (JSON/YAML, dry-run, overwrite toggle). Frontend: Export modal (format + include-alerts + selected/all), Import Config modal (file picker + textarea, dry-run, overwrite, results table). 6 new tests.
+
 ## Status Summary (2026-03-28 06:47 UTC)
 - **Build/Test:** ✅ Clean build + 3795 API (+6 redirect-chain tests) + 10 e2e + 12 agent = 3817 total; 0 TS errors; all routes 200
 - **Security/Audit:** ✅ `npm audit --audit-level=high` reports 0 vulnerabilities

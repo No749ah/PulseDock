@@ -41,7 +41,7 @@
   },
   "license": "Apache-2.0",
   "dependencies": {
-    "@tabler/icons-react": "^3.41.0",
+    "@tabler/icons-react": "^3.41.1",
     "@vitest/coverage-v8": "^4.1.2",
     "framer-motion": "^12.38.0",
     "otplib": "^13.4.0",

@@ -10,8 +10,11 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ## [1.6.0] — 2026-03-29
 
 ### Added
-- **Prometheus HTTP Request Duration Histogram** — `pulsedock_http_request_duration_ms` with 11 buckets (5ms–10s). Express middleware observes every request for Grafana p50/p95/p99 latency dashboards.
-- **Prometheus Process Memory Gauges** — `pulsedock_process_heap_used_bytes`, `pulsedock_process_heap_total_bytes`, `pulsedock_process_rss_bytes`, `pulsedock_process_external_bytes` for self-hosted instance monitoring.
+- **X-Response-Time Header** — Every API response includes `X-Response-Time` header (in ms). Express middleware works for all responses including guard errors (401/403). Slow requests (>1000ms) logged with structured warnings. 8 tests.
+- **Prometheus HTTP Request Duration Histogram** — `pulsedock_http_request_duration_ms` with 11 buckets (5ms–10s). Express middleware observes every request for Grafana p50/p95/p99 latency dashboards. 3 tests.
+- **Prometheus Process Memory Gauges** — `pulsedock_process_heap_used_bytes`, `pulsedock_process_heap_total_bytes`, `pulsedock_process_rss_bytes`, `pulsedock_process_external_bytes` for self-hosted instance monitoring. 1 test.
+- **Prometheus Check Execution Metrics** — `pulsedock_checks_executed_total{type,result}` counter tracks per-type ok/fail check counts. `pulsedock_check_duration_ms{type}` histogram with 10 buckets (50ms–60s). `pulsedock_checks_in_flight` gauge. 4 tests.
+- **Prometheus Event Loop & CPU Metrics** — `pulsedock_eventloop_lag_{min,max,mean,p50,p99}_ms` gauges via `perf_hooks.monitorEventLoopDelay`. `pulsedock_process_cpu_{user,system}_seconds_total` counters. `pulsedock_process_active_{handles,requests}` gauges. 4 tests.
 - **Monitor Comparison View** — `GET /v1/monitors/compare?ids=...&days=N` — Select 2–4 monitors for side-by-side performance analysis. Per-monitor uptime%, avg/P95 latency, failures, longest outage, daily breakdowns. Pearson correlation between uptime patterns. Frontend at `/monitors/compare` with color-coded chips, period pills, SVG overlay charts, correlation matrix.
 - **Monitor Failure Prediction** — `GET /v1/monitors/failure-prediction` — Linear regression on 7-day uptime% and latency trends. Risk score 0–100 composite. Predictions: stable/watch/at_risk/likely_failure. Estimated hours to failure. Frontend at `/monitors/predictions` with fleet risk score, sortable table, pulsing time-to-failure indicators.
 - **Incident Response Playbooks** — `IncidentPlaybook` Prisma model. CRUD at `/v1/playbooks`. Attach playbooks to monitors — auto-snapshot onto incidents when fired. Step completion tracking via `PATCH /v1/incidents/:id/playbook-step/:stepId`. Frontend at `/incidents/playbooks` with drag-step editor (check/escalate/runbook/command/notify types).
@@ -24,9 +27,10 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ### Changed
 - **Zero `any` Types** — All production code is strictly typed with no `any` casts.
 - **Sidebar Groups** — Monitoring, Alerting, Operations, Insights, Administration sections for better organization.
+- **Prometheus Metric Naming** — All counters renamed from camelCase to snake_case per Prometheus best practices. `_total` suffix added per conventions.
 
 ### Tests
-- **5308 tests passing** (4551 API + 757 web) — up from 4683 in v1.5.0
+- **5350+ tests passing** (4567 API + 757 web + 12 agent + 10 CLI) — up from 4683 in v1.5.0
 - Added 60 service-level specs for EscalationService, DependenciesService, PlaybooksService, ServiceGroupsService
 - Added 23 controller specs for escalation, playbooks, dependencies, service-groups controllers
 - Added 34 coverage tests for deployments, playbooks, dependencies modules

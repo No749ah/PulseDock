@@ -165,7 +165,7 @@ npm run restart           # Restart both services (API → Web)
 
 # Build & Test
 npm run build             # Build everything (web + api + cli + extension)
-npm run test              # Run all tests (5340+ tests)
+npm run test              # Run all tests (5350+ tests)
 npm audit                 # Security vulnerability check
 
 # Database
@@ -223,7 +223,7 @@ git commit -m "feat: add your feature"
 
 ## Testing
 
-PulseDock has **5340+ tests** across the full stack:
+PulseDock has **5350+ tests** across the full stack:
 
 ```bash
 npm run test                        # All tests

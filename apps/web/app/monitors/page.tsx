@@ -675,6 +675,7 @@ function MonitorsPageInner() {
           ...((formData as typeof formData & { graphqlVariables?: string | null }).graphqlVariables ? { graphqlVariables: (formData as typeof formData & { graphqlVariables?: string | null }).graphqlVariables } : {}),
           ...((formData as typeof formData & { graphqlDataPath?: string | null }).graphqlDataPath ? { graphqlDataPath: (formData as typeof formData & { graphqlDataPath?: string | null }).graphqlDataPath } : {}),
           ...((formData as typeof formData & { graphqlExpectedValue?: string | null }).graphqlExpectedValue ? { graphqlExpectedValue: (formData as typeof formData & { graphqlExpectedValue?: string | null }).graphqlExpectedValue } : {}),
+          ...((formData as typeof formData & { downtimeCostPerHour?: number | null }).downtimeCostPerHour != null ? { downtimeCostPerHour: (formData as typeof formData & { downtimeCostPerHour?: number | null }).downtimeCostPerHour } : {}),
         }),
       });
       setShowModal(false);
@@ -751,6 +752,7 @@ function MonitorsPageInner() {
           graphqlVariables: (formData as typeof formData & { graphqlVariables?: string | null }).graphqlVariables ?? null,
           graphqlDataPath: (formData as typeof formData & { graphqlDataPath?: string | null }).graphqlDataPath ?? null,
           graphqlExpectedValue: (formData as typeof formData & { graphqlExpectedValue?: string | null }).graphqlExpectedValue ?? null,
+          downtimeCostPerHour: (formData as typeof formData & { downtimeCostPerHour?: number | null }).downtimeCostPerHour ?? null,
         }),
       });
       setShowModal(false);

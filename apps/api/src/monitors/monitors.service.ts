@@ -126,6 +126,7 @@ export class MonitorsService {
       statusWebhookUrl: (m as typeof m & { statusWebhookUrl?: string | null }).statusWebhookUrl ?? null,
       headerAssertions: (m as typeof m & { headerAssertions?: unknown }).headerAssertions ?? null,
       isAcknowledged: (m as typeof m & { acknowledgements?: unknown[] }).acknowledgements?.length > 0,
+      downtimeCostPerHour: (m as typeof m & { downtimeCostPerHour?: number | null }).downtimeCostPerHour ?? null,
 
       createdAt: m.createdAt.toISOString(),
     }));
@@ -270,6 +271,7 @@ export class MonitorsService {
     graphqlVariables?: string | null;
     graphqlDataPath?: string | null;
     graphqlExpectedValue?: string | null;
+    downtimeCostPerHour?: number | null;
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -341,6 +343,7 @@ export class MonitorsService {
         ...(body.graphqlVariables !== undefined ? { graphqlVariables: body.graphqlVariables ?? null } : {}),
         ...(body.graphqlDataPath !== undefined ? { graphqlDataPath: body.graphqlDataPath ?? null } : {}),
         ...(body.graphqlExpectedValue !== undefined ? { graphqlExpectedValue: body.graphqlExpectedValue ?? null } : {}),
+        ...(body.downtimeCostPerHour !== undefined ? { downtimeCostPerHour: body.downtimeCostPerHour ?? null } : {}),
         monitorAlerts: {
           create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),
         },
@@ -403,6 +406,7 @@ export class MonitorsService {
       sliLatencyWindow: created.sliLatencyWindow,
       trackedHeaders: (created as typeof created & { trackedHeaders?: string | null }).trackedHeaders ?? null,
       statusWebhookUrl: (created as typeof created & { statusWebhookUrl?: string | null }).statusWebhookUrl ?? null,
+      downtimeCostPerHour: (created as typeof created & { downtimeCostPerHour?: number | null }).downtimeCostPerHour ?? null,
       createdAt: created.createdAt.toISOString(),
     };
 
@@ -473,6 +477,7 @@ export class MonitorsService {
     graphqlVariables?: string | null;
     graphqlDataPath?: string | null;
     graphqlExpectedValue?: string | null;
+    downtimeCostPerHour?: number | null;
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -550,6 +555,7 @@ export class MonitorsService {
         ...(body.graphqlVariables !== undefined ? { graphqlVariables: body.graphqlVariables ?? null } : {}),
         ...(body.graphqlDataPath !== undefined ? { graphqlDataPath: body.graphqlDataPath ?? null } : {}),
         ...(body.graphqlExpectedValue !== undefined ? { graphqlExpectedValue: body.graphqlExpectedValue ?? null } : {}),
+        ...(body.downtimeCostPerHour !== undefined ? { downtimeCostPerHour: body.downtimeCostPerHour ?? null } : {}),
       },
     });
 
@@ -593,6 +599,7 @@ export class MonitorsService {
       graphqlQuery: body.graphqlQuery !== undefined ? body.graphqlQuery : current.graphqlQuery,
       graphqlDataPath: body.graphqlDataPath !== undefined ? body.graphqlDataPath : current.graphqlDataPath,
       graphqlExpectedValue: body.graphqlExpectedValue !== undefined ? body.graphqlExpectedValue : current.graphqlExpectedValue,
+      downtimeCostPerHour: body.downtimeCostPerHour !== undefined ? body.downtimeCostPerHour : (current as typeof current & { downtimeCostPerHour?: number | null }).downtimeCostPerHour,
     };
     const configDiff = computeMonitorDiff(current as unknown as Record<string, unknown>, afterState);
     if (configDiff.length > 0) {
@@ -7120,6 +7127,171 @@ export class MonitorsService {
       topPerformers,
       worstPerformers,
     };
+  }
+
+  // ─── Downtime Cost Report ─────────────────────────────────────────────────
+
+  /**
+   * Returns a fleet-level financial impact summary for all monitors with
+   * downtimeCostPerHour configured. Analyzes the last 30 days of MonitorRun records.
+   */
+  async downtimeCostReport(userId: string): Promise<{
+    totalEstimatedCost: number;
+    totalDowntimeMinutes: number;
+    monitorCount: number;
+    monitors: Array<{
+      id: string;
+      name: string;
+      downtimeCostPerHour: number;
+      downtimeMinutes: number;
+      estimatedCost: number;
+      incidentCount: number;
+      worstIncidentCost: number;
+    }>;
+    currency: 'USD';
+    periodDays: 30;
+  }> {
+    const since = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+
+    const monitors = await this.prisma.monitor.findMany({
+      where: {
+        userId,
+        downtimeCostPerHour: { not: null },
+      },
+      select: {
+        id: true,
+        name: true,
+        downtimeCostPerHour: true,
+        intervalSec: true,
+        runs: {
+          where: { checkedAt: { gte: since } },
+          select: { ok: true, checkedAt: true },
+          orderBy: { checkedAt: 'asc' },
+        },
+      },
+    });
+
+    const monitorBreakdowns = monitors.map((m) => {
+      const costPerHour = m.downtimeCostPerHour!;
+      const intervalSec = m.intervalSec;
+      const failedRuns = m.runs.filter((r) => !r.ok);
+      const downMinutes = (failedRuns.length * intervalSec) / 60;
+      const estimatedCost = (downMinutes / 60) * costPerHour;
+
+      // Incident counting: group consecutive failed checks (a new ok check ends an incident)
+      let incidentCount = 0;
+      let worstIncidentCost = 0;
+      let inIncident = false;
+      let currentIncidentFailCount = 0;
+
+      for (const run of m.runs) {
+        if (!run.ok) {
+          if (!inIncident) {
+            // New incident starts on first fail after a successful run (or at the beginning)
+            inIncident = true;
+            incidentCount++;
+            currentIncidentFailCount = 1;
+          } else {
+            currentIncidentFailCount++;
+          }
+        } else {
+          if (inIncident) {
+            // Incident ends when a successful run is seen
+            const incidentCost = ((currentIncidentFailCount * intervalSec) / 60 / 60) * costPerHour;
+            if (incidentCost > worstIncidentCost) worstIncidentCost = incidentCost;
+            inIncident = false;
+            currentIncidentFailCount = 0;
+          }
+        }
+      }
+      // Finalize trailing incident
+      if (inIncident && currentIncidentFailCount > 0) {
+        const incidentCost = ((currentIncidentFailCount * intervalSec) / 60 / 60) * costPerHour;
+        if (incidentCost > worstIncidentCost) worstIncidentCost = incidentCost;
+      }
+
+      return {
+        id: m.id,
+        name: m.name,
+        downtimeCostPerHour: costPerHour,
+        downtimeMinutes: Math.round(downMinutes * 10) / 10,
+        estimatedCost: Math.round(estimatedCost * 100) / 100,
+        incidentCount,
+        worstIncidentCost: Math.round(worstIncidentCost * 100) / 100,
+      };
+    });
+
+    const totalEstimatedCost = monitorBreakdowns.reduce((sum, m) => sum + m.estimatedCost, 0);
+    const totalDowntimeMinutes = monitorBreakdowns.reduce((sum, m) => sum + m.downtimeMinutes, 0);
+
+    return {
+      totalEstimatedCost: Math.round(totalEstimatedCost * 100) / 100,
+      totalDowntimeMinutes: Math.round(totalDowntimeMinutes * 10) / 10,
+      monitorCount: monitors.length,
+      monitors: monitorBreakdowns,
+      currency: 'USD',
+      periodDays: 30,
+    };
+  }
+
+  /**
+   * Returns time-series of daily cost impact for a single monitor.
+   */
+  async downtimeCostHistory(monitorId: string, userId: string, periodDays = 30): Promise<{
+    days: Array<{
+      date: string;
+      downtimeMinutes: number;
+      estimatedCost: number;
+      checks: number;
+      failedChecks: number;
+    }>;
+  }> {
+    const safeDays = Math.min(90, Math.max(1, periodDays));
+    const since = new Date(Date.now() - safeDays * 24 * 60 * 60 * 1000);
+
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, userId },
+      select: { id: true, intervalSec: true, downtimeCostPerHour: true },
+    });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    const costPerHour = monitor.downtimeCostPerHour ?? 0;
+    const intervalSec = monitor.intervalSec;
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId, checkedAt: { gte: since } },
+      select: { ok: true, checkedAt: true },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    // Group by UTC date
+    const dayMap = new Map<string, { checks: number; failedChecks: number }>();
+    for (const run of runs) {
+      const date = new Date(run.checkedAt).toISOString().split('T')[0];
+      const existing = dayMap.get(date) ?? { checks: 0, failedChecks: 0 };
+      existing.checks++;
+      if (!run.ok) existing.failedChecks++;
+      dayMap.set(date, existing);
+    }
+
+    // Build full date range
+    const days: Array<{ date: string; downtimeMinutes: number; estimatedCost: number; checks: number; failedChecks: number }> = [];
+    for (let i = safeDays - 1; i >= 0; i--) {
+      const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+      const date = d.toISOString().split('T')[0];
+      const stats = dayMap.get(date) ?? { checks: 0, failedChecks: 0 };
+      const downMinutes = (stats.failedChecks * intervalSec) / 60;
+      const estimatedCost = (downMinutes / 60) * costPerHour;
+      days.push({
+        date,
+        downtimeMinutes: Math.round(downMinutes * 10) / 10,
+        estimatedCost: Math.round(estimatedCost * 100) / 100,
+        checks: stats.checks,
+        failedChecks: stats.failedChecks,
+      });
+    }
+
+    return { days };
   }
 
 }

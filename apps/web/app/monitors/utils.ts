@@ -88,6 +88,7 @@ export function buildEditFormData(monitor: MonitorItem): MonitorFormDataExtended
     graphqlVariables: (monitor as typeof monitor & { graphqlVariables?: string | null }).graphqlVariables ?? null,
     graphqlDataPath: (monitor as typeof monitor & { graphqlDataPath?: string | null }).graphqlDataPath ?? null,
     graphqlExpectedValue: (monitor as typeof monitor & { graphqlExpectedValue?: string | null }).graphqlExpectedValue ?? null,
+    downtimeCostPerHour: (monitor as typeof monitor & { downtimeCostPerHour?: number | null }).downtimeCostPerHour ?? null,
     // Pre-request auth step
     preAuthUrl: String(monitor.config?.preAuthUrl ?? ""),
     preAuthBody: String(monitor.config?.preAuthBody ?? ""),

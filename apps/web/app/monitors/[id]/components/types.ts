@@ -34,6 +34,7 @@ export interface MonitorItem {
   shareToken?: string | null;
   pinned?: boolean;
   timeoutMs?: number | null;
+  downtimeCostPerHour?: number | null;
   /** Geo region tags for simulated multi-region monitoring */
   geoRegions?: string[];
   /** JSONPath to extract a numeric metric from response body (HTTP/BROWSER only) */

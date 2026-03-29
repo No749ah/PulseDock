@@ -73,6 +73,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       { href: '/monitors/schedule', label: 'Check Schedule', icon: Clock },
       { href: '/monitors/sla', label: 'SLA Dashboard', icon: Target },
       { href: '/monitors/fleet', label: 'Fleet Health', icon: Shield },
+      { href: '/monitors/downtime-cost', label: 'Cost Impact', icon: Target },
       { href: '/monitors/anomaly', label: 'Anomaly Report', icon: AlertTriangle },
       { href: '/monitors/dependencies', label: 'Topology', icon: GitBranch },
       { href: '/monitors/correlation', label: 'Correlation', icon: GitMerge },

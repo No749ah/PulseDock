@@ -1831,6 +1831,33 @@ export function MonitorFormModal({
           <p className="text-xs text-white/40 mt-1">Alert breach when recovery takes longer than this target</p>
         </div>
 
+        {/* Downtime Cost */}
+        <div className="border border-border rounded-lg p-4 space-y-3">
+          <div>
+            <label className="block text-sm font-semibold text-text-primary">Downtime Cost</label>
+            <p className="mt-0.5 text-xs text-text-secondary">
+              Estimated business cost per hour of downtime (USD). Used to compute financial impact in reports and monitor detail.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-white/50">$</span>
+            <input
+              type="number"
+              min={0}
+              step={10}
+              placeholder="e.g. 500"
+              value={(formData as unknown as { downtimeCostPerHour?: number | null }).downtimeCostPerHour ?? ''}
+              onChange={e => {
+                const v = e.target.value === '' ? undefined : parseFloat(e.target.value);
+                (onSetFormData as (d: typeof formData & { downtimeCostPerHour?: number | null }) => void)({ ...formData, downtimeCostPerHour: v ?? null });
+              }}
+              className="w-32 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+            />
+            <span className="text-sm text-white/50">per hour</span>
+          </div>
+          <p className="text-xs text-white/40">Leave blank to skip financial impact calculations</p>
+        </div>
+
         {/* Status Webhook */}
         <div className="border border-border rounded-lg p-4 space-y-3">
           <div>

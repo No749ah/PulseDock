@@ -73,6 +73,8 @@ export interface MonitorItem {
   graphqlDataPath?: string | null;
   /** Expected string value at graphqlDataPath */
   graphqlExpectedValue?: string | null;
+  /** Estimated business cost per hour of downtime in USD */
+  downtimeCostPerHour?: number | null;
 }
 
 export interface MonitorRun {
@@ -193,6 +195,8 @@ export type MonitorFormData = {
   graphqlDataPath?: string | null;
   /** Expected string value at graphqlDataPath */
   graphqlExpectedValue?: string | null;
+  /** Estimated business cost per hour of downtime (USD) for financial impact calculation */
+  downtimeCostPerHour?: number | null;
 };
 
 export type MonitorFormDataExtended = MonitorFormData & {

@@ -3828,6 +3828,23 @@ export default function MonitorDetailPage() {
                 </span>
                 <span className="text-xs text-text-secondary">last {PERIOD_LABELS[uptimePeriod]}</span>
               </div>
+
+              {/* Financial Impact */}
+              {monitor.downtimeCostPerHour != null && uptime != null && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-xs text-text-secondary uppercase tracking-wider flex items-center gap-1">
+                    <Award className="w-3 h-3" /> Est. Cost
+                  </span>
+                  <span className={`text-2xl font-bold tabular-nums ${uptimeLoading ? "opacity-50" : ""} ${uptime.totalDowntimeSec > 0 ? "text-danger" : "text-success"}`}>
+                    {uptime.totalDowntimeSec > 0
+                      ? `$${((uptime.totalDowntimeSec / 3600) * monitor.downtimeCostPerHour).toFixed(0)}`
+                      : "$0"}
+                  </span>
+                  <span className="text-xs text-text-secondary">
+                    @${monitor.downtimeCostPerHour}/hr · last {PERIOD_LABELS[uptimePeriod]}
+                  </span>
+                </div>
+              )}
             </div>
 
             {/* Checks today */}

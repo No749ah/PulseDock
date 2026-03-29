@@ -1,3 +1,11 @@
+## Status Summary (2026-03-29 04:35 UTC)
+- **Build/Test:** ✅ Clean build + 4275 API + 757 web + 10 CLI + 12 agent = 5054 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-29-early
+- **Last changes (04:35 UTC cycle):**
+  - [x] **Monitor Service Groups** — `MonitorServiceGroup` Prisma model + migration. Full CRUD API `GET/POST/PATCH/DELETE /v1/service-groups` + `GET /v1/service-groups/:id/status`. Aggregate status logic: outage if any monitor has level=red, degraded if any yellow, operational if all green. Frontend `/monitors/services` page: card grid with expandable accordion showing per-monitor status, create/edit modal with multi-select monitor picker, delete confirmation. "Services" nav link (Layers icon) added. 8 unit tests.
+
 ## Status Summary (2026-03-29 04:24 UTC)
 - **Build/Test:** ✅ Clean build + 4267 API + 757 web + 10 CLI + 12 agent = 5046 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

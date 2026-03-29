@@ -2009,4 +2009,39 @@ export class MonitorsController {
     res.setHeader('Cache-Control', 'no-cache');
     res.send(html);
   }
+
+  // ─── Downtime Cost Report ──────────────────────────────────────────────────
+
+  @Get('downtime-cost-report')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Fleet-level downtime cost report',
+    description:
+      'Returns financial impact summary for all monitors with downtimeCostPerHour configured. Analyzes last 30 days of check history. Includes per-monitor breakdown with incident counts and worst-incident cost.',
+  })
+  @ApiResponse({ status: 200, description: 'Downtime cost report returned.' })
+  downtimeCostReport(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.downtimeCostReport(req.user.id);
+  }
+
+  // ─── Downtime Cost History ─────────────────────────────────────────────────
+
+  @Get(':id/downtime-cost-history')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Daily downtime cost history for a monitor',
+    description: 'Returns time-series of daily cost impact for a single monitor. Requires downtimeCostPerHour to be set for meaningful cost values.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'days', required: false, type: Number, description: 'Lookback window in days (1–90, default 30)' })
+  @ApiResponse({ status: 200, description: 'Daily cost history returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  downtimeCostHistory(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('days') days?: string,
+  ) {
+    const d = parseInt(days ?? '30', 10);
+    return this.monitorsService.downtimeCostHistory(id, req.user.id, Number.isFinite(d) ? d : 30);
+  }
 }

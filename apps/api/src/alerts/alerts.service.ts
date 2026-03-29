@@ -2038,4 +2038,137 @@ export class AlertsService {
       periodDays: clampedDays,
     };
   }
+
+  /**
+   * Analyzes alert delivery response times.
+   * Returns per-channel latency stats + percentiles + daily trend.
+   * Latency = sentAt - createdAt in milliseconds.
+   */
+  async deliveryResponseTime(userId: string, days: number): Promise<{
+    period: { days: number };
+    channels: Array<{
+      channelId: string;
+      channelName: string;
+      channelType: string;
+      totalDeliveries: number;
+      successCount: number;
+      failedCount: number;
+      successRate: number;
+      avgMs: number | null;
+      p50Ms: number | null;
+      p95Ms: number | null;
+      maxMs: number | null;
+    }>;
+    fleetStats: {
+      avgMs: number | null;
+      p50Ms: number | null;
+      p95Ms: number | null;
+      totalDeliveries: number;
+      successRate: number;
+    };
+    dailyTrend: Array<{
+      date: string;
+      count: number;
+      successCount: number;
+      avgMs: number | null;
+    }>;
+  }> {
+    const clampedDays = Math.min(90, Math.max(1, days));
+    const since = new Date(Date.now() - clampedDays * 24 * 60 * 60 * 1000);
+
+    const logs = await this.prisma.alertDeliveryLog.findMany({
+      where: { alertChannel: { userId }, createdAt: { gte: since } },
+      select: {
+        id: true,
+        status: true,
+        durationMs: true,
+        createdAt: true,
+        alertChannel: { select: { id: true, name: true, type: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    function percentile(arr: number[], p: number): number | null {
+      if (arr.length === 0) return null;
+      const sorted = [...arr].sort((a, b) => a - b);
+      const idx = Math.floor((p / 100) * sorted.length);
+      return sorted[Math.min(idx, sorted.length - 1)];
+    }
+
+    // Per-channel aggregation
+    type ChanStats = { name: string; type: string; total: number; success: number; failed: number; latencies: number[] };
+    const chanMap = new Map<string, ChanStats>();
+
+    for (const log of logs) {
+      const id = log.alertChannel?.id ?? 'unknown';
+      if (!chanMap.has(id)) {
+        chanMap.set(id, { name: log.alertChannel?.name ?? 'Unknown', type: log.alertChannel?.type ?? 'unknown', total: 0, success: 0, failed: 0, latencies: [] });
+      }
+      const s = chanMap.get(id)!;
+      s.total++;
+      if (log.status === 'SUCCESS') {
+        s.success++;
+        if (log.durationMs !== null && log.durationMs !== undefined) {
+          if (log.durationMs >= 0 && log.durationMs < 300000) s.latencies.push(log.durationMs);
+        }
+      } else {
+        s.failed++;
+      }
+    }
+
+    const channels = Array.from(chanMap.entries()).map(([channelId, s]) => ({
+      channelId,
+      channelName: s.name,
+      channelType: s.type,
+      totalDeliveries: s.total,
+      successCount: s.success,
+      failedCount: s.failed,
+      successRate: s.total > 0 ? Math.round((s.success / s.total) * 100) : 0,
+      avgMs: s.latencies.length > 0 ? Math.round(s.latencies.reduce((a, b) => a + b, 0) / s.latencies.length) : null,
+      p50Ms: percentile(s.latencies, 50),
+      p95Ms: percentile(s.latencies, 95),
+      maxMs: s.latencies.length > 0 ? Math.max(...s.latencies) : null,
+    })).sort((a, b) => b.totalDeliveries - a.totalDeliveries);
+
+    // Fleet stats
+    const allLatencies = logs
+      .filter(l => l.status === 'SUCCESS' && l.durationMs !== null && l.durationMs !== undefined && l.durationMs >= 0 && l.durationMs < 300000)
+      .map(l => l.durationMs!);
+    const totalDeliveries = logs.length;
+    const successLogs = logs.filter(l => l.status === 'SUCCESS').length;
+
+    const fleetStats = {
+      avgMs: allLatencies.length > 0 ? Math.round(allLatencies.reduce((a, b) => a + b, 0) / allLatencies.length) : null,
+      p50Ms: percentile(allLatencies, 50),
+      p95Ms: percentile(allLatencies, 95),
+      totalDeliveries,
+      successRate: totalDeliveries > 0 ? Math.round((successLogs / totalDeliveries) * 100) : 0,
+    };
+
+    // Daily trend
+    const dayMap = new Map<string, { count: number; success: number; latencies: number[] }>();
+    for (const log of logs) {
+      const date = log.createdAt.toISOString().slice(0, 10);
+      if (!dayMap.has(date)) dayMap.set(date, { count: 0, success: 0, latencies: [] });
+      const d = dayMap.get(date)!;
+      d.count++;
+      if (log.status === 'SUCCESS') {
+        d.success++;
+        if (log.durationMs !== null && log.durationMs !== undefined && log.durationMs >= 0 && log.durationMs < 300000) {
+          d.latencies.push(log.durationMs);
+        }
+      }
+    }
+
+    const dailyTrend = Array.from(dayMap.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, d]) => ({
+        date,
+        count: d.count,
+        successCount: d.success,
+        avgMs: d.latencies.length > 0 ? Math.round(d.latencies.reduce((a, b) => a + b, 0) / d.latencies.length) : null,
+      }));
+
+    return { period: { days: clampedDays }, channels, fleetStats, dailyTrend };
+  }
 }

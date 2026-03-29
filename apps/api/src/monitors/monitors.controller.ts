@@ -477,6 +477,14 @@ export class MonitorsController {
     return this.monitorsService.versionSummary(req.user.id);
   }
 
+  @Get('version-drift')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'Version drift report', description: 'Analyzes semver gap for each version monitor — shows which services are most out-of-date.' })
+  @ApiResponse({ status: 200, description: 'Drift report returned.' })
+  versionDriftReport(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.versionDriftReport(req.user.id);
+  }
+
   @Get('coverage')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({

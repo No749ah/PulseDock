@@ -23,6 +23,7 @@ import {
   Tv,
   VolumeX,
   Hash,
+  Zap,
 
   ChevronDown,
   Folder,
@@ -90,6 +91,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       { href: '/monitors/reliability', label: 'Reliability Trends', icon: Sparkles },
       { href: '/ssl', label: 'SSL Certificates', icon: ShieldCheck },
       { href: '/versions', label: 'Version Tracking', icon: GitBranch },
+      { href: '/versions/drift', label: 'Drift Report', icon: GitBranch },
     ],
   },
   {
@@ -101,6 +103,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       { href: '/alerts/analytics', label: 'Alert Analytics', icon: BarChart2 },
       { href: '/alerts/noise', label: 'Noise Analysis', icon: VolumeX },
       { href: '/alerts/history', label: 'Delivery History', icon: ClipboardList },
+      { href: '/alerts/response-time', label: 'Response Time', icon: Zap },
       { href: '/incidents', label: 'Incidents', icon: AlertOctagon },
       { href: '/incidents/insights', label: 'Incident Insights', icon: BarChart2 },
       { href: '/maintenance', label: 'Maintenance', icon: CalendarClock },

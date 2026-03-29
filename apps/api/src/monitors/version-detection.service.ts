@@ -542,6 +542,119 @@ export class VersionDetectionService {
     };
   }
 
+  /**
+   * Returns a version drift report — which monitored services are most out-of-date.
+   * Analyzes semver gap (major/minor/patch versions behind) for each version monitor.
+   * Returns sorted by drift severity (major > minor > patch > unknown).
+   */
+  async driftReport(userId: string): Promise<{
+    versions: Array<{
+      id: string;
+      name: string;
+      monitorId: string;
+      currentVersion: string | null;
+      latestVersion: string | null;
+      status: string;
+      lastCheckedAt: Date | null;
+      drift: {
+        kind: 'major' | 'minor' | 'patch' | 'up-to-date' | 'unknown';
+        majorBehind: number;
+        minorBehind: number;
+        patchBehind: number;
+        driftScore: number;
+      };
+    }>;
+    summary: {
+      total: number;
+      upToDate: number;
+      patchBehind: number;
+      minorBehind: number;
+      majorBehind: number;
+      unknown: number;
+      avgDriftScore: number;
+    };
+  }> {
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, type: { in: ['GIT_RELEASE', 'DOCKER_IMAGE'] } },
+      orderBy: { name: 'asc' },
+      include: {
+        runs: { take: 1, orderBy: { checkedAt: 'desc' } },
+      },
+    });
+
+    function parseSemver(v: string | null): [number, number, number] | null {
+      if (!v) return null;
+      const clean = v.replace(/^v/, '').replace(/[-+].*$/, '');
+      const parts = clean.split('.').map((p) => parseInt(p, 10));
+      if (parts.length < 1 || isNaN(parts[0])) return null;
+      return [parts[0] ?? 0, parts[1] ?? 0, parts[2] ?? 0];
+    }
+
+    function computeDrift(current: string | null, latest: string | null): {
+      kind: 'major' | 'minor' | 'patch' | 'up-to-date' | 'unknown';
+      majorBehind: number;
+      minorBehind: number;
+      patchBehind: number;
+      driftScore: number;
+    } {
+      const cur = parseSemver(current);
+      const lat = parseSemver(latest);
+      if (!cur || !lat) return { kind: 'unknown', majorBehind: 0, minorBehind: 0, patchBehind: 0, driftScore: 0 };
+      if (lat[0] > cur[0]) {
+        const majorBehind = lat[0] - cur[0];
+        return { kind: 'major', majorBehind, minorBehind: 0, patchBehind: 0, driftScore: majorBehind * 100 };
+      }
+      if (lat[0] === cur[0] && lat[1] > cur[1]) {
+        const minorBehind = lat[1] - cur[1];
+        return { kind: 'minor', majorBehind: 0, minorBehind, patchBehind: 0, driftScore: minorBehind * 10 };
+      }
+      if (lat[0] === cur[0] && lat[1] === cur[1] && lat[2] > cur[2]) {
+        const patchBehind = lat[2] - cur[2];
+        return { kind: 'patch', majorBehind: 0, minorBehind: 0, patchBehind, driftScore: patchBehind };
+      }
+      return { kind: 'up-to-date', majorBehind: 0, minorBehind: 0, patchBehind: 0, driftScore: 0 };
+    }
+
+    const result = monitors.map((m) => {
+      const config = (m.configJson as Record<string, unknown> | null) ?? {};
+      const currentVersion = String(config.currentVersion ?? config.currentTag ?? '').replace(/^v(?=\d)/i, '') || null;
+      const latestVersion = String(config.latestVersion ?? config.latestTag ?? '').replace(/^v(?=\d)/i, '') || null;
+      const lastRun = m.runs[0] ?? null;
+      const level = (lastRun?.level as string | undefined) ?? 'unknown';
+      const status = level === 'green' ? 'UP_TO_DATE' : level === 'red' ? 'UPDATE_AVAILABLE' : 'UNKNOWN';
+      return {
+        id: m.id,
+        name: m.name,
+        monitorId: m.id,
+        currentVersion,
+        latestVersion,
+        status,
+        lastCheckedAt: lastRun?.checkedAt ?? null,
+        drift: computeDrift(currentVersion, latestVersion),
+      };
+    });
+
+    const kindOrder = { major: 0, minor: 1, patch: 2, 'up-to-date': 3, unknown: 4 };
+    result.sort((a, b) => {
+      const ko = kindOrder[a.drift.kind] - kindOrder[b.drift.kind];
+      if (ko !== 0) return ko;
+      return b.drift.driftScore - a.drift.driftScore;
+    });
+
+    const upToDate = result.filter((v) => v.drift.kind === 'up-to-date').length;
+    const patchBehind = result.filter((v) => v.drift.kind === 'patch').length;
+    const minorBehind = result.filter((v) => v.drift.kind === 'minor').length;
+    const majorBehind = result.filter((v) => v.drift.kind === 'major').length;
+    const unknown = result.filter((v) => v.drift.kind === 'unknown').length;
+    const scores = result.map((v) => v.drift.driftScore).filter((s) => s > 0);
+    const avgDriftScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : 0;
+
+    return {
+      versions: result,
+      summary: { total: result.length, upToDate, patchBehind, minorBehind, majorBehind, unknown, avgDriftScore },
+    };
+  }
+
   // ── External import parsers ─────────────────────────────────────────────────
 
   /**

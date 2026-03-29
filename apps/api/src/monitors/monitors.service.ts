@@ -1962,6 +1962,9 @@ export class MonitorsService {
     return this.versionDetection.versionSummary(userId);
   }
 
+  async versionDriftReport(userId: string) {
+    return this.versionDetection.driftReport(userId);
+  }
 
   // ── External import parsers ─────────────────────────────────────────────────
 

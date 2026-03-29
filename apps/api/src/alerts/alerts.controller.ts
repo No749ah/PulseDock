@@ -191,6 +191,18 @@ export class AlertsController {
     return { ok: true };
   }
 
+  @Get('response-time')
+  @ApiOperation({ summary: 'Alert delivery response time', description: 'Analyzes delivery latency per alert channel — avg, P50, P95 response times.' })
+  @ApiQuery({ name: 'days', required: false, type: Number, description: 'Period in days (1-90, default 30)' })
+  @ApiResponse({ status: 200, description: 'Response time analytics returned.' })
+  deliveryResponseTime(
+    @Req() req: { user: { id: string } },
+    @Query('days') days?: string,
+  ) {
+    const d = parseInt(days ?? '30', 10);
+    return this.alertsService.deliveryResponseTime(req.user.id, Number.isFinite(d) ? d : 30);
+  }
+
   @Get('analytics')
   @ApiOperation({
     summary: 'Get alert delivery analytics',

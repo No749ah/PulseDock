@@ -1831,6 +1831,29 @@ export function MonitorFormModal({
           <p className="text-xs text-white/40 mt-1">Alert breach when recovery takes longer than this target</p>
         </div>
 
+        {/* Priority */}
+        <div className="border border-border rounded-lg p-4 space-y-3">
+          <div>
+            <label className="block text-sm font-semibold text-text-primary">Priority / Criticality</label>
+            <p className="mt-0.5 text-xs text-text-secondary">
+              Set the business priority for this monitor. Used for sorting, filtering, and alert routing rules.
+            </p>
+          </div>
+          <select
+            value={(formData as unknown as { priority?: number }).priority ?? 0}
+            onChange={e => {
+              (onSetFormData as (d: typeof formData & { priority?: number }) => void)({ ...formData, priority: parseInt(e.target.value) });
+            }}
+            className="w-48 bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white"
+          >
+            <option value={0}>Unset</option>
+            <option value={1}>P1 — Critical</option>
+            <option value={2}>P2 — High</option>
+            <option value={3}>P3 — Medium</option>
+            <option value={4}>P4 — Low</option>
+          </select>
+        </div>
+
         {/* Downtime Cost */}
         <div className="border border-border rounded-lg p-4 space-y-3">
           <div>

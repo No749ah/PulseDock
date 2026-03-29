@@ -1963,6 +1963,19 @@ function MonitorsPageInner() {
                           <TableCell className="font-medium text-text-primary">
                             <div className="flex items-center gap-1.5">
                               <Link href={"/monitors/" + monitor.id} className="hover:text-accent transition-colors truncate max-w-[120px] sm:max-w-none">{monitor.name}</Link>
+                              {(monitor as typeof monitor & { priority?: number }).priority != null && (monitor as typeof monitor & { priority?: number }).priority! > 0 && (() => {
+                                const p = (monitor as typeof monitor & { priority?: number }).priority!;
+                                const label = ['', 'P1', 'P2', 'P3', 'P4'][p] ?? '';
+                                const cls = p === 1 ? 'bg-danger/15 text-danger border-danger/30'
+                                  : p === 2 ? 'bg-warning/15 text-warning border-warning/30'
+                                  : p === 3 ? 'bg-accent/15 text-accent border-accent/30'
+                                  : 'bg-surface-elevated text-text-secondary border-border';
+                                return (
+                                  <span title={`Priority: ${label}`} className={`inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold border whitespace-nowrap ${cls}`}>
+                                    {label}
+                                  </span>
+                                );
+                              })()}
                               {monitor.isFlapping && (
                                 <span title="This monitor is flapping — rapidly alternating between up and down. Alerts are suppressed while flapping." className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[10px] font-semibold bg-warning/15 text-warning border border-warning/30 animate-pulse cursor-help whitespace-nowrap">
                                   ⚡ Flapping

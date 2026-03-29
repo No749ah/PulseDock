@@ -999,6 +999,7 @@ export class MonitorsService {
     enabled?: boolean;
     folderId?: string | null;
     alertChannelIds?: string[];
+    priority?: number;
   }): Promise<{ ok: boolean; affected: number; errors: Array<{ id: string; error: string }> }> {
     if (!body.ids.length) return { ok: true, affected: 0, errors: [] };
 
@@ -1018,6 +1019,7 @@ export class MonitorsService {
     if (body.slaTarget !== undefined) data.slaTarget = body.slaTarget;
     if (body.enabled !== undefined) data.enabled = body.enabled;
     if (body.folderId !== undefined) data.folderId = body.folderId;
+    if (body.priority !== undefined) data.priority = Math.max(0, Math.min(4, body.priority));
 
     const errors: Array<{ id: string; error: string }> = [];
 

@@ -23,6 +23,8 @@ import {
   Clock,
   Zap,
   Award,
+  Tag,
+  LayoutList,
 } from 'lucide-react';
 import { AppFrame } from '../../../components/app-frame';
 import { Card } from '../../components/Card';
@@ -70,6 +72,29 @@ type SlaDashboard = {
 };
 
 type SortKey = 'name' | 'uptimePct' | 'errorBudgetUsedPct' | 'compliant';
+
+type TagSlaMonitor = {
+  id: string;
+  name: string;
+  type: string;
+  slaTarget: number | null;
+  uptimePct: number | null;
+  compliant: boolean | null;
+};
+
+type TagSlaEntry = {
+  tagId: string | null;
+  tagName: string;
+  tagColor: string | null;
+  monitorCount: number;
+  withSlaTarget: number;
+  uptimePct: number | null;
+  compliantCount: number;
+  atRiskCount: number;
+  breachedCount: number;
+  noDataCount: number;
+  monitors: TagSlaMonitor[];
+};
 
 type ForecastDailyEntry = {
   date: string;
@@ -451,6 +476,10 @@ export default function SlaPage() {
   const [forecastMonitorId, setForecastMonitorId] = useState<string>('');
   const [forecast, setForecast] = useState<SlaBudgetForecast | null>(null);
   const [forecastLoading, setForecastLoading] = useState(false);
+  const [viewMode, setViewMode] = useState<'monitors' | 'tags'>('monitors');
+  const [tagData, setTagData] = useState<TagSlaEntry[] | null>(null);
+  const [tagLoading, setTagLoading] = useState(false);
+  const [expandedTags, setExpandedTags] = useState<Set<string>>(new Set());
   const { success: showSuccess, error: showError } = useToast();
 
   const load = useCallback(async () => {
@@ -468,7 +497,20 @@ export default function SlaPage() {
     }
   }, []);
 
+  const loadTagData = useCallback(async () => {
+    try {
+      setTagLoading(true);
+      const result = await api<TagSlaEntry[]>('/v1/monitors/sla-by-tag');
+      setTagData(result);
+    } catch {
+      setTagData([]);
+    } finally {
+      setTagLoading(false);
+    }
+  }, []);
+
   useEffect(() => { load(); }, [load]);
+  useEffect(() => { if (viewMode === 'tags' && tagData === null) loadTagData(); }, [viewMode, tagData, loadTagData]);
 
   const loadForecast = useCallback(async (monitorId: string) => {
     if (!monitorId) { setForecast(null); return; }
@@ -586,6 +628,25 @@ export default function SlaPage() {
             </p>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {/* View mode toggle */}
+            <div className="flex items-center gap-1 bg-surface border border-border rounded-lg p-1">
+              <button
+                type="button"
+                onClick={() => setViewMode('monitors')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded transition-colors ${viewMode === 'monitors' ? 'bg-accent text-white' : 'text-text-secondary hover:text-text-primary'}`}
+              >
+                <LayoutList className="w-3.5 h-3.5" />
+                Monitors
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewMode('tags')}
+                className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded transition-colors ${viewMode === 'tags' ? 'bg-accent text-white' : 'text-text-secondary hover:text-text-primary'}`}
+              >
+                <Tag className="w-3.5 h-3.5" />
+                By Tag
+              </button>
+            </div>
             {/* Report months picker */}
             <div className="flex items-center gap-1 bg-surface border border-border rounded-lg px-2">
               <span className="text-xs text-text-muted">Report:</span>
@@ -659,8 +720,100 @@ export default function SlaPage() {
           </div>
         )}
 
+        {/* Tag SLA View */}
+        {viewMode === 'tags' && (
+          <div className="space-y-3">
+            {tagLoading ? (
+              <Card className="p-8 flex items-center justify-center">
+                <RefreshCw className="w-6 h-6 animate-spin text-accent" />
+              </Card>
+            ) : !tagData || tagData.length === 0 ? (
+              <Card className="p-8 flex flex-col items-center justify-center gap-3 text-zinc-500">
+                <Tag className="w-10 h-10" />
+                <p className="text-sm">No tags found.</p>
+                <p className="text-xs text-zinc-600">Create tags and assign monitors to see tag-level SLA data.</p>
+              </Card>
+            ) : (
+              tagData.map((entry) => {
+                const isExpanded = expandedTags.has(entry.tagId ?? 'untagged');
+                const toggle = () => setExpandedTags((prev) => {
+                  const next = new Set(prev);
+                  const key = entry.tagId ?? 'untagged';
+                  if (next.has(key)) next.delete(key); else next.add(key);
+                  return next;
+                });
+                const complianceColor = entry.breachedCount > 0 ? 'text-red-400' : entry.atRiskCount > 0 ? 'text-yellow-400' : entry.uptimePct != null ? 'text-green-400' : 'text-zinc-400';
+                return (
+                  <Card key={entry.tagId ?? 'untagged'} className="overflow-hidden p-0">
+                    <button
+                      type="button"
+                      onClick={toggle}
+                      className="w-full flex items-center gap-3 px-5 py-4 hover:bg-surface-elevated/50 transition-colors"
+                    >
+                      <div
+                        className="w-3 h-3 rounded-full shrink-0"
+                        style={{ backgroundColor: entry.tagColor ?? '#6b7280' }}
+                      />
+                      <span className="font-semibold text-zinc-100 flex-1 text-left">{entry.tagName}</span>
+                      <span className="text-xs text-zinc-500">{entry.monitorCount} monitor{entry.monitorCount !== 1 ? 's' : ''}</span>
+                      <div className="flex items-center gap-4 ml-4">
+                        <span className={`font-mono font-semibold text-sm ${complianceColor}`}>
+                          {entry.uptimePct != null ? `${entry.uptimePct.toFixed(3)}%` : '—'}
+                        </span>
+                        <div className="flex items-center gap-2 text-xs">
+                          {entry.compliantCount > 0 && (
+                            <span className="flex items-center gap-1 text-green-400">
+                              <CheckCircle2 className="w-3.5 h-3.5" /> {entry.compliantCount}
+                            </span>
+                          )}
+                          {entry.atRiskCount > 0 && (
+                            <span className="flex items-center gap-1 text-yellow-400">
+                              <AlertTriangle className="w-3.5 h-3.5" /> {entry.atRiskCount}
+                            </span>
+                          )}
+                          {entry.breachedCount > 0 && (
+                            <span className="flex items-center gap-1 text-red-400">
+                              <XCircle className="w-3.5 h-3.5" /> {entry.breachedCount}
+                            </span>
+                          )}
+                          {entry.noDataCount > 0 && (
+                            <span className="flex items-center gap-1 text-zinc-500">
+                              <Circle className="w-3.5 h-3.5" /> {entry.noDataCount} no data
+                            </span>
+                          )}
+                        </div>
+                        <ChevronDown className={`w-4 h-4 text-zinc-500 transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                      </div>
+                    </button>
+                    {isExpanded && entry.monitors.length > 0 && (
+                      <div className="border-t border-border divide-y divide-border">
+                        {entry.monitors.map((m) => (
+                          <div key={m.id} className="flex items-center gap-3 px-5 py-3 text-sm">
+                            <div className="w-3 h-3 shrink-0" />
+                            <span className="flex-1 text-zinc-200 truncate">{m.name}</span>
+                            <span className="text-xs text-zinc-500 font-mono">{m.type}</span>
+                            <span className="text-xs text-zinc-500 w-16 text-right">
+                              {m.slaTarget != null ? `${m.slaTarget}%` : '—'}
+                            </span>
+                            <span className={`font-mono text-xs w-20 text-right ${m.uptimePct == null ? 'text-zinc-500' : m.compliant === false ? 'text-red-400' : m.compliant === true ? 'text-green-400' : 'text-zinc-400'}`}>
+                              {m.uptimePct != null ? `${m.uptimePct.toFixed(3)}%` : 'No data'}
+                            </span>
+                            {m.compliant === true && <CheckCircle2 className="w-4 h-4 text-green-400 shrink-0" />}
+                            {m.compliant === false && <XCircle className="w-4 h-4 text-red-400 shrink-0" />}
+                            {m.compliant === null && <Circle className="w-4 h-4 text-zinc-500 shrink-0" />}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </Card>
+                );
+              })
+            )}
+          </div>
+        )}
+
         {/* Table */}
-        <Card className="overflow-hidden p-0">
+        {viewMode === 'monitors' && <Card className="overflow-hidden p-0">
           {loading && !data ? (
             <div className="flex items-center justify-center py-16">
               <RefreshCw className="w-6 h-6 animate-spin text-accent" />
@@ -775,9 +928,9 @@ export default function SlaPage() {
               </TableBody>
             </Table>
           )}
-        </Card>
+        </Card>}
 
-        {data && (
+        {data && viewMode === 'monitors' && (
           <p className="text-xs text-zinc-600 text-right">
             Generated {new Date(data.generatedAt).toLocaleString()}
           </p>

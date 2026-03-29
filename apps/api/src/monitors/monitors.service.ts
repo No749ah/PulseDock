@@ -5392,6 +5392,165 @@ export class MonitorsService {
     };
   }
 
+  // ─── SLA by Tag ──────────────────────────────────────────────────────────
+
+  /**
+   * Compute SLA compliance aggregated by tag for the current calendar month.
+   * For each tag, returns weighted uptime%, compliance status, monitor count,
+   * and a breakdown of all member monitors.
+   *
+   * @param userId - Authenticated user
+   * @returns Array of tag SLA summaries sorted by tag name, plus an "Untagged" bucket
+   */
+  async slaByTag(userId: string): Promise<Array<{
+    tagId: string | null;
+    tagName: string;
+    tagColor: string | null;
+    monitorCount: number;
+    withSlaTarget: number;
+    uptimePct: number | null;
+    compliantCount: number;
+    atRiskCount: number;
+    breachedCount: number;
+    noDataCount: number;
+    monitors: Array<{
+      id: string;
+      name: string;
+      type: string;
+      slaTarget: number | null;
+      uptimePct: number | null;
+      compliant: boolean | null;
+    }>;
+  }>> {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Load all enabled monitors with their tags and current month runs
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, enabled: true },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        slaTarget: true,
+        monitorTags: {
+          include: { tag: { select: { id: true, name: true, color: true } } },
+        },
+      },
+    });
+
+    if (monitors.length === 0) return [];
+
+    // Fetch run aggregations for all monitors in one batch
+    const monitorIds = monitors.map((m) => m.id);
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { userId, monitorId: { in: monitorIds }, checkedAt: { gte: monthStart } },
+      select: { monitorId: true, ok: true },
+    });
+
+    // Build per-monitor uptime map
+    const runsByMonitor = new Map<string, { total: number; ok: number }>();
+    for (const r of runs) {
+      const agg = runsByMonitor.get(r.monitorId) ?? { total: 0, ok: 0 };
+      agg.total++;
+      if (r.ok) agg.ok++;
+      runsByMonitor.set(r.monitorId, agg);
+    }
+
+    const computeMonitorStats = (monitor: typeof monitors[0]) => {
+      const agg = runsByMonitor.get(monitor.id);
+      const uptimePct = agg && agg.total > 0 ? (agg.ok / agg.total) * 100 : null;
+      const slaTarget = monitor.slaTarget != null ? Number(monitor.slaTarget) : null;
+      let compliant: boolean | null = null;
+      if (slaTarget != null && uptimePct != null) {
+        compliant = uptimePct >= slaTarget;
+      }
+      return {
+        id: monitor.id,
+        name: monitor.name,
+        type: monitor.type,
+        slaTarget,
+        uptimePct: uptimePct != null ? Math.round(uptimePct * 10000) / 10000 : null,
+        compliant,
+      };
+    };
+
+    // Group monitors by tag
+    const tagMap = new Map<string, {
+      id: string;
+      name: string;
+      color: string | null;
+      monitors: typeof monitors;
+    }>();
+
+    const untaggedMonitors: typeof monitors = [];
+
+    for (const m of monitors) {
+      if (!m.monitorTags || m.monitorTags.length === 0) {
+        untaggedMonitors.push(m);
+        continue;
+      }
+      for (const mt of m.monitorTags) {
+        const tag = mt.tag;
+        if (!tag) continue;
+        const existing = tagMap.get(tag.id);
+        if (existing) {
+          existing.monitors.push(m);
+        } else {
+          tagMap.set(tag.id, { id: tag.id, name: tag.name, color: tag.color ?? null, monitors: [m] });
+        }
+      }
+    }
+
+    const buildTagResult = (tagId: string | null, tagName: string, tagColor: string | null, tagMonitors: typeof monitors) => {
+      const monitorStats = tagMonitors.map(computeMonitorStats);
+      const withSlaTarget = monitorStats.filter((m) => m.slaTarget != null).length;
+      const compliantCount = monitorStats.filter((m) => m.compliant === true).length;
+      const atRiskCount = monitorStats.filter((m) => {
+        if (m.compliant !== true || m.slaTarget == null || m.uptimePct == null) return false;
+        const margin = m.uptimePct - m.slaTarget;
+        return margin < 0.5; // within 0.5% of SLA target = at risk
+      }).length;
+      const breachedCount = monitorStats.filter((m) => m.compliant === false).length;
+      const noDataCount = monitorStats.filter((m) => m.uptimePct === null).length;
+
+      // Weighted uptime: sum of all (uptime * totalRuns) / totalRuns across all monitors
+      let totalRuns = 0;
+      let totalOkRuns = 0;
+      for (const tm of tagMonitors) {
+        const agg = runsByMonitor.get(tm.id);
+        if (agg) { totalRuns += agg.total; totalOkRuns += agg.ok; }
+      }
+      const weightedUptimePct = totalRuns > 0
+        ? Math.round((totalOkRuns / totalRuns) * 1_000_000) / 10000
+        : null;
+
+      return {
+        tagId,
+        tagName,
+        tagColor,
+        monitorCount: tagMonitors.length,
+        withSlaTarget,
+        uptimePct: weightedUptimePct,
+        compliantCount,
+        atRiskCount,
+        breachedCount,
+        noDataCount,
+        monitors: monitorStats,
+      };
+    };
+
+    const results = Array.from(tagMap.values())
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((t) => buildTagResult(t.id, t.name, t.color, t.monitors));
+
+    if (untaggedMonitors.length > 0) {
+      results.push(buildTagResult(null, 'Untagged', null, untaggedMonitors));
+    }
+
+    return results;
+  }
+
   // ─── SLA Budget Forecast ──────────────────────────────────────────────────
 
   /**

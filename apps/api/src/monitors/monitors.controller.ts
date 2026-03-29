@@ -1570,6 +1570,17 @@ export class MonitorsController {
     return this.monitorsService.slaDashboard(req.user.id);
   }
 
+  @Get('sla-by-tag')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'SLA compliance aggregated by tag',
+    description: 'Returns weighted uptime% and SLA compliance counts grouped by tag for the current calendar month. Useful for answering "What is my Database tier\'s SLA this month?".',
+  })
+  @ApiResponse({ status: 200, description: 'Per-tag SLA summary array.' })
+  slaByTag(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.slaByTag(req.user.id);
+  }
+
   @Get('sla-compliance-report')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({

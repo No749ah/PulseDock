@@ -1,3 +1,13 @@
+## Status Summary (2026-03-29 12:10 UTC)
+- **Build/Test:** ✅ 234 test files, 5158 tests passing; 0 TS errors; web + API build clean
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-29-midday (merged early → dev at 12:00 UTC)
+- **Last changes (12:10 UTC cycle):**
+  - [x] **Collapsible sidebar navigation** — Restructured 51 flat nav items into 6 groups (Overview, Monitoring, Alerting, Operations, Insights, Administration) with primary (always visible) and secondary (collapsible) items. Reduces initial sidebar from ~51 to ~22 visible items. "N more" toggle per group. Auto-expands group when navigating to a secondary page. Collapsed state persisted in localStorage. Removed duplicate heatmap entry. Split old "Management" into "Alerting" + "Operations" for clarity.
+  - [x] **Uncommitted changes** — Committed pending deployment events improvements + API key usage tests from previous cycle.
+  - [x] **Branch management** — Merged heartbeat/2026-03-29-early → dev, deleted old branch, created heartbeat/2026-03-29-midday.
+
 ## Status Summary (2026-03-29 08:35 UTC)
 - **Build/Test:** ✅ API build clean, 0 TS errors, all pages 200; public URL 200
 - **Security/Audit:** ✅ 0 vulnerabilities

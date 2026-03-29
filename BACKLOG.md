@@ -1,3 +1,12 @@
+## Status Summary (2026-03-29 05:17 UTC)
+- **Build/Test:** ✅ 221 test files, 5078 tests passing; 0 TS errors; web + API build clean
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-29-early
+- **Last changes (05:17 UTC cycle):**
+  - [x] **Health Score Leaderboard** — `GET /v1/monitors/health-scores/leaderboard`. Enriched batch health scores with name, type, grade (A–F), uptimePct24h, activeIncidents, slaCompliant, and per-monitor improvement hints. `/monitors/health-scores` frontend: fleet avg score card, grade distribution pills (clickable filter), sortable leaderboard table, expandable hint rows, score methodology legend. `Medal` nav link added. 6 unit tests.
+  - [x] **Latency Budget Tracking** — (committed by concurrent sub-agent in same cycle)
+
 ## Status Summary (2026-03-29 05:00 UTC)
 - **Build/Test:** ✅ 219 test files, 5074 tests passing; 0 TS errors; web + API build clean
 - **Security/Audit:** ✅ 0 vulnerabilities

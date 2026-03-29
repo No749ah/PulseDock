@@ -140,8 +140,8 @@ describe('AppController', () => {
     it('returns Prometheus text format string', async () => {
       const result = await controller.metricsPrometheus();
       expect(typeof result).toBe('string');
-      expect(result).toContain('# HELP pulsedock_requestsTotal');
-      expect(result).toContain('# TYPE pulsedock_requestsTotal counter');
+      expect(result).toContain('# HELP pulsedock_requests_total');
+      expect(result).toContain('# TYPE pulsedock_requests_total counter');
     });
 
     it('ends with a trailing newline (Prometheus requirement)', async () => {

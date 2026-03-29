@@ -62,22 +62,23 @@ describe('MetricsService', () => {
       expect(text.length).toBeGreaterThan(0);
     });
 
-    it('includes HELP and TYPE comments for all counters', () => {
+    it('includes HELP and TYPE comments for all counters with snake_case names', () => {
       const text = service.prometheusText();
-      expect(text).toContain('# HELP pulsedock_requestsTotal');
-      expect(text).toContain('# TYPE pulsedock_requestsTotal counter');
-      expect(text).toContain('# HELP pulsedock_errorsTotal');
-      expect(text).toContain('# TYPE pulsedock_errorsTotal counter');
-      expect(text).toContain('# HELP pulsedock_alertsSent');
-      expect(text).toContain('# HELP pulsedock_alertsFailed');
+      expect(text).toContain('# HELP pulsedock_requests_total');
+      expect(text).toContain('# TYPE pulsedock_requests_total counter');
+      expect(text).toContain('# HELP pulsedock_errors_total');
+      expect(text).toContain('# TYPE pulsedock_errors_total counter');
+      expect(text).toContain('# HELP pulsedock_alerts_sent_total');
+      expect(text).toContain('# HELP pulsedock_alerts_failed_total');
+      expect(text).toContain('# HELP pulsedock_auth_login_failed_total');
     });
 
     it('renders counter values correctly', () => {
       service.inc('requestsTotal', 42);
       service.inc('alertsSent', 7);
       const text = service.prometheusText();
-      expect(text).toContain('pulsedock_requestsTotal 42');
-      expect(text).toContain('pulsedock_alertsSent 7');
+      expect(text).toContain('pulsedock_requests_total 42');
+      expect(text).toContain('pulsedock_alerts_sent_total 7');
     });
 
     it('includes process uptime gauge', () => {
@@ -203,7 +204,7 @@ describe('MetricsService', () => {
       const prisma = makePrisma();
       const text = await service.prometheusFullText(prisma);
       expect(typeof text).toBe('string');
-      expect(text).toContain('pulsedock_requestsTotal');
+      expect(text).toContain('pulsedock_requests_total');
       expect(text).toContain('pulsedock_monitors_total 0');
       expect(text).toContain('pulsedock_monitors_up_total 0');
       expect(text).toContain('pulsedock_monitors_down_total 0');

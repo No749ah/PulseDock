@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import type { PrismaService } from './prisma.service';
 
-const METRIC_DEFS: Record<string, { help: string; type: 'counter' | 'gauge' }> = {
-  requestsTotal: { help: 'Total HTTP requests handled by the API', type: 'counter' },
-  errorsTotal: { help: 'Total HTTP errors (4xx/5xx) returned by the API', type: 'counter' },
-  authLoginFailed: { help: 'Total failed login attempts', type: 'counter' },
-  alertsSent: { help: 'Total alert notifications successfully dispatched', type: 'counter' },
-  alertsFailed: { help: 'Total alert notifications that failed to dispatch', type: 'counter' },
+const METRIC_DEFS: Record<string, { help: string; type: 'counter' | 'gauge'; prometheusName: string }> = {
+  requestsTotal: { help: 'Total HTTP requests handled by the API', type: 'counter', prometheusName: 'pulsedock_requests_total' },
+  errorsTotal: { help: 'Total HTTP errors (4xx/5xx) returned by the API', type: 'counter', prometheusName: 'pulsedock_errors_total' },
+  authLoginFailed: { help: 'Total failed login attempts', type: 'counter', prometheusName: 'pulsedock_auth_login_failed_total' },
+  alertsSent: { help: 'Total alert notifications successfully dispatched', type: 'counter', prometheusName: 'pulsedock_alerts_sent_total' },
+  alertsFailed: { help: 'Total alert notifications that failed to dispatch', type: 'counter', prometheusName: 'pulsedock_alerts_failed_total' },
 };
 
 /** Histogram buckets for monitor check duration (in ms). Wider range than HTTP requests. */
@@ -155,7 +155,7 @@ export class MetricsService {
 
     for (const [key, value] of Object.entries(this.counters)) {
       const def = METRIC_DEFS[key];
-      const name = `pulsedock_${key}`;
+      const name = def.prometheusName;
       lines.push(`# HELP ${name} ${def.help}`);
       lines.push(`# TYPE ${name} ${def.type}`);
       lines.push(`${name} ${value}`);

@@ -324,7 +324,7 @@ describe('GET /metrics/prometheus', () => {
     const res = await supertest(app.getHttpServer()).get('/metrics/prometheus');
     expect(res.status).toBe(200);
     expect(res.headers['content-type']).toContain('text/plain');
-    expect(res.text).toContain('pulsedock_requestsTotal');
+    expect(res.text).toContain('pulsedock_requests_total');
     expect(res.text).toContain('pulsedock_process_uptime_seconds');
     expect(res.text).toContain('# HELP');
     expect(res.text).toContain('# TYPE');

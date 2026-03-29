@@ -135,6 +135,141 @@ describe('DeploymentsService', () => {
     });
   });
 
+  describe('list', () => {
+    it('passes service filter to findMany', async () => {
+      const { svc, prisma } = buildService();
+      (prisma.deploymentEvent.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+      await svc.list('u1', { service: 'api' });
+      expect(prisma.deploymentEvent.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ userId: 'u1', service: 'api' }),
+        }),
+      );
+    });
+
+    it('passes environment and status filters', async () => {
+      const { svc, prisma } = buildService();
+      (prisma.deploymentEvent.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+      await svc.list('u1', { environment: 'staging', status: 'FAILED' });
+      expect(prisma.deploymentEvent.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ environment: 'staging', status: 'FAILED' }),
+        }),
+      );
+    });
+
+    it('applies days filter as createdAt gte', async () => {
+      const { svc, prisma } = buildService();
+      (prisma.deploymentEvent.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+      const before = Date.now();
+      await svc.list('u1', { days: 7 });
+      const call = (prisma.deploymentEvent.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0];
+      expect(call.where.createdAt.gte).toBeInstanceOf(Date);
+      const since = call.where.createdAt.gte.getTime();
+      expect(since).toBeGreaterThan(before - 7 * 86400000 - 1000);
+      expect(since).toBeLessThanOrEqual(before - 7 * 86400000 + 1000);
+    });
+
+    it('returns results unfiltered with no options', async () => {
+      const { svc, prisma } = buildService();
+      const events = [{ id: 'ev1' }, { id: 'ev2' }];
+      (prisma.deploymentEvent.findMany as ReturnType<typeof vi.fn>).mockResolvedValue(events);
+      const result = await svc.list('u1');
+      expect(result).toHaveLength(2);
+    });
+  });
+
+  describe('update', () => {
+    it('updates status field on existing event', async () => {
+      const { svc, prisma } = buildService();
+      const event = { id: 'ev1', userId: 'u1', service: 'api', status: 'STARTED' };
+      (prisma.deploymentEvent.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(event);
+      (prisma.deploymentEvent.update as ReturnType<typeof vi.fn>).mockResolvedValue({ ...event, status: 'SUCCESS' });
+
+      const result = await svc.update('u1', 'ev1', { status: 'SUCCESS' });
+      expect(result.status).toBe('SUCCESS');
+      expect(prisma.deploymentEvent.update).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { id: 'ev1' }, data: expect.objectContaining({ status: 'SUCCESS' }) }),
+      );
+    });
+
+    it('updates notes and durationMs', async () => {
+      const { svc, prisma } = buildService();
+      (prisma.deploymentEvent.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'ev1', userId: 'u1' });
+      (prisma.deploymentEvent.update as ReturnType<typeof vi.fn>).mockResolvedValue({ id: 'ev1', notes: 'done', durationMs: 5000 });
+
+      await svc.update('u1', 'ev1', { notes: 'done', durationMs: 5000 });
+      expect(prisma.deploymentEvent.update).toHaveBeenCalledWith(
+        expect.objectContaining({
+          data: expect.objectContaining({ notes: 'done', durationMs: 5000 }),
+        }),
+      );
+    });
+
+    it('throws NotFoundException if event not found', async () => {
+      const { svc, prisma } = buildService();
+      (prisma.deploymentEvent.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+      await expect(svc.update('u1', 'missing', { status: 'SUCCESS' })).rejects.toThrow(NotFoundException);
+    });
+  });
+
+  describe('getMonitorImpact', () => {
+    it('returns before/after latency comparison', async () => {
+      const { svc, prisma } = buildService();
+      const deployedAt = new Date('2026-03-28T12:00:00Z');
+      (prisma.deploymentEvent.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: 'dep1', userId: 'u1', service: 'api', version: '2.0.0', createdAt: deployedAt,
+      });
+      (prisma.monitorRun.findMany as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce([{ latencyMs: 100 }, { latencyMs: 200 }])  // before
+        .mockResolvedValueOnce([{ latencyMs: 150 }, { latencyMs: 250 }]); // after
+
+      const result = await svc.getMonitorImpact('u1', 'm1', 'dep1');
+      expect(result.before).toBe(150);
+      expect(result.after).toBe(200);
+      expect(result.deltaMs).toBe(50);
+      expect(result.deltaPct).toBe(33);
+      expect(result.checksBefore).toBe(2);
+      expect(result.checksAfter).toBe(2);
+    });
+
+    it('returns null deltas when no runs before deployment', async () => {
+      const { svc, prisma } = buildService();
+      (prisma.deploymentEvent.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: 'dep1', userId: 'u1', service: 'web', version: '1.0', createdAt: new Date(),
+      });
+      (prisma.monitorRun.findMany as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce([])  // no runs before
+        .mockResolvedValueOnce([{ latencyMs: 100 }]);
+
+      const result = await svc.getMonitorImpact('u1', 'm1', 'dep1');
+      expect(result.before).toBeNull();
+      expect(result.after).toBe(100);
+      expect(result.deltaMs).toBeNull();
+      expect(result.deltaPct).toBeNull();
+    });
+
+    it('handles null latencyMs values', async () => {
+      const { svc, prisma } = buildService();
+      (prisma.deploymentEvent.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue({
+        id: 'dep1', userId: 'u1', service: 'api', createdAt: new Date(),
+      });
+      (prisma.monitorRun.findMany as ReturnType<typeof vi.fn>)
+        .mockResolvedValueOnce([{ latencyMs: null }])
+        .mockResolvedValueOnce([{ latencyMs: null }]);
+
+      const result = await svc.getMonitorImpact('u1', 'm1', 'dep1');
+      expect(result.before).toBeNull();
+      expect(result.after).toBeNull();
+    });
+
+    it('throws NotFoundException for invalid deployment', async () => {
+      const { svc, prisma } = buildService();
+      (prisma.deploymentEvent.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+      await expect(svc.getMonitorImpact('u1', 'm1', 'bad')).rejects.toThrow(NotFoundException);
+    });
+  });
+
   describe('getSummary', () => {
     it('returns zero totals for empty event set', async () => {
       const { svc, prisma } = buildService();

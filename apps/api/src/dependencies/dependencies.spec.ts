@@ -127,4 +127,141 @@ describe('DependenciesService', () => {
     expect(result.affectedDownstream).toEqual([]);
     expect(result.monitor.id).toBe('mon-1');
   });
+
+  // 9. getImpactAnalysis throws NotFoundException for missing monitor
+  it('getImpactAnalysis throws NotFoundException for missing monitor', async () => {
+    prisma.monitor.findFirst.mockResolvedValue(null);
+    await expect(service.getImpactAnalysis('user-1', 'missing')).rejects.toThrow(NotFoundException);
+  });
+
+  // 10. getImpactAnalysis identifies root causes (upstream with non-green status)
+  it('getImpactAnalysis identifies root causes from upstream monitors', async () => {
+    prisma.monitor.findFirst.mockResolvedValue({
+      id: 'C', name: 'Service C', runs: [{ level: 'red' }],
+    });
+    prisma.monitorDependency.findMany.mockResolvedValue([
+      { monitorId: 'C', dependsOnId: 'B' },
+      { monitorId: 'B', dependsOnId: 'A' },
+    ]);
+    prisma.monitor.findMany.mockResolvedValue([
+      { id: 'A', name: 'Root A', runs: [{ level: 'red' }] },
+      { id: 'B', name: 'Mid B', runs: [{ level: 'green' }] },
+    ]);
+
+    const result = await service.getImpactAnalysis('user-1', 'C');
+    expect(result.rootCauses).toHaveLength(1);
+    expect(result.rootCauses[0].id).toBe('A');
+    expect(result.rootCauses[0].level).toBe('red');
+  });
+
+  // 11. getImpactAnalysis returns downstream with depth
+  it('getImpactAnalysis returns downstream with correct depth', async () => {
+    prisma.monitor.findFirst.mockResolvedValue({
+      id: 'A', name: 'Root', runs: [{ level: 'red' }],
+    });
+    prisma.monitorDependency.findMany.mockResolvedValue([
+      { monitorId: 'B', dependsOnId: 'A' },
+      { monitorId: 'C', dependsOnId: 'B' },
+    ]);
+    prisma.monitor.findMany.mockResolvedValue([
+      { id: 'B', name: 'Child B', runs: [{ level: 'yellow' }] },
+      { id: 'C', name: 'Grandchild C', runs: [{ level: 'green' }] },
+    ]);
+
+    const result = await service.getImpactAnalysis('user-1', 'A');
+    expect(result.affectedDownstream).toHaveLength(2);
+    const b = result.affectedDownstream.find((d) => d.id === 'B');
+    const c = result.affectedDownstream.find((d) => d.id === 'C');
+    expect(b?.depth).toBe(1);
+    expect(c?.depth).toBe(2);
+  });
+
+  // 12. setDependencies with empty array clears all dependencies
+  it('setDependencies with empty array clears all dependencies', async () => {
+    prisma.monitor.findFirst.mockResolvedValue({ id: 'mon-1', userId: 'user-1' });
+    prisma.$transaction.mockResolvedValue([]);
+
+    await service.setDependencies('user-1', 'mon-1', { dependsOnIds: [] });
+    const txArgs = prisma.$transaction.mock.calls[0][0];
+    // Only deleteMany, no creates
+    expect(txArgs).toHaveLength(1);
+  });
+
+  // 13. setDependencies throws NotFoundException for missing monitor
+  it('setDependencies throws NotFoundException for missing monitor', async () => {
+    prisma.monitor.findFirst.mockResolvedValue(null);
+    await expect(service.setDependencies('user-1', 'bad', { dependsOnIds: [] })).rejects.toThrow(NotFoundException);
+  });
+
+  // 14. removeDependency deletes when found
+  it('removeDependency deletes existing dependency', async () => {
+    prisma.monitorDependency.findFirst.mockResolvedValue({ id: 'dep-1' });
+    prisma.monitorDependency.delete.mockResolvedValue({});
+
+    await service.removeDependency('user-1', 'mon-1', 'mon-2');
+    expect(prisma.monitorDependency.delete).toHaveBeenCalledWith({ where: { id: 'dep-1' } });
+  });
+
+  // 15. getDependenciesForMonitor throws NotFoundException for missing monitor
+  it('getDependenciesForMonitor throws NotFoundException for missing monitor', async () => {
+    prisma.monitor.findFirst.mockResolvedValue(null);
+    await expect(service.getDependenciesForMonitor('user-1', 'missing')).rejects.toThrow(NotFoundException);
+  });
+
+  // 16. getDependenciesForMonitor returns dependencies with status
+  it('getDependenciesForMonitor returns dependencies for existing monitor', async () => {
+    prisma.monitor.findFirst.mockResolvedValue({ id: 'mon-1', userId: 'user-1' });
+    prisma.monitorDependency.findMany.mockResolvedValue([
+      { id: 'dep-1', dependsOn: { id: 'mon-2', name: 'DB', type: 'HTTP', runs: [{ status: 'up' }] } },
+    ]);
+    const result = await service.getDependenciesForMonitor('user-1', 'mon-1');
+    expect(result).toHaveLength(1);
+    expect(result[0].dependsOn.name).toBe('DB');
+  });
+
+  // 17. getDependencyGraph builds correct nodes and edges
+  it('getDependencyGraph builds correct nodes and edges from dependencies', async () => {
+    prisma.monitorDependency.findMany.mockResolvedValue([
+      { monitorId: 'A', dependsOnId: 'B', monitor: { name: 'App', type: 'HTTP' }, dependsOn: { name: 'DB', type: 'TCP' } },
+    ]);
+    prisma.monitor.findMany.mockResolvedValue([
+      { id: 'A', name: 'App', type: 'HTTP', runs: [{ level: 'green' }] },
+      { id: 'B', name: 'DB', type: 'TCP', runs: [{ level: 'green' }] },
+    ]);
+
+    const result = await service.getDependencyGraph('user-1');
+    expect(result.nodes).toHaveLength(2);
+    expect(result.edges).toHaveLength(1);
+    expect(result.edges[0]).toEqual({ from: 'B', to: 'A' });
+    const nodeA = result.nodes.find((n) => n.id === 'A')!;
+    expect(nodeA.dependencies).toContain('B');
+    const nodeB = result.nodes.find((n) => n.id === 'B')!;
+    expect(nodeB.dependents).toContain('A');
+  });
+
+  // 18. findDownstream handles cycles without infinite loop
+  it('findDownstream handles cycles without infinite loop', () => {
+    const edges = [
+      { monitorId: 'A', dependsOnId: 'B' },
+      { monitorId: 'B', dependsOnId: 'A' }, // cycle: B depends on A, A depends on B
+    ];
+    // From A: A's downstream = monitors that depend on A = B (depth 1)
+    // Then B's downstream = monitors that depend on B = A, but A is root so not in visited yet
+    const result = service.findDownstream('A', edges);
+    // Both B and A are reachable (cycle traversal stops via visited set)
+    expect(result.length).toBeGreaterThanOrEqual(1);
+    expect(result.some((r) => r.id === 'B')).toBe(true);
+  });
+
+  // 19. findUpstream handles cycles without infinite loop
+  it('findUpstream handles cycles without infinite loop', () => {
+    const edges = [
+      { monitorId: 'A', dependsOnId: 'B' },
+      { monitorId: 'B', dependsOnId: 'A' }, // cycle
+    ];
+    // From A: upstream = what A depends on = B, then B depends on A (visited), stop
+    const result = service.findUpstream('A', edges);
+    expect(result.length).toBeGreaterThanOrEqual(1);
+    expect(result).toContain('B');
+  });
 });

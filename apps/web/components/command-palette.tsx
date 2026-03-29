@@ -22,9 +22,33 @@ import {
   Download,
   Sun,
   Loader2,
-  Activity as ActivityIcon,
   GitBranch,
   FileText,
+  Target,
+  TrendingUp,
+  Timer,
+  Grid3x3,
+  Network,
+  ShieldCheck,
+  GitCompare,
+  Brain,
+  Layers,
+  Zap,
+  Gauge,
+  Hash,
+  Medal,
+  DollarSign,
+  Radio,
+  BookOpen,
+  Lightbulb,
+  Route,
+  Volume2,
+  History,
+  LineChart,
+  Rocket,
+  Newspaper,
+  Lock,
+  Tv,
 } from "lucide-react";
 import { useTheme } from "./theme-provider";
 import { api } from "../lib/api";
@@ -147,6 +171,52 @@ export function CommandPalette() {
     { id: "nav-projects", label: "Projects", description: "Project management", icon: Server, group: "Navigation", keywords: ["team", "group"], action: () => router.push("/projects") },
     { id: "nav-account", label: "Account Settings", description: "Manage your account", icon: Shield, group: "Navigation", keywords: ["profile", "password", "settings"], action: () => router.push("/account") },
     { id: "nav-admin", label: "Admin", description: "Administration panel", icon: Wrench, group: "Navigation", keywords: ["system", "users", "config"], action: () => router.push("/admin") },
+    { id: "nav-activity", label: "Activity Feed", description: "Global activity stream", icon: Activity, group: "Navigation", keywords: ["events", "feed", "log", "stream"], action: () => router.push("/activity") },
+    { id: "nav-deployments", label: "Deployments", description: "Deployment events & CI/CD", icon: Rocket, group: "Navigation", keywords: ["deploy", "release", "cicd", "ship"], action: () => router.push("/deployments") },
+    { id: "nav-reports", label: "Reports", description: "Scheduled email reports", icon: FileText, group: "Navigation", keywords: ["email", "digest", "report", "schedule"], action: () => router.push("/reports") },
+    { id: "nav-reports-digest", label: "Operations Digest", description: "Fleet-wide operations summary", icon: Newspaper, group: "Navigation", keywords: ["digest", "overview", "executive", "summary"], action: () => router.push("/reports/digest") },
+    { id: "nav-ssl", label: "SSL Certificates", description: "Certificate expiry dashboard", icon: Lock, group: "Navigation", keywords: ["ssl", "tls", "certificate", "expiry", "https"], action: () => router.push("/ssl") },
+    { id: "nav-mttr", label: "MTTR/MTTF Analytics", description: "Reliability metrics", icon: Timer, group: "Navigation", keywords: ["mttr", "mttf", "reliability", "recovery", "failure"], action: () => router.push("/mttr") },
+    { id: "nav-wallboard", label: "NOC Wallboard", description: "Full-screen monitor wall", icon: Tv, group: "Navigation", keywords: ["wallboard", "noc", "fullscreen", "wall", "tv"], action: () => router.push("/dashboard/wallboard") },
+    // Monitoring pages
+    { id: "nav-sla", label: "SLA Dashboard", description: "SLA compliance & error budgets", icon: Target, group: "Monitoring", keywords: ["sla", "uptime", "compliance", "budget", "error"], action: () => router.push("/monitors/sla") },
+    { id: "nav-fleet", label: "Fleet Report", description: "Executive fleet health overview", icon: BarChart2, group: "Monitoring", keywords: ["fleet", "report", "executive", "overview", "health"], action: () => router.push("/monitors/fleet") },
+    { id: "nav-trends", label: "Monitor Trends", description: "Week-over-week trend analysis", icon: TrendingUp, group: "Monitoring", keywords: ["trend", "improving", "degrading", "week"], action: () => router.push("/monitors/trends") },
+    { id: "nav-heatmap", label: "Uptime Heatmap", description: "Per-monitor daily uptime grid", icon: Grid3x3, group: "Monitoring", keywords: ["heatmap", "grid", "uptime", "calendar"], action: () => router.push("/monitors/heatmap") },
+    { id: "nav-timeline", label: "Status Timeline", description: "Gantt-style monitor status bars", icon: Timer, group: "Monitoring", keywords: ["timeline", "gantt", "status", "history"], action: () => router.push("/monitors/timeline") },
+    { id: "nav-predictions", label: "Failure Predictions", description: "Trend-based failure risk scoring", icon: Brain, group: "Monitoring", keywords: ["predict", "forecast", "risk", "failure", "ml"], action: () => router.push("/monitors/predictions") },
+    { id: "nav-anomaly", label: "Anomaly Report", description: "Period comparison anomaly detection", icon: Zap, group: "Monitoring", keywords: ["anomaly", "regression", "spike", "deviation"], action: () => router.push("/monitors/anomaly") },
+    { id: "nav-correlation", label: "Failure Correlation", description: "Monitor failure pattern clustering", icon: Network, group: "Monitoring", keywords: ["correlation", "cluster", "jaccard", "related"], action: () => router.push("/monitors/correlation") },
+    { id: "nav-dependencies", label: "Dependencies & Topology", description: "Monitor dependency graph", icon: Route, group: "Monitoring", keywords: ["dependency", "topology", "graph", "impact", "blast"], action: () => router.push("/monitors/dependencies") },
+    { id: "nav-compare", label: "Monitor Comparison", description: "Side-by-side monitor analysis", icon: GitCompare, group: "Monitoring", keywords: ["compare", "side-by-side", "diff", "versus"], action: () => router.push("/monitors/compare") },
+    { id: "nav-security-headers", label: "Security Headers", description: "Fleet security header audit", icon: ShieldCheck, group: "Monitoring", keywords: ["security", "headers", "csp", "hsts", "grade"], action: () => router.push("/monitors/security") },
+    { id: "nav-coverage", label: "Monitor Coverage", description: "Configuration completeness analysis", icon: Target, group: "Monitoring", keywords: ["coverage", "gaps", "missing", "config", "completeness"], action: () => router.push("/monitors/coverage") },
+    { id: "nav-health-scores", label: "Health Scores", description: "Health score leaderboard & grades", icon: Medal, group: "Monitoring", keywords: ["health", "score", "grade", "leaderboard"], action: () => router.push("/monitors/health-scores") },
+    { id: "nav-schedule", label: "Check Schedule", description: "Fleet check scheduling overview", icon: Clock, group: "Monitoring", keywords: ["schedule", "interval", "frequency", "checks", "load"], action: () => router.push("/monitors/schedule") },
+    { id: "nav-services", label: "Service Groups", description: "Logical service grouping & status", icon: Layers, group: "Monitoring", keywords: ["service", "group", "aggregate", "status"], action: () => router.push("/monitors/services") },
+    { id: "nav-tag-analytics", label: "Tag Analytics", description: "Per-tag uptime & health analysis", icon: Hash, group: "Monitoring", keywords: ["tag", "group", "analytics", "category"], action: () => router.push("/monitors/tag-analytics") },
+    { id: "nav-downtime-cost", label: "Downtime Cost", description: "Financial impact of downtime", icon: DollarSign, group: "Monitoring", keywords: ["cost", "money", "financial", "downtime", "impact"], action: () => router.push("/monitors/downtime-cost") },
+    { id: "nav-latency-heatmap", label: "Latency Heatmap", description: "Per-monitor daily latency grades", icon: Gauge, group: "Monitoring", keywords: ["latency", "heatmap", "response", "slow", "grade"], action: () => router.push("/monitors/latency-heatmap") },
+    { id: "nav-reliability", label: "Reliability Trends", description: "Weekly health score tracking", icon: LineChart, group: "Monitoring", keywords: ["reliability", "health", "weekly", "sparkline"], action: () => router.push("/monitors/reliability") },
+    { id: "nav-live", label: "Live Feed", description: "Real-time check results stream", icon: Radio, group: "Monitoring", keywords: ["live", "realtime", "feed", "stream", "checks"], action: () => router.push("/monitors/live") },
+    { id: "nav-timing-breakdown", label: "Timing Breakdown", description: "DNS/TCP/TLS/TTFB phase analysis", icon: Timer, group: "Monitoring", keywords: ["timing", "dns", "tcp", "tls", "ttfb", "waterfall"], action: () => router.push("/monitors/timing-breakdown") },
+    { id: "nav-interval-optimizer", label: "Interval Optimizer", description: "Data-driven check frequency recommendations", icon: Gauge, group: "Monitoring", keywords: ["interval", "optimize", "frequency", "recommendation"], action: () => router.push("/monitors/interval-optimizer") },
+    { id: "nav-latency-bench", label: "Latency Benchmark", description: "Latency percentile benchmarking", icon: Gauge, group: "Monitoring", keywords: ["latency", "benchmark", "percentile", "p95", "p99"], action: () => router.push("/monitors/latency-bench") },
+    // Alerting pages
+    { id: "nav-alert-analytics", label: "Alert Analytics", description: "Alert delivery stats & charts", icon: BarChart2, group: "Alerting", keywords: ["alert", "analytics", "stats", "delivery"], action: () => router.push("/alerts/analytics") },
+    { id: "nav-alert-history", label: "Alert History", description: "Alert delivery log", icon: History, group: "Alerting", keywords: ["alert", "history", "log", "delivery", "sent"], action: () => router.push("/alerts/history") },
+    { id: "nav-alert-channels", label: "Alert Channels Health", description: "Per-channel delivery stats", icon: Activity, group: "Alerting", keywords: ["channel", "health", "delivery", "success", "rate"], action: () => router.push("/alerts/channels") },
+    { id: "nav-alert-noise", label: "Alert Noise Analysis", description: "Noisy monitor detection", icon: Volume2, group: "Alerting", keywords: ["noise", "noisy", "flapping", "reduce", "quiet"], action: () => router.push("/alerts/noise") },
+    { id: "nav-alert-routing", label: "Alert Routing Rules", description: "Conditional alert routing", icon: Route, group: "Alerting", keywords: ["routing", "rules", "conditional", "filter"], action: () => router.push("/alerts/routing") },
+    { id: "nav-alert-response-time", label: "Alert Response Time", description: "Delivery latency percentiles", icon: Timer, group: "Alerting", keywords: ["response", "time", "latency", "delivery", "p95"], action: () => router.push("/alerts/response-time") },
+    { id: "nav-alert-escalation", label: "Escalation Policies", description: "Step-based alert escalation", icon: TrendingUp, group: "Alerting", keywords: ["escalation", "policy", "step", "delay"], action: () => router.push("/alerts/escalation") },
+    // Incidents pages
+    { id: "nav-incident-insights", label: "Incident Insights", description: "Frequency heatmap & severity stats", icon: Lightbulb, group: "Alerting", keywords: ["incident", "insights", "heatmap", "frequency", "severity"], action: () => router.push("/incidents/insights") },
+    { id: "nav-incident-playbooks", label: "Incident Playbooks", description: "Response playbook templates", icon: BookOpen, group: "Alerting", keywords: ["playbook", "runbook", "response", "template", "steps"], action: () => router.push("/incidents/playbooks") },
+    // Maintenance
+    { id: "nav-maintenance-effectiveness", label: "Maintenance Effectiveness", description: "Window impact analysis", icon: BarChart2, group: "Navigation", keywords: ["maintenance", "effectiveness", "impact", "noise", "suppression"], action: () => router.push("/maintenance/effectiveness") },
+    // Versions
+    { id: "nav-version-drift", label: "Version Drift", description: "Semver gap analysis per monitor", icon: GitBranch, group: "Navigation", keywords: ["drift", "outdated", "version", "semver", "gap"], action: () => router.push("/versions/drift") },
     // Create
     { id: "create-monitor", label: "New Monitor", description: "Create uptime check", icon: Plus, group: "Create", keywords: ["add", "new", "http", "tcp"], shortcut: "N M", action: () => router.push("/monitors?create=1") },
     { id: "create-alert", label: "New Alert Channel", description: "Add alert destination", icon: Plus, group: "Create", keywords: ["add", "slack", "discord", "webhook"], shortcut: "N A", action: () => router.push("/alerts") },
@@ -160,7 +230,7 @@ export function CommandPalette() {
     { id: "action-toggle-theme", label: "Toggle Theme", description: "Switch dark / light mode", icon: Sun, group: "Actions", keywords: ["dark", "light", "theme", "mode", "color"], shortcut: "T", action: () => { toggleTheme(); } },
     { id: "action-account-keys", label: "Manage API Keys", description: "View and create API keys", icon: Shield, group: "Actions", keywords: ["api", "key", "token", "auth"], action: () => router.push("/account#api-keys") },
     { id: "action-data-retention", label: "Data Retention Settings", description: "Configure data retention policies", icon: Clock, group: "Actions", keywords: ["storage", "retention", "prune", "cleanup"], action: () => router.push("/account#data-retention") },
-    { id: "action-view-health", label: "API Health Check", description: "View API health status", icon: ActivityIcon, group: "Actions", keywords: ["health", "status", "api", "uptime"], action: () => window.open("/api/v1/health", "_blank") },
+    { id: "action-view-health", label: "API Health Check", description: "View API health status", icon: Activity, group: "Actions", keywords: ["health", "status", "api", "uptime"], action: () => window.open("/api/v1/health", "_blank") },
     // External
     { id: "ext-github", label: "GitHub Repository", description: "View source code", icon: ExternalLink, group: "External", keywords: ["source", "code", "repo"], action: () => window.open("https://github.com/No749ah/PulseDock", "_blank") },
     { id: "ext-api-docs", label: "API Documentation", description: "Browse API reference (Swagger)", icon: ExternalLink, group: "External", keywords: ["api", "rest", "docs", "swagger", "openapi"], action: () => router.push("/api/docs") },
@@ -256,7 +326,7 @@ export function CommandPalette() {
     }
 
     // Regular groups in order
-    const groupOrder = ["Navigation", "Create", "Actions", "External"];
+    const groupOrder = ["Navigation", "Monitoring", "Alerting", "Create", "Actions", "External"];
     for (const groupName of groupOrder) {
       const items = filtered.filter((c) => c.group === groupName);
       if (items.length > 0) result.push({ group: groupName, items });

@@ -1,3 +1,11 @@
+## Status Summary (2026-03-29 05:05 UTC)
+- **Build/Test:** ✅ Clean build + 4283 API + 757 web + 10 CLI + 12 agent = 5062 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-29-early
+- **Last changes (05:05 UTC cycle):**
+  - [x] **Uptime Certificate** — `generateUptimeCertificate()` service method computing uptimePct, avg/p95 latency, totalDowntimeMinutes, longestOutageMinutes, incidents (ok→fail transitions), slaCompliant. `GET /v1/monitors/:id/uptime-certificate/data` (JSON, auth-guarded). `GET /v1/public/certificates/:monitorId` (public HTML, shareToken auth) — self-contained print-ready HTML with dark design, PulseDock branding, SLA compliance badge. Frontend `CertificateModal` with period picker, live preview, Download PDF + Copy Share Link buttons. Monitor detail page Certificate button wired to modal. 8 unit tests.
+
 ## Status Summary (2026-03-29 04:50 UTC)
 - **Build/Test:** ✅ Clean build + 4275 API + 757 web + 10 CLI + 12 agent = 5054 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

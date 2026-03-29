@@ -21,6 +21,7 @@ import {
   TrendingUp,
   Tv,
   VolumeX,
+  Hash,
 
   ChevronDown,
   Folder,
@@ -79,6 +80,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       { href: '/monitors/correlation', label: 'Correlation', icon: GitMerge },
       { href: '/monitors/security', label: 'Security Headers', icon: Shield },
       { href: '/monitors/services', label: 'Service Groups', icon: Layers },
+      { href: '/monitors/tag-analytics', label: 'Tag Analytics', icon: Hash },
       { href: '/ssl', label: 'SSL Certificates', icon: ShieldCheck },
       { href: '/versions', label: 'Version Tracking', icon: GitBranch },
     ],

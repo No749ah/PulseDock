@@ -7436,6 +7436,275 @@ export class MonitorsService {
 
     return { days };
   }
+  // ─── Assertion Stats ─────────────────────────────────────────────────────
+
+  /**
+   * Returns per-assertion-type failure statistics for a monitor over the last N days.
+   */
+  async getAssertionStats(
+    userId: string,
+    monitorId: string,
+    days: number,
+  ): Promise<{
+    periodDays: number;
+    totalChecks: number;
+    assertionChecks: number;
+    totalAssertionFailures: number;
+    byType: {
+      bodyContains: { failures: number; pct: number };
+      jsonPath: { failures: number; pct: number };
+      headerAssertions: { failures: number; pct: number; topHeaders: string[] };
+    };
+    recentFailures: Array<{
+      checkedAt: string;
+      type: string;
+      message: string;
+      latencyMs: number | null;
+    }>;
+  }> {
+    const safeDays = Math.min(90, Math.max(1, isFinite(days) ? days : 30));
+    const since = new Date(Date.now() - safeDays * 24 * 60 * 60 * 1000);
+
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, userId },
+      select: { id: true },
+    });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId, checkedAt: { gte: since } },
+      select: {
+        level: true,
+        message: true,
+        latencyMs: true,
+        checkedAt: true,
+        headerAssertionsFailed: true,
+      },
+      orderBy: { checkedAt: 'desc' },
+    });
+
+    const totalChecks = runs.length;
+    let bodyContainsFailed = 0;
+    let jsonPathFailed = 0;
+    let headerAssertionFailed = 0;
+    const headerFailMap = new Map<string, number>();
+    const recentFailures: Array<{ checkedAt: string; type: string; message: string; latencyMs: number | null }> = [];
+
+    for (const run of runs) {
+      if (run.level !== 'yellow') continue;
+
+      const msg = run.message ?? '';
+      let isAssertionFail = false;
+
+      if (msg.toLowerCase().includes('body') && !msg.toLowerCase().includes('json path') && !msg.toLowerCase().includes('jsonpath')) {
+        bodyContainsFailed++;
+        isAssertionFail = true;
+        if (recentFailures.length < 20) {
+          recentFailures.push({ checkedAt: run.checkedAt.toISOString(), type: 'bodyContains', message: msg, latencyMs: run.latencyMs ?? null });
+        }
+      }
+
+      if (msg.toLowerCase().includes('json path') || msg.toLowerCase().includes('jsonpath')) {
+        jsonPathFailed++;
+        isAssertionFail = true;
+        if (recentFailures.length < 20) {
+          recentFailures.push({ checkedAt: run.checkedAt.toISOString(), type: 'jsonPath', message: msg, latencyMs: run.latencyMs ?? null });
+        }
+      }
+
+      const headerFails = run.headerAssertionsFailed as Array<{ header: string; message?: string }> | null;
+      if (headerFails && Array.isArray(headerFails) && headerFails.length > 0) {
+        headerAssertionFailed++;
+        isAssertionFail = true;
+        for (const hf of headerFails) {
+          if (hf.header) {
+            headerFailMap.set(hf.header, (headerFailMap.get(hf.header) ?? 0) + 1);
+          }
+        }
+        if (recentFailures.length < 20) {
+          recentFailures.push({
+            checkedAt: run.checkedAt.toISOString(),
+            type: 'headerAssertions',
+            message: headerFails.map((hf) => hf.message ?? hf.header).join('; '),
+            latencyMs: run.latencyMs ?? null,
+          });
+        }
+      }
+
+      void isAssertionFail;
+    }
+
+    const assertionChecks = totalChecks > 0 ? totalChecks : 0;
+    const totalAssertionFailures = bodyContainsFailed + jsonPathFailed + headerAssertionFailed;
+
+    const pct = (n: number) => assertionChecks > 0 ? Math.round((n / assertionChecks) * 10000) / 100 : 0;
+
+    const topHeaders = [...headerFailMap.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([h]) => h);
+
+    return {
+      periodDays: safeDays,
+      totalChecks,
+      assertionChecks,
+      totalAssertionFailures,
+      byType: {
+        bodyContains: { failures: bodyContainsFailed, pct: pct(bodyContainsFailed) },
+        jsonPath: { failures: jsonPathFailed, pct: pct(jsonPathFailed) },
+        headerAssertions: { failures: headerAssertionFailed, pct: pct(headerAssertionFailed), topHeaders },
+      },
+      recentFailures,
+    };
+  }
+
+  // ─── Tag Analytics ───────────────────────────────────────────────────────
+
+  /**
+   * Returns per-tag health analytics aggregated over the last N days.
+   */
+  async getTagAnalytics(
+    userId: string,
+    days: number,
+  ): Promise<{
+    periodDays: number;
+    tags: Array<{
+      tag: string;
+      monitorCount: number;
+      avgUptimePct: number;
+      worstUptimePct: number;
+      totalIncidents: number;
+      avgLatencyMs: number | null;
+      monitorsDown: number;
+      health: 'healthy' | 'degraded' | 'critical';
+    }>;
+  }> {
+    const safeDays = Math.min(90, Math.max(1, isFinite(days) ? days : 7));
+    const since = new Date(Date.now() - safeDays * 24 * 60 * 60 * 1000);
+
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        monitorTags: { include: { tag: true } },
+      },
+    });
+
+    if (monitors.length === 0) {
+      return { periodDays: safeDays, tags: [] };
+    }
+
+    const monitorIds = monitors.map((m) => m.id);
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId: { in: monitorIds }, checkedAt: { gte: since } },
+      select: { monitorId: true, ok: true, level: true, latencyMs: true },
+    });
+
+    // Current status: latest run per monitor
+    const latestRuns = await this.prisma.monitorRun.findMany({
+      where: { monitorId: { in: monitorIds } },
+      select: { monitorId: true, level: true },
+      orderBy: { checkedAt: 'desc' },
+      distinct: ['monitorId'],
+    });
+
+    const currentStatusMap = new Map<string, string>();
+    for (const r of latestRuns) {
+      currentStatusMap.set(r.monitorId, r.level);
+    }
+
+    // Per-monitor stats
+    type MonitorStats = { total: number; ok: number; latencySum: number; latencyCount: number; incidents: number };
+    const statsMap = new Map<string, MonitorStats>();
+
+    for (const run of runs) {
+      const s = statsMap.get(run.monitorId) ?? { total: 0, ok: 0, latencySum: 0, latencyCount: 0, incidents: 0 };
+      s.total++;
+      if (run.ok) s.ok++;
+      if (!run.ok) s.incidents++;
+      if (run.latencyMs != null) { s.latencySum += run.latencyMs; s.latencyCount++; }
+      statsMap.set(run.monitorId, s);
+    }
+
+    const uptimePctOf = (monitorId: string): number => {
+      const s = statsMap.get(monitorId);
+      if (!s || s.total === 0) return 100;
+      return (s.ok / s.total) * 100;
+    };
+
+    // Group monitors by tag
+    type TagBucket = { monitors: string[] };
+    const tagBuckets = new Map<string, TagBucket>();
+    const untaggedIds: string[] = [];
+
+    for (const m of monitors) {
+      if (!m.monitorTags || m.monitorTags.length === 0) {
+        untaggedIds.push(m.id);
+        continue;
+      }
+      for (const mt of m.monitorTags) {
+        const name = mt.tag.name;
+        const bucket = tagBuckets.get(name) ?? { monitors: [] };
+        bucket.monitors.push(m.id);
+        tagBuckets.set(name, bucket);
+      }
+    }
+
+    const buildTagResult = (tagName: string, monitorList: string[]): {
+      tag: string;
+      monitorCount: number;
+      avgUptimePct: number;
+      worstUptimePct: number;
+      totalIncidents: number;
+      avgLatencyMs: number | null;
+      monitorsDown: number;
+      health: 'healthy' | 'degraded' | 'critical';
+    } => {
+      const uptimes = monitorList.map(uptimePctOf);
+      const avg = uptimes.reduce((a, b) => a + b, 0) / uptimes.length;
+      const worst = Math.min(...uptimes);
+      const totalIncidents = monitorList.reduce((sum, id) => sum + (statsMap.get(id)?.incidents ?? 0), 0);
+
+      let latencySum = 0;
+      let latencyCount = 0;
+      for (const id of monitorList) {
+        const s = statsMap.get(id);
+        if (s && s.latencyCount > 0) { latencySum += s.latencySum; latencyCount += s.latencyCount; }
+      }
+      const avgLatencyMs = latencyCount > 0 ? Math.round(latencySum / latencyCount) : null;
+
+      const monitorsDown = monitorList.filter((id) => currentStatusMap.get(id) === 'red').length;
+
+      const avgRounded = Math.round(avg * 100) / 100;
+      const worstRounded = Math.round(worst * 100) / 100;
+      let health: 'healthy' | 'degraded' | 'critical';
+      if (avgRounded > 99) health = 'healthy';
+      else if (avgRounded >= 95) health = 'degraded';
+      else health = 'critical';
+
+      return {
+        tag: tagName,
+        monitorCount: monitorList.length,
+        avgUptimePct: avgRounded,
+        worstUptimePct: worstRounded,
+        totalIncidents,
+        avgLatencyMs,
+        monitorsDown,
+        health,
+      };
+    };
+
+    const tagResults = [...tagBuckets.entries()]
+      .map(([name, bucket]) => buildTagResult(name, bucket.monitors))
+      .sort((a, b) => a.avgUptimePct - b.avgUptimePct);
+
+    if (untaggedIds.length > 0) {
+      tagResults.push(buildTagResult('Untagged', untaggedIds));
+    }
+
+    return { periodDays: safeDays, tags: tagResults };
+  }
 
 }
 
@@ -7693,6 +7962,7 @@ async function playgroundHttpRequest(
   }
   throw new Error(`Too many redirects (>${maxRedirects}) from ${url}`);
 }
+
 
 // ─── Playground SSL Helper ─────────────────────────────────────────────────
 async function getPlaygroundSslInfo(

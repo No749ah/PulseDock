@@ -2070,4 +2070,43 @@ export class MonitorsController {
     const d = parseInt(days ?? '30', 10);
     return this.monitorsService.downtimeCostHistory(id, req.user.id, Number.isFinite(d) ? d : 30);
   }
+
+  // ─── Assertion Stats ──────────────────────────────────────────────────────
+
+  @Get(':id/assertion-stats')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Per-assertion-type failure statistics for a monitor',
+    description: 'Returns failure counts and percentages for bodyContains, jsonPath, and headerAssertion checks over the specified period.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'days', required: false, type: Number, description: 'Lookback window in days (1–90, default 30)' })
+  @ApiResponse({ status: 200, description: 'Assertion stats returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  getAssertionStats(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('days') days?: string,
+  ) {
+    const d = parseInt(days ?? '30', 10);
+    return this.monitorsService.getAssertionStats(req.user.id, id, Number.isFinite(d) ? d : 30);
+  }
+
+  // ─── Tag Analytics ────────────────────────────────────────────────────────
+
+  @Get('tag-analytics')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Per-tag health analytics',
+    description: 'Returns aggregated uptime, incident counts, and health classification grouped by tag for all monitors. Sorted by average uptime ascending (worst first). Untagged monitors appear last.',
+  })
+  @ApiQuery({ name: 'days', required: false, type: Number, description: 'Lookback window in days (1–90, default 7)' })
+  @ApiResponse({ status: 200, description: 'Tag analytics returned.' })
+  getTagAnalytics(
+    @Req() req: { user: { id: string } },
+    @Query('days') days?: string,
+  ) {
+    const d = parseInt(days ?? '7', 10);
+    return this.monitorsService.getTagAnalytics(req.user.id, Number.isFinite(d) ? d : 7);
+  }
 }

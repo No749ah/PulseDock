@@ -107,6 +107,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       { href: '/incidents', label: 'Incidents', icon: AlertOctagon },
       { href: '/incidents/insights', label: 'Incident Insights', icon: BarChart2 },
       { href: '/maintenance', label: 'Maintenance', icon: CalendarClock },
+      { href: '/maintenance/effectiveness', label: 'Window Effectiveness', icon: CalendarClock },
 
       { href: '/projects', label: 'Projects', icon: Folder },
       { href: '/status-pages', label: 'Status Pages', icon: Globe },

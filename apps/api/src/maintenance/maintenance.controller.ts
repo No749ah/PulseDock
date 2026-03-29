@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
   UseGuards,
 } from '@nestjs/common';
@@ -13,6 +14,7 @@ import {
   ApiBearerAuth,
   ApiOperation,
   ApiParam,
+  ApiQuery,
   ApiResponse,
   ApiTags,
 } from '@nestjs/swagger';
@@ -30,6 +32,18 @@ interface AuthenticatedRequest {
 @Controller('v1/maintenance')
 export class MaintenanceController {
   constructor(private readonly service: MaintenanceService) {}
+
+  @Get('effectiveness')
+  @ApiOperation({ summary: 'Maintenance window effectiveness report', description: 'For each past one-shot window: checks run during the window, baseline failure rate, suppressed alerts, and post-maintenance recovery time.' })
+  @ApiQuery({ name: 'days', required: false, type: Number, description: 'Look-back period in days (1–365, default 90)' })
+  @ApiResponse({ status: 200, description: 'Effectiveness report returned.' })
+  effectiveness(
+    @Req() req: AuthenticatedRequest,
+    @Query('days') days?: string,
+  ) {
+    const d = parseInt(days ?? '90', 10);
+    return this.service.effectiveness(req.user.id, Number.isFinite(d) ? d : 90);
+  }
 
   @Get()
   @ApiOperation({ summary: 'List all maintenance windows', description: 'Returns all maintenance windows for the authenticated user, ordered by startsAt ascending. Includes `isActive` computed flag.' })

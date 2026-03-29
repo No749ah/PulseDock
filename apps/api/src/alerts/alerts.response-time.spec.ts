@@ -4,9 +4,9 @@ import { AlertsService } from './alerts.service';
 type MockLog = {
   id: string;
   status: string;
-  sentAt: Date | null;
+  durationMs: number | null;
   createdAt: Date;
-  channel: { id: string; name: string; type: string } | null;
+  alertChannel: { id: string; name: string; type: string } | null;
 };
 
 function buildService(logs: MockLog[]): AlertsService {
@@ -14,7 +14,6 @@ function buildService(logs: MockLog[]): AlertsService {
     alertDeliveryLog: { findMany: vi.fn().mockResolvedValue(logs) },
     alertChannel: { findMany: vi.fn().mockResolvedValue([]) },
   };
-  // AlertsService constructor: (prisma, metrics, mailer, notifications, realtime?)
   return new AlertsService(prisma as never, {} as never, {} as never, {} as never);
 }
 
@@ -32,12 +31,11 @@ describe('AlertsService.deliveryResponseTime', () => {
     expect(r.dailyTrend).toHaveLength(0);
   });
 
-  it('computes avg delivery latency from sentAt - createdAt', async () => {
+  it('computes avg delivery latency from durationMs', async () => {
     const created = makeDate(1);
-    const sent = new Date(created.getTime() + 500); // 500ms later
     const logs: MockLog[] = [{
-      id: '1', status: 'SUCCESS', sentAt: sent, createdAt: created,
-      channel: { id: 'ch1', name: 'Slack', type: 'slack' },
+      id: '1', status: 'SUCCESS', durationMs: 500, createdAt: created,
+      alertChannel: { id: 'ch1', name: 'Slack', type: 'slack' },
     }];
     const svc = buildService(logs);
     const r = await svc.deliveryResponseTime('user-1', 30);
@@ -48,8 +46,8 @@ describe('AlertsService.deliveryResponseTime', () => {
 
   it('counts failed deliveries and excludes them from latency', async () => {
     const logs: MockLog[] = [
-      { id: '1', status: 'SUCCESS', sentAt: new Date(makeDate(1).getTime() + 200), createdAt: makeDate(1), channel: { id: 'ch1', name: 'PD', type: 'pagerduty' } },
-      { id: '2', status: 'FAILED', sentAt: null, createdAt: makeDate(2), channel: { id: 'ch1', name: 'PD', type: 'pagerduty' } },
+      { id: '1', status: 'SUCCESS', durationMs: 200, createdAt: makeDate(1), alertChannel: { id: 'ch1', name: 'PD', type: 'pagerduty' } },
+      { id: '2', status: 'FAILED', durationMs: null, createdAt: makeDate(2), alertChannel: { id: 'ch1', name: 'PD', type: 'pagerduty' } },
     ];
     const svc = buildService(logs);
     const r = await svc.deliveryResponseTime('user-1', 30);
@@ -61,10 +59,10 @@ describe('AlertsService.deliveryResponseTime', () => {
 
   it('computes fleet-level success rate correctly', async () => {
     const logs: MockLog[] = [
-      { id: '1', status: 'SUCCESS', sentAt: makeDate(1), createdAt: makeDate(1), channel: { id: 'c1', name: 'A', type: 'slack' } },
-      { id: '2', status: 'SUCCESS', sentAt: makeDate(1), createdAt: makeDate(1), channel: { id: 'c1', name: 'A', type: 'slack' } },
-      { id: '3', status: 'FAILED', sentAt: null, createdAt: makeDate(1), channel: { id: 'c1', name: 'A', type: 'slack' } },
-      { id: '4', status: 'FAILED', sentAt: null, createdAt: makeDate(1), channel: { id: 'c1', name: 'A', type: 'slack' } },
+      { id: '1', status: 'SUCCESS', durationMs: 100, createdAt: makeDate(1), alertChannel: { id: 'c1', name: 'A', type: 'slack' } },
+      { id: '2', status: 'SUCCESS', durationMs: 200, createdAt: makeDate(1), alertChannel: { id: 'c1', name: 'A', type: 'slack' } },
+      { id: '3', status: 'FAILED', durationMs: null, createdAt: makeDate(1), alertChannel: { id: 'c1', name: 'A', type: 'slack' } },
+      { id: '4', status: 'FAILED', durationMs: null, createdAt: makeDate(1), alertChannel: { id: 'c1', name: 'A', type: 'slack' } },
     ];
     const svc = buildService(logs);
     const r = await svc.deliveryResponseTime('user-1', 30);
@@ -75,8 +73,8 @@ describe('AlertsService.deliveryResponseTime', () => {
   it('builds daily trend entries', async () => {
     const d = makeDate(0);
     const logs: MockLog[] = [
-      { id: '1', status: 'SUCCESS', sentAt: new Date(d.getTime() + 100), createdAt: d, channel: { id: 'c1', name: 'A', type: 'slack' } },
-      { id: '2', status: 'SUCCESS', sentAt: new Date(d.getTime() + 300), createdAt: d, channel: { id: 'c1', name: 'A', type: 'slack' } },
+      { id: '1', status: 'SUCCESS', durationMs: 100, createdAt: d, alertChannel: { id: 'c1', name: 'A', type: 'slack' } },
+      { id: '2', status: 'SUCCESS', durationMs: 300, createdAt: d, alertChannel: { id: 'c1', name: 'A', type: 'slack' } },
     ];
     const svc = buildService(logs);
     const r = await svc.deliveryResponseTime('user-1', 30);

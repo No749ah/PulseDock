@@ -296,4 +296,182 @@ export class MaintenanceService {
     }
     return false;
   }
+
+  /**
+   * Analyzes the effectiveness of past maintenance windows.
+   *
+   * For each completed (non-recurring) window in the past N days:
+   * - Count check runs during the window
+   * - Count failures during the window
+   * - Compare to baseline failure rate (equal-duration period before the window)
+   * - Detect post-maintenance recovery: first successful check after window ends
+   * - Compute suppressed alerts (failures during window that would otherwise have fired)
+   *
+   * @param userId  - Owner's user ID
+   * @param days    - How far back to look for completed windows (1–365, default 90)
+   */
+  async effectiveness(userId: string, days: number): Promise<{
+    period: { days: number; since: string };
+    summary: {
+      totalWindows: number;
+      avgDurationMinutes: number;
+      totalSuppressedAlerts: number;
+      avgBaselineFailurePct: number;
+      avgWindowFailurePct: number;
+      noiseReductionPct: number;
+    };
+    windows: Array<{
+      id: string;
+      name: string;
+      description: string | null;
+      startsAt: string;
+      endsAt: string;
+      durationMinutes: number;
+      monitorIds: string[];
+      monitorNames: string[];
+      checksInWindow: number;
+      failuresInWindow: number;
+      windowFailurePct: number;
+      checksInBaseline: number;
+      failuresInBaseline: number;
+      baselineFailurePct: number;
+      suppressedAlerts: number;
+      recoveredAfterMinutes: number | null;
+      status: 'effective' | 'over-active' | 'no-data';
+    }>;
+  }> {
+    const clampedDays = Math.min(365, Math.max(1, days));
+    const since = new Date(Date.now() - clampedDays * 24 * 60 * 60 * 1000);
+    const now = new Date();
+
+    // Only look at one-shot (NONE recurrence) windows that have already ended
+    const windows = await this.prisma.maintenanceWindow.findMany({
+      where: {
+        userId,
+        recurrence: 'NONE',
+        endsAt: { lte: now, gte: since },
+      },
+      include: {
+        monitors: {
+          include: { monitor: { select: { id: true, name: true } } },
+        },
+      },
+      orderBy: { startsAt: 'desc' },
+    });
+
+    const windowResults = await Promise.all(windows.map(async (w) => {
+      const durationMs = w.endsAt.getTime() - w.startsAt.getTime();
+      const durationMinutes = Math.round(durationMs / 60000);
+      const monitorIds = w.monitors.map(m => m.monitor.id);
+      const monitorNames = w.monitors.map(m => m.monitor.name);
+
+      // Baseline: same duration period immediately before the window
+      const baselineEnd = w.startsAt;
+      const baselineStart = new Date(w.startsAt.getTime() - durationMs);
+
+      const monitorFilter = monitorIds.length > 0
+        ? { monitorId: { in: monitorIds } }
+        : { monitor: { userId } };
+
+      const [windowRuns, baselineRuns] = await Promise.all([
+        this.prisma.monitorRun.findMany({
+          where: { ...monitorFilter, checkedAt: { gte: w.startsAt, lte: w.endsAt } },
+          select: { ok: true, checkedAt: true },
+        }),
+        this.prisma.monitorRun.findMany({
+          where: { ...monitorFilter, checkedAt: { gte: baselineStart, lte: baselineEnd } },
+          select: { ok: true },
+        }),
+      ]);
+
+      const checksInWindow = windowRuns.length;
+      const failuresInWindow = windowRuns.filter(r => !r.ok).length;
+      const windowFailurePct = checksInWindow > 0
+        ? Math.round((failuresInWindow / checksInWindow) * 100)
+        : 0;
+
+      const checksInBaseline = baselineRuns.length;
+      const failuresInBaseline = baselineRuns.filter(r => !r.ok).length;
+      const baselineFailurePct = checksInBaseline > 0
+        ? Math.round((failuresInBaseline / checksInBaseline) * 100)
+        : 0;
+
+      // Suppressed alerts = failures during window that would have fired if not in maintenance
+      const suppressedAlerts = failuresInWindow;
+
+      // Recovery detection: first ok run after window ends within 30 minutes
+      const recoveryRuns = await this.prisma.monitorRun.findMany({
+        where: {
+          ...monitorFilter,
+          checkedAt: { gte: w.endsAt, lte: new Date(w.endsAt.getTime() + 30 * 60 * 1000) },
+          ok: true,
+        },
+        orderBy: { checkedAt: 'asc' },
+        take: 1,
+      });
+
+      const recoveredAfterMinutes = recoveryRuns.length > 0
+        ? Math.round((recoveryRuns[0].checkedAt.getTime() - w.endsAt.getTime()) / 60000)
+        : null;
+
+      // Status: effective = reduced failures; over-active = no failures in baseline (window unnecessary); no-data = no checks
+      let status: 'effective' | 'over-active' | 'no-data';
+      if (checksInWindow === 0 && checksInBaseline === 0) {
+        status = 'no-data';
+      } else if (baselineFailurePct === 0 && failuresInWindow === 0) {
+        status = 'over-active';
+      } else {
+        status = 'effective';
+      }
+
+      return {
+        id: w.id,
+        name: w.name,
+        description: w.description ?? null,
+        startsAt: w.startsAt.toISOString(),
+        endsAt: w.endsAt.toISOString(),
+        durationMinutes,
+        monitorIds,
+        monitorNames,
+        checksInWindow,
+        failuresInWindow,
+        windowFailurePct,
+        checksInBaseline,
+        failuresInBaseline,
+        baselineFailurePct,
+        suppressedAlerts,
+        recoveredAfterMinutes,
+        status,
+      };
+    }));
+
+    const totalWindows = windowResults.length;
+    const avgDurationMinutes = totalWindows > 0
+      ? Math.round(windowResults.reduce((a, b) => a + b.durationMinutes, 0) / totalWindows)
+      : 0;
+    const totalSuppressedAlerts = windowResults.reduce((a, b) => a + b.suppressedAlerts, 0);
+    const withData = windowResults.filter(w => w.status !== 'no-data');
+    const avgBaselineFailurePct = withData.length > 0
+      ? Math.round(withData.reduce((a, b) => a + b.baselineFailurePct, 0) / withData.length)
+      : 0;
+    const avgWindowFailurePct = withData.length > 0
+      ? Math.round(withData.reduce((a, b) => a + b.windowFailurePct, 0) / withData.length)
+      : 0;
+    const noiseReductionPct = avgBaselineFailurePct > 0
+      ? Math.round(((avgBaselineFailurePct - avgWindowFailurePct) / avgBaselineFailurePct) * 100)
+      : 0;
+
+    return {
+      period: { days: clampedDays, since: since.toISOString().slice(0, 10) },
+      summary: {
+        totalWindows,
+        avgDurationMinutes,
+        totalSuppressedAlerts,
+        avgBaselineFailurePct,
+        avgWindowFailurePct,
+        noiseReductionPct,
+      },
+      windows: windowResults,
+    };
+  }
 }

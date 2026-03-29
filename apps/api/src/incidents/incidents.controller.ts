@@ -12,7 +12,7 @@ import {
   HttpStatus,
   UseGuards,
 } from '@nestjs/common';
-import { ApiTags, ApiOperation, ApiParam, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiParam, ApiQuery, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { IncidentsService, CreateIncidentDto, UpdateIncidentDto, AddUpdateDto } from './incidents.service';
 import { AuthGuard } from '../common/auth.guard';
 import type { Request } from 'express';
@@ -74,6 +74,18 @@ interface AuthenticatedRequest extends Request {
 @Controller('v1/incidents')
 export class IncidentsController {
   constructor(private readonly incidents: IncidentsService) {}
+
+  @Get('insights')
+  @ApiOperation({ summary: 'Incident analytics', description: 'Frequency heatmap, severity distribution, top affected monitors, and weekly trend for the last N days.' })
+  @ApiQuery({ name: 'days', required: false, type: Number, description: 'Period in days (7-365, default 90)' })
+  @ApiResponse({ status: 200, description: 'Incident insights returned.' })
+  insights(
+    @Req() req: AuthenticatedRequest,
+    @Query('days') days?: string,
+  ) {
+    const d = parseInt(days ?? '90', 10);
+    return this.incidents.incidentInsights(req.user.sub, Number.isFinite(d) ? d : 90);
+  }
 
   @Get()
   @ApiOperation({ summary: 'List all incidents', description: 'Returns all incidents for the authenticated user, ordered by creation date descending. Includes active incidents first, then resolved.' })

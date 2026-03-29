@@ -583,6 +583,19 @@ export class MonitorsController {
     return this.monitorsService.getSecurityHeadersSummary(req.user.id);
   }
 
+  @Get('reliability')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'Monitor reliability trend', description: 'Weekly reliability score trend per monitor for the last N weeks (2–26).' })
+  @ApiQuery({ name: 'weeks', required: false, type: Number, description: 'Number of weeks (2-26, default 12)' })
+  @ApiResponse({ status: 200, description: 'Reliability trends returned.' })
+  reliabilityTrend(
+    @Req() req: { user: { id: string } },
+    @Query('weeks') weeks?: string,
+  ) {
+    const w = parseInt(weeks ?? '12', 10);
+    return this.monitorsService.reliabilityTrend(req.user.id, Number.isFinite(w) ? w : 12);
+  }
+
   @Get('latency-heatmap')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({

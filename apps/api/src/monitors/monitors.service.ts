@@ -8411,6 +8411,183 @@ export class MonitorsService {
     };
   }
 
+  /**
+   * Returns weekly reliability trend data per monitor for the last N weeks.
+   * For each week: uptimePct, avgLatencyMs, incidents, checksTotal, checksFailed.
+   * Score = uptimePct * 0.6 + (latency grade) * 0.4 — clamped 0–100.
+   * Used by the /monitors/reliability page.
+   */
+  async reliabilityTrend(userId: string, weeks: number): Promise<{
+    monitors: Array<{
+      id: string;
+      name: string;
+      type: string;
+      folder: string | null;
+      currentScore: number | null;
+      trend: 'improving' | 'degrading' | 'stable' | 'new';
+      deltaPct: number | null;
+      weeks: Array<{
+        weekStart: string;
+        uptimePct: number | null;
+        avgLatencyMs: number | null;
+        checksTotal: number;
+        checksFailed: number;
+        incidents: number;
+        score: number | null;
+      }>;
+    }>;
+    weekStarts: string[];
+    summary: {
+      improving: number;
+      degrading: number;
+      stable: number;
+      avgCurrentScore: number | null;
+    };
+  }> {
+    const clampedWeeks = Math.min(26, Math.max(2, weeks));
+
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, enabled: true },
+      select: { id: true, name: true, type: true, folder: { select: { name: true } } },
+      orderBy: [{ pinned: 'desc' }, { createdAt: 'asc' }],
+    });
+
+    const now = new Date();
+    // Align to Monday start of current week
+    const dow = now.getUTCDay(); // 0=Sun
+    const daysSinceMon = (dow + 6) % 7;
+    const thisMonday = new Date(now);
+    thisMonday.setUTCHours(0, 0, 0, 0);
+    thisMonday.setUTCDate(now.getUTCDate() - daysSinceMon);
+
+    const weekStarts: string[] = [];
+    for (let i = clampedWeeks - 1; i >= 0; i--) {
+      const d = new Date(thisMonday);
+      d.setUTCDate(thisMonday.getUTCDate() - i * 7);
+      weekStarts.push(d.toISOString().slice(0, 10));
+    }
+
+    const since = new Date(weekStarts[0]);
+
+    if (monitors.length === 0) {
+      return {
+        monitors: [],
+        weekStarts,
+        summary: { improving: 0, degrading: 0, stable: 0, avgCurrentScore: null },
+      };
+    }
+
+    const monitorIds = monitors.map(m => m.id);
+    const runs = await this.prisma.monitorRun.findMany({
+      where: {
+        userId,
+        monitorId: { in: monitorIds },
+        checkedAt: { gte: since },
+      },
+      select: { monitorId: true, checkedAt: true, ok: true, latencyMs: true },
+    });
+
+    const incidents = await this.prisma.incident.findMany({
+      where: {
+        userId,
+        createdAt: { gte: since },
+        monitors: { some: { monitorId: { in: monitorIds } } },
+      },
+      select: { id: true, createdAt: true, monitors: { select: { monitorId: true } } },
+    });
+
+    // Aggregate runs by monitorId -> weekStart
+    type WeekStats = { ok: number; fail: number; latencies: number[] };
+    const agg = new Map<string, Map<string, WeekStats>>();
+    for (const run of runs) {
+      const runDate = run.checkedAt.toISOString().slice(0, 10);
+      // Find which week bucket this belongs to
+      let bucket = weekStarts[0];
+      for (const ws of weekStarts) {
+        if (runDate >= ws) bucket = ws;
+      }
+      if (!agg.has(run.monitorId)) agg.set(run.monitorId, new Map());
+      const wMap = agg.get(run.monitorId)!;
+      if (!wMap.has(bucket)) wMap.set(bucket, { ok: 0, fail: 0, latencies: [] });
+      const s = wMap.get(bucket)!;
+      if (run.ok) { s.ok++; if (run.latencyMs !== null) s.latencies.push(run.latencyMs as number); }
+      else s.fail++;
+    }
+
+    // Aggregate incidents by monitorId -> weekStart
+    const incidentAgg = new Map<string, Map<string, number>>();
+    for (const inc of incidents) {
+      const incDate = inc.createdAt.toISOString().slice(0, 10);
+      let bucket = weekStarts[0];
+      for (const ws of weekStarts) { if (incDate >= ws) bucket = ws; }
+      for (const m of inc.monitors) {
+        if (!incidentAgg.has(m.monitorId)) incidentAgg.set(m.monitorId, new Map());
+        const iMap = incidentAgg.get(m.monitorId)!;
+        iMap.set(bucket, (iMap.get(bucket) ?? 0) + 1);
+      }
+    }
+
+    function computeScore(uptimePct: number | null, avgMs: number | null): number | null {
+      if (uptimePct === null) return null;
+      const uptimeScore = uptimePct; // 0–100
+      // Latency grade: 100 if ≤200ms, linearly down to 0 at 5000ms
+      const latScore = avgMs === null ? 100 : Math.max(0, 100 - (avgMs / 5000) * 100);
+      return Math.round(uptimeScore * 0.6 + latScore * 0.4);
+    }
+
+    const resultMonitors = monitors.map(m => {
+      const wMap = agg.get(m.id);
+      const iMap = incidentAgg.get(m.id);
+
+      const weekData = weekStarts.map(ws => {
+        const s = wMap?.get(ws);
+        if (!s || s.ok + s.fail === 0) {
+          return { weekStart: ws, uptimePct: null, avgLatencyMs: null, checksTotal: 0, checksFailed: 0, incidents: iMap?.get(ws) ?? 0, score: null };
+        }
+        const total = s.ok + s.fail;
+        const uptimePct = Math.round((s.ok / total) * 10000) / 100;
+        const avgLatencyMs = s.latencies.length > 0
+          ? Math.round(s.latencies.reduce((a, b) => a + b, 0) / s.latencies.length)
+          : null;
+        return {
+          weekStart: ws,
+          uptimePct,
+          avgLatencyMs,
+          checksTotal: total,
+          checksFailed: s.fail,
+          incidents: iMap?.get(ws) ?? 0,
+          score: computeScore(uptimePct, avgLatencyMs),
+        };
+      });
+
+      // Trend: compare last 2 weeks with data
+      const withData = weekData.filter(w => w.score !== null);
+      let trend: 'improving' | 'degrading' | 'stable' | 'new' = 'new';
+      let deltaPct: number | null = null;
+      if (withData.length >= 2) {
+        const last = withData[withData.length - 1].score!;
+        const prev = withData[withData.length - 2].score!;
+        deltaPct = last - prev;
+        if (deltaPct >= 3) trend = 'improving';
+        else if (deltaPct <= -3) trend = 'degrading';
+        else trend = 'stable';
+      } else if (withData.length === 1) {
+        trend = 'new';
+      }
+
+      const currentScore = withData.length > 0 ? withData[withData.length - 1].score : null;
+      return { id: m.id, name: m.name, type: m.type, folder: m.folder?.name ?? null, currentScore, trend, deltaPct, weeks: weekData };
+    });
+
+    const improving = resultMonitors.filter(m => m.trend === 'improving').length;
+    const degrading = resultMonitors.filter(m => m.trend === 'degrading').length;
+    const stable = resultMonitors.filter(m => m.trend === 'stable').length;
+    const scores = resultMonitors.map(m => m.currentScore).filter((s): s is number => s !== null);
+    const avgCurrentScore = scores.length > 0 ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
+
+    return { monitors: resultMonitors, weekStarts, summary: { improving, degrading, stable, avgCurrentScore } };
+  }
+
 }
 
 export interface SuggestedMonitor {

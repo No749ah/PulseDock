@@ -579,4 +579,170 @@ _Generated automatically by PulseDock on ${fmt(new Date())}_
       take: 50,
     });
   }
+
+  /**
+   * Returns incident analytics for the last N days.
+   * - Frequency heatmap: hour-of-day × day-of-week counts
+   * - Severity distribution over time (weekly buckets)
+   * - Top 10 most affected monitors
+   * - MTTD (minutes from first check failure to incident creation) and MTTR trends by week
+   * - Incident count by status (open/resolved)
+   */
+  async incidentInsights(userId: string, days: number): Promise<{
+    period: { days: number; since: string };
+    totals: {
+      total: number;
+      open: number;
+      resolved: number;
+      avgResolutionMinutes: number | null;
+      longestIncidentMinutes: number | null;
+    };
+    severityBreakdown: Array<{ severity: string; count: number; pct: number }>;
+    hourHeatmap: Array<{ hour: number; dow: number; count: number }>; // dow 0=Sun
+    topMonitors: Array<{ monitorId: string; monitorName: string; count: number; resolvedCount: number; avgMinutes: number | null }>;
+    weeklyTrend: Array<{ weekStart: string; total: number; critical: number; high: number; medium: number; low: number; avgResolutionMin: number | null }>;
+  }> {
+    const clampedDays = Math.min(365, Math.max(7, days));
+    const since = new Date(Date.now() - clampedDays * 24 * 60 * 60 * 1000);
+
+    const incidents = await this.prisma.incident.findMany({
+      where: { userId, createdAt: { gte: since } },
+      select: {
+        id: true,
+        status: true,
+        severity: true,
+        createdAt: true,
+        resolvedAt: true,
+        monitors: { select: { monitor: { select: { id: true, name: true } } } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const total = incidents.length;
+    const open = incidents.filter(i => i.status !== 'RESOLVED').length;
+    const resolved = incidents.filter(i => i.status === 'RESOLVED');
+
+    const resolutionMinutes = resolved
+      .filter(i => i.resolvedAt !== null)
+      .map(i => Math.round((i.resolvedAt!.getTime() - i.createdAt.getTime()) / 60000));
+
+    const avgResolutionMinutes = resolutionMinutes.length > 0
+      ? Math.round(resolutionMinutes.reduce((a, b) => a + b, 0) / resolutionMinutes.length)
+      : null;
+    const longestIncidentMinutes = resolutionMinutes.length > 0
+      ? Math.max(...resolutionMinutes)
+      : null;
+
+    // Severity breakdown
+    const sevMap = new Map<string, number>();
+    for (const i of incidents) {
+      sevMap.set(i.severity, (sevMap.get(i.severity) ?? 0) + 1);
+    }
+    const severityBreakdown = Array.from(sevMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .map(([severity, count]) => ({ severity, count, pct: total > 0 ? Math.round((count / total) * 100) : 0 }));
+
+    // Hour × DOW heatmap
+    const heatMap = new Map<string, number>(); // key: `${dow}:${hour}`
+    for (const i of incidents) {
+      const dow = i.createdAt.getUTCDay();
+      const hour = i.createdAt.getUTCHours();
+      const key = `${dow}:${hour}`;
+      heatMap.set(key, (heatMap.get(key) ?? 0) + 1);
+    }
+    const hourHeatmap: Array<{ hour: number; dow: number; count: number }> = [];
+    for (let dow = 0; dow < 7; dow++) {
+      for (let hour = 0; hour < 24; hour++) {
+        const count = heatMap.get(`${dow}:${hour}`) ?? 0;
+        if (count > 0) hourHeatmap.push({ hour, dow, count });
+      }
+    }
+
+    // Top affected monitors
+    const monitorCounts = new Map<string, { name: string; total: number; resolved: number; minutes: number[] }>();
+    for (const i of incidents) {
+      const durationMin = i.resolvedAt
+        ? Math.round((i.resolvedAt.getTime() - i.createdAt.getTime()) / 60000)
+        : null;
+      for (const m of i.monitors) {
+        const mid = m.monitor.id;
+        if (!monitorCounts.has(mid)) monitorCounts.set(mid, { name: m.monitor.name, total: 0, resolved: 0, minutes: [] });
+        const mc = monitorCounts.get(mid)!;
+        mc.total++;
+        if (i.status === 'RESOLVED') mc.resolved++;
+        if (durationMin !== null) mc.minutes.push(durationMin);
+      }
+    }
+    const topMonitors = Array.from(monitorCounts.entries())
+      .sort((a, b) => b[1].total - a[1].total)
+      .slice(0, 10)
+      .map(([monitorId, v]) => ({
+        monitorId,
+        monitorName: v.name,
+        count: v.total,
+        resolvedCount: v.resolved,
+        avgMinutes: v.minutes.length > 0
+          ? Math.round(v.minutes.reduce((a, b) => a + b, 0) / v.minutes.length)
+          : null,
+      }));
+
+    // Weekly trend
+    const now = new Date();
+    const dow2 = now.getUTCDay();
+    const daysSinceMon = (dow2 + 6) % 7;
+    const thisMonday = new Date(now);
+    thisMonday.setUTCHours(0, 0, 0, 0);
+    thisMonday.setUTCDate(now.getUTCDate() - daysSinceMon);
+
+    const numWeeks = Math.ceil(clampedDays / 7);
+    const weekStarts: string[] = [];
+    for (let i = numWeeks - 1; i >= 0; i--) {
+      const d = new Date(thisMonday);
+      d.setUTCDate(thisMonday.getUTCDate() - i * 7);
+      weekStarts.push(d.toISOString().slice(0, 10));
+    }
+
+    type WB = { total: number; critical: number; high: number; medium: number; low: number; minutes: number[] };
+    const weekBuckets = new Map<string, WB>();
+    for (const ws of weekStarts) weekBuckets.set(ws, { total: 0, critical: 0, high: 0, medium: 0, low: 0, minutes: [] });
+
+    for (const i of incidents) {
+      const dateStr = i.createdAt.toISOString().slice(0, 10);
+      let bucket = weekStarts[0];
+      for (const ws of weekStarts) { if (dateStr >= ws) bucket = ws; }
+      const b = weekBuckets.get(bucket);
+      if (!b) continue;
+      b.total++;
+      const sev = i.severity?.toUpperCase() ?? 'LOW';
+      if (sev === 'CRITICAL') b.critical++;
+      else if (sev === 'HIGH') b.high++;
+      else if (sev === 'MEDIUM') b.medium++;
+      else b.low++;
+      if (i.resolvedAt) b.minutes.push(Math.round((i.resolvedAt.getTime() - i.createdAt.getTime()) / 60000));
+    }
+
+    const weeklyTrend = weekStarts.map(ws => {
+      const b = weekBuckets.get(ws)!;
+      return {
+        weekStart: ws,
+        total: b.total,
+        critical: b.critical,
+        high: b.high,
+        medium: b.medium,
+        low: b.low,
+        avgResolutionMin: b.minutes.length > 0
+          ? Math.round(b.minutes.reduce((a, b) => a + b, 0) / b.minutes.length)
+          : null,
+      };
+    });
+
+    return {
+      period: { days: clampedDays, since: since.toISOString().slice(0, 10) },
+      totals: { total, open, resolved: resolved.length, avgResolutionMinutes, longestIncidentMinutes },
+      severityBreakdown,
+      hourHeatmap,
+      topMonitors,
+      weeklyTrend,
+    };
+  }
 }

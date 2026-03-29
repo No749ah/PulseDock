@@ -38,6 +38,7 @@ import {
   Medal,
   Settings,
   Shield,
+  Sparkles,
   Sun,
   User,
   X,
@@ -86,6 +87,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       { href: '/monitors/health-scores', label: 'Health Scores', icon: Medal },
       { href: '/monitors/latency-bench', label: 'Latency Benchmarks', icon: Gauge },
       { href: '/monitors/latency-heatmap', label: 'Latency Heatmap', icon: BarChart3 },
+      { href: '/monitors/reliability', label: 'Reliability Trends', icon: Sparkles },
       { href: '/ssl', label: 'SSL Certificates', icon: ShieldCheck },
       { href: '/versions', label: 'Version Tracking', icon: GitBranch },
     ],
@@ -100,6 +102,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       { href: '/alerts/noise', label: 'Noise Analysis', icon: VolumeX },
       { href: '/alerts/history', label: 'Delivery History', icon: ClipboardList },
       { href: '/incidents', label: 'Incidents', icon: AlertOctagon },
+      { href: '/incidents/insights', label: 'Incident Insights', icon: BarChart2 },
       { href: '/maintenance', label: 'Maintenance', icon: CalendarClock },
 
       { href: '/projects', label: 'Projects', icon: Folder },

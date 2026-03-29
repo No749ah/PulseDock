@@ -1,10 +1,17 @@
-## Status Summary (2026-03-29 15:30 UTC)
-- **Build/Test:** ✅ 240 test files, 5247 tests passing; 0 TS errors; web + API build clean
+## Status Summary (2026-03-29 17:20 UTC)
+- **Build/Test:** ✅ 244 test files, 5308 tests passing (4551 API + 757 web); 0 TS errors; code quality 8/8; web + API build clean
 - **Security/Audit:** ✅ 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Deployment:** ✅ API + web running; all 30+ pages 200; public URL 200
 - **Branch:** heartbeat/2026-03-29-afternoon
+- **Last changes (17:20 UTC cycle):**
+  - [x] **Service specs for 4 uncovered services (+60 tests)** — Added spec files for EscalationService (14 tests incl. checkAllEscalations edge cases), DependenciesService (15 tests incl. cycle handling, impact analysis), PlaybooksService (14 tests incl. getForIncident sources, markStep), ServiceGroupsService (11 tests incl. getStatus aggregation).
+  - [x] **Fix TS errors in deployments.service.spec.ts** — Used DeploymentStatus enum instead of raw string literals. 0 TS errors now.
+  - [x] **README test count update** — 5300+ badge.
+- **Last changes (15:45 UTC cycle):**
+  - [x] **Controller specs for 4 uncovered controllers (+23 tests)** — Added spec files for escalation controller (5 tests), playbooks controller (8 tests), dependencies controller (5 tests), service-groups controller (5 tests). All 4 previously had 0% test coverage.
+  - [x] **README test count consistency** — Fixed stale 4400+ references in README body to match 5200+ badge.
 - **Last changes (15:30 UTC cycle):**
-  - [x] **Test coverage boost for low-coverage modules (+34 tests)** — Deployments service: list filters (service/environment/status/days), update, getMonitorImpact (before/after latency, null handling, missing deployment). Deployments controller: all 8 endpoints + verifyDeployment (linked monitors, failure handling), PublicDeploymentsController receive. Playbooks: getForIncident (live/none sources), markStep, update, delete, findOne, attachToMonitor (null clear, bad playbook). Dependencies: getImpactAnalysis (root causes, downstream depth, missing monitor), setDependencies (empty clear, missing monitor), removeDependency, getDependenciesForMonitor, getDependencyGraph (nodes+edges build), cycle handling.
+  - [x] **Test coverage boost for low-coverage modules (+34 tests)** — Deployments service: list filters, update, getMonitorImpact. Deployments controller: all endpoints + verifyDeployment. Playbooks: getForIncident (live/none), markStep, update, delete, findOne, attachToMonitor. Dependencies: getImpactAnalysis (root causes, downstream depth), setDependencies, removeDependency, getDependenciesForMonitor, getDependencyGraph, cycle handling.
 
 ## Status Summary (2026-03-29 12:48 UTC)
 - **Build/Test:** ✅ 194 test files, 4348 tests passing; 0 TS errors; web + API build clean

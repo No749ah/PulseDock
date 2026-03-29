@@ -8,7 +8,6 @@ const cookieParser = require('cookie-parser') as (opts?: unknown) => (req: unkno
 import { AppModule } from './app.module';
 import { validateEnv } from './common/env';
 import { GlobalHttpExceptionFilter } from './common/http-exception.filter';
-import { RequestTimingInterceptor } from './common/request-timing.interceptor';
 import { randomUUID } from 'node:crypto';
 import { MetricsService } from './common/metrics.service';
 import { createLogger } from './common/logger';
@@ -24,8 +23,10 @@ interface AppRequest {
 
 interface AppResponse {
   statusCode: number;
+  headersSent: boolean;
   setHeader(key: string, value: string): void;
   on(event: string, callback: () => void): void;
+  writeHead(...args: unknown[]): unknown;
 }
 
 const pkg = require('../package.json');
@@ -111,10 +112,26 @@ async function bootstrap() {
     req.requestId = requestId;
     res.setHeader('x-request-id', requestId);
 
+    // Intercept writeHead to inject X-Response-Time before headers are flushed
+    const origWriteHead = res.writeHead;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (res as any).writeHead = function (this: AppResponse, ...args: any[]) {
+      if (!this.headersSent) {
+        const ms = Date.now() - startedAt;
+        this.setHeader('X-Response-Time', `${ms}ms`);
+      }
+      return origWriteHead.apply(this, args);
+    };
+
     res.on('finish', () => {
       const ms = Date.now() - startedAt;
       metrics.inc('requestsTotal');
       if (res.statusCode >= 400) metrics.inc('errorsTotal');
+      if (ms >= 5000) {
+        logger.error('slow_request', { requestId, method: req.method, path: req.url, status: res.statusCode, durationMs: ms });
+      } else if (ms >= 1000) {
+        logger.warn('slow_request', { requestId, method: req.method, path: req.url, status: res.statusCode, durationMs: ms });
+      }
       logger.info('http_request', {
         requestId,
         method: req.method,
@@ -129,7 +146,7 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
   app.useGlobalFilters(new GlobalHttpExceptionFilter());
-  app.useGlobalInterceptors(new RequestTimingInterceptor());
+  // X-Response-Time + slow request logging handled in middleware above (works for all responses incl. auth errors)
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('PulseDock API')

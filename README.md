@@ -5,7 +5,7 @@
   <p>
     <a href="https://github.com/No749ah/PulseDock/actions"><img src="https://github.com/No749ah/PulseDock/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
     <a href="https://github.com/No749ah/PulseDock/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT" /></a>
-    <img src="https://img.shields.io/badge/tests-2773%20passing-brightgreen" alt="Tests: 2773 passing" />
+    <img src="https://img.shields.io/badge/tests-4400%2B%20passing-brightgreen" alt="Tests: 4400+ passing" />
     <img src="https://img.shields.io/badge/tools-5000%2B-orange" alt="5000+ tools" />
     <img src="https://img.shields.io/badge/self--hosted-free%20forever-success" alt="Self-hosted" />
     <img src="https://img.shields.io/badge/TypeScript-strict-blue" alt="TypeScript strict" />
@@ -36,7 +36,7 @@ Think **Uptime Kuma + release tracking + status page builder**, all in one packa
 | Open Source | ✅ | ✅ | ❌ | ❌ |
 | Self-Hosted | ✅ | ✅ | ❌ | ❌ |
 | **Version Tracking** | ✅ | ❌ | ❌ | ❌ |
-| **Tool Registry (2500+)** | ✅ | ❌ | ❌ | ❌ |
+| **Tool Registry (5000+)** | ✅ | ❌ | ❌ | ❌ |
 | Status Pages | ✅ | ✅ | ✅ | ✅ |
 | Incident Management | ✅ | ✅ | ✅ | ✅ |
 | CLI Tool | ✅ | ❌ | ✅ | ❌ |
@@ -47,7 +47,7 @@ Think **Uptime Kuma + release tracking + status page builder**, all in one packa
 ## Features
 
 ### 🔍 Version Intelligence
-- Track version updates for **2500+ self-hosted tools** — auto-configured, no manual setup
+- Track version updates for **5000+ self-hosted tools** — auto-configured, no manual setup
 - Providers: GitHub Releases, Docker Hub, npm, PyPI, Cargo, Maven, Helm
 - **PulseDock Agent** for tools without HTTP APIs (Proxmox, pfSense, OpenWRT, Unraid)
 - Semantic version comparison with prerelease awareness
@@ -165,7 +165,7 @@ npm run restart           # Restart both services (API → Web)
 
 # Build & Test
 npm run build             # Build everything (web + api + cli + extension)
-npm run test              # Run all tests (2773 tests)
+npm run test              # Run all tests (4400+ tests)
 npm audit                 # Security vulnerability check
 
 # Database
@@ -223,16 +223,16 @@ git commit -m "feat: add your feature"
 
 ## Testing
 
-PulseDock has **2773 tests** across the full stack:
+PulseDock has **4400+ tests** across the full stack:
 
 ```bash
 npm run test                        # All tests
-npm run test -w @pulsedock/api      # API tests only (2246 tests)
+npm run test -w @pulsedock/api      # API tests only (4400+ tests)
 npm run test -w @pulsedock/agent    # Agent tests only
 npm run test -w @pulsedock/cli      # CLI tests only
 ```
 
-Coverage: ~94% line coverage on the API (strict mode throughout).
+Coverage: 196 test files, TypeScript strict mode throughout, zero `any` types.
 
 ---
 

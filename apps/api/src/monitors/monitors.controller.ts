@@ -1560,6 +1560,20 @@ export class MonitorsController {
     return this.monitorsService.slaComplianceReport(req.user.id, n);
   }
 
+  @Get(':id/sla-forecast')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'SLA error budget forecast for current month',
+    description: 'Uses the current month\'s observed uptime rate to project whether the monitor will breach its SLA target by month end. Returns projected uptime%, error budget exhaustion date, breach prediction, and a full daily breakdown (actual + projected).',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'SLA forecast returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  @ApiResponse({ status: 403, description: 'Access denied.' })
+  slaBudgetForecast(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.monitorsService.slaBudgetForecast(req.user.id, id);
+  }
+
   @Get(':id/status-transitions')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({

@@ -1,7 +1,7 @@
 import * as tls from 'tls';
 import * as https from 'https';
 import * as http from 'http';
-import { BadRequestException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { CronExpressionParser } from 'cron-parser';
@@ -5282,6 +5282,209 @@ export class MonitorsService {
           monitors.length > 0 ? Math.round((compliantCount / monitors.length) * 10000) / 100 : null,
       },
       monitors: monitorsData,
+    };
+  }
+
+  // ─── SLA Budget Forecast ──────────────────────────────────────────────────
+
+  /**
+   * Forecast whether a monitor's SLA error budget will be exhausted before month end.
+   * Uses the current month's observed uptime rate to project forward linearly.
+   *
+   * @param userId  - Owner of the monitor
+   * @param monitorId - Monitor to forecast
+   * @returns Forecast object with projectedUptimePct, budgetExhaustionDate, willBreach, dailyBreakdown
+   */
+  async slaBudgetForecast(userId: string, monitorId: string) {
+    const monitor = await this.prisma.monitor.findUnique({
+      where: { id: monitorId },
+      select: {
+        id: true,
+        name: true,
+        userId: true,
+        slaTarget: true,
+        intervalSec: true,
+      },
+    });
+
+    if (!monitor) throw new NotFoundException(`Monitor ${monitorId} not found`);
+    if (monitor.userId !== userId) throw new ForbiddenException();
+
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const totalMonthMs = monthEnd.getTime() - monthStart.getTime();
+    const elapsedMs = now.getTime() - monthStart.getTime();
+    const remainingMs = monthEnd.getTime() - now.getTime();
+    const dayOfMonth = now.getDate();
+    const daysInMonth = monthEnd.getDate();
+
+    // Fetch all runs this month
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId, checkedAt: { gte: monthStart, lte: now } },
+      select: { ok: true, checkedAt: true },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    const totalChecks = runs.length;
+    const failedChecks = runs.filter((r) => !r.ok).length;
+    const currentUptimePct = totalChecks === 0 ? 100 : ((totalChecks - failedChecks) / totalChecks) * 100;
+
+    const slaTarget = monitor.slaTarget != null ? Number(monitor.slaTarget) : null;
+    const allowedDownPct = slaTarget != null ? 100 - slaTarget : null;
+
+    // Current error budget consumption
+    const errorBudgetUsedPct =
+      slaTarget != null && allowedDownPct != null && allowedDownPct > 0
+        ? Math.min(100, Math.max(0, ((100 - currentUptimePct) / allowedDownPct) * 100))
+        : null;
+
+    // Projected uptime at month end (linear extrapolation):
+    // Assumes failures happen at the same rate as observed so far
+    const failureRatePerMs = elapsedMs > 0 ? failedChecks / elapsedMs : 0;
+    const estimatedAdditionalFailed = failureRatePerMs * remainingMs;
+    const checksPerMs = elapsedMs > 0 ? totalChecks / elapsedMs : 0;
+    const estimatedAdditionalChecks = checksPerMs * remainingMs;
+
+    const projectedTotalChecks = totalChecks + estimatedAdditionalChecks;
+    const projectedFailedChecks = failedChecks + estimatedAdditionalFailed;
+    const projectedUptimePct =
+      projectedTotalChecks > 0 ? ((projectedTotalChecks - projectedFailedChecks) / projectedTotalChecks) * 100 : 100;
+
+    // Will it breach?
+    const willBreach = slaTarget != null ? projectedUptimePct < slaTarget : null;
+
+    // When will error budget be exhausted?
+    // Budget exhausted when failed / total == (100 - slaTarget) / 100
+    // At current failure rate: solve for t where failedChecks + failRate*t = (allowedDownPct/100) * (totalChecks + checksPerMs*t)
+    // => failedChecks + failRate*t = (allowedDownPct/100) * totalChecks + (allowedDownPct/100)*checksPerMs*t
+    // => t*(failRate - (allowedDownPct/100)*checksPerMs) = (allowedDownPct/100)*totalChecks - failedChecks
+    // => t = ((allowedDownPct/100)*totalChecks - failedChecks) / (failRate - (allowedDownPct/100)*checksPerMs)
+    let budgetExhaustionDate: string | null = null;
+    let budgetExhaustedAlready = false;
+
+    if (slaTarget != null && allowedDownPct != null && allowedDownPct > 0) {
+      const allowedFrac = allowedDownPct / 100;
+      const denom = failureRatePerMs - allowedFrac * checksPerMs;
+
+      if (denom > 0) {
+        // Budget is being consumed — find when it runs out
+        const numerator = allowedFrac * totalChecks - failedChecks;
+        if (numerator <= 0) {
+          budgetExhaustedAlready = true;
+          budgetExhaustionDate = now.toISOString();
+        } else {
+          const msUntilExhaustion = numerator / denom;
+          const exhaustionTime = new Date(now.getTime() + msUntilExhaustion);
+          if (exhaustionTime <= monthEnd) {
+            budgetExhaustionDate = exhaustionTime.toISOString();
+          }
+          // else: budget won't exhaust this month at this rate
+        }
+      }
+      // denom <= 0: uptime is better than needed, budget is safe
+    }
+
+    // Daily breakdown: actual (past days) + projected (future days)
+    // Group past runs into UTC day buckets
+    const dailyActual = new Map<string, { total: number; failed: number }>();
+    for (const run of runs) {
+      const d = run.checkedAt.toISOString().split('T')[0];
+      const entry = dailyActual.get(d) ?? { total: 0, failed: 0 };
+      entry.total++;
+      if (!run.ok) entry.failed++;
+      dailyActual.set(d, entry);
+    }
+
+    const dailyBreakdown: Array<{
+      date: string;
+      type: 'actual' | 'projected';
+      uptimePct: number | null;
+      totalChecks: number;
+      failedChecks: number;
+      errorBudgetUsedPct: number | null;
+    }> = [];
+
+    const dailyCheckCount = checksPerMs > 0 ? checksPerMs * 86400000 : (24 * 3600) / (monitor.intervalSec || 60);
+
+    let runningTotal = 0;
+    let runningFailed = 0;
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const isPast = d < dayOfMonth;
+      const isToday = d === dayOfMonth;
+
+      if (isPast || isToday) {
+        const actual = dailyActual.get(dateStr) ?? { total: 0, failed: 0 };
+        runningTotal += actual.total;
+        runningFailed += actual.failed;
+        const dayUptimePct = actual.total === 0 ? null : ((actual.total - actual.failed) / actual.total) * 100;
+        const cumulativeBudgetUsed =
+          slaTarget != null && allowedDownPct != null && allowedDownPct > 0 && runningTotal > 0
+            ? Math.min(100, ((100 - (((runningTotal - runningFailed) / runningTotal) * 100)) / allowedDownPct) * 100)
+            : null;
+        dailyBreakdown.push({
+          date: dateStr,
+          type: isToday ? 'actual' : 'actual',
+          uptimePct: dayUptimePct !== null ? Math.round(dayUptimePct * 10000) / 10000 : null,
+          totalChecks: actual.total,
+          failedChecks: actual.failed,
+          errorBudgetUsedPct: cumulativeBudgetUsed !== null ? Math.round(cumulativeBudgetUsed * 100) / 100 : null,
+        });
+      } else {
+        // Projected day
+        const projDayChecks = dailyCheckCount;
+        const projDayFailed = failureRatePerMs > 0 ? failureRatePerMs * 86400000 : 0;
+        runningTotal += projDayChecks;
+        runningFailed += projDayFailed;
+        const projDayUptimePct =
+          projDayChecks > 0 ? ((projDayChecks - projDayFailed) / projDayChecks) * 100 : 100;
+        const cumulativeBudgetUsed =
+          slaTarget != null && allowedDownPct != null && allowedDownPct > 0 && runningTotal > 0
+            ? Math.min(100, ((100 - (((runningTotal - runningFailed) / runningTotal) * 100)) / allowedDownPct) * 100)
+            : null;
+        dailyBreakdown.push({
+          date: dateStr,
+          type: 'projected',
+          uptimePct: Math.round(projDayUptimePct * 10000) / 10000,
+          totalChecks: Math.round(projDayChecks),
+          failedChecks: Math.round(projDayFailed),
+          errorBudgetUsedPct: cumulativeBudgetUsed !== null ? Math.round(cumulativeBudgetUsed * 100) / 100 : null,
+        });
+      }
+    }
+
+    return {
+      generatedAt: now.toISOString(),
+      monitorId: monitor.id,
+      monitorName: monitor.name,
+      slaTarget,
+      period: {
+        monthStart: monthStart.toISOString(),
+        monthEnd: monthEnd.toISOString(),
+        dayOfMonth,
+        daysInMonth,
+        elapsedDaysFraction: Math.round((elapsedMs / totalMonthMs) * 10000) / 10000,
+      },
+      currentStats: {
+        totalChecks,
+        failedChecks,
+        uptimePct: Math.round(currentUptimePct * 10000) / 10000,
+        errorBudgetUsedPct: errorBudgetUsedPct !== null ? Math.round(errorBudgetUsedPct * 100) / 100 : null,
+      },
+      forecast: {
+        projectedUptimePct: Math.round(projectedUptimePct * 10000) / 10000,
+        projectedErrorBudgetUsedPct:
+          slaTarget != null && allowedDownPct != null && allowedDownPct > 0
+            ? Math.min(100, Math.round(((100 - projectedUptimePct) / allowedDownPct) * 10000) / 100)
+            : null,
+        willBreach,
+        budgetExhaustedAlready,
+        budgetExhaustionDate,
+        confidence: totalChecks >= 10 ? 'high' : totalChecks >= 3 ? 'medium' : 'low',
+      },
+      dailyBreakdown,
     };
   }
 

@@ -1,3 +1,12 @@
+## Status Summary (2026-03-29 04:50 UTC)
+- **Build/Test:** ✅ Clean build + 4275 API + 757 web + 10 CLI + 12 agent = 5054 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-29-early
+- **Last changes (04:50 UTC cycle):**
+  - [x] **Fix downtimeCostReport incident counting** — Incident detection was using 5-minute time-gap threshold, causing each individual failed check to be counted as a new incident when check runs were >5 min apart. Fixed to use `ok → fail` transition logic only. All 4275 tests pass.
+  - Note: Alert Escalation Policies were already fully built in a prior cycle (EscalationPolicy model, EscalationService, EscalationController, 18 tests, frontend /alerts/escalation page).
+
 ## Status Summary (2026-03-29 04:35 UTC)
 - **Build/Test:** ✅ Clean build + 4275 API + 757 web + 10 CLI + 12 agent = 5054 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

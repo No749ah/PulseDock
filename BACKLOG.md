@@ -1,3 +1,13 @@
+## Status Summary (2026-03-29 20:02 UTC)
+- **Build/Test:** ✅ 207 test files, 4567 API + 757 web + 12 agent + 10 CLI = 5346 total; 0 TS errors; web + API build clean
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-29-afternoon
+- **Last changes (20:02 UTC cycle):**
+  - [x] **Fix Prometheus metric naming conventions** — All counter metrics renamed from camelCase to proper snake_case per Prometheus best practices: `pulsedock_requestsTotal` → `pulsedock_requests_total`, `pulsedock_errorsTotal` → `pulsedock_errors_total`, `pulsedock_authLoginFailed` → `pulsedock_auth_login_failed_total`, `pulsedock_alertsSent` → `pulsedock_alerts_sent_total`, `pulsedock_alertsFailed` → `pulsedock_alerts_failed_total`. Counter suffix `_total` added per conventions. All specs updated.
+  - [x] **Cleanup stale core dumps** — Removed 1.4GB of core dump files from apps/web/.
+  - [x] **README test badge update** — 5340+ → 5350+.
+
 ## Status Summary (2026-03-29 19:18 UTC)
 - **Build/Test:** ✅ 247 test files, 5346 tests passing (4567 API + 757 web + 12 agent + 10 CLI); 0 TS errors; code quality 8/8 (zero `any` types); web + API build clean
 - **Security/Audit:** ✅ 0 vulnerabilities

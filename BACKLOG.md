@@ -1,3 +1,15 @@
+## Status Summary (2026-03-29 05:00 UTC)
+- **Build/Test:** ✅ 219 test files, 5074 tests passing; 0 TS errors; web + API build clean
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-29-early
+- **Last changes (05:00 UTC cycle):**
+  - [x] **Full test suite repair** — Identified and confirmed root cause of vitest parse error (orphaned `getAssertionStats` was outside the class in an older file state; fixed by my `downtimeCostReport`/`downtimeCostHistory` additions landing inside the class). All 219 test files now pass (5074 tests, 0 failures).
+  - [x] **Health check** — All pages 200 (login/dashboard/monitors/alerts/account/projects/versions/admin/downtime-cost/fleet), public URL 200. API health OK. 0 vulnerabilities.
+- **Last changes (05:15 UTC cycle):**
+  - [x] **Assertion Stats** — `GET /v1/monitors/:id/assertion-stats?days=30`. Per-assertion-type failure breakdown: bodyContains, jsonPath, headerAssertions (with topHeaders). Returns counts, pct, last 20 recent failures. Days clamped 1–90. 6 unit tests.
+  - [x] **Tag Analytics** — `GET /v1/monitors/tag-analytics?days=7`. Groups monitors by tag, computes avgUptimePct, worstUptimePct, totalIncidents, avgLatencyMs, monitorsDown, health (healthy/degraded/critical). Sorted worst-first, Untagged bucket last. Frontend `/monitors/tag-analytics`: period pills, summary cards, tag cards grid with health color-coding, Untagged warning banner, Hash icon nav link. 6 unit tests.
+
 ## Status Summary (2026-03-29 05:05 UTC)
 - **Build/Test:** ✅ Clean build + 4283 API + 757 web + 10 CLI + 12 agent = 5062 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

@@ -2171,4 +2171,90 @@ export class AlertsService {
 
     return { period: { days: clampedDays }, channels, fleetStats, dailyTrend };
   }
+
+  /**
+   * Returns health status for all alert channels owned by a user.
+   * Aggregates last 7 days delivery data per channel in a single query.
+   */
+  async channelsHealth(userId: string): Promise<Array<{
+    channelId: string;
+    name: string;
+    type: string;
+    enabled: boolean;
+    totalDeliveries: number;
+    successCount: number;
+    failedCount: number;
+    successRate: number;
+    lastDeliveryAt: Date | null;
+    lastSuccessAt: Date | null;
+    lastErrorMessage: string | null;
+    last24hCount: number;
+    healthStatus: 'healthy' | 'degraded' | 'failing' | 'untested';
+  }>> {
+    const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const channels = await this.prisma.alertChannel.findMany({
+      where: { userId },
+      select: { id: true, name: true, type: true },
+    });
+
+    if (channels.length === 0) return [];
+
+    const channelIds = channels.map(c => c.id);
+
+    const logs = await this.prisma.alertDeliveryLog.findMany({
+      where: { alertChannelId: { in: channelIds }, createdAt: { gte: since7d } },
+      select: {
+        alertChannelId: true,
+        status: true,
+        createdAt: true,
+        errorMessage: true,
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    return channels.map(channel => {
+      const chanLogs = logs.filter(l => l.alertChannelId === channel.id);
+      const total = chanLogs.length;
+      const successLogs = chanLogs.filter(l => l.status === 'success');
+      const failedLogs = chanLogs.filter(l => l.status === 'failed');
+      const successCount = successLogs.length;
+      const failedCount = failedLogs.length;
+      const last24h = chanLogs.filter(l => l.createdAt >= since24h);
+
+      const lastDelivery = chanLogs[0] ?? null;
+      const lastSuccess = successLogs[0] ?? null;
+      const lastFailed = failedLogs[0] ?? null;
+
+      const successRate = total > 0 ? Math.round((successCount / total) * 100) : 0;
+
+      let healthStatus: 'healthy' | 'degraded' | 'failing' | 'untested';
+      if (total === 0) {
+        healthStatus = 'untested';
+      } else if (successRate >= 95) {
+        healthStatus = 'healthy';
+      } else if (successRate >= 70) {
+        healthStatus = 'degraded';
+      } else {
+        healthStatus = 'failing';
+      }
+
+      return {
+        channelId: channel.id,
+        name: channel.name,
+        type: channel.type,
+        enabled: true,
+        totalDeliveries: total,
+        successCount,
+        failedCount,
+        successRate: total > 0 ? successRate : 100,
+        lastDeliveryAt: lastDelivery?.createdAt ?? null,
+        lastSuccessAt: lastSuccess?.createdAt ?? null,
+        lastErrorMessage: lastFailed?.errorMessage ?? null,
+        last24hCount: last24h.length,
+        healthStatus,
+      };
+    });
+  }
 }

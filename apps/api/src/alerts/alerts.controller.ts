@@ -191,6 +191,13 @@ export class AlertsController {
     return { ok: true };
   }
 
+  @Get('channels/health')
+  @ApiOperation({ summary: 'Alert channel health status', description: 'Returns health status for all alert channels — delivery success rate, last delivery, error messages.' })
+  @ApiResponse({ status: 200, description: 'Channel health stats returned.' })
+  channelsHealth(@Req() req: { user: { id: string } }) {
+    return this.alertsService.channelsHealth(req.user.id);
+  }
+
   @Get('response-time')
   @ApiOperation({ summary: 'Alert delivery response time', description: 'Analyzes delivery latency per alert channel — avg, P50, P95 response times.' })
   @ApiQuery({ name: 'days', required: false, type: Number, description: 'Period in days (1-90, default 30)' })

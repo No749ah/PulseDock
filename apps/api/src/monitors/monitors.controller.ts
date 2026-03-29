@@ -591,6 +591,19 @@ export class MonitorsController {
     return this.monitorsService.getSecurityHeadersSummary(req.user.id);
   }
 
+  @Get('timing-breakdown')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'HTTP timing breakdown', description: 'Fleet-level DNS/TCP/TLS/TTFB/Download timing analysis. HTTP and Browser monitors only.' })
+  @ApiQuery({ name: 'days', required: false, type: Number, description: 'Period in days (1-90, default 30)' })
+  @ApiResponse({ status: 200, description: 'Timing breakdown returned.' })
+  timingBreakdown(
+    @Req() req: { user: { id: string } },
+    @Query('days') days?: string,
+  ) {
+    const d = parseInt(days ?? '30', 10);
+    return this.monitorsService.timingBreakdown(req.user.id, Number.isFinite(d) ? d : 30);
+  }
+
   @Get('reliability')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({ summary: 'Monitor reliability trend', description: 'Weekly reliability score trend per monitor for the last N weeks (2–26).' })

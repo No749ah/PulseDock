@@ -8591,6 +8591,126 @@ export class MonitorsService {
     return { monitors: resultMonitors, weekStarts, summary: { improving, degrading, stable, avgCurrentScore } };
   }
 
+  /**
+   * Returns fleet-level HTTP timing breakdown analysis.
+   * Aggregates DNS/TCP/TLS/TTFB/Download timings across all HTTP/BROWSER monitors.
+   * Identifies which phase is the bottleneck for each monitor and fleet-wide.
+   */
+  async timingBreakdown(userId: string, days: number): Promise<{
+    period: { days: number };
+    fleet: {
+      avgDnsMs: number | null;
+      avgTcpMs: number | null;
+      avgTlsMs: number | null;
+      avgTtfbMs: number | null;
+      avgDownloadMs: number | null;
+      totalSamples: number;
+      bottleneck: 'dns' | 'tcp' | 'tls' | 'ttfb' | 'download' | null;
+    };
+    monitors: Array<{
+      id: string;
+      name: string;
+      type: string;
+      samples: number;
+      avgDnsMs: number | null;
+      avgTcpMs: number | null;
+      avgTlsMs: number | null;
+      avgTtfbMs: number | null;
+      avgDownloadMs: number | null;
+      avgTotalMs: number | null;
+      bottleneck: 'dns' | 'tcp' | 'tls' | 'ttfb' | 'download' | null;
+      bottleneckPct: number | null;
+    }>;
+  }> {
+    const clampedDays = Math.min(90, Math.max(1, days));
+    const since = new Date(Date.now() - clampedDays * 24 * 60 * 60 * 1000);
+
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, type: { in: ['HTTP', 'BROWSER'] }, enabled: true },
+      select: { id: true, name: true, type: true },
+      orderBy: { name: 'asc' },
+    });
+
+    if (monitors.length === 0) {
+      return { period: { days: clampedDays }, fleet: { avgDnsMs: null, avgTcpMs: null, avgTlsMs: null, avgTtfbMs: null, avgDownloadMs: null, totalSamples: 0, bottleneck: null }, monitors: [] };
+    }
+
+    const monitorIds = monitors.map(m => m.id);
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { userId, monitorId: { in: monitorIds }, checkedAt: { gte: since }, timingsJson: { not: Prisma.JsonNull } },
+      select: { monitorId: true, timingsJson: true },
+    });
+
+    type TimingStats = { dns: number[]; tcp: number[]; tls: number[]; ttfb: number[]; download: number[] };
+    const monitorAgg = new Map<string, TimingStats>();
+    for (const mid of monitorIds) monitorAgg.set(mid, { dns: [], tcp: [], tls: [], ttfb: [], download: [] });
+    const fleetAgg: TimingStats = { dns: [], tcp: [], tls: [], ttfb: [], download: [] };
+
+    for (const run of runs) {
+      let t: Record<string, unknown>;
+      try { t = run.timingsJson as Record<string, unknown>; }
+      catch { continue; }
+      if (!t || typeof t !== 'object') continue;
+
+      const dns = typeof t.dnsMs === 'number' ? t.dnsMs : null;
+      const tcp = typeof t.tcpMs === 'number' ? t.tcpMs : null;
+      const tls = typeof t.tlsMs === 'number' ? t.tlsMs : null;
+      const ttfb = typeof t.ttfbMs === 'number' ? t.ttfbMs : null;
+      const dl = typeof t.downloadMs === 'number' ? t.downloadMs : null;
+
+      const ma = monitorAgg.get(run.monitorId);
+      if (!ma) continue;
+
+      if (dns !== null && dns >= 0) { ma.dns.push(dns); fleetAgg.dns.push(dns); }
+      if (tcp !== null && tcp >= 0) { ma.tcp.push(tcp); fleetAgg.tcp.push(tcp); }
+      if (tls !== null && tls >= 0) { ma.tls.push(tls); fleetAgg.tls.push(tls); }
+      if (ttfb !== null && ttfb >= 0) { ma.ttfb.push(ttfb); fleetAgg.ttfb.push(ttfb); }
+      if (dl !== null && dl >= 0) { ma.download.push(dl); fleetAgg.download.push(dl); }
+    }
+
+    function avg(arr: number[]): number | null {
+      if (arr.length === 0) return null;
+      return Math.round(arr.reduce((a, b) => a + b, 0) / arr.length);
+    }
+
+    function findBottleneck(dns: number | null, tcp: number | null, tls: number | null, ttfb: number | null, dl: number | null): 'dns' | 'tcp' | 'tls' | 'ttfb' | 'download' | null {
+      const phases: Array<['dns' | 'tcp' | 'tls' | 'ttfb' | 'download', number | null]> = [
+        ['dns', dns], ['tcp', tcp], ['tls', tls], ['ttfb', ttfb], ['download', dl],
+      ];
+      const valid = phases.filter(([, v]) => v !== null) as Array<['dns' | 'tcp' | 'tls' | 'ttfb' | 'download', number]>;
+      if (valid.length === 0) return null;
+      return valid.reduce((max, p) => p[1] > max[1] ? p : max)[0];
+    }
+
+    const fleetAvgDns = avg(fleetAgg.dns);
+    const fleetAvgTcp = avg(fleetAgg.tcp);
+    const fleetAvgTls = avg(fleetAgg.tls);
+    const fleetAvgTtfb = avg(fleetAgg.ttfb);
+    const fleetAvgDownload = avg(fleetAgg.download);
+
+    const resultMonitors = monitors.map(m => {
+      const ma = monitorAgg.get(m.id)!;
+      const samples = Math.max(ma.dns.length, ma.tcp.length, ma.tls.length, ma.ttfb.length, ma.download.length);
+      const avgDnsMs = avg(ma.dns);
+      const avgTcpMs = avg(ma.tcp);
+      const avgTlsMs = avg(ma.tls);
+      const avgTtfbMs = avg(ma.ttfb);
+      const avgDownloadMs = avg(ma.download);
+      const total = (avgDnsMs ?? 0) + (avgTcpMs ?? 0) + (avgTlsMs ?? 0) + (avgTtfbMs ?? 0) + (avgDownloadMs ?? 0);
+      const bottleneck = findBottleneck(avgDnsMs, avgTcpMs, avgTlsMs, avgTtfbMs, avgDownloadMs);
+      const bottleneckMs = bottleneck ? ({ dns: avgDnsMs, tcp: avgTcpMs, tls: avgTlsMs, ttfb: avgTtfbMs, download: avgDownloadMs }[bottleneck] ?? null) : null;
+      const bottleneckPct = bottleneckMs !== null && total > 0 ? Math.round((bottleneckMs / total) * 100) : null;
+      return { id: m.id, name: m.name, type: m.type, samples, avgDnsMs, avgTcpMs, avgTlsMs, avgTtfbMs, avgDownloadMs, avgTotalMs: samples > 0 ? total : null, bottleneck, bottleneckPct };
+    }).filter(m => m.samples > 0)
+      .sort((a, b) => (b.avgTotalMs ?? 0) - (a.avgTotalMs ?? 0));
+
+    return {
+      period: { days: clampedDays },
+      fleet: { avgDnsMs: fleetAvgDns, avgTcpMs: fleetAvgTcp, avgTlsMs: fleetAvgTls, avgTtfbMs: fleetAvgTtfb, avgDownloadMs: fleetAvgDownload, totalSamples: runs.length, bottleneck: findBottleneck(fleetAvgDns, fleetAvgTcp, fleetAvgTls, fleetAvgTtfb, fleetAvgDownload) },
+      monitors: resultMonitors,
+    };
+  }
+
 }
 
 export interface SuggestedMonitor {

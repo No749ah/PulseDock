@@ -1,3 +1,13 @@
+## Status Summary (2026-03-29 07:52 UTC)
+- **Build/Test:** ✅ 228 test files, 5095 tests passing; 0 TS errors; web + API build clean
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-29-early
+- **Last changes (07:52 UTC cycle):**
+  - [x] **Latency Heatmap** — `GET /v1/monitors/latency-heatmap?days=N`. Per-monitor × per-day avg latency with grades A (<200ms) through F (≥2000ms). P95 per cell. Fleet summary: avg latency, best/worst day. Frontend `/monitors/latency-heatmap`: period selector (7-90d), summary cards, grade legend, search filter, hover tooltips. Nav link added. 5 unit tests.
+  - [x] **Reliability Trends** — `GET /v1/monitors/reliability?weeks=N` (2–26w). Weekly health score (uptime 60% + latency 40%) per monitor. Trend detection: improving/degrading/stable/new. Fleet summary cards. Heatmap grid with week × monitor cells color-coded by score. Sparkline panel for top 20 monitors. 6 unit tests.
+  - [x] **Incident Insights** — `GET /v1/incidents/insights?days=N` (7–365d, default 90). Hour-of-day × DOW frequency heatmap, severity distribution with progress bars, top 10 most affected monitors with avg MTTR, weekly incident trend bar chart, totals summary (open/resolved/avg MTTR/longest). Frontend `/incidents/insights` with period selector (30/90/180/365d). Nav link added. 6 unit tests.
+
 ## Status Summary (2026-03-29 07:41 UTC)
 - **Build/Test:** ✅ 226 test files, 5083 tests passing; 0 TS errors; web + API build clean
 - **Security/Audit:** ✅ 0 vulnerabilities
@@ -5,7 +15,6 @@
 - **Branch:** heartbeat/2026-03-29-early
 - **Last changes (07:41 UTC cycle):**
   - [x] **Latency Heatmap** — `GET /v1/monitors/latency-heatmap?days=N`. Per-monitor × per-day avg latency with grades A (<200ms) through F (≥2000ms). P95 per cell. Fleet summary: avg latency, best/worst day. Frontend `/monitors/latency-heatmap`: period selector (7-90d), summary cards, grade legend, search filter, hover tooltips. Nav link added. 5 unit tests.
-  - [x] **Reliability Trends** — `GET /v1/monitors/reliability?weeks=N` (2–26w). Weekly health score (uptime 60% + latency 40%) per monitor. Trend detection: improving/degrading/stable/new. Fleet summary cards. Heatmap grid with week × monitor cells color-coded by score. Sparkline panel for top 20 monitors. 5 unit tests.
 
 ## Status Summary (2026-03-29 05:17 UTC)
 - **Build/Test:** ✅ 221 test files, 5078 tests passing; 0 TS errors; web + API build clean

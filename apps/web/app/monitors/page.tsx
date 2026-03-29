@@ -3,7 +3,7 @@
 import React, { Suspense, useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, PauseCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, Layers, Filter, Clock, Tag, Copy, Pin, Zap, Globe, Settings } from "lucide-react";
+import { Plus, Trash2, Pencil, AlertCircle, CheckCircle2, Monitor, Bell, BellOff, X, Download, Upload, Eye, Square, CheckSquare, PlayCircle, PauseCircle, Power, PowerOff, Printer, Shield, Search, ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight, LayoutGrid, List, Layers, Filter, Clock, Tag, Copy, Pin, Zap, Globe, Settings, TestTube2 } from "lucide-react";
 import { API_BASE, api } from "../../lib/api";
 import { createRealtimeSocket } from "../../lib/realtime";
 import { getUser } from "../../components/auth";
@@ -28,8 +28,28 @@ import { BadgeModal } from "./components/BadgeModal";
 import { MonitorFormModal } from "./components/MonitorFormModal";
 import { MonitorGridView, MonitorGroupedView } from "./components/MonitorGridView";
 import { AdvancedFiltersPanel } from "./components/AdvancedFiltersPanel";
+
+// Transaction monitor step type (mirrors backend TransactionStep)
+export interface TransactionStepAssertion {
+  type: "status" | "body_contains" | "json_path" | "header_exists" | "latency_lt";
+  value: string;
+  expected?: string;
+}
+export interface TransactionStep {
+  id: string;
+  name: string;
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  url: string;
+  headers?: Record<string, string>;
+  body?: string;
+  extract?: Record<string, string>;
+  assertions?: TransactionStepAssertion[];
+  timeoutMs?: number;
+}
 import { QuickAddModal } from "./components/QuickAddModal";
 import { ImportFromComposeModal } from "./components/ImportFromComposeModal";
+import { OpenApiImportModal } from "./components/OpenApiImportModal";
+import { PlaygroundModal } from "./components/PlaygroundModal";
 
 function MonitorsPageInner() {
   const router = useRouter();
@@ -53,7 +73,7 @@ function MonitorsPageInner() {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   // Advanced filter panel state
   const [filterStatuses, setFilterStatuses] = useState<Set<string>>(new Set(["up", "down", "degraded", "paused"]));
-  const [filterTypes, setFilterTypes] = useState<Set<string>>(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER", "WHOIS", "FTP", "IMAP", "POP3"]));
+  const [filterTypes, setFilterTypes] = useState<Set<string>>(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER", "WHOIS", "FTP", "IMAP", "POP3", "CT_LOG", "GRAPHQL", "TRANSACTION"]));
   const [filterTags, setFilterTags] = useState<Set<string>>(new Set());
   const [savedPresets, setSavedPresets] = useState<Array<{ name: string; filters: Record<string, string> }>>(() => {
     try { return JSON.parse(localStorage.getItem("monitor-filter-presets") || "[]"); } catch { return []; }
@@ -165,6 +185,8 @@ function MonitorsPageInner() {
   // quick add (bulk URL) modal
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showComposeImport, setShowComposeImport] = useState(false);
+  const [showOpenApiImport, setShowOpenApiImport] = useState(false);
+  const [showPlayground, setShowPlayground] = useState(false);
 
   // config export modal
   const [showConfigExport, setShowConfigExport] = useState(false);
@@ -435,14 +457,24 @@ function MonitorsPageInner() {
     }
   };
 
-  const updateNotifyOn = async (channelId: string, notifyOn: string) => {
+  const updateNotifyOn = async (channelId: string, notifyOn: string, repeatIntervalMin?: number | null) => {
     if (!alertPanelMonitor) return;
     try {
+      const body: Record<string, unknown> = { notifyOn };
+      if (notifyOn === "REPEAT_EVERY_N" && repeatIntervalMin != null) {
+        body.repeatIntervalMin = repeatIntervalMin;
+      } else if (notifyOn !== "REPEAT_EVERY_N") {
+        body.repeatIntervalMin = null;
+      }
       await api(`/v1/monitors/${alertPanelMonitor.id}/alerts/${channelId}`, user?.id, {
         method: "PATCH",
-        body: JSON.stringify({ notifyOn }),
+        body: JSON.stringify(body),
       });
-      setAssignedChannels((prev) => prev.map((c) => c.id === channelId ? { ...c, notifyOn } : c));
+      setAssignedChannels((prev) => prev.map((c) =>
+        c.id === channelId
+          ? { ...c, notifyOn, ...(repeatIntervalMin != null ? { repeatIntervalMin } : {}) }
+          : c
+      ));
       const updatedMonitors = await api<MonitorItem[]>("/v1/monitors", user?.id);
       setMonitors(updatedMonitors);
     } catch (e) {
@@ -582,6 +614,11 @@ function MonitorsPageInner() {
         if (f.preAuthExtractToken?.trim()) config.preAuthExtractToken = f.preAuthExtractToken.trim();
       }
     }
+    if (formData.type === "TRANSACTION") {
+      const f = formData as typeof formData & { transactionSteps?: TransactionStep[]; transactionContinueOnFailure?: boolean };
+      config.transactionSteps = f.transactionSteps ?? [];
+      if (f.transactionContinueOnFailure) config.continueOnFailure = true;
+    }
     return config;
   };
 
@@ -634,6 +671,10 @@ function MonitorsPageInner() {
           ...((formData as typeof formData & { metricUnit?: string | null }).metricUnit ? { metricUnit: (formData as typeof formData & { metricUnit?: string | null }).metricUnit } : {}),
           ...((formData as typeof formData & { metricAlertMin?: number | null }).metricAlertMin !== null && (formData as typeof formData & { metricAlertMin?: number | null }).metricAlertMin !== undefined ? { metricAlertMin: (formData as typeof formData & { metricAlertMin?: number | null }).metricAlertMin } : {}),
           ...((formData as typeof formData & { metricAlertMax?: number | null }).metricAlertMax !== null && (formData as typeof formData & { metricAlertMax?: number | null }).metricAlertMax !== undefined ? { metricAlertMax: (formData as typeof formData & { metricAlertMax?: number | null }).metricAlertMax } : {}),
+          ...((formData as typeof formData & { graphqlQuery?: string | null }).graphqlQuery ? { graphqlQuery: (formData as typeof formData & { graphqlQuery?: string | null }).graphqlQuery } : {}),
+          ...((formData as typeof formData & { graphqlVariables?: string | null }).graphqlVariables ? { graphqlVariables: (formData as typeof formData & { graphqlVariables?: string | null }).graphqlVariables } : {}),
+          ...((formData as typeof formData & { graphqlDataPath?: string | null }).graphqlDataPath ? { graphqlDataPath: (formData as typeof formData & { graphqlDataPath?: string | null }).graphqlDataPath } : {}),
+          ...((formData as typeof formData & { graphqlExpectedValue?: string | null }).graphqlExpectedValue ? { graphqlExpectedValue: (formData as typeof formData & { graphqlExpectedValue?: string | null }).graphqlExpectedValue } : {}),
         }),
       });
       setShowModal(false);
@@ -706,6 +747,10 @@ function MonitorsPageInner() {
           metricUnit: (formData as typeof formData & { metricUnit?: string | null }).metricUnit ?? null,
           metricAlertMin: (formData as typeof formData & { metricAlertMin?: number | null }).metricAlertMin ?? null,
           metricAlertMax: (formData as typeof formData & { metricAlertMax?: number | null }).metricAlertMax ?? null,
+          graphqlQuery: (formData as typeof formData & { graphqlQuery?: string | null }).graphqlQuery ?? null,
+          graphqlVariables: (formData as typeof formData & { graphqlVariables?: string | null }).graphqlVariables ?? null,
+          graphqlDataPath: (formData as typeof formData & { graphqlDataPath?: string | null }).graphqlDataPath ?? null,
+          graphqlExpectedValue: (formData as typeof formData & { graphqlExpectedValue?: string | null }).graphqlExpectedValue ?? null,
         }),
       });
       setShowModal(false);
@@ -1122,7 +1167,7 @@ function MonitorsPageInner() {
 
   // Compute active filter count for badge
   const defaultStatuses = new Set(["up", "down", "degraded", "paused"]);
-  const defaultTypes = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER", "WHOIS", "FTP", "IMAP", "POP3"]);
+  const defaultTypes = new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER", "WHOIS", "FTP", "IMAP", "POP3", "CT_LOG", "GRAPHQL"]);
   const activeFilterCount =
     (filterStatuses.size < defaultStatuses.size ? 1 : 0) +
     (filterTypes.size < defaultTypes.size ? 1 : 0) +
@@ -1461,6 +1506,16 @@ function MonitorsPageInner() {
               <Button
                 variant="secondary"
                 size="sm"
+                onClick={() => setShowPlayground(true)}
+                className="flex items-center gap-2"
+                title="Test any endpoint before creating a monitor"
+              >
+                <TestTube2 className="w-4 h-4" />
+                <span className="hidden sm:inline">Try it</span>
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
                 onClick={() => setShowQuickAdd(true)}
                 className="flex items-center gap-2"
                 title="Paste multiple URLs to create monitors in bulk"
@@ -1477,6 +1532,16 @@ function MonitorsPageInner() {
               >
                 <Globe className="w-4 h-4" />
                 <span className="hidden sm:inline">From Compose</span>
+              </Button>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setShowOpenApiImport(true)}
+                className="flex items-center gap-2"
+                title="Import monitors from an OpenAPI/Swagger spec"
+              >
+                <Globe className="w-4 h-4" />
+                <span className="hidden sm:inline">From OpenAPI</span>
               </Button>
               <Button
                 size="sm"
@@ -1580,7 +1645,7 @@ function MonitorsPageInner() {
             onDeletePreset={deletePreset}
             onClearFilters={() => {
               setFilterStatuses(new Set(["up", "down", "degraded", "paused"]));
-              setFilterTypes(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER", "WHOIS", "FTP", "IMAP", "POP3"]));
+              setFilterTypes(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER", "WHOIS", "FTP", "IMAP", "POP3", "CT_LOG", "GRAPHQL"]));
               setFilterTags(new Set());
               setTypeFilter("all");
               setStatusFilter("all");
@@ -2597,6 +2662,80 @@ function MonitorsPageInner() {
               setMonitors(monitorsData);
             }
             success("Monitors created from Docker Compose");
+          }}
+        />
+      )}
+
+      {showPlayground && (
+        <PlaygroundModal
+          onClose={() => setShowPlayground(false)}
+          onCreateMonitor={(prefill) => {
+            setShowPlayground(false);
+            setModalMode("create");
+            setEditingMonitor(null);
+            setFormData({
+              name: "",
+              description: "",
+              runbookUrl: "",
+              type: "HTTP",
+              target: prefill.url,
+              intervalSec: 60,
+              confirmations: 1,
+              retryCount: 0,
+              enabled: true,
+              pluginId: "",
+              expectedText: "",
+              heartbeatTimeoutMin: 5,
+              heartbeatToken: "",
+              folderId: "",
+              slaTarget: "",
+              slaPeriodDays: 30,
+              autoIncident: false,
+              autoIncidentSeverity: "MEDIUM",
+              flapDetectionEnabled: true,
+              flapWindow: 10,
+              flapThreshold: 0.5,
+              latencyAlertMs: null,
+              anomalyDetection: false,
+              anomalyMultiplier: 2.0,
+              cronExpression: "",
+              scheduleEnabled: false,
+              scheduleDays: "1,2,3,4,5",
+              scheduleStartHour: 8,
+              scheduleEndHour: 18,
+              sliLatencyTarget: "",
+              sliLatencyWindow: 7,
+              rtoMinutes: undefined,
+              timeoutMs: null,
+              httpMethod: prefill.method,
+              requestHeaders: prefill.headers ? JSON.stringify(prefill.headers) : undefined,
+              requestBody: prefill.body,
+              expectedStatus: prefill.expectedStatus,
+              bodyContains: prefill.bodyContains,
+              bodyJsonPath: prefill.bodyJsonPath,
+              bodyJsonPathExpected: prefill.bodyJsonPathExpected,
+            } as typeof formData);
+            setFormErrors({});
+            setFormTouched({});
+            setSelectedTags([]);
+            setTagInput("");
+            setShowModal(true);
+            setShowTemplates(false);
+          }}
+        />
+      )}
+
+      {showOpenApiImport && (
+        <OpenApiImportModal
+          onClose={() => setShowOpenApiImport(false)}
+          onImported={async () => {
+            const u = getUser();
+            if (u) {
+              const monitorsData = await api<MonitorItem[]>("/v1/monitors", u.id).catch(() => [] as MonitorItem[]);
+              setMonitors(monitorsData);
+            }
+            success("Monitors imported from OpenAPI spec");
+            setShowOpenApiImport(false);
           }}
         />
       )}

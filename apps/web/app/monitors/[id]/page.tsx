@@ -224,7 +224,7 @@ export default function MonitorDetailPage() {
   const [depLoading, setDepLoading] = useState(false);
   const [errorBudget, setErrorBudget] = useState<ErrorBudget | null>(null);
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate" | "domain" | "security" | "content" | "headers" | "diff" | "annotations" | "ctlog" | "geo" | "failures" | "simulate" | "metric">("overview");
+  const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate" | "domain" | "security" | "content" | "headers" | "diff" | "annotations" | "ctlog" | "geo" | "failures" | "simulate" | "metric" | "transaction" | "config-history">("overview");
 
   // Custom Metric state
   type MetricPoint = { checkedAt: string; value: number; level: string };
@@ -238,6 +238,17 @@ export default function MonitorDetailPage() {
   const [metricLoading, setMetricLoading] = useState(false);
   const [metricError, setMetricError] = useState<string | null>(null);
   const [metricPeriod, setMetricPeriod] = useState(30);
+
+  // Config History state
+  const [configHistory, setConfigHistory] = useState<Array<{
+    id: string;
+    summary: string;
+    createdAt: string;
+    changes: Array<{ field: string; from: unknown; to: unknown }>;
+  }>>([]);
+  const [configHistoryLoaded, setConfigHistoryLoaded] = useState(false);
+  const [configHistoryLoading, setConfigHistoryLoading] = useState(false);
+  const [expandedConfigChange, setExpandedConfigChange] = useState<string | null>(null);
 
   // Simulate Alerts state
   const [simConfirmations, setSimConfirmations] = useState(1);
@@ -528,6 +539,25 @@ export default function MonitorDetailPage() {
       .finally(() => setFailurePatternsLoading(false));
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeMainTab, id, failuresPeriod]);
+
+  // Load config history when config-history tab is first opened
+  useEffect(() => {
+    if (activeMainTab !== "config-history" || configHistoryLoaded || configHistoryLoading || !monitor) return;
+    const user = getUser();
+    if (!user) return;
+    setConfigHistoryLoading(true);
+    api<Array<{ id: string; summary: string; createdAt: string; changes: Array<{ field: string; from: unknown; to: unknown }> }>>(
+      `/v1/monitors/${id}/config-history`,
+      user.id,
+    )
+      .then((data) => {
+        setConfigHistory(data ?? []);
+        setConfigHistoryLoaded(true);
+      })
+      .catch(() => setConfigHistory([]))
+      .finally(() => setConfigHistoryLoading(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeMainTab, id, configHistoryLoaded, configHistoryLoading]);
 
   // Load latency history when performance tab is active or days change
   useEffect(() => {
@@ -1195,6 +1225,19 @@ export default function MonitorDetailPage() {
               CT Logs
             </button>
           )}
+          {monitor.type === "TRANSACTION" && (
+            <button
+              onClick={() => setActiveMainTab("transaction")}
+              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+                activeMainTab === "transaction"
+                  ? "bg-white/10 text-text-primary"
+                  : "text-text-muted hover:text-text-secondary"
+              }`}
+            >
+              <List className="w-3.5 h-3.5" />
+              Steps
+            </button>
+          )}
           {(monitor.type === "HTTP" || monitor.type === "BROWSER") && !!(monitor.config as Record<string, unknown>)?.checkSecurityHeaders && (
             <button
               onClick={() => setActiveMainTab("security")}
@@ -1341,6 +1384,20 @@ export default function MonitorDetailPage() {
               Metric
             </button>
           )}
+          {/* Config History tab button */}
+          <button
+            onClick={() => setActiveMainTab("config-history")}
+            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
+              activeMainTab === "config-history"
+                ? "bg-white/10 text-text-primary"
+                : "text-text-muted hover:text-text-secondary"
+            }`}
+          >
+            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Config History
+          </button>
         </div>
 
         {/* Simulate Alerts Tab */}
@@ -2792,6 +2849,213 @@ export default function MonitorDetailPage() {
           );
         })()}
 
+        {/* Transaction Steps Tab */}
+        {(activeMainTab as string) === "transaction" && monitor.type === "TRANSACTION" && ((): React.ReactNode => {
+          const txRuns = runs.slice(0, 20);
+
+          const levelColor = (level: string) => {
+            if (level === "green") return "text-success";
+            if (level === "yellow") return "text-warning";
+            return "text-error";
+          };
+
+          const levelBg = (level: string) => {
+            if (level === "green") return "bg-success/10 border-success/20";
+            if (level === "yellow") return "bg-warning/10 border-warning/20";
+            return "bg-error/10 border-error/20";
+          };
+
+          return (
+            <Card className="p-6 space-y-4">
+              <div>
+                <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">Transaction Run History</h2>
+                <p className="text-xs text-text-muted mt-1">Last {txRuns.length} transaction runs. Expand a row to see per-step details.</p>
+              </div>
+
+              {txRuns.length === 0 && (
+                <div className="text-center py-6 text-text-muted text-sm">
+                  No transaction runs yet — trigger a manual check to see step-by-step results.
+                </div>
+              )}
+
+              <div className="space-y-2">
+                {txRuns.map((run) => {
+                  const txResult = ((run as typeof run & { metadata?: { transactionResult?: { steps: Array<{ stepId: string; name: string; ok: boolean; statusCode?: number; latencyMs: number; assertionFailures: string[]; error?: string }> } } }).metadata)?.transactionResult;
+                  const [expanded, setExpanded] = React.useState(false);
+                  return (
+                    <div key={run.id} className={`rounded-lg border ${levelBg(run.level ?? "red")} overflow-hidden`}>
+                      <button
+                        type="button"
+                        className="w-full flex items-center gap-3 px-3 py-2.5 text-left hover:brightness-110 transition-all"
+                        onClick={() => setExpanded((v) => !v)}
+                      >
+                        <span className={`text-xs font-bold uppercase ${levelColor(run.level ?? "red")}`}>{run.level}</span>
+                        <span className="text-xs text-text-primary">{new Date(run.checkedAt).toLocaleString(undefined, { month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" })}</span>
+                        <span className="text-xs text-text-secondary ml-auto">{run.latencyMs != null ? `${run.latencyMs}ms total` : "—"}</span>
+                        <span className="text-xs text-text-muted">{txResult ? `${txResult.steps.filter((s) => s.ok).length}/${txResult.steps.length} steps passed` : run.message}</span>
+                        <span className="text-text-muted text-xs ml-1">{expanded ? "▲" : "▼"}</span>
+                      </button>
+                      {expanded && txResult && (
+                        <div className="border-t border-current/10 p-3">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="text-text-muted">
+                                <th className="text-left py-1 pr-3">#</th>
+                                <th className="text-left py-1 pr-3">Step</th>
+                                <th className="text-left py-1 pr-3">Status</th>
+                                <th className="text-left py-1 pr-3">Latency</th>
+                                <th className="text-left py-1">Issues</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {txResult.steps.map((step, si) => (
+                                <tr key={step.stepId} className="border-t border-current/5">
+                                  <td className="py-1.5 pr-3 text-text-muted">{si + 1}</td>
+                                  <td className="py-1.5 pr-3 font-medium text-text-primary">{step.name}</td>
+                                  <td className={`py-1.5 pr-3 font-bold ${step.ok ? "text-success" : "text-error"}`}>
+                                    {step.ok ? "✓" : "✗"} {step.statusCode ?? "—"}
+                                  </td>
+                                  <td className="py-1.5 pr-3 text-text-secondary">{step.latencyMs}ms</td>
+                                  <td className="py-1.5 text-text-muted">
+                                    {step.error && <span className="text-error">{step.error}</span>}
+                                    {step.assertionFailures.length > 0 && step.assertionFailures.map((f, fi) => (
+                                      <div key={fi} className="text-warning">{f}</div>
+                                    ))}
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </Card>
+          );
+        })()}
+
+        {/* Config History Tab */}
+        {(activeMainTab as string) === "config-history" && ((): React.ReactNode => {
+          const FIELD_LABELS: Record<string, string> = {
+            name: "Name", description: "Description", target: "Target URL", type: "Monitor Type",
+            intervalSec: "Check Interval (s)", timeoutMs: "Timeout (ms)", confirmations: "Confirmations",
+            retryCount: "Retry Count", enabled: "Enabled", slaTarget: "SLA Target (%)",
+            slaPeriodDays: "SLA Period (days)", autoIncident: "Auto-Create Incidents",
+            autoIncidentSeverity: "Incident Severity", flapDetectionEnabled: "Flap Detection",
+            flapWindow: "Flap Window", flapThreshold: "Flap Threshold",
+            latencyAlertMs: "Latency Alert Threshold (ms)", anomalyDetection: "Anomaly Detection",
+            anomalyMultiplier: "Anomaly Multiplier", cronExpression: "Cron Expression",
+            scheduleEnabled: "Business Hours Schedule", scheduleDays: "Schedule Days",
+            scheduleStartHour: "Schedule Start Hour", scheduleEndHour: "Schedule End Hour",
+            sliLatencyTarget: "Latency SLI Target (ms)", rtoMinutes: "RTO (minutes)",
+            throttleMs: "Throttle (ms)", maxChecksPerHour: "Max Checks/Hour",
+            metricPath: "Metric JSONPath", metricName: "Metric Name",
+            metricAlertMin: "Metric Min Alert", metricAlertMax: "Metric Max Alert",
+            graphqlQuery: "GraphQL Query", graphqlDataPath: "GraphQL Data Path",
+            graphqlExpectedValue: "GraphQL Expected Value",
+          };
+
+          const formatVal = (v: unknown): string => {
+            if (v === null || v === undefined) return "—";
+            if (typeof v === "boolean") return v ? "true" : "false";
+            const s = String(v);
+            return s.length > 80 ? s.slice(0, 77) + "…" : s;
+          };
+
+          const relTime = (iso: string) => {
+            const diffMs = Date.now() - new Date(iso).getTime();
+            const m = Math.floor(diffMs / 60000);
+            if (m < 1) return "just now";
+            if (m < 60) return `${m}m ago`;
+            const h = Math.floor(m / 60);
+            if (h < 24) return `${h}h ago`;
+            return `${Math.floor(h / 24)}d ago`;
+          };
+
+          return (
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-text-primary">Config Change History</h3>
+                <span className="text-xs text-text-muted">
+                  {configHistory.length} change{configHistory.length !== 1 ? "s" : ""} recorded
+                </span>
+              </div>
+
+              {configHistoryLoading && (
+                <div className="text-sm text-text-muted py-8 text-center">Loading history…</div>
+              )}
+
+              {!configHistoryLoading && configHistory.length === 0 && (
+                <div className="rounded-lg border border-border bg-surface/50 p-8 text-center">
+                  <div className="text-2xl mb-2">📋</div>
+                  <p className="text-sm font-medium text-text-secondary">No config changes recorded yet</p>
+                  <p className="text-xs text-text-muted mt-1">
+                    Config changes are tracked automatically when you edit this monitor.
+                  </p>
+                </div>
+              )}
+
+              {!configHistoryLoading && configHistory.map((entry) => {
+                const isExpanded = expandedConfigChange === entry.id;
+                const changes = (entry.changes ?? []) as Array<{ field: string; from: unknown; to: unknown }>;
+                return (
+                  <div key={entry.id} className="rounded-lg border border-border bg-surface/50 overflow-hidden">
+                    <button
+                      onClick={() => setExpandedConfigChange(isExpanded ? null : entry.id)}
+                      className="w-full flex items-start justify-between p-3 hover:bg-surface/80 transition-colors text-left"
+                    >
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5 flex-wrap">
+                          <span className="text-xs font-semibold text-brand-accent">
+                            {changes.length} field{changes.length !== 1 ? "s" : ""} changed
+                          </span>
+                          <span className="text-xs text-text-muted">·</span>
+                          <span className="text-xs text-text-muted">{relTime(entry.createdAt)}</span>
+                          <span className="text-xs text-text-muted">·</span>
+                          <span className="text-xs text-text-muted">{new Date(entry.createdAt).toLocaleString()}</span>
+                        </div>
+                        <p className="text-xs text-text-secondary truncate">{entry.summary}</p>
+                      </div>
+                      <span className="text-text-muted text-xs ml-2 mt-0.5 shrink-0">{isExpanded ? "▲" : "▼"}</span>
+                    </button>
+
+                    {isExpanded && (
+                      <div className="border-t border-border p-3">
+                        <table className="w-full text-xs">
+                          <thead>
+                            <tr className="text-text-muted">
+                              <th className="text-left pb-2 font-medium w-1/4">Field</th>
+                              <th className="text-left pb-2 font-medium w-[37.5%]">Before</th>
+                              <th className="text-left pb-2 font-medium w-[37.5%]">After</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-border/50">
+                            {changes.map((change, i) => (
+                              <tr key={i}>
+                                <td className="py-1.5 pr-3 font-medium text-text-secondary">
+                                  {FIELD_LABELS[change.field] ?? change.field}
+                                </td>
+                                <td className="py-1.5 pr-3 font-mono text-red-400/80 line-through">
+                                  {formatVal(change.from)}
+                                </td>
+                                <td className="py-1.5 font-mono text-green-400">
+                                  {formatVal(change.to)}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
+
         {/* Security Headers Audit Tab */}
         {activeMainTab === "security" && (monitor.type === "HTTP" || monitor.type === "BROWSER") && ((): React.ReactNode => {
           // Get the latest run that has a security audit
@@ -4177,6 +4441,50 @@ export default function MonitorDetailPage() {
                   <span className="font-mono text-xs text-accent bg-surface-elevated px-2 py-1 rounded">
                     {String(monitor.config?.expectedSelector ?? "")}
                   </span>
+                </div>
+              )}
+            </div>
+          </Card>
+        )}
+
+        {/* GraphQL config */}
+        {monitor.type === "GRAPHQL" && (
+          <Card className="p-4 space-y-3">
+            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+              <Settings className="w-4 h-4" />
+              GraphQL Configuration
+            </h2>
+            <div className="space-y-3 text-sm">
+              <div>
+                <span className="text-xs text-text-secondary block mb-0.5">Endpoint</span>
+                <span className="font-mono text-xs text-text-primary bg-surface-elevated px-2 py-1 rounded break-all block">
+                  {monitor.target}
+                </span>
+              </div>
+              {Boolean(monitor.graphqlQuery) && (
+                <div>
+                  <span className="text-xs text-text-secondary block mb-0.5">Query</span>
+                  <pre className="font-mono text-xs text-text-primary bg-surface-elevated px-2 py-1.5 rounded overflow-x-auto whitespace-pre-wrap break-all">
+                    {monitor.graphqlQuery ?? ""}
+                  </pre>
+                </div>
+              )}
+              {Boolean(monitor.graphqlDataPath) && (
+                <div className="flex flex-wrap gap-6">
+                  <div>
+                    <span className="text-xs text-text-secondary block mb-0.5">Data Path</span>
+                    <span className="font-mono text-xs text-accent bg-surface-elevated px-2 py-1 rounded">
+                      {monitor.graphqlDataPath ?? ""}
+                    </span>
+                  </div>
+                  {Boolean(monitor.graphqlExpectedValue) && (
+                    <div>
+                      <span className="text-xs text-text-secondary block mb-0.5">Expected Value</span>
+                      <span className="font-mono text-xs text-emerald-400 bg-surface-elevated px-2 py-1 rounded">
+                        {monitor.graphqlExpectedValue ?? ""}
+                      </span>
+                    </div>
+                  )}
                 </div>
               )}
             </div>

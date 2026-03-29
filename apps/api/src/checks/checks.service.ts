@@ -25,6 +25,8 @@ import { runBrowserCheck } from './runners/http.runner';
 import { runTcpCheck, runSslCheck, runDnsCheck, runPingCheck, runSmtpCheck, runFtpCheck, runImapCheck, runPop3Check } from './runners/network.runner';
 import { runWhoisCheck } from './runners/whois.runner';
 import { runCtLogCheck } from './runners/ct-log.runner';
+import { runGraphQLCheck } from './runners/graphql.runner';
+import { runTransactionCheck } from './runners/transaction.runner';
 import { runGitReleaseCheck, runDockerCheck } from './runners/version.runner';
 
 @Injectable()
@@ -190,6 +192,27 @@ export class ChecksService {
         return runPop3Check(monitor.target, monitor.config, monitor.timeoutMs);
       case 'CT_LOG':
         return runCtLogCheck(monitor.target, monitor.config ?? {}, monitor.timeoutMs);
+      case 'GRAPHQL':
+        return runGraphQLCheck({
+          url: monitor.target,
+          query: monitor.graphqlQuery ?? undefined,
+          variables: monitor.graphqlVariables ?? undefined,
+          dataPath: monitor.graphqlDataPath ?? undefined,
+          expectedValue: monitor.graphqlExpectedValue ?? undefined,
+          timeoutMs: monitor.timeoutMs ?? 30_000,
+        });
+      case 'TRANSACTION': {
+        const txConfig = (monitor.config ?? {}) as {
+          transactionSteps?: unknown[];
+          initialVars?: Record<string, string>;
+          continueOnFailure?: boolean;
+        };
+        return runTransactionCheck(
+          (txConfig.transactionSteps ?? []) as import('./runners/transaction.runner').TransactionStep[],
+          txConfig.initialVars ?? {},
+          txConfig.continueOnFailure ?? false,
+        );
+      }
       default:
         return runHttpCheck(monitor.target, monitor.timeoutMs);
     }
@@ -487,7 +510,7 @@ export class ChecksService {
         userId: monitor.userId,
         monitorId: monitor.id,
         ok: result.ok,
-        status: result.statusCode,
+        status: (result as PluginExecutionResult).statusCode,
         latencyMs: result.latencyMs,
         message: result.message,
         level: result.level,

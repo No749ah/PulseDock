@@ -1,7 +1,9 @@
 "use client";
 
+import type { ReactNode } from "react";
+
 interface BadgeProps {
-  children: string;
+  children: ReactNode;
   variant?: "success" | "warning" | "danger" | "default";
   className?: string;
 }

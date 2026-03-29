@@ -29,6 +29,8 @@ enum MonitorType {
   IMAP
   POP3
   CT_LOG
+  GRAPHQL
+  TRANSACTION
 }
 
 model User {
@@ -82,6 +84,7 @@ model User {
   escalationPolicies      EscalationPolicy[]
   alertGroups             AlertGroup[]
   annotations             MonitorAnnotation[]
+  monitorConfigChanges    MonitorConfigChange[]
 }
 
 model Session {
@@ -169,6 +172,11 @@ model Monitor {
   metricAlertMax      Float?      // Alert yellow when captured value > this (null = no max alert)
   // Header Assertions: assert response headers exist/equal/contain on every HTTP check
   headerAssertions    Json?       // Array of { header: string, op: 'exists'|'equals'|'contains'|'not-exists', value?: string }
+  // GraphQL monitor fields
+  graphqlQuery        String?     // GraphQL query/mutation to send (e.g. "{ __typename }" for introspection health)
+  graphqlVariables    String?     // JSON string of variables to pass with the query
+  graphqlDataPath     String?     // JSONPath to expected field in response data (e.g. "$.data.__typename")
+  graphqlExpectedValue String?    // Expected string value at graphqlDataPath (null = just check field exists)
   createdAt           DateTime    @default(now())
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -186,6 +194,7 @@ model Monitor {
   events        MonitorEvent[]
   acknowledgements AlertAcknowledgement[]
   annotations   MonitorAnnotation[]
+  configChanges MonitorConfigChange[]
 
 
   @@index([userId])
@@ -249,6 +258,25 @@ model MonitorTag {
   tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
 
   @@id([monitorId, tagId])
+}
+
+/// Field-level diff recorded every time a monitor config is updated.
+/// Enables a full audit trail of configuration changes per monitor.
+model MonitorConfigChange {
+  id        String   @id @default(cuid())
+  monitorId String
+  userId    String
+  /// JSON array of { field, from, to } objects — only changed fields included
+  changes   Json     @default("[]")
+  /// Human-readable summary e.g. "intervalSec: 60 → 120, target: http://old... → http://new..."
+  summary   String
+  createdAt DateTime @default(now())
+
+  monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([monitorId, createdAt])
+  @@index([userId])
 }
 
 /// Timestamped annotations / events on a monitor timeline (deploys, notes, incidents, etc.)
@@ -324,9 +352,11 @@ model AlertChannel {
 model MonitorAlert {
   monitorId      String
   alertChannelId String
-  /// When to fire: ON_CHANGE | ALWAYS | FIRST_ONLY | DAILY_DIGEST | VERSION_ANY | VERSION_MAJOR
+  /// When to fire: ON_CHANGE | ALWAYS | FIRST_ONLY | DAILY_DIGEST | REPEAT_EVERY_N | VERSION_ANY | VERSION_MAJOR
   notifyOn       String    @default("ON_CHANGE")
   lastNotifiedAt DateTime?
+  /// Repeat interval in minutes when notifyOn = REPEAT_EVERY_N (1–1440). null = use default 30min.
+  repeatIntervalMin Int?
   /// Optional escalation policy for this monitor↔channel link
   escalationPolicyId String?
   /// Timestamp when the first escalation step fired for the current outage

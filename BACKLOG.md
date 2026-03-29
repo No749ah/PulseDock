@@ -1,3 +1,142 @@
+## Status Summary (2026-03-28 23:17 UTC)
+- **Build/Test:** ✅ Clean build + 4163 API + 757 web + 10 CLI + 12 agent = 4942 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 33+ pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-late
+- **Last changes (23:17 UTC cycle):**
+  - [x] **Monitor Anomaly Report** — `GET /v1/monitors/anomaly-report?hours=24|48|168`. Compares current period vs prior period of equal duration per monitor. Detects: uptime regression (≥5% drop), latency regression (≥25% increase), flapping (≥10% status change rate + ≥3 changes), failure bursts (recent 10 checks ≥50% failures while overall period was healthy), recovery from outage (previous <90% → current ≥99%), latency improvement (≥30% faster). Severity scoring: critical (<90% uptime regression), high (uptime regression / failure burst / currently degraded), medium (latency regression / flapping), low (recovery / improvement). Results sorted critical first. `/monitors/anomaly` frontend: period selector (24h/48h/7d), 4 severity summary cards (clickable filter), anomaly list with expandable rows showing period comparison stats grid (uptime/latency/failures/checks for both periods) + per-anomaly change description + % delta. Sidebar nav link. 11 new unit tests.
+
+## Status Summary (2026-03-28 22:17 UTC)
+- **Build/Test:** ✅ Clean build + 4152 API + 757 web + 10 CLI + 12 agent = 4931 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 32+ pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-evening
+- **Last changes (22:17 UTC cycle):**
+  - [x] **Security Headers Fleet Dashboard** — `GET /v1/monitors/security-headers` aggregates latest security header audit results from all HTTP/BROWSER monitors. Returns grade distribution (A–F), per-header fleet coverage rates (with critical/warning severity), avgScore, noData count, and per-monitor rows sorted worst-first by score. `/monitors/security` frontend page: grade distribution horizontal bars, 8-header coverage grid with severity badges + progress bars, searchable monitor table with grade filter pills (A/B/C/D/F/No Data), expandable row showing all 8 headers with ✓/✗ per-header detail. Nav link added to Monitoring section. 9 unit tests.
+
+## Status Summary (2026-03-28 21:21 UTC)
+- **Build/Test:** ✅ Clean build + 4135 API + 757 web + 10 CLI + 12 agent = 4914 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 31+ pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-afternoon
+- **Last changes (21:21 UTC cycle):**
+  - [x] **Monitor Config Change History** — `MonitorConfigChange` Prisma model (migration `add_monitor_config_history`). `computeMonitorDiff()` + `buildSummary()` pure helpers tracking 30+ scalar fields. Every `monitor.update()` call now records a field-level diff when ≥1 tracked field changes. `GET /v1/monitors/:id/config-history` API endpoint (limit=50, max 200, newest first). "Config History" tab on monitor detail page: expandable entries showing which fields changed, with strikethrough-red (before) and green (after) diff table, human-readable field labels. 11 unit tests for pure helpers. Full enterprise-grade audit trail.
+
+## Status Summary (2026-03-28 20:20 UTC)
+- **Build/Test:** ✅ Clean build + 4095 API + 757 web + 10 CLI + 12 agent = 4874 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 31 pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-afternoon
+- **Last changes (20:20 UTC cycle):**
+  - [x] **SLA Compliance Report** — `GET /v1/monitors/sla-compliance-report?months=N` (1–12 months). Per-monitor monthly breakdown: uptime%, totalChecks, failedChecks, downtimeMinutes, incidents, errorBudgetUsedPct, compliant flag. Fleet-level weighted uptime + compliance rate. Frontend: "Compliance Report" button on `/monitors/sla` with month selector (1mo/3mo/6mo/12mo pills). Opens print-ready HTML report in new tab: cover summary cards, per-monitor stat grids, monthly table with color-coded rows (green=compliant, red=breach). Users can File→Print→Save as PDF for client-ready compliance documentation. 6 new unit tests.
+
+## Status Summary (2026-03-28 19:20 UTC)
+- **Build/Test:** ✅ Clean build + 4089 API + 757 web + 10 CLI + 12 agent = 4868 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 22 pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-afternoon
+- **Last changes (19:20 UTC cycle):**
+  - [x] **Monitor Fleet Health Report** — `GET /v1/monitors/fleet-report`. Fleet-level executive overview: fleet score (0–100) + grade (A–F), 5-tier reliability classification (Elite ≥99.9% → Critical <90%), at-risk monitors with severity+reason, incident velocity (last 7d/30d, weekly sparkline, trend), type distribution with avg uptime per type, coverage gaps (no alert channel/SLA/description), top performers + needs-attention lists. `/monitors/fleet` frontend: fleet score circle, summary stat cards, expandable tier sections, at-risk list with severity badges, incident sparkline bars, type distribution bar chart, coverage gap panel, top/worst performer tables. Sidebar nav link. 7 new unit tests.
+
+## Status Summary (2026-03-28 18:20 UTC)
+- **Build/Test:** ✅ Clean build + 4082 API + 757 web + 10 CLI + 12 agent = 4861 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 14+ pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-afternoon
+- **Last changes (18:20 UTC cycle):**
+  - [x] **Monitor Failure Correlation Analysis** — `GET /v1/monitors/correlation?days=N` (1–90d, default 7d). Buckets failures into 5-minute windows, computes Jaccard similarity (|A∩B|/|A∪B|) for all monitor pairs. Returns pairs with >10% similarity sorted descending + union-find clusters (≥40% similarity). `/monitors/correlation` frontend: period selector (24h/7d/14d/30d), 4 stat cards (monitors analyzed, correlated pairs, failure clusters, avg similarity), amber failure cluster cards showing which monitors group together, sortable pairs table with visual similarity bars + level badges (High/Medium/Low/Weak), methodology explanation footer. Sidebar nav link added. 5 new unit tests.
+
+## Status Summary (2026-03-28 17:45 UTC)
+- **Build/Test:** ✅ Clean build + 4077 API + 757 web + 10 CLI + 12 agent = 4856 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 24 pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-afternoon
+- **Last changes (17:45 UTC cycle):**
+  - [x] **Monitor Infrastructure Topology** — `GET /v1/monitors/dependency-graph` returns full graph with nodes (live status, 7d uptime, latencyMs, isMuted, blast radius inDegree, outDegree) and directed edges. `/monitors/dependencies` frontend: SVG topology graph with hover highlights (blast radius, dependency chains), status-colored nodes, layered layout algorithm, isolated monitors grid, status legend. Added to Monitors sidebar nav as "Topology". 7 new unit tests.
+  - [x] **Alert Analytics period selector** — `GET /v1/alert-channels/analytics?days=N` now accepts 7/14/30/90 day windows. Frontend: pill switcher (7d/14d/30d/90d), period reflected in chart title and top-monitors label.
+  - [x] **Alert Delivery CSV Export** — `GET /v1/alert-channels/deliveries/export?days=N` — exports up to 10k delivery log rows as CSV. "Export CSV" button added to both Alert Analytics and Alert History pages.
+  - Services restarted. All 24 pages 200.
+
+## Status Summary (2026-03-28 16:15 UTC)
+- **Build/Test:** ✅ Clean build + 4049 API + 757 web + 10 CLI + 12 agent = 4828 tests; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-afternoon
+- **Last changes (16:15 UTC cycle):**
+  - [x] **REPEAT_EVERY_N alert mode** — New `notifyOn=REPEAT_EVERY_N` option per alert link. Repeats alerts at configurable interval (default 30 min, 1–1440 min) while monitor stays down. Always fires on first failure, skips on recovery. `repeatIntervalMin` column on `MonitorAlert`. Frontend: interval input in AlertPanel when REPEAT_EVERY_N selected. 7 new tests.
+  - [x] **Alert Noise Analysis Dashboard** — `GET /v1/alert-channels/noise-analysis?days=N` (1–30d, default 7d). Analyzes delivery history per monitor: alertsPerDay → noise score (low/medium/high/critical), noiseReasons, recommendations (raise confirmations, enable flap detection, increase interval, add retries), currentConfig. `/alerts/noise` frontend: 4 summary stat cards, period selector, monitor table sorted by noise score, expandable rows with reasons + recommendations + config + quick-action buttons (View/Edit/Simulate). Sidebar nav link. 8 new tests.
+  - Services restarted. All pages 200.
+
+## Status Summary (2026-03-28 14:57 UTC)
+- **Build/Test:** ✅ Clean build + 4055 API + 756 web + 10 CLI + 12 agent = 4833 tests; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-afternoon
+- **Last changes (14:57 UTC cycle):**
+  - [x] **Monitor Check Playground** — `POST /v1/monitors/playground` one-shot HTTP test runs. Returns: statusCode, ok, latencyMs, timing waterfall (DNS/TCP/TLS/TTFB/Download), redirect chain, response headers, body excerpt (500 chars), JSON path evaluation, SSL info (days remaining, issuer, expiry). Assertion validation: expectedStatus, bodyContains, bodyJsonPath. Rate limited: 10 req/min per user (in-memory). Frontend: 2-panel `PlaygroundModal` with URL input, method pills, collapsible Advanced/Assertions sections, results panel with status banner, timing waterfall, SSL info, headers table, body preview. "Try it" (`TestTube2`) button in monitors toolbar. "Create Monitor from this" button pre-fills `MonitorFormModal`. 5 new tests.
+  - Services restarted. All pages 200.
+
+## Status Summary (2026-03-28 14:37 UTC)
+- **Build/Test:** ✅ Clean build + 4806 tests (193 files); 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-afternoon
+- **Last changes (14:37 UTC cycle):**
+  - [x] **OpenAPI/Swagger import** — (from previous subagent) `POST /v1/monitors/import-from-openapi/preview` + `POST /v1/monitors/import-from-openapi`. Backend: pure JSON/YAML parser (no new deps), OpenAPI 3.x + Swagger 2.x support, `{param}` placeholder replacement, method→expectedStatus mapping. Frontend: 3-step modal (URL/paste → checkbox table → success). 7 new tests.
+  - [x] **Fix monitor type filter gaps** — Added `CT_LOG` and `GRAPHQL` to `filterTypes` default set in monitors page (3 places). Added `FTP`, `IMAP`, `POP3`, `CT_LOG`, `GRAPHQL` to `formatMonitorType()`. Added all missing types to AdvancedFiltersPanel type checkboxes.
+  - [x] **GraphQL monitor detail card** — Config card on monitor detail page showing endpoint, query, data path, expected value for GRAPHQL monitors (matching FTP/IMAP/POP3 pattern).
+  - Services restarted. All pages 200.
+
+## Status Summary (2026-03-28 21:46 UTC)
+- **Build/Test:** ✅ Clean build + 4143 API + 757 web + 10 CLI + 12 agent = 4922 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-afternoon
+- **Last changes (21:46 UTC cycle):**
+  - [x] **Operations Digest Page** — `GET /v1/reports/digest?period=7|30|90` returning full fleet summary: grade (A–F), uptime%, top/worst performers, most improved/degraded, alert stats, incident stats, check counts, version update status, actionable recommendations with severity (high/medium/low). Frontend `/reports/digest`: grade hero card, stats row (4 cards), top/worst performers tables, SVG trend chart (daily fleet uptime), improvement/degradation cards, alerts & incidents stats, recommendations list with severity icons + clickable monitor links. Period selector pills (7/30/90d), Export PDF button (window.print()), print-friendly CSS. "Digest" nav item added to sidebar. 8 new unit tests.
+
+## Status Summary (2026-03-28 21:25 UTC)
+- **Build/Test:** ✅ Clean build + 4135 API + 757 web + 10 CLI + 12 agent = 4914 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-afternoon
+- **Last changes (21:25 UTC cycle):**
+  - [x] **Fix AppFrame missing title prop** — `monitors/correlation/page.tsx` was missing required `title` prop on `AppFrame`. Fixed: 0 web TS errors.
+  - [x] **13 tests: monitorCorrelation()** — Jaccard-similarity failure-window analysis: empty results for <2 monitors, zero pairs when no failures, similarity=1.0 for identical failure buckets, pairs below 0.1 threshold filtered, partial overlap similarity calculation, union-find grouping at ≥0.4, day-clamping (1–90), sort order.
+  - [x] **11 tests: fleetHealthReport()** — Fleet health aggregation: empty fleet, summary counts, elite/critical tier placement, at-risk detection, coverage gaps (alert channel/SLA/description), top/worst performers, type distribution, grade assignment, disabled monitor counts.
+  - [x] **6 tests: runMonitor() GRAPHQL + TRANSACTION dispatch** — added to `checks.service.spec.ts`: GraphQL success/errors/500, TRANSACTION no-steps (empty config, missing key), saves MonitorRun on failure.
+  - [x] **Committed pending MonitorConfigChange feature** — Prisma schema (`MonitorConfigChange` model), service integration (`computeMonitorDiff`/`buildSummary` calls in `update()`), mock fix in `monitors.service.spec.ts`, frontend config-history tab in `[id]/page.tsx`.
+
+## Status Summary (2026-03-28 17:25 UTC)
+- **Build/Test:** ✅ Clean build + 4070 API + 757 web + 10 CLI + 12 agent = 4849 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-afternoon
+- **Last changes (17:25 UTC cycle):**
+  - [x] **Fix 17 web TypeScript errors** — `alerts/noise/page.tsx`: `showToast` → `useToast().error()`, `res: unknown` → typed `api<NoiseAnalysis>()`, `TableCell header` → `TableHeader`, Badge `"secondary"` → `"default"`. `monitors/[id]/components/types.ts`: added missing `graphqlQuery`, `graphqlVariables`, `graphqlDataPath`, `graphqlExpectedValue`, `headerAssertions` fields to local `MonitorItem` type. `monitors/page.tsx`: `OpenApiImportModal` props fixed (`userId` removed, `onCreated` → `onImported`). Web now has 0 TS errors.
+  - [x] **Fix transaction.runner.spec.ts ESM spy failure** — Rewrote all 8 `runTransactionCheck` tests using `vi.hoisted()` + `vi.mock('http', ...)` + `vi.mock('https', ...)` factory mocks (same pattern as whois.runner.spec.ts). All 21 tests now pass. 4070 API tests total (0 failures).
+
+## Status Summary (2026-03-28 14:25 UTC)
+- **Build/Test:** ✅ Clean build + 4028 API + 756 web + 10 CLI + 12 agent = 4806 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-afternoon
+- **Last changes (14:25 UTC cycle):**
+  - [x] **Fix 7 failing tests in monitors.import-openapi.spec.ts** — Implemented missing `previewFromOpenApi` (parses OpenAPI 3.x + Swagger 2.x JSON, resolves path params, applies maxPaths limit, maps methods to expected status codes) and `importFromOpenApi` (filters by selectedPaths, creates monitors with config, passes folderId/alertChannelIds) on `MonitorsService`. Fixed `jest`→`vi` (vitest) in spec file's `importFromOpenApi` describe block. All 7 tests now pass. 4028 API tests total (0 failures).
+
+## Status Summary (2026-03-28 12:20 UTC)
+- **Build/Test:** ✅ Clean build + 4008 API (+41 coverage tests) + 10 CLI + 12 agent = 4030 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 14 pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-28-afternoon (new branch post-merge)
+- **Last changes (12:20 UTC cycle):**
+  - [x] **Branch management** — Merged heartbeat/2026-03-28-noon → dev, deleted old branch, created heartbeat/2026-03-28-afternoon.
+  - [x] **Test coverage boost +41 tests** — Added targeted unit tests for previously uncovered code paths:
+    - `alerts.service.extended.spec.ts` (27 tests): `previewPayload` (default payload, channel template, template override, invalid JSON, syntax error), `retryDelivery` (not found, wrong channel, with/without monitorName, send failure), `retryAllFailed` (empty, max 10, deliveryId included), `notifySlaBreached` (sends to channels, skips wrong user), `notifySlaRecovered`, `notifyBurnRateAlert` (Critical/High/Elevated classification), `deliveryStats` (NotFoundException, 100% default, rate calculation, log shape), `sendToChannel` (with/without monitor info), `flushExpiredAlertGroups` (no channels, single-monitor group marked sent)
+    - `notifications.controller.extended.spec.ts` (4 tests): `getDigestQueue`, `triggerDigest` for all 3 frequency branches (hourly_digest, daily_digest, instant)
+    - `search.controller.spec.ts` (10 tests): limit clamping (max 20, min via negative), default 5, type set construction, query trimming, whitespace trim in types, non-numeric limit, result pass-through
+  - Alerts service function coverage: 54% → ~80%+; Notifications controller: 36% → ~100%; Search controller: 33% → ~100%
+
 ## Status Summary (2026-03-28 11:17 UTC)
 - **Build/Test:** ✅ Clean build + 3967 API (+18 recurrence tests) + 10 CLI + 12 agent = 3989 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

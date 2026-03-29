@@ -17,19 +17,21 @@ export const CHANNEL_TYPE_COLORS: Record<string, string> = {
 };
 
 export const NOTIFY_ON_LABELS: Record<string, string> = {
-  ON_CHANGE:     "On status change",
-  ALWAYS:        "Every failed check",
-  FIRST_ONLY:    "First failure only",
-  DAILY_DIGEST:  "Daily digest",
-  VERSION_ANY:   "Any update",
-  VERSION_MAJOR: "Major updates only",
+  ON_CHANGE:      "On status change",
+  ALWAYS:         "Every failed check",
+  FIRST_ONLY:     "First failure only",
+  DAILY_DIGEST:   "Daily digest",
+  REPEAT_EVERY_N: "Repeat while down",
+  VERSION_ANY:    "Any update",
+  VERSION_MAJOR:  "Major updates only",
 };
 
 export const UPTIME_NOTIFY_OPTIONS = [
-  { value: "ON_CHANGE",    label: "On status change" },
-  { value: "ALWAYS",       label: "Every failed check" },
-  { value: "FIRST_ONLY",   label: "First failure only" },
-  { value: "DAILY_DIGEST", label: "Daily digest (max 1/day)" },
+  { value: "ON_CHANGE",     label: "On status change" },
+  { value: "ALWAYS",        label: "Every failed check" },
+  { value: "FIRST_ONLY",    label: "First failure only" },
+  { value: "DAILY_DIGEST",  label: "Daily digest (max 1/day)" },
+  { value: "REPEAT_EVERY_N", label: "Repeat while down (every N min)" },
 ];
 
 export const VERSION_NOTIFY_OPTIONS = [
@@ -37,7 +39,7 @@ export const VERSION_NOTIFY_OPTIONS = [
   { value: "VERSION_MAJOR", label: "Major updates only" },
 ];
 
-export const MONITOR_TYPES = ["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER", "WHOIS", "FTP", "IMAP", "POP3", "CT_LOG"] as const;
+export const MONITOR_TYPES = ["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER", "WHOIS", "FTP", "IMAP", "POP3", "CT_LOG", "GRAPHQL", "TRANSACTION"] as const;
 
 export const DEFAULT_FORM_DATA = {
   name: "",

@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Activity, CheckCircle2, XCircle, Clock, ChevronRight, Search } from 'lucide-react';
+import { Activity, CheckCircle2, XCircle, Clock, ChevronRight, Search, Download } from 'lucide-react';
 import { AppFrame } from '../../../components/app-frame';
 import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
@@ -134,9 +134,31 @@ export default function AlertHistoryPage() {
               </div>
               <h2 className="text-2xl font-bold text-text-primary">Delivery History</h2>
             </div>
-            <Link href="/alerts">
-              <Button variant="secondary">← Back to Alerts</Button>
-            </Link>
+            <div className="flex items-center gap-2">
+              {history && history.total > 0 && (
+                <button
+                  onClick={() => {
+                    const token = localStorage.getItem('auth_token') ?? '';
+                    fetch('/api/v1/alert-channels/deliveries/export?days=90', { headers: { Authorization: `Bearer ${token}` } })
+                      .then(r => r.blob())
+                      .then(blob => {
+                        const a = document.createElement('a');
+                        a.href = URL.createObjectURL(blob);
+                        a.download = `alert-deliveries-${new Date().toISOString().slice(0, 10)}.csv`;
+                        a.click();
+                      })
+                      .catch(() => {});
+                  }}
+                  className="flex items-center gap-2 px-3 py-2 rounded-lg border border-border bg-surface-1 text-sm text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-all"
+                >
+                  <Download className="w-4 h-4" />
+                  Export CSV
+                </button>
+              )}
+              <Link href="/alerts">
+                <Button variant="secondary">← Back to Alerts</Button>
+              </Link>
+            </div>
           </div>
 
           {/* Stats */}

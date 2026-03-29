@@ -17,6 +17,11 @@ import {
   Edit2,
   X,
   Check,
+  FileDown,
+  TrendingUp,
+  TrendingDown,
+  Clock,
+  Zap,
 } from 'lucide-react';
 import { AppFrame } from '../../../components/app-frame';
 import { Card } from '../../components/Card';
@@ -64,6 +69,44 @@ type SlaDashboard = {
 };
 
 type SortKey = 'name' | 'uptimePct' | 'errorBudgetUsedPct' | 'compliant';
+
+type ForecastDailyEntry = {
+  date: string;
+  type: 'actual' | 'projected';
+  uptimePct: number | null;
+  totalChecks: number;
+  failedChecks: number;
+  errorBudgetUsedPct: number | null;
+};
+
+type SlaBudgetForecast = {
+  generatedAt: string;
+  monitorId: string;
+  monitorName: string;
+  slaTarget: number | null;
+  period: {
+    monthStart: string;
+    monthEnd: string;
+    dayOfMonth: number;
+    daysInMonth: number;
+    elapsedDaysFraction: number;
+  };
+  currentStats: {
+    totalChecks: number;
+    failedChecks: number;
+    uptimePct: number;
+    errorBudgetUsedPct: number | null;
+  };
+  forecast: {
+    projectedUptimePct: number;
+    projectedErrorBudgetUsedPct: number | null;
+    willBreach: boolean | null;
+    budgetExhaustedAlready: boolean;
+    budgetExhaustionDate: string | null;
+    confidence: 'high' | 'medium' | 'low';
+  };
+  dailyBreakdown: ForecastDailyEntry[];
+};
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -214,13 +257,200 @@ function SlaTargetPill({
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
+// ─── Compliance Report Types ──────────────────────────────────────────────────
+
+type ComplianceMonthly = {
+  month: string;
+  totalChecks: number;
+  failedChecks: number;
+  uptimePct: number | null;
+  downtimeMinutes: number;
+  incidents: number;
+  compliant: boolean | null;
+  errorBudgetUsedPct: number | null;
+};
+
+type ComplianceMonitor = {
+  id: string;
+  name: string;
+  type: string;
+  target: string;
+  description: string | null;
+  slaTarget: number;
+  period: {
+    totalChecks: number;
+    failedChecks: number;
+    uptimePct: number | null;
+    downtimeMinutes: number;
+    incidents: number;
+    compliant: boolean | null;
+    errorBudgetUsedPct: number | null;
+  };
+  monthlyBreakdown: ComplianceMonthly[];
+};
+
+type ComplianceReport = {
+  generatedAt: string;
+  reportPeriod: {
+    start: string;
+    end: string;
+    months: number;
+    monthLabels: string[];
+  };
+  summary: {
+    totalMonitors: number;
+    compliant: number;
+    breached: number;
+    noData: number;
+    fleetUptimePct: number | null;
+    complianceRate: number | null;
+  };
+  monitors: ComplianceMonitor[];
+};
+
+// ─── Report HTML generator ───────────────────────────────────────────────────
+
+function generateReportHtml(report: ComplianceReport): string {
+  const fmt = (pct: number | null) => pct !== null ? `${pct.toFixed(4)}%` : 'N/A';
+  const fmtSimple = (pct: number | null) => pct !== null ? `${pct.toFixed(2)}%` : '—';
+  const statusColor = (compliant: boolean | null) => compliant === true ? '#22c55e' : compliant === false ? '#ef4444' : '#6b7280';
+  const statusLabel = (compliant: boolean | null) => compliant === true ? '✓ COMPLIANT' : compliant === false ? '✗ BREACHED' : '— NO DATA';
+
+  const monitorRows = report.monitors.map(m => `
+    <div class="monitor-card">
+      <div class="monitor-header">
+        <div>
+          <span class="monitor-name">${m.name}</span>
+          <span class="monitor-type">${m.type}</span>
+          ${m.description ? `<div class="monitor-desc">${m.description}</div>` : ''}
+          <div class="monitor-target">Endpoint: ${m.target}</div>
+        </div>
+        <div class="monitor-status" style="color:${statusColor(m.period.compliant)}">
+          ${statusLabel(m.period.compliant)}
+        </div>
+      </div>
+      <div class="period-stats">
+        <div class="stat"><div class="stat-value">${fmt(m.period.uptimePct)}</div><div class="stat-label">Uptime</div></div>
+        <div class="stat"><div class="stat-value" style="color:${m.slaTarget ? '#6366f1' : '#6b7280'}">${m.slaTarget ? `${m.slaTarget}%` : '—'}</div><div class="stat-label">SLA Target</div></div>
+        <div class="stat"><div class="stat-value">${m.period.downtimeMinutes}m</div><div class="stat-label">Est. Downtime</div></div>
+        <div class="stat"><div class="stat-value">${m.period.incidents}</div><div class="stat-label">Incidents</div></div>
+        <div class="stat"><div class="stat-value">${m.period.totalChecks.toLocaleString()}</div><div class="stat-label">Total Checks</div></div>
+        <div class="stat"><div class="stat-value">${m.period.errorBudgetUsedPct !== null ? `${m.period.errorBudgetUsedPct.toFixed(1)}%` : '—'}</div><div class="stat-label">Error Budget Used</div></div>
+      </div>
+      <table class="monthly-table">
+        <thead>
+          <tr>
+            <th>Month</th>
+            <th>Uptime</th>
+            <th>vs Target</th>
+            <th>Checks</th>
+            <th>Failed</th>
+            <th>Downtime</th>
+            <th>Incidents</th>
+            <th>Status</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${m.monthlyBreakdown.map(mb => `
+          <tr class="${mb.compliant === false ? 'row-breach' : mb.compliant === true ? 'row-ok' : ''}">
+            <td>${mb.month}</td>
+            <td>${fmt(mb.uptimePct)}</td>
+            <td>${mb.uptimePct !== null && m.slaTarget ? (mb.uptimePct >= m.slaTarget ? `+${(mb.uptimePct - m.slaTarget).toFixed(4)}%` : `${(mb.uptimePct - m.slaTarget).toFixed(4)}%`) : '—'}</td>
+            <td>${mb.totalChecks.toLocaleString()}</td>
+            <td>${mb.failedChecks}</td>
+            <td>${mb.downtimeMinutes}m</td>
+            <td>${mb.incidents}</td>
+            <td style="color:${statusColor(mb.compliant)};font-weight:600">${statusLabel(mb.compliant)}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>
+  `).join('');
+
+  return `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>SLA Compliance Report — PulseDock</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #fff; color: #111; padding: 32px; max-width: 1100px; margin: 0 auto; }
+  h1 { font-size: 28px; font-weight: 700; color: #111; }
+  h2 { font-size: 14px; font-weight: 500; color: #555; margin-top: 4px; }
+  .report-meta { font-size: 12px; color: #888; margin-top: 4px; }
+  .brand { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; padding-bottom: 20px; border-bottom: 2px solid #e5e7eb; }
+  .brand-logo { font-size: 24px; font-weight: 800; color: #6366f1; }
+  .summary-grid { display: grid; grid-template-columns: repeat(6, 1fr); gap: 12px; margin: 24px 0; }
+  .summary-card { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 8px; padding: 14px; text-align: center; }
+  .summary-value { font-size: 24px; font-weight: 700; color: #111; }
+  .summary-label { font-size: 11px; color: #888; margin-top: 4px; text-transform: uppercase; letter-spacing: 0.05em; }
+  .section-title { font-size: 16px; font-weight: 600; color: #111; margin: 28px 0 12px; padding-bottom: 6px; border-bottom: 1px solid #e5e7eb; }
+  .monitor-card { background: #fafafa; border: 1px solid #e5e7eb; border-radius: 8px; padding: 16px; margin-bottom: 16px; page-break-inside: avoid; }
+  .monitor-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .monitor-name { font-size: 15px; font-weight: 600; color: #111; }
+  .monitor-type { font-size: 11px; background: #f3f4f6; color: #555; padding: 2px 6px; border-radius: 4px; margin-left: 8px; }
+  .monitor-desc { font-size: 12px; color: #666; margin-top: 4px; }
+  .monitor-target { font-size: 11px; color: #888; margin-top: 2px; }
+  .monitor-status { font-size: 13px; font-weight: 700; text-align: right; }
+  .period-stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 12px; }
+  .stat { background: #fff; border: 1px solid #e5e7eb; border-radius: 6px; padding: 10px; text-align: center; }
+  .stat-value { font-size: 16px; font-weight: 700; color: #111; }
+  .stat-label { font-size: 10px; color: #888; margin-top: 2px; text-transform: uppercase; }
+  .monthly-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  .monthly-table th { background: #f3f4f6; text-align: left; padding: 8px 10px; font-weight: 600; color: #444; border-bottom: 1px solid #e5e7eb; }
+  .monthly-table td { padding: 7px 10px; border-bottom: 1px solid #f0f0f0; }
+  .row-breach td { background: #fef2f2; }
+  .row-ok td { background: #f0fdf4; }
+  .footer { margin-top: 40px; padding-top: 16px; border-top: 1px solid #e5e7eb; font-size: 11px; color: #aaa; display: flex; justify-content: space-between; }
+  @media print {
+    body { padding: 16px; }
+    .monitor-card { page-break-inside: avoid; }
+  }
+</style>
+</head>
+<body>
+<div class="brand">
+  <div class="brand-logo">⚡ PulseDock</div>
+  <div>
+    <h1>SLA Compliance Report</h1>
+    <h2>Report Period: ${report.reportPeriod.monthLabels[0]} – ${report.reportPeriod.monthLabels[report.reportPeriod.monthLabels.length - 1]} (${report.reportPeriod.months} month${report.reportPeriod.months > 1 ? 's' : ''})</h2>
+    <div class="report-meta">Generated: ${new Date(report.generatedAt).toLocaleString()} · Monitors with SLA targets: ${report.summary.totalMonitors}</div>
+  </div>
+</div>
+
+<div class="summary-grid">
+  <div class="summary-card"><div class="summary-value">${report.summary.totalMonitors}</div><div class="summary-label">Monitors</div></div>
+  <div class="summary-card"><div class="summary-value" style="color:#22c55e">${report.summary.compliant}</div><div class="summary-label">Compliant</div></div>
+  <div class="summary-card"><div class="summary-value" style="color:#ef4444">${report.summary.breached}</div><div class="summary-label">Breached</div></div>
+  <div class="summary-card"><div class="summary-value" style="color:#6366f1">${fmtSimple(report.summary.complianceRate)}</div><div class="summary-label">Compliance Rate</div></div>
+  <div class="summary-card"><div class="summary-value">${fmt(report.summary.fleetUptimePct)}</div><div class="summary-label">Fleet Uptime</div></div>
+  <div class="summary-card"><div class="summary-value">${report.summary.noData}</div><div class="summary-label">No Data</div></div>
+</div>
+
+<div class="section-title">Per-Monitor Compliance Details</div>
+${monitorRows || '<p style="color:#888;font-size:13px">No monitors with SLA targets found.</p>'}
+
+<div class="footer">
+  <span>PulseDock SLA Compliance Report</span>
+  <span>Confidential · Generated ${new Date(report.generatedAt).toISOString()}</span>
+</div>
+</body>
+</html>`;
+}
+
 export default function SlaPage() {
   const [data, setData] = useState<SlaDashboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [sortKey, setSortKey] = useState<SortKey>('name');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
-  const { showToast } = useToast();
+  const [reportMonths, setReportMonths] = useState(3);
+  const [reportLoading, setReportLoading] = useState(false);
+  const [forecastMonitorId, setForecastMonitorId] = useState<string>('');
+  const [forecast, setForecast] = useState<SlaBudgetForecast | null>(null);
+  const [forecastLoading, setForecastLoading] = useState(false);
+  const { success: showSuccess, error: showError } = useToast();
 
   const load = useCallback(async () => {
     try {
@@ -239,16 +469,50 @@ export default function SlaPage() {
 
   useEffect(() => { load(); }, [load]);
 
+  const loadForecast = useCallback(async (monitorId: string) => {
+    if (!monitorId) { setForecast(null); return; }
+    try {
+      setForecastLoading(true);
+      const result = await api<SlaBudgetForecast>(`/v1/monitors/${monitorId}/sla-forecast`);
+      setForecast(result);
+    } catch {
+      setForecast(null);
+    } finally {
+      setForecastLoading(false);
+    }
+  }, []);
+
   const handleSetTarget = async (id: string, value: number) => {
     try {
-      await api(`/v1/monitors/${id}`, {
+      const u = await getUser();
+      await api(`/v1/monitors/${id}`, u?.id, {
         method: 'PATCH',
         body: JSON.stringify({ slaTarget: value }),
       });
-      showToast('SLA target updated', 'success');
+      showSuccess('SLA target updated');
       await load();
     } catch {
-      showToast('Failed to update SLA target', 'error');
+      showError('Failed to update SLA target');
+    }
+  };
+
+  const handleDownloadReport = async () => {
+    try {
+      setReportLoading(true);
+      const u = await getUser();
+      const report = await api<ComplianceReport>(`/v1/monitors/sla-compliance-report?months=${reportMonths}`, u?.id);
+      const html = generateReportHtml(report);
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const win = window.open(url, '_blank');
+      if (win) {
+        win.focus();
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+      }
+    } catch {
+      showError('Failed to generate compliance report');
+    } finally {
+      setReportLoading(false);
     }
   };
 
@@ -284,7 +548,7 @@ export default function SlaPage() {
     : '—';
 
   return (
-    <AppFrame>
+    <AppFrame title="SLA Dashboard">
       <div className="p-6 max-w-7xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between flex-wrap gap-4">
@@ -294,10 +558,38 @@ export default function SlaPage() {
               Service Level Agreement compliance across all monitors · {period}
             </p>
           </div>
-          <Button onClick={load} disabled={loading} variant="secondary" size="sm">
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-            Refresh
-          </Button>
+          <div className="flex items-center gap-2 flex-wrap">
+            {/* Report months picker */}
+            <div className="flex items-center gap-1 bg-surface border border-border rounded-lg px-2">
+              <span className="text-xs text-text-muted">Report:</span>
+              {[1, 3, 6, 12].map((m) => (
+                <button
+                  key={m}
+                  type="button"
+                  onClick={() => setReportMonths(m)}
+                  className={`px-2 py-1 text-xs rounded transition-colors ${reportMonths === m ? 'bg-accent text-white' : 'text-text-secondary hover:text-text-primary'}`}
+                >
+                  {m}mo
+                </button>
+              ))}
+            </div>
+            <Button
+              onClick={handleDownloadReport}
+              disabled={reportLoading || loading}
+              variant="secondary"
+              size="sm"
+              title="Generate printable SLA compliance report"
+            >
+              {reportLoading
+                ? <RefreshCw className="w-4 h-4 animate-spin" />
+                : <FileDown className="w-4 h-4" />}
+              Compliance Report
+            </Button>
+            <Button onClick={load} disabled={loading} variant="secondary" size="sm">
+              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              Refresh
+            </Button>
+          </div>
         </div>
 
         {error && (
@@ -442,6 +734,260 @@ export default function SlaPage() {
             </Table>
           )}
         </Card>
+
+        {data && (
+          <p className="text-xs text-zinc-600 text-right">
+            Generated {new Date(data.generatedAt).toLocaleString()}
+          </p>
+        )}
+
+        {/* ─── SLA Budget Forecast ──────────────────────────────────────────── */}
+        <div>
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp className="w-5 h-5 text-accent" />
+            <h2 className="text-lg font-semibold text-zinc-100">SLA Budget Forecast</h2>
+            <span className="text-xs text-zinc-500 ml-1">Projected error budget burn for current month</span>
+          </div>
+
+          {/* Monitor selector */}
+          <Card className="p-4 mb-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <label className="text-sm text-zinc-400 whitespace-nowrap">Select monitor:</label>
+              <select
+                value={forecastMonitorId}
+                onChange={(e) => {
+                  setForecastMonitorId(e.target.value);
+                  loadForecast(e.target.value);
+                }}
+                className="flex-1 min-w-[200px] bg-surface border border-border rounded-lg px-3 py-1.5 text-sm text-zinc-200 focus:outline-none focus:ring-1 focus:ring-accent"
+              >
+                <option value="">— Choose a monitor —</option>
+                {data?.monitors
+                  .filter((m) => m.slaTarget != null)
+                  .map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.name} (SLA: {m.slaTarget}%)
+                    </option>
+                  ))}
+              </select>
+              {forecastMonitorId && (
+                <Button
+                  onClick={() => loadForecast(forecastMonitorId)}
+                  disabled={forecastLoading}
+                  variant="secondary"
+                  size="sm"
+                >
+                  <RefreshCw className={`w-4 h-4 ${forecastLoading ? 'animate-spin' : ''}`} />
+                  Refresh
+                </Button>
+              )}
+            </div>
+          </Card>
+
+          {forecastLoading && (
+            <div className="flex items-center justify-center py-12">
+              <RefreshCw className="w-6 h-6 animate-spin text-accent" />
+            </div>
+          )}
+
+          {!forecastLoading && forecast && (
+            <div className="space-y-4">
+              {/* Summary cards */}
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                {/* Current uptime */}
+                <Card className="p-4">
+                  <p className="text-xs text-zinc-400 mb-1">Current Uptime</p>
+                  <p className={`text-2xl font-bold font-mono ${
+                    forecast.slaTarget != null && forecast.currentStats.uptimePct >= forecast.slaTarget
+                      ? 'text-green-400' : 'text-red-400'
+                  }`}>
+                    {forecast.currentStats.uptimePct.toFixed(4)}%
+                  </p>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    {forecast.currentStats.totalChecks} checks · {forecast.currentStats.failedChecks} failed
+                  </p>
+                </Card>
+
+                {/* Projected uptime */}
+                <Card className="p-4">
+                  <p className="text-xs text-zinc-400 mb-1">Projected at Month End</p>
+                  <p className={`text-2xl font-bold font-mono ${
+                    forecast.forecast.willBreach === false ? 'text-green-400' :
+                    forecast.forecast.willBreach === true ? 'text-red-400' : 'text-zinc-300'
+                  }`}>
+                    {forecast.forecast.projectedUptimePct.toFixed(4)}%
+                  </p>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    Day {forecast.period.dayOfMonth} of {forecast.period.daysInMonth}
+                  </p>
+                </Card>
+
+                {/* Budget used */}
+                <Card className="p-4">
+                  <p className="text-xs text-zinc-400 mb-1">Error Budget Used</p>
+                  {forecast.currentStats.errorBudgetUsedPct != null ? (
+                    <>
+                      <p className={`text-2xl font-bold font-mono ${
+                        forecast.currentStats.errorBudgetUsedPct >= 90 ? 'text-red-400' :
+                        forecast.currentStats.errorBudgetUsedPct >= 50 ? 'text-yellow-400' : 'text-green-400'
+                      }`}>
+                        {forecast.currentStats.errorBudgetUsedPct.toFixed(1)}%
+                      </p>
+                      <div className="mt-2 bg-surface-elevated rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className={`h-1.5 rounded-full ${
+                            forecast.currentStats.errorBudgetUsedPct >= 90 ? 'bg-red-500' :
+                            forecast.currentStats.errorBudgetUsedPct >= 50 ? 'bg-yellow-500' : 'bg-green-500'
+                          }`}
+                          style={{ width: `${Math.min(100, forecast.currentStats.errorBudgetUsedPct)}%` }}
+                        />
+                      </div>
+                    </>
+                  ) : (
+                    <p className="text-2xl font-bold text-zinc-500">—</p>
+                  )}
+                </Card>
+
+                {/* Breach prediction */}
+                <Card className="p-4">
+                  <p className="text-xs text-zinc-400 mb-1">Breach Prediction</p>
+                  {forecast.forecast.willBreach === null ? (
+                    <p className="text-lg font-semibold text-zinc-400">No SLA target</p>
+                  ) : forecast.forecast.budgetExhaustedAlready ? (
+                    <div className="flex items-center gap-1.5">
+                      <XCircle className="w-5 h-5 text-red-400 shrink-0" />
+                      <p className="text-sm font-semibold text-red-400">Budget exhausted</p>
+                    </div>
+                  ) : forecast.forecast.willBreach ? (
+                    <div className="flex items-center gap-1.5">
+                      <TrendingDown className="w-5 h-5 text-red-400 shrink-0" />
+                      <p className="text-sm font-semibold text-red-400">Will breach</p>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-1.5">
+                      <CheckCircle2 className="w-5 h-5 text-green-400 shrink-0" />
+                      <p className="text-sm font-semibold text-green-400">On track</p>
+                    </div>
+                  )}
+                  {forecast.forecast.budgetExhaustionDate && !forecast.forecast.budgetExhaustedAlready && (
+                    <p className="text-xs text-zinc-500 mt-1 flex items-center gap-1">
+                      <Clock className="w-3 h-3" />
+                      Exhausted {new Date(forecast.forecast.budgetExhaustionDate).toLocaleDateString()}
+                    </p>
+                  )}
+                  <p className="text-xs text-zinc-600 mt-1 flex items-center gap-1">
+                    <Zap className="w-3 h-3" />
+                    Confidence: {forecast.forecast.confidence}
+                  </p>
+                </Card>
+              </div>
+
+              {/* Daily breakdown chart */}
+              <Card className="p-4">
+                <h3 className="text-sm font-semibold text-zinc-300 mb-4">
+                  Daily Error Budget Burn — {forecast.monitorName}
+                  {forecast.slaTarget != null && (
+                    <span className="ml-2 text-xs text-zinc-500 font-normal">
+                      (SLA target: {forecast.slaTarget}%)
+                    </span>
+                  )}
+                </h3>
+
+                {forecast.dailyBreakdown.length > 0 && forecast.slaTarget != null ? (
+                  <div className="overflow-x-auto">
+                    <div className="min-w-[600px]">
+                      {/* Chart: error budget consumption per day */}
+                      <div className="relative h-48 flex items-end gap-px">
+                        {/* 100% line */}
+                        <div className="absolute inset-0 pointer-events-none">
+                          <div className="absolute left-0 right-0 border-t border-dashed border-red-700/40 top-0" />
+                          <span className="absolute right-1 top-0 text-[10px] text-red-500/70 translate-y-[-50%]">100%</span>
+                        </div>
+                        {/* 50% line */}
+                        <div className="absolute inset-0 pointer-events-none">
+                          <div className="absolute left-0 right-0 border-t border-dashed border-yellow-700/30 top-[50%]" />
+                          <span className="absolute right-1 text-[10px] text-yellow-500/50 translate-y-[-50%]" style={{top: '50%'}}>50%</span>
+                        </div>
+
+                        {forecast.dailyBreakdown.map((entry) => {
+                          const used = entry.errorBudgetUsedPct ?? 0;
+                          const heightPct = Math.min(100, used);
+                          const isActual = entry.type === 'actual';
+                          const color =
+                            used >= 90 ? (isActual ? 'bg-red-500' : 'bg-red-500/40') :
+                            used >= 50 ? (isActual ? 'bg-yellow-500' : 'bg-yellow-500/40') :
+                            (isActual ? 'bg-green-500' : 'bg-green-500/40');
+                          const dayNum = parseInt(entry.date.split('-')[2]);
+                          return (
+                            <div
+                              key={entry.date}
+                              className="flex-1 flex flex-col items-center justify-end gap-0.5 group"
+                              title={`${entry.date} (${isActual ? 'actual' : 'projected'})\nBudget used: ${used.toFixed(1)}%\nUptime: ${entry.uptimePct != null ? entry.uptimePct.toFixed(4) + '%' : '—'}\nChecks: ${entry.totalChecks} (${entry.failedChecks} failed)`}
+                            >
+                              <div
+                                className={`w-full rounded-t transition-all ${color} ${isActual ? '' : 'opacity-60'}`}
+                                style={{ height: `${heightPct}%`, minHeight: heightPct > 0 ? '2px' : '0' }}
+                              />
+                              {dayNum % 5 === 0 || dayNum === 1 ? (
+                                <span className="text-[9px] text-zinc-600">{dayNum}</span>
+                              ) : (
+                                <span className="text-[9px] text-transparent">·</span>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Legend */}
+                      <div className="flex items-center gap-4 mt-3">
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-3 h-3 rounded-sm bg-green-500" />
+                          <span className="text-xs text-zinc-500">Actual (low burn)</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-3 h-3 rounded-sm bg-yellow-500" />
+                          <span className="text-xs text-zinc-500">Actual (medium)</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-3 h-3 rounded-sm bg-red-500" />
+                          <span className="text-xs text-zinc-500">Actual (high burn)</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <div className="w-3 h-3 rounded-sm bg-zinc-500 opacity-50" />
+                          <span className="text-xs text-zinc-500">Projected</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-zinc-500 py-4 text-center">
+                    {forecast.slaTarget == null
+                      ? 'Set an SLA target on this monitor to see budget burn projection.'
+                      : 'No check data available yet for this month.'}
+                  </p>
+                )}
+
+                <p className="text-xs text-zinc-600 mt-3 text-right">
+                  Forecast generated {new Date(forecast.generatedAt).toLocaleString()}
+                </p>
+              </Card>
+            </div>
+          )}
+
+          {!forecastLoading && !forecast && forecastMonitorId && (
+            <Card className="p-8 text-center">
+              <p className="text-zinc-500 text-sm">Failed to load forecast. Monitor may have no data yet.</p>
+            </Card>
+          )}
+
+          {!forecastMonitorId && (
+            <Card className="p-8 text-center">
+              <TrendingUp className="w-8 h-8 text-zinc-600 mx-auto mb-3" />
+              <p className="text-zinc-500 text-sm">Select a monitor with an SLA target to see its budget forecast.</p>
+              <p className="text-xs text-zinc-600 mt-1">Projection uses current month&apos;s observed failure rate to estimate month-end uptime.</p>
+            </Card>
+          )}
+        </div>
 
         {data && (
           <p className="text-xs text-zinc-600 text-right">

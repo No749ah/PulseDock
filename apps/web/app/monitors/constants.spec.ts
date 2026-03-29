@@ -34,7 +34,7 @@ describe('CHANNEL_TYPE_COLORS', () => {
 });
 
 describe('NOTIFY_ON_LABELS', () => {
-  const expectedKeys = ['ON_CHANGE', 'ALWAYS', 'FIRST_ONLY', 'DAILY_DIGEST', 'VERSION_ANY', 'VERSION_MAJOR'];
+  const expectedKeys = ['ON_CHANGE', 'ALWAYS', 'FIRST_ONLY', 'DAILY_DIGEST', 'REPEAT_EVERY_N', 'VERSION_ANY', 'VERSION_MAJOR'];
 
   it.each(expectedKeys)('has label for %s', (key) => {
     expect(NOTIFY_ON_LABELS[key]).toBeTruthy();
@@ -49,8 +49,8 @@ describe('NOTIFY_ON_LABELS', () => {
 });
 
 describe('UPTIME_NOTIFY_OPTIONS', () => {
-  it('has 4 options', () => {
-    expect(UPTIME_NOTIFY_OPTIONS).toHaveLength(4);
+  it('has 5 options', () => {
+    expect(UPTIME_NOTIFY_OPTIONS).toHaveLength(5);
   });
 
   it('each option has value and label', () => {

@@ -1,4 +1,7 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import * as tls from 'tls';
+import * as https from 'https';
+import * as http from 'http';
+import { BadRequestException, ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
 import { randomUUID } from 'node:crypto';
 import { CronExpressionParser } from 'cron-parser';
@@ -8,6 +11,9 @@ import { ChecksService } from '../checks/checks.service';
 import { AuditService } from '../common/audit.service';
 import { RealtimeEvents } from '../realtime/realtime.events';
 import { VersionDetectionService } from './version-detection.service';
+import type { PlaygroundDto, PlaygroundResult } from './playground.dto';
+import { extractByPath } from '../checks/version-extractor.util';
+import { computeMonitorDiff, buildSummary } from './monitors.config-history';
 
 @Injectable()
 export class MonitorsService {
@@ -253,6 +259,10 @@ export class MonitorsService {
     metricAlertMin?: number | null;
     metricAlertMax?: number | null;
     headerAssertions?: Array<{ header: string; op: string; value?: string }> | null;
+    graphqlQuery?: string | null;
+    graphqlVariables?: string | null;
+    graphqlDataPath?: string | null;
+    graphqlExpectedValue?: string | null;
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -317,6 +327,10 @@ export class MonitorsService {
         ...(body.metricAlertMin !== undefined ? { metricAlertMin: body.metricAlertMin ?? null } : {}),
         ...(body.metricAlertMax !== undefined ? { metricAlertMax: body.metricAlertMax ?? null } : {}),
         ...(body.headerAssertions !== undefined ? { headerAssertions: body.headerAssertions == null ? Prisma.JsonNull : (body.headerAssertions as unknown as Prisma.InputJsonValue) } : {}),
+        ...(body.graphqlQuery !== undefined ? { graphqlQuery: body.graphqlQuery ?? null } : {}),
+        ...(body.graphqlVariables !== undefined ? { graphqlVariables: body.graphqlVariables ?? null } : {}),
+        ...(body.graphqlDataPath !== undefined ? { graphqlDataPath: body.graphqlDataPath ?? null } : {}),
+        ...(body.graphqlExpectedValue !== undefined ? { graphqlExpectedValue: body.graphqlExpectedValue ?? null } : {}),
         monitorAlerts: {
           create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),
         },
@@ -442,6 +456,10 @@ export class MonitorsService {
     metricAlertMin?: number | null;
     metricAlertMax?: number | null;
     headerAssertions?: Array<{ header: string; op: string; value?: string }> | null;
+    graphqlQuery?: string | null;
+    graphqlVariables?: string | null;
+    graphqlDataPath?: string | null;
+    graphqlExpectedValue?: string | null;
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -512,8 +530,63 @@ export class MonitorsService {
         ...(body.metricAlertMin !== undefined ? { metricAlertMin: body.metricAlertMin ?? null } : {}),
         ...(body.metricAlertMax !== undefined ? { metricAlertMax: body.metricAlertMax ?? null } : {}),
         ...(body.headerAssertions !== undefined ? { headerAssertions: body.headerAssertions == null ? Prisma.JsonNull : (body.headerAssertions as unknown as Prisma.InputJsonValue) } : {}),
+        ...(body.graphqlQuery !== undefined ? { graphqlQuery: body.graphqlQuery ?? null } : {}),
+        ...(body.graphqlVariables !== undefined ? { graphqlVariables: body.graphqlVariables ?? null } : {}),
+        ...(body.graphqlDataPath !== undefined ? { graphqlDataPath: body.graphqlDataPath ?? null } : {}),
+        ...(body.graphqlExpectedValue !== undefined ? { graphqlExpectedValue: body.graphqlExpectedValue ?? null } : {}),
       },
     });
+
+    // ── Config Change History ─────────────────────────────────────────────
+    const afterState: Record<string, unknown> = {
+      name: body.name ?? current.name,
+      description: body.description !== undefined ? body.description : current.description,
+      target: body.target ?? current.target,
+      type: body.type ?? current.type,
+      intervalSec: body.intervalSec ?? current.intervalSec,
+      timeoutMs: body.timeoutMs ?? current.timeoutMs,
+      confirmations: body.confirmations !== undefined ? Math.max(1, Math.min(10, body.confirmations)) : current.confirmations,
+      retryCount: body.retryCount !== undefined ? Math.max(0, Math.min(3, body.retryCount)) : current.retryCount,
+      enabled: body.enabled ?? current.enabled,
+      slaTarget: body.slaTarget !== undefined ? body.slaTarget : current.slaTarget,
+      slaPeriodDays: body.slaPeriodDays !== undefined ? body.slaPeriodDays : current.slaPeriodDays,
+      autoIncident: body.autoIncident !== undefined ? body.autoIncident : current.autoIncident,
+      autoIncidentSeverity: body.autoIncidentSeverity !== undefined ? body.autoIncidentSeverity : current.autoIncidentSeverity,
+      flapDetectionEnabled: body.flapDetectionEnabled !== undefined ? body.flapDetectionEnabled : current.flapDetectionEnabled,
+      flapWindow: body.flapWindow !== undefined ? body.flapWindow : current.flapWindow,
+      flapThreshold: body.flapThreshold !== undefined ? body.flapThreshold : current.flapThreshold,
+      latencyAlertMs: body.latencyAlertMs !== undefined ? body.latencyAlertMs : current.latencyAlertMs,
+      anomalyDetection: body.anomalyDetection !== undefined ? body.anomalyDetection : current.anomalyDetection,
+      anomalyMultiplier: body.anomalyMultiplier !== undefined ? body.anomalyMultiplier : current.anomalyMultiplier,
+      cronExpression: body.cronExpression !== undefined ? body.cronExpression : current.cronExpression,
+      scheduleEnabled: body.scheduleEnabled !== undefined ? body.scheduleEnabled : current.scheduleEnabled,
+      scheduleDays: body.scheduleDays !== undefined ? body.scheduleDays : current.scheduleDays,
+      scheduleStartHour: body.scheduleStartHour !== undefined ? body.scheduleStartHour : current.scheduleStartHour,
+      scheduleEndHour: body.scheduleEndHour !== undefined ? body.scheduleEndHour : current.scheduleEndHour,
+      sliLatencyTarget: body.sliLatencyTarget !== undefined ? body.sliLatencyTarget : current.sliLatencyTarget,
+      rtoMinutes: body.rtoMinutes !== undefined ? body.rtoMinutes : current.rtoMinutes,
+      throttleMs: body.throttleMs !== undefined ? body.throttleMs : current.throttleMs,
+      maxChecksPerHour: body.maxChecksPerHour !== undefined ? body.maxChecksPerHour : current.maxChecksPerHour,
+      metricPath: body.metricPath !== undefined ? body.metricPath : current.metricPath,
+      metricName: body.metricName !== undefined ? body.metricName : current.metricName,
+      metricAlertMin: body.metricAlertMin !== undefined ? body.metricAlertMin : current.metricAlertMin,
+      metricAlertMax: body.metricAlertMax !== undefined ? body.metricAlertMax : current.metricAlertMax,
+      graphqlQuery: body.graphqlQuery !== undefined ? body.graphqlQuery : current.graphqlQuery,
+      graphqlDataPath: body.graphqlDataPath !== undefined ? body.graphqlDataPath : current.graphqlDataPath,
+      graphqlExpectedValue: body.graphqlExpectedValue !== undefined ? body.graphqlExpectedValue : current.graphqlExpectedValue,
+    };
+    const configDiff = computeMonitorDiff(current as unknown as Record<string, unknown>, afterState);
+    if (configDiff.length > 0) {
+      await this.prisma.monitorConfigChange.create({
+        data: {
+          monitorId,
+          userId,
+          changes: configDiff as unknown as Prisma.InputJsonValue,
+          summary: buildSummary(configDiff),
+        },
+      });
+    }
+    // ─────────────────────────────────────────────────────────────────────
 
     if (body.alertChannelIds) {
       await this.prisma.monitorAlert.deleteMany({ where: { monitorId } });
@@ -540,6 +613,31 @@ export class MonitorsService {
     const updated = await this.list(userId).then((items) => items.find((m) => m.id === monitorId));
     if (updated) this.realtime.monitorUpdated(userId, updated);
     return updated;
+  }
+
+  /**
+   * Returns config change history for a monitor (newest first).
+   * Each entry contains a field-level diff captured at update time.
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The monitor's ID
+   * @param limit - Max entries to return (default 50, max 200)
+   */
+  async getConfigHistory(userId: string, monitorId: string, limit = 50) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    return this.prisma.monitorConfigChange.findMany({
+      where: { monitorId },
+      orderBy: { createdAt: 'desc' },
+      take: Math.min(limit, 200),
+      select: {
+        id: true,
+        changes: true,
+        summary: true,
+        createdAt: true,
+        userId: true,
+      },
+    });
   }
 
   /**
@@ -943,6 +1041,7 @@ export class MonitorsService {
       config: (a.alertChannel.configJson as Record<string, unknown>) ?? {},
       createdAt: a.alertChannel.createdAt.toISOString(),
       notifyOn: a.notifyOn,
+      repeatIntervalMin: a.repeatIntervalMin ?? null,
       // Nested shape expected by frontend
       alertChannelId: a.alertChannelId,
       alertChannel: { id: a.alertChannel.id, name: a.alertChannel.name, type: a.alertChannel.type },
@@ -962,7 +1061,7 @@ export class MonitorsService {
    * @returns { ok: true } on success
    * @throws NotFoundException if monitor or channel not found / not owned by user
    */
-  async addMonitorAlert(userId: string, monitorId: string, channelId: string, notifyOn?: string) {
+  async addMonitorAlert(userId: string, monitorId: string, channelId: string, notifyOn?: string, repeatIntervalMin?: number) {
     const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!monitor) throw new NotFoundException('monitor not found');
 
@@ -974,9 +1073,13 @@ export class MonitorsService {
     const defaultNotifyOn = isVersion ? 'VERSION_ANY' : 'ON_CHANGE';
     const resolvedNotifyOn = notifyOn ?? defaultNotifyOn;
 
+    const repeatVal = (resolvedNotifyOn === 'REPEAT_EVERY_N' && repeatIntervalMin != null)
+      ? Math.min(1440, Math.max(1, repeatIntervalMin))
+      : null;
+
     await this.prisma.monitorAlert.upsert({
       where: { monitorId_alertChannelId: { monitorId, alertChannelId: channelId } },
-      create: { monitorId, alertChannelId: channelId, notifyOn: resolvedNotifyOn },
+      create: { monitorId, alertChannelId: channelId, notifyOn: resolvedNotifyOn, repeatIntervalMin: repeatVal },
       update: {},
     });
 
@@ -999,7 +1102,7 @@ export class MonitorsService {
     const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
     if (!monitor) throw new NotFoundException('monitor not found');
 
-    const validValues = ['ON_CHANGE', 'ALWAYS', 'FIRST_ONLY', 'DAILY_DIGEST', 'VERSION_ANY', 'VERSION_MAJOR'];
+    const validValues = ['ON_CHANGE', 'ALWAYS', 'FIRST_ONLY', 'DAILY_DIGEST', 'REPEAT_EVERY_N', 'VERSION_ANY', 'VERSION_MAJOR'];
     if (!validValues.includes(notifyOn)) throw new BadRequestException(`Invalid notifyOn value: ${notifyOn}`);
 
     await this.prisma.monitorAlert.update({
@@ -1008,6 +1111,27 @@ export class MonitorsService {
     });
 
     await this.audit.log('monitor.alert.update', userId, userId, { monitorId, channelId, notifyOn });
+    return { ok: true };
+  }
+
+  /**
+   * Updates the repeat interval (minutes) for a REPEAT_EVERY_N channel assignment.
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The target monitor ID
+   * @param channelId - The alert channel ID
+   * @param intervalMin - Minutes between repeat alerts (1–1440), or null to use default (30 min)
+   */
+  async updateMonitorAlertRepeatInterval(userId: string, monitorId: string, channelId: string, intervalMin: number | null) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    const clamped = intervalMin != null ? Math.min(1440, Math.max(1, intervalMin)) : null;
+    await this.prisma.monitorAlert.update({
+      where: { monitorId_alertChannelId: { monitorId, alertChannelId: channelId } },
+      data: { repeatIntervalMin: clamped },
+    });
+
+    await this.audit.log('monitor.alert.repeat_interval_set', userId, userId, { monitorId, channelId, intervalMin: clamped });
     return { ok: true };
   }
 
@@ -1515,11 +1639,11 @@ export class MonitorsService {
 
   // ── Version detection delegation ────────────────────────────────────────────
 
-  async testVersionConnection(input: { provider: 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'maven' | 'helm'; target: string; token?: string; host?: string }) {
+  async testVersionConnection(input: { provider: 'github' | 'gitlab' | 'forgejo' | 'gitea' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'nuget' | 'rubygems' | 'gem' | 'go' | 'golang' | 'gomod' | 'maven' | 'helm'; target: string; token?: string; host?: string }) {
     return this.versionDetection.testVersionConnection(input);
   }
 
-  async discoverCurrentVersion(input: { provider: 'github' | 'gitlab' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'maven' | 'helm'; target: string; token?: string; host?: string; appUrl?: string; appToken?: string; appVersionEndpoint?: string; appAuthType?: 'none' | 'token' | 'openvpn'; openvpnUsername?: string; openvpnPassword?: string; endpointFallbacks?: string[]; jsonPath?: string; jsonPathExtractors?: string[] }) {
+  async discoverCurrentVersion(input: { provider: 'github' | 'gitlab' | 'forgejo' | 'gitea' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'nuget' | 'rubygems' | 'gem' | 'go' | 'golang' | 'gomod' | 'maven' | 'helm'; target: string; token?: string; host?: string; appUrl?: string; appToken?: string; appVersionEndpoint?: string; appAuthType?: 'none' | 'token' | 'openvpn'; openvpnUsername?: string; openvpnPassword?: string; endpointFallbacks?: string[]; jsonPath?: string; jsonPathExtractors?: string[] }) {
     return this.versionDetection.discoverCurrentVersion(input);
   }
 
@@ -3351,6 +3475,170 @@ export class MonitorsService {
   }
 
   /**
+   * Security headers fleet summary.
+   *
+   * Aggregates the latest `securityAuditJson` from each HTTP/BROWSER monitor
+   * and returns a fleet-level overview: grade distribution, per-header coverage
+   * rate, and per-monitor rows sorted by score ascending (worst first).
+   *
+   * @param userId - Owner's user ID
+   */
+  async getSecurityHeadersSummary(userId: string): Promise<{
+    total: number;
+    gradeA: number;
+    gradeB: number;
+    gradeC: number;
+    gradeD: number;
+    gradeF: number;
+    noData: number;
+    avgScore: number | null;
+    headerCoverage: Array<{ name: string; presentCount: number; totalCount: number; coveragePct: number; severity: string }>;
+    monitors: Array<{
+      monitorId: string;
+      name: string;
+      target: string;
+      folderId: string | null;
+      folderName: string | null;
+      enabled: boolean;
+      grade: string | null;
+      score: number | null;
+      checkedAt: string | null;
+      headers: Array<{ name: string; present: boolean; severity: string }>;
+    }>;
+  }> {
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, type: { in: ['HTTP', 'BROWSER'] } },
+      select: {
+        id: true,
+        name: true,
+        target: true,
+        enabled: true,
+        folderId: true,
+        folder: { select: { name: true } },
+        runs: {
+          orderBy: { checkedAt: 'desc' },
+          take: 1,
+          where: { ok: true },
+          select: { securityAuditJson: true, checkedAt: true },
+        },
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    type HeaderResult = { name: string; present: boolean; severity: string; value?: string | null; description?: string; recommendation?: string };
+    type AuditJson = { grade: string; score: number; headers: HeaderResult[] };
+
+    const rows: Array<{
+      monitorId: string;
+      name: string;
+      target: string;
+      folderId: string | null;
+      folderName: string | null;
+      enabled: boolean;
+      grade: string | null;
+      score: number | null;
+      checkedAt: string | null;
+      headers: Array<{ name: string; present: boolean; severity: string }>;
+    }> = [];
+
+    let totalScore = 0;
+    let scoredCount = 0;
+    const gradeCounts: Record<string, number> = { A: 0, B: 0, C: 0, D: 0, F: 0 };
+    const headerAccum: Map<string, { present: number; total: number; severity: string }> = new Map();
+
+    for (const m of monitors) {
+      const run = m.runs[0] ?? null;
+      const audit = run?.securityAuditJson as AuditJson | null | undefined;
+
+      if (audit && typeof audit === 'object' && 'grade' in audit) {
+        const grade = String(audit.grade ?? 'F').toUpperCase();
+        gradeCounts[grade] = (gradeCounts[grade] ?? 0) + 1;
+        totalScore += typeof audit.score === 'number' ? audit.score : 0;
+        scoredCount++;
+
+        // Accumulate per-header coverage
+        if (Array.isArray(audit.headers)) {
+          for (const h of audit.headers as HeaderResult[]) {
+            const existing = headerAccum.get(h.name);
+            if (existing) {
+              existing.total++;
+              if (h.present) existing.present++;
+            } else {
+              headerAccum.set(h.name, { present: h.present ? 1 : 0, total: 1, severity: h.severity ?? 'info' });
+            }
+          }
+        }
+
+        rows.push({
+          monitorId: m.id,
+          name: m.name,
+          target: m.target ?? '',
+          folderId: m.folderId,
+          folderName: m.folder?.name ?? null,
+          enabled: m.enabled,
+          grade,
+          score: typeof audit.score === 'number' ? audit.score : null,
+          checkedAt: run?.checkedAt?.toISOString() ?? null,
+          headers: Array.isArray(audit.headers)
+            ? (audit.headers as HeaderResult[]).map((h) => ({ name: h.name, present: h.present, severity: h.severity ?? 'info' }))
+            : [],
+        });
+      } else {
+        rows.push({
+          monitorId: m.id,
+          name: m.name,
+          target: m.target ?? '',
+          folderId: m.folderId,
+          folderName: m.folder?.name ?? null,
+          enabled: m.enabled,
+          grade: null,
+          score: null,
+          checkedAt: null,
+          headers: [],
+        });
+      }
+    }
+
+    // Sort: monitors with data first, sorted by score ascending (worst first), then no-data
+    rows.sort((a, b) => {
+      if (a.score === null && b.score === null) return a.name.localeCompare(b.name);
+      if (a.score === null) return 1;
+      if (b.score === null) return -1;
+      return a.score - b.score;
+    });
+
+    const headerCoverage = Array.from(headerAccum.entries()).map(([name, v]) => ({
+      name,
+      presentCount: v.present,
+      totalCount: v.total,
+      coveragePct: v.total > 0 ? Math.round((v.present / v.total) * 100) : 0,
+      severity: v.severity,
+    }));
+    // Sort critical first, then warning, then others; within severity sort by coverage ascending (most missing first)
+    const severityOrder: Record<string, number> = { critical: 0, warning: 1, info: 2 };
+    headerCoverage.sort((a, b) => {
+      const so = (severityOrder[a.severity] ?? 2) - (severityOrder[b.severity] ?? 2);
+      if (so !== 0) return so;
+      return a.coveragePct - b.coveragePct;
+    });
+
+    const noData = monitors.length - scoredCount;
+
+    return {
+      total: monitors.length,
+      gradeA: gradeCounts['A'] ?? 0,
+      gradeB: gradeCounts['B'] ?? 0,
+      gradeC: gradeCounts['C'] ?? 0,
+      gradeD: gradeCounts['D'] ?? 0,
+      gradeF: gradeCounts['F'] ?? 0,
+      noData,
+      avgScore: scoredCount > 0 ? Math.round(totalScore / scoredCount) : null,
+      headerCoverage,
+      monitors: rows,
+    };
+  }
+
+  /**
    * Batch health scores for all monitors belonging to a user.
    * Skips the per-monitor latency computation for performance — gives full 30 pts.
    */
@@ -3941,6 +4229,183 @@ export class MonitorsService {
     });
 
     return { monitors: result, generatedAt: now.toISOString() };
+  }
+
+  // ─── Dependency Graph ────────────────────────────────────────────────────────────
+
+  /**
+   * Returns a full dependency graph for all monitors belonging to the user.
+   *
+   * The graph is returned as nodes (monitors with live status) and directed edges
+   * (monitorId → dependsOnId, meaning "monitorId's alerts are suppressed when dependsOnId is down").
+   *
+   * Also computes, per-node, how many other monitors depend on it (inDegree = blast radius)
+   * and how many dependencies it has itself (outDegree).
+   *
+   * @param userId - The owner's user ID
+   * @returns Nodes, edges, and summary stats
+   */
+  async dependencyGraph(userId: string): Promise<{
+    nodes: Array<{
+      id: string;
+      name: string;
+      type: string;
+      enabled: boolean;
+      folderId: string | null;
+      folderName: string | null;
+      status: 'up' | 'down' | 'degraded' | 'paused' | 'no-data';
+      latencyMs: number | null;
+      uptimePct7d: number | null;
+      isMuted: boolean;
+      inDegree: number;  // how many monitors depend on this one
+      outDegree: number; // how many dependencies this monitor has
+    }>;
+    edges: Array<{
+      source: string;  // monitorId (the dependent)
+      target: string;  // dependsOnId (the dependency)
+    }>;
+    summary: {
+      totalMonitors: number;
+      totalEdges: number;
+      isolatedNodes: number; // monitors with no dependencies and no dependents
+      monitorsByStatus: { up: number; down: number; degraded: number; paused: number; noData: number };
+    };
+    generatedAt: string;
+  }> {
+    const now = new Date();
+
+    // Fetch all monitors for this user
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId },
+      include: {
+        folder: { select: { name: true } },
+      },
+      orderBy: [{ pinned: 'desc' }, { createdAt: 'asc' }],
+    });
+
+    if (monitors.length === 0) {
+      return {
+        nodes: [],
+        edges: [],
+        summary: { totalMonitors: 0, totalEdges: 0, isolatedNodes: 0, monitorsByStatus: { up: 0, down: 0, degraded: 0, paused: 0, noData: 0 } },
+        generatedAt: now.toISOString(),
+      };
+    }
+
+    const monitorIds = monitors.map(m => m.id);
+
+    // Fetch latest run per monitor
+    const latestRuns = await this.prisma.monitorRun.findMany({
+      where: { monitorId: { in: monitorIds } },
+      orderBy: { checkedAt: 'desc' },
+      distinct: ['monitorId'],
+      select: { monitorId: true, ok: true, level: true, latencyMs: true, checkedAt: true },
+    });
+
+    // Compute 7-day uptime per monitor
+    const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    const weeklyRuns = await this.prisma.monitorRun.findMany({
+      where: {
+        monitorId: { in: monitorIds },
+        checkedAt: { gte: weekAgo },
+      },
+      select: { monitorId: true, ok: true },
+    });
+
+    const weeklyByMonitor = new Map<string, { total: number; ok: number }>();
+    for (const run of weeklyRuns) {
+      const entry = weeklyByMonitor.get(run.monitorId) ?? { total: 0, ok: 0 };
+      entry.total++;
+      if (run.ok) entry.ok++;
+      weeklyByMonitor.set(run.monitorId, entry);
+    }
+
+    // Fetch all dependency edges for these monitors
+    const allEdges = await this.prisma.monitorDependency.findMany({
+      where: {
+        OR: [
+          { monitorId: { in: monitorIds } },
+          { dependsOnId: { in: monitorIds } },
+        ],
+      },
+      select: { monitorId: true, dependsOnId: true },
+    });
+
+    // Compute in/out degrees
+    const inDegreeMap = new Map<string, number>();  // dependsOnId → count of dependents
+    const outDegreeMap = new Map<string, number>(); // monitorId → count of dependencies
+
+    for (const edge of allEdges) {
+      inDegreeMap.set(edge.dependsOnId, (inDegreeMap.get(edge.dependsOnId) ?? 0) + 1);
+      outDegreeMap.set(edge.monitorId, (outDegreeMap.get(edge.monitorId) ?? 0) + 1);
+    }
+
+    // Build run lookup
+    const runByMonitor = new Map(latestRuns.map(r => [r.monitorId, r]));
+
+    // Build nodes
+    const statusCount = { up: 0, down: 0, degraded: 0, paused: 0, noData: 0 };
+    const nodes = monitors.map(m => {
+      const run = runByMonitor.get(m.id);
+      const weekly = weeklyByMonitor.get(m.id);
+      const isMuted = m.mutedUntil != null && new Date(m.mutedUntil) > now;
+
+      let status: 'up' | 'down' | 'degraded' | 'paused' | 'no-data';
+      if (!m.enabled) {
+        status = 'paused';
+        statusCount.paused++;
+      } else if (!run) {
+        status = 'no-data';
+        statusCount.noData++;
+      } else if (run.level === 'green' && run.ok) {
+        status = 'up';
+        statusCount.up++;
+      } else if (run.level === 'yellow') {
+        status = 'degraded';
+        statusCount.degraded++;
+      } else {
+        status = 'down';
+        statusCount.down++;
+      }
+
+      const uptimePct7d = weekly && weekly.total > 0
+        ? Math.round((weekly.ok / weekly.total) * 10000) / 100
+        : null;
+
+      return {
+        id: m.id,
+        name: m.name,
+        type: m.type as string,
+        enabled: m.enabled,
+        folderId: m.folderId,
+        folderName: m.folder?.name ?? null,
+        status,
+        latencyMs: run?.latencyMs ?? null,
+        uptimePct7d,
+        isMuted,
+        inDegree: inDegreeMap.get(m.id) ?? 0,
+        outDegree: outDegreeMap.get(m.id) ?? 0,
+      };
+    });
+
+    const nodeIds = new Set(monitorIds);
+    const edges = allEdges
+      .filter(e => nodeIds.has(e.monitorId) && nodeIds.has(e.dependsOnId))
+      .map(e => ({ source: e.monitorId, target: e.dependsOnId }));
+
+    const isolatedNodes = nodes.filter(n => n.inDegree === 0 && n.outDegree === 0).length;
+
+    return {
+      nodes,
+      edges,
+      summary: {
+        totalMonitors: monitors.length,
+        totalEdges: edges.length,
+        isolatedNodes,
+        monitorsByStatus: { up: statusCount.up, down: statusCount.down, degraded: statusCount.degraded, paused: statusCount.paused, noData: statusCount.noData },
+      },
+      generatedAt: now.toISOString(),
+    };
   }
 
   // ─── Geo-Distribution Stats ───────────────────────────────────────────────────────
@@ -4653,6 +5118,1300 @@ export class MonitorsService {
       monitors: monitorsData,
     };
   }
+
+  // ─── SLA Compliance Report ─────────────────────────────────────────────────
+
+  /**
+   * Generates a structured SLA compliance report for all monitors with an SLA target.
+   * Covers up to `months` calendar months (1–12, default 3) including the current partial month.
+   *
+   * @param userId - The user to generate the report for
+   * @param months - Number of months to include (1–12)
+   * @returns Compliance report with per-monitor monthly breakdown, incident stats, and summary
+   */
+  async slaComplianceReport(userId: string, months: number) {
+    const safeMonths = Math.max(1, Math.min(12, months));
+    const now = new Date();
+
+    // Build month buckets from oldest to newest (ending with current partial month)
+    const monthBuckets: Array<{ label: string; start: Date; end: Date }> = [];
+    for (let i = safeMonths - 1; i >= 0; i--) {
+      const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const end = i === 0 ? now : new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      const label = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`;
+      monthBuckets.push({ label, start, end });
+    }
+
+    const periodStart = monthBuckets[0].start;
+
+    // Load all monitors with SLA targets
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, enabled: true, slaTarget: { not: null } },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        folderId: true,
+        slaTarget: true,
+        description: true,
+        target: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    // Compute uptime per monitor per month
+    const computeUptime = async (monitorId: string, from: Date, to: Date) => {
+      const runs = await this.prisma.monitorRun.findMany({
+        where: { monitorId, checkedAt: { gte: from, lt: to } },
+        select: { ok: true },
+      });
+      const total = runs.length;
+      const failed = runs.filter((r) => !r.ok).length;
+      const uptimePct = total === 0 ? null : Math.round(((total - failed) / total) * 1000000) / 10000;
+      return { total, failed, uptimePct };
+    };
+
+    // Compute incident count for a monitor in a period
+    const computeIncidents = async (monitorId: string, from: Date, to: Date) => {
+      return this.prisma.incident.count({
+        where: {
+          monitors: { some: { monitorId } },
+          createdAt: { gte: from, lt: to },
+        },
+      });
+    };
+
+    // Approximate downtime minutes from failed checks × interval
+    const computeDowntimeRuns = async (monitorId: string, from: Date, to: Date) => {
+      const mon = await this.prisma.monitor.findUnique({
+        where: { id: monitorId },
+        select: { intervalSec: true },
+      });
+      const intervalSec = mon?.intervalSec ?? 60;
+      const failed = await this.prisma.monitorRun.count({
+        where: { monitorId, ok: false, checkedAt: { gte: from, lt: to } },
+      });
+      return Math.round((failed * intervalSec) / 60);
+    };
+
+    const monitorsData = await Promise.all(
+      monitors.map(async (m) => {
+        const slaTarget = Number(m.slaTarget);
+
+        // Per-month breakdown
+        const monthlyBreakdown = await Promise.all(
+          monthBuckets.map(async (bucket) => {
+            const { total, failed, uptimePct } = await computeUptime(m.id, bucket.start, bucket.end);
+            const incidents = await computeIncidents(m.id, bucket.start, bucket.end);
+            const downtimeMinutes = await computeDowntimeRuns(m.id, bucket.start, bucket.end);
+            const compliant = uptimePct !== null ? uptimePct >= slaTarget : null;
+            const errorBudgetUsedPct =
+              uptimePct !== null
+                ? Math.min(100, Math.max(0, Math.round(((100 - uptimePct) / Math.max(0.0001, 100 - slaTarget)) * 10000) / 100))
+                : null;
+
+            return {
+              month: bucket.label,
+              totalChecks: total,
+              failedChecks: failed,
+              uptimePct,
+              downtimeMinutes,
+              incidents,
+              compliant,
+              errorBudgetUsedPct,
+            };
+          }),
+        );
+
+        // Overall period stats
+        const { total: periodTotal, failed: periodFailed, uptimePct: periodUptime } = await computeUptime(m.id, periodStart, now);
+        const periodIncidents = await computeIncidents(m.id, periodStart, now);
+        const periodDowntime = await computeDowntimeRuns(m.id, periodStart, now);
+        const periodCompliant = periodUptime !== null ? periodUptime >= slaTarget : null;
+        const allowedDown = 100 - slaTarget;
+        const errorBudgetUsedPct =
+          periodUptime !== null && allowedDown > 0
+            ? Math.min(100, Math.max(0, Math.round(((100 - periodUptime) / allowedDown) * 10000) / 100))
+            : null;
+
+        return {
+          id: m.id,
+          name: m.name,
+          type: m.type,
+          target: m.target,
+          description: m.description ?? null,
+          slaTarget,
+          period: {
+            totalChecks: periodTotal,
+            failedChecks: periodFailed,
+            uptimePct: periodUptime,
+            downtimeMinutes: periodDowntime,
+            incidents: periodIncidents,
+            compliant: periodCompliant,
+            errorBudgetUsedPct,
+          },
+          monthlyBreakdown,
+        };
+      }),
+    );
+
+    const compliantCount = monitorsData.filter((m) => m.period.compliant === true).length;
+    const breachedCount = monitorsData.filter((m) => m.period.compliant === false).length;
+    const noDataCount = monitorsData.filter((m) => m.period.compliant === null).length;
+
+    const totalChecks = monitorsData.reduce((s, m) => s + m.period.totalChecks, 0);
+    const totalFailed = monitorsData.reduce((s, m) => s + m.period.failedChecks, 0);
+    const fleetUptimePct =
+      totalChecks > 0 ? Math.round(((totalChecks - totalFailed) / totalChecks) * 1000000) / 10000 : null;
+
+    return {
+      generatedAt: now.toISOString(),
+      reportPeriod: {
+        start: periodStart.toISOString(),
+        end: now.toISOString(),
+        months: safeMonths,
+        monthLabels: monthBuckets.map((b) => b.label),
+      },
+      summary: {
+        totalMonitors: monitors.length,
+        compliant: compliantCount,
+        breached: breachedCount,
+        noData: noDataCount,
+        fleetUptimePct,
+        complianceRate:
+          monitors.length > 0 ? Math.round((compliantCount / monitors.length) * 10000) / 100 : null,
+      },
+      monitors: monitorsData,
+    };
+  }
+
+  // ─── SLA Budget Forecast ──────────────────────────────────────────────────
+
+  /**
+   * Forecast whether a monitor's SLA error budget will be exhausted before month end.
+   * Uses the current month's observed uptime rate to project forward linearly.
+   *
+   * @param userId  - Owner of the monitor
+   * @param monitorId - Monitor to forecast
+   * @returns Forecast object with projectedUptimePct, budgetExhaustionDate, willBreach, dailyBreakdown
+   */
+  async slaBudgetForecast(userId: string, monitorId: string) {
+    const monitor = await this.prisma.monitor.findUnique({
+      where: { id: monitorId },
+      select: {
+        id: true,
+        name: true,
+        userId: true,
+        slaTarget: true,
+        intervalSec: true,
+      },
+    });
+
+    if (!monitor) throw new NotFoundException(`Monitor ${monitorId} not found`);
+    if (monitor.userId !== userId) throw new ForbiddenException();
+
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const totalMonthMs = monthEnd.getTime() - monthStart.getTime();
+    const elapsedMs = now.getTime() - monthStart.getTime();
+    const remainingMs = monthEnd.getTime() - now.getTime();
+    const dayOfMonth = now.getDate();
+    const daysInMonth = monthEnd.getDate();
+
+    // Fetch all runs this month
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId, checkedAt: { gte: monthStart, lte: now } },
+      select: { ok: true, checkedAt: true },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    const totalChecks = runs.length;
+    const failedChecks = runs.filter((r) => !r.ok).length;
+    const currentUptimePct = totalChecks === 0 ? 100 : ((totalChecks - failedChecks) / totalChecks) * 100;
+
+    const slaTarget = monitor.slaTarget != null ? Number(monitor.slaTarget) : null;
+    const allowedDownPct = slaTarget != null ? 100 - slaTarget : null;
+
+    // Current error budget consumption
+    const errorBudgetUsedPct =
+      slaTarget != null && allowedDownPct != null && allowedDownPct > 0
+        ? Math.min(100, Math.max(0, ((100 - currentUptimePct) / allowedDownPct) * 100))
+        : null;
+
+    // Projected uptime at month end (linear extrapolation):
+    // Assumes failures happen at the same rate as observed so far
+    const failureRatePerMs = elapsedMs > 0 ? failedChecks / elapsedMs : 0;
+    const estimatedAdditionalFailed = failureRatePerMs * remainingMs;
+    const checksPerMs = elapsedMs > 0 ? totalChecks / elapsedMs : 0;
+    const estimatedAdditionalChecks = checksPerMs * remainingMs;
+
+    const projectedTotalChecks = totalChecks + estimatedAdditionalChecks;
+    const projectedFailedChecks = failedChecks + estimatedAdditionalFailed;
+    const projectedUptimePct =
+      projectedTotalChecks > 0 ? ((projectedTotalChecks - projectedFailedChecks) / projectedTotalChecks) * 100 : 100;
+
+    // Will it breach?
+    const willBreach = slaTarget != null ? projectedUptimePct < slaTarget : null;
+
+    // When will error budget be exhausted?
+    // Budget exhausted when failed / total == (100 - slaTarget) / 100
+    // At current failure rate: solve for t where failedChecks + failRate*t = (allowedDownPct/100) * (totalChecks + checksPerMs*t)
+    // => failedChecks + failRate*t = (allowedDownPct/100) * totalChecks + (allowedDownPct/100)*checksPerMs*t
+    // => t*(failRate - (allowedDownPct/100)*checksPerMs) = (allowedDownPct/100)*totalChecks - failedChecks
+    // => t = ((allowedDownPct/100)*totalChecks - failedChecks) / (failRate - (allowedDownPct/100)*checksPerMs)
+    let budgetExhaustionDate: string | null = null;
+    let budgetExhaustedAlready = false;
+
+    if (slaTarget != null && allowedDownPct != null && allowedDownPct > 0) {
+      const allowedFrac = allowedDownPct / 100;
+      const denom = failureRatePerMs - allowedFrac * checksPerMs;
+
+      if (denom > 0) {
+        // Budget is being consumed — find when it runs out
+        const numerator = allowedFrac * totalChecks - failedChecks;
+        if (numerator <= 0) {
+          budgetExhaustedAlready = true;
+          budgetExhaustionDate = now.toISOString();
+        } else {
+          const msUntilExhaustion = numerator / denom;
+          const exhaustionTime = new Date(now.getTime() + msUntilExhaustion);
+          if (exhaustionTime <= monthEnd) {
+            budgetExhaustionDate = exhaustionTime.toISOString();
+          }
+          // else: budget won't exhaust this month at this rate
+        }
+      }
+      // denom <= 0: uptime is better than needed, budget is safe
+    }
+
+    // Daily breakdown: actual (past days) + projected (future days)
+    // Group past runs into UTC day buckets
+    const dailyActual = new Map<string, { total: number; failed: number }>();
+    for (const run of runs) {
+      const d = run.checkedAt.toISOString().split('T')[0];
+      const entry = dailyActual.get(d) ?? { total: 0, failed: 0 };
+      entry.total++;
+      if (!run.ok) entry.failed++;
+      dailyActual.set(d, entry);
+    }
+
+    const dailyBreakdown: Array<{
+      date: string;
+      type: 'actual' | 'projected';
+      uptimePct: number | null;
+      totalChecks: number;
+      failedChecks: number;
+      errorBudgetUsedPct: number | null;
+    }> = [];
+
+    const dailyCheckCount = checksPerMs > 0 ? checksPerMs * 86400000 : (24 * 3600) / (monitor.intervalSec || 60);
+
+    let runningTotal = 0;
+    let runningFailed = 0;
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const isPast = d < dayOfMonth;
+      const isToday = d === dayOfMonth;
+
+      if (isPast || isToday) {
+        const actual = dailyActual.get(dateStr) ?? { total: 0, failed: 0 };
+        runningTotal += actual.total;
+        runningFailed += actual.failed;
+        const dayUptimePct = actual.total === 0 ? null : ((actual.total - actual.failed) / actual.total) * 100;
+        const cumulativeBudgetUsed =
+          slaTarget != null && allowedDownPct != null && allowedDownPct > 0 && runningTotal > 0
+            ? Math.min(100, ((100 - (((runningTotal - runningFailed) / runningTotal) * 100)) / allowedDownPct) * 100)
+            : null;
+        dailyBreakdown.push({
+          date: dateStr,
+          type: isToday ? 'actual' : 'actual',
+          uptimePct: dayUptimePct !== null ? Math.round(dayUptimePct * 10000) / 10000 : null,
+          totalChecks: actual.total,
+          failedChecks: actual.failed,
+          errorBudgetUsedPct: cumulativeBudgetUsed !== null ? Math.round(cumulativeBudgetUsed * 100) / 100 : null,
+        });
+      } else {
+        // Projected day
+        const projDayChecks = dailyCheckCount;
+        const projDayFailed = failureRatePerMs > 0 ? failureRatePerMs * 86400000 : 0;
+        runningTotal += projDayChecks;
+        runningFailed += projDayFailed;
+        const projDayUptimePct =
+          projDayChecks > 0 ? ((projDayChecks - projDayFailed) / projDayChecks) * 100 : 100;
+        const cumulativeBudgetUsed =
+          slaTarget != null && allowedDownPct != null && allowedDownPct > 0 && runningTotal > 0
+            ? Math.min(100, ((100 - (((runningTotal - runningFailed) / runningTotal) * 100)) / allowedDownPct) * 100)
+            : null;
+        dailyBreakdown.push({
+          date: dateStr,
+          type: 'projected',
+          uptimePct: Math.round(projDayUptimePct * 10000) / 10000,
+          totalChecks: Math.round(projDayChecks),
+          failedChecks: Math.round(projDayFailed),
+          errorBudgetUsedPct: cumulativeBudgetUsed !== null ? Math.round(cumulativeBudgetUsed * 100) / 100 : null,
+        });
+      }
+    }
+
+    return {
+      generatedAt: now.toISOString(),
+      monitorId: monitor.id,
+      monitorName: monitor.name,
+      slaTarget,
+      period: {
+        monthStart: monthStart.toISOString(),
+        monthEnd: monthEnd.toISOString(),
+        dayOfMonth,
+        daysInMonth,
+        elapsedDaysFraction: Math.round((elapsedMs / totalMonthMs) * 10000) / 10000,
+      },
+      currentStats: {
+        totalChecks,
+        failedChecks,
+        uptimePct: Math.round(currentUptimePct * 10000) / 10000,
+        errorBudgetUsedPct: errorBudgetUsedPct !== null ? Math.round(errorBudgetUsedPct * 100) / 100 : null,
+      },
+      forecast: {
+        projectedUptimePct: Math.round(projectedUptimePct * 10000) / 10000,
+        projectedErrorBudgetUsedPct:
+          slaTarget != null && allowedDownPct != null && allowedDownPct > 0
+            ? Math.min(100, Math.round(((100 - projectedUptimePct) / allowedDownPct) * 10000) / 100)
+            : null,
+        willBreach,
+        budgetExhaustedAlready,
+        budgetExhaustionDate,
+        confidence: totalChecks >= 10 ? 'high' : totalChecks >= 3 ? 'medium' : 'low',
+      },
+      dailyBreakdown,
+    };
+  }
+
+  // ─── OpenAPI Import ────────────────────────────────────────────────────────
+
+  async previewFromOpenApi(opts: {
+    specJson?: string;
+    url?: string;
+    baseUrl: string;
+    maxPaths?: number;
+  }): Promise<{ suggestions: OpenApiSuggestion[] }> {
+    if (!opts.specJson && !opts.url) {
+      throw new BadRequestException('Either specJson or url must be provided');
+    }
+
+    let rawSpec: string = opts.specJson ?? '';
+
+    if (opts.url && !opts.specJson) {
+      // In real use we'd fetch; for now throw if no json
+      throw new BadRequestException('Fetching spec by url is not supported in this context');
+    }
+
+    let spec: Record<string, unknown>;
+    try {
+      spec = JSON.parse(rawSpec);
+    } catch {
+      throw new BadRequestException('Invalid JSON in specJson');
+    }
+
+    const basePath = typeof (spec as { basePath?: string }).basePath === 'string'
+      ? (spec as { basePath: string }).basePath
+      : '';
+
+    const paths = (spec as { paths?: Record<string, Record<string, { summary?: string; tags?: string[] }>> }).paths ?? {};
+
+    const SUPPORTED_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'HEAD', 'OPTIONS'];
+
+    const suggestions: OpenApiSuggestion[] = [];
+
+    for (const [path, methods] of Object.entries(paths)) {
+      if (opts.maxPaths != null && suggestions.length >= opts.maxPaths) break;
+
+      for (const [method, op] of Object.entries(methods)) {
+        if (opts.maxPaths != null && suggestions.length >= opts.maxPaths) break;
+
+        const upperMethod = method.toUpperCase();
+        if (!SUPPORTED_METHODS.includes(upperMethod)) continue;
+
+        // Replace path params with sensible placeholders
+        const resolvedPath = path.replace(/\{([^}]+)\}/g, (_match, param: string) => {
+          // Use numeric placeholder for likely id params, "example" for others
+          const lower = param.toLowerCase();
+          if (lower.endsWith('id') || lower === 'id') return '1';
+          return 'example';
+        });
+
+        const url = `${opts.baseUrl}${basePath}${resolvedPath}`;
+
+        const expectedStatus = upperMethod === 'POST' ? 201
+          : upperMethod === 'DELETE' ? 204
+          : 200;
+
+        suggestions.push({
+          key: `${upperMethod}:${path}`,
+          method: upperMethod as OpenApiSuggestion['method'],
+          path,
+          url,
+          expectedStatus,
+          summary: op.summary,
+          tags: op.tags,
+        });
+      }
+    }
+
+    return { suggestions };
+  }
+
+  async importFromOpenApi(
+    userId: string,
+    opts: {
+      specJson?: string;
+      url?: string;
+      baseUrl: string;
+      selectedPaths: string[];
+      intervalSec?: number;
+      folderId?: string;
+      alertChannelIds?: string[];
+    },
+  ): Promise<{ created: number; monitors: unknown[] }> {
+    const { suggestions } = await this.previewFromOpenApi({
+      specJson: opts.specJson,
+      url: opts.url,
+      baseUrl: opts.baseUrl,
+    });
+
+    const selected = suggestions.filter((s) => opts.selectedPaths.includes(s.key));
+
+    const monitors: unknown[] = [];
+    for (const s of selected) {
+      const monitor = await this.create(userId, {
+        name: s.summary ?? `${s.method} ${s.path}`,
+        target: s.url,
+        type: 'HTTP' as MonitorType,
+        intervalSec: opts.intervalSec ?? 60,
+        folderId: opts.folderId ?? null,
+        alertChannelIds: opts.alertChannelIds,
+        config: {
+          method: s.method,
+          expectedStatus: s.expectedStatus,
+        },
+      });
+      monitors.push(monitor);
+    }
+
+    return { created: monitors.length, monitors };
+  }
+
+  // ─── Playground rate-limit: in-memory map userId → timestamps ───────────────
+  private readonly _playgroundTimestamps = new Map<string, number[]>();
+
+  /**
+   * Runs a one-off HTTP check against the given URL without creating or storing a monitor.
+   * Rate limited to 10 requests per user per minute.
+   */
+  /**
+   * Fleet-wide anomaly report: detects significant behavioral changes per monitor
+   * comparing the current period against the prior period of the same duration.
+   *
+   * @param userId - Owner of the monitors
+   * @param hours - Lookback window in hours (24 | 48 | 168 = 1d / 2d / 7d, default 24)
+   * @returns List of monitors with detected anomalies, sorted by severity
+   */
+  async anomalyReport(userId: string, hours: 24 | 48 | 168 = 24): Promise<{
+    generatedAt: string;
+    periodHours: number;
+    totalMonitors: number;
+    anomaliesFound: number;
+    anomalies: Array<{
+      monitorId: string;
+      monitorName: string;
+      monitorType: string;
+      severity: 'critical' | 'high' | 'medium' | 'low';
+      anomalyTypes: string[];
+      details: Array<{
+        type: string;
+        description: string;
+        currentValue: number | null;
+        previousValue: number | null;
+        changePct: number | null;
+      }>;
+      currentPeriod: {
+        uptimePct: number | null;
+        avgLatencyMs: number | null;
+        failureCount: number;
+        totalChecks: number;
+      };
+      previousPeriod: {
+        uptimePct: number | null;
+        avgLatencyMs: number | null;
+        failureCount: number;
+        totalChecks: number;
+      };
+    }>;
+  }> {
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, enabled: true },
+      select: { id: true, name: true, type: true },
+    });
+
+    const now = new Date();
+    const currentFrom = new Date(now.getTime() - hours * 3_600_000);
+    const previousFrom = new Date(now.getTime() - hours * 2 * 3_600_000);
+
+    const monitorIds = monitors.map((m) => m.id);
+    if (monitorIds.length === 0) {
+      return {
+        generatedAt: now.toISOString(),
+        periodHours: hours,
+        totalMonitors: 0,
+        anomaliesFound: 0,
+        anomalies: [],
+      };
+    }
+
+    // Load all runs in both periods in bulk
+    const allRuns = await this.prisma.monitorRun.findMany({
+      where: {
+        monitorId: { in: monitorIds },
+        checkedAt: { gte: previousFrom },
+      },
+      select: {
+        monitorId: true,
+        ok: true,
+        latencyMs: true,
+        checkedAt: true,
+        level: true,
+      },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    // Partition runs into current and previous periods
+    const currentRuns = new Map<string, typeof allRuns>();
+    const previousRuns = new Map<string, typeof allRuns>();
+
+    for (const run of allRuns) {
+      if (run.checkedAt >= currentFrom) {
+        if (!currentRuns.has(run.monitorId)) currentRuns.set(run.monitorId, []);
+        currentRuns.get(run.monitorId)!.push(run);
+      } else {
+        if (!previousRuns.has(run.monitorId)) previousRuns.set(run.monitorId, []);
+        previousRuns.get(run.monitorId)!.push(run);
+      }
+    }
+
+    type AnomalyDetail = {
+      type: string;
+      description: string;
+      currentValue: number | null;
+      previousValue: number | null;
+      changePct: number | null;
+    };
+
+    const computePeriodStats = (runs: typeof allRuns) => {
+      if (runs.length === 0) return { uptimePct: null, avgLatencyMs: null, failureCount: 0, totalChecks: 0 };
+      const total = runs.length;
+      const ok = runs.filter((r) => r.ok).length;
+      const latencies = runs.map((r) => r.latencyMs).filter((l): l is number => l !== null);
+      const avgLatencyMs = latencies.length > 0 ? Math.round(latencies.reduce((s, v) => s + v, 0) / latencies.length) : null;
+      return {
+        uptimePct: Math.round((ok / total) * 10000) / 100,
+        avgLatencyMs,
+        failureCount: total - ok,
+        totalChecks: total,
+      };
+    };
+
+    const anomalies: Array<{
+      monitorId: string;
+      monitorName: string;
+      monitorType: string;
+      severity: 'critical' | 'high' | 'medium' | 'low';
+      anomalyTypes: string[];
+      details: AnomalyDetail[];
+      currentPeriod: ReturnType<typeof computePeriodStats>;
+      previousPeriod: ReturnType<typeof computePeriodStats>;
+    }> = [];
+
+    for (const monitor of monitors) {
+      const curr = currentRuns.get(monitor.id) ?? [];
+      const prev = previousRuns.get(monitor.id) ?? [];
+
+      // Need at least some data in current period to report
+      if (curr.length < 2) continue;
+
+      const currStats = computePeriodStats(curr);
+      const prevStats = computePeriodStats(prev);
+
+      const details: AnomalyDetail[] = [];
+      const anomalyTypes: string[] = [];
+
+      // ── 1. Uptime regression ───────────────────────────────────────────
+      if (currStats.uptimePct !== null && prevStats.uptimePct !== null && prevStats.uptimePct > 0) {
+        const drop = prevStats.uptimePct - currStats.uptimePct;
+        if (drop >= 5) {
+          anomalyTypes.push('uptime_regression');
+          details.push({
+            type: 'uptime_regression',
+            description: `Uptime dropped ${drop.toFixed(1)}% (${prevStats.uptimePct}% → ${currStats.uptimePct}%)`,
+            currentValue: currStats.uptimePct,
+            previousValue: prevStats.uptimePct,
+            changePct: -drop,
+          });
+        }
+      } else if (currStats.uptimePct !== null && currStats.uptimePct < 95 && prev.length === 0) {
+        // New data: currently degraded
+        anomalyTypes.push('currently_degraded');
+        details.push({
+          type: 'currently_degraded',
+          description: `Monitor is currently degraded (${currStats.uptimePct}% uptime)`,
+          currentValue: currStats.uptimePct,
+          previousValue: null,
+          changePct: null,
+        });
+      }
+
+      // ── 2. Latency regression ─────────────────────────────────────────
+      if (currStats.avgLatencyMs !== null && prevStats.avgLatencyMs !== null && prevStats.avgLatencyMs > 0) {
+        const increase = ((currStats.avgLatencyMs - prevStats.avgLatencyMs) / prevStats.avgLatencyMs) * 100;
+        if (increase >= 25) {
+          anomalyTypes.push('latency_regression');
+          details.push({
+            type: 'latency_regression',
+            description: `Avg latency increased ${increase.toFixed(0)}% (${prevStats.avgLatencyMs}ms → ${currStats.avgLatencyMs}ms)`,
+            currentValue: currStats.avgLatencyMs,
+            previousValue: prevStats.avgLatencyMs,
+            changePct: increase,
+          });
+        }
+      }
+
+      // ── 3. New flapping (rapid status changes in current period) ──────
+      let statusChanges = 0;
+      let lastOk: boolean | null = null;
+      for (const run of curr) {
+        if (lastOk !== null && run.ok !== lastOk) statusChanges++;
+        lastOk = run.ok;
+      }
+      const flapRate = curr.length > 0 ? statusChanges / curr.length : 0;
+      if (flapRate >= 0.1 && statusChanges >= 3) {
+        anomalyTypes.push('flapping');
+        details.push({
+          type: 'flapping',
+          description: `Monitor is flapping: ${statusChanges} status changes in ${curr.length} checks (${(flapRate * 100).toFixed(0)}% change rate)`,
+          currentValue: statusChanges,
+          previousValue: null,
+          changePct: null,
+        });
+      }
+
+      // ── 4. Failure burst (sudden cluster of failures) ────────────────
+      const recentCurr = curr.slice(-Math.min(10, curr.length));
+      const recentFailRate = recentCurr.length > 0 ? recentCurr.filter((r) => !r.ok).length / recentCurr.length : 0;
+      if (recentFailRate >= 0.5 && recentCurr.length >= 3 && currStats.uptimePct !== null && currStats.uptimePct >= 95) {
+        // Overall period fine but recent spike
+        anomalyTypes.push('failure_burst');
+        details.push({
+          type: 'failure_burst',
+          description: `Recent failure burst: ${recentCurr.filter((r) => !r.ok).length}/${recentCurr.length} of last checks failed`,
+          currentValue: Math.round(recentFailRate * 100),
+          previousValue: null,
+          changePct: null,
+        });
+      }
+
+      // ── 5. Recovery from major outage ────────────────────────────────
+      if (prevStats.uptimePct !== null && currStats.uptimePct !== null) {
+        const improvement = currStats.uptimePct - prevStats.uptimePct;
+        if (prevStats.uptimePct < 90 && currStats.uptimePct >= 99) {
+          anomalyTypes.push('recovered');
+          details.push({
+            type: 'recovered',
+            description: `Recovered from outage (${prevStats.uptimePct}% → ${currStats.uptimePct}% uptime)`,
+            currentValue: currStats.uptimePct,
+            previousValue: prevStats.uptimePct,
+            changePct: improvement,
+          });
+        }
+      }
+
+      // ── 6. Latency improvement (notable) ─────────────────────────────
+      if (currStats.avgLatencyMs !== null && prevStats.avgLatencyMs !== null && prevStats.avgLatencyMs > 0) {
+        const decrease = ((prevStats.avgLatencyMs - currStats.avgLatencyMs) / prevStats.avgLatencyMs) * 100;
+        if (decrease >= 30) {
+          anomalyTypes.push('latency_improvement');
+          details.push({
+            type: 'latency_improvement',
+            description: `Latency improved ${decrease.toFixed(0)}% (${prevStats.avgLatencyMs}ms → ${currStats.avgLatencyMs}ms)`,
+            currentValue: currStats.avgLatencyMs,
+            previousValue: prevStats.avgLatencyMs,
+            changePct: -decrease,
+          });
+        }
+      }
+
+      if (anomalyTypes.length === 0) continue;
+
+      // ── Compute severity ──────────────────────────────────────────────
+      let severity: 'critical' | 'high' | 'medium' | 'low' = 'low';
+      if (
+        anomalyTypes.includes('uptime_regression') &&
+        currStats.uptimePct !== null &&
+        currStats.uptimePct < 90
+      ) {
+        severity = 'critical';
+      } else if (
+        anomalyTypes.includes('uptime_regression') ||
+        anomalyTypes.includes('failure_burst') ||
+        anomalyTypes.includes('currently_degraded')
+      ) {
+        severity = 'high';
+      } else if (anomalyTypes.includes('latency_regression') || anomalyTypes.includes('flapping')) {
+        severity = 'medium';
+      }
+
+      anomalies.push({
+        monitorId: monitor.id,
+        monitorName: monitor.name,
+        monitorType: monitor.type,
+        severity,
+        anomalyTypes,
+        details,
+        currentPeriod: currStats,
+        previousPeriod: prevStats,
+      });
+    }
+
+    // Sort: critical first, then high, medium, low
+    const severityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+    anomalies.sort((a, b) => severityOrder[a.severity] - severityOrder[b.severity]);
+
+    return {
+      generatedAt: now.toISOString(),
+      periodHours: hours,
+      totalMonitors: monitors.length,
+      anomaliesFound: anomalies.length,
+      anomalies,
+    };
+  }
+
+  async runPlayground(dto: PlaygroundDto, userId: string): Promise<PlaygroundResult> {
+    // Rate limit
+    const now = Date.now();
+    const windowMs = 60_000;
+    const maxPerWindow = 10;
+    const timestamps = (this._playgroundTimestamps.get(userId) ?? []).filter((t) => now - t < windowMs);
+    if (timestamps.length >= maxPerWindow) {
+      throw new HttpException('Playground rate limit exceeded: max 10 requests per minute', HttpStatus.TOO_MANY_REQUESTS);
+    }
+    timestamps.push(now);
+    this._playgroundTimestamps.set(userId, timestamps);
+
+    const url = dto.url?.trim() ?? '';
+    if (!/^https?:\/\//i.test(url)) {
+      return {
+        ok: false,
+        statusCode: 0,
+        latencyMs: 0,
+        responseHeaders: {},
+        bodyExcerpt: '',
+        assertions: {},
+        error: 'URL must start with http:// or https://',
+      };
+    }
+
+    const timeoutMs = Math.min(dto.timeoutMs ?? 10000, 30000);
+    const method = (dto.method ?? 'GET').toUpperCase();
+    const followRedirects = dto.followRedirects !== false;
+    const checkSsl = dto.checkSsl !== false;
+    const isHttps = url.startsWith('https://');
+
+    try {
+      const { statusCode, body, latencyMs, timings, responseHeaders, redirectChain } =
+        await playgroundHttpRequest(url, { method, timeoutMs, headers: dto.headers ?? {}, body: dto.body, followRedirects });
+
+      const bodyExcerpt = body.slice(0, 500);
+      const contentType = responseHeaders['content-type']?.split(';')[0]?.trim();
+
+      // ─── JSON path evaluation ──────────────────────────────────────────────
+      let bodyJsonPathResult: string | undefined;
+      if (dto.bodyJsonPath) {
+        try {
+          const parsed: unknown = JSON.parse(body);
+          const normalizedPath = dto.bodyJsonPath.replace(/^\$\.?/, '');
+          const extracted = extractByPath(parsed, normalizedPath);
+          bodyJsonPathResult = extracted !== undefined ? String(extracted) : undefined;
+        } catch {
+          bodyJsonPathResult = undefined;
+        }
+      }
+
+      // ─── SSL Info ─────────────────────────────────────────────────────────
+      let sslInfo: PlaygroundResult['sslInfo'];
+      if (isHttps && checkSsl) {
+        try {
+          sslInfo = await getPlaygroundSslInfo(url, timeoutMs);
+        } catch {
+          // SSL info is optional — don't fail the whole result
+        }
+      }
+
+      // ─── Assertions ───────────────────────────────────────────────────────
+      const assertions: PlaygroundResult['assertions'] = {};
+      if (dto.expectedStatus !== undefined) {
+        assertions.statusOk = statusCode === dto.expectedStatus;
+      }
+      if (dto.bodyContains !== undefined) {
+        assertions.bodyContainsOk = body.includes(dto.bodyContains);
+      }
+      if (dto.bodyJsonPath !== undefined && dto.bodyJsonPathExpected !== undefined) {
+        assertions.bodyJsonPathOk = bodyJsonPathResult === dto.bodyJsonPathExpected;
+      }
+
+      const assertionsFailed = Object.values(assertions).some((v) => v === false);
+      const httpOk = statusCode >= 200 && statusCode < 300;
+      const ok = httpOk && !assertionsFailed;
+
+      return {
+        ok,
+        statusCode,
+        latencyMs,
+        timings,
+        redirectChain,
+        responseHeaders,
+        bodyExcerpt,
+        bodyJsonPathResult,
+        contentType,
+        sslInfo,
+        assertions,
+      };
+    } catch (err) {
+      return {
+        ok: false,
+        statusCode: 0,
+        latencyMs: 0,
+        responseHeaders: {},
+        bodyExcerpt: '',
+        assertions: {},
+        error: err instanceof Error ? err.message : String(err),
+      };
+    }
+  }
+
+  // ─── Monitor Correlation Analysis ─────────────────────────────────────────────
+
+  /**
+   * Computes pairwise Jaccard similarity of failure windows across all monitors.
+   * Two monitors are correlated if they tend to be in a failing state (level ≠ 'green') at the same time.
+   *
+   * @param userId  Requesting user
+   * @param days    Look-back period in days (1–90, default 7)
+   */
+  async monitorCorrelation(userId: string, days: number = 7): Promise<{
+    monitors: Array<{ id: string; name: string; type: string }>;
+    pairs: Array<{
+      aId: string;
+      bId: string;
+      similarity: number;
+      sharedWindows: number;
+      aWindows: number;
+      bWindows: number;
+    }>;
+    groups: Array<{
+      monitorIds: string[];
+      avgSimilarity: number;
+      label: string;
+    }>;
+  }> {
+    const clampedDays = Math.min(90, Math.max(1, days));
+    const since = new Date(Date.now() - clampedDays * 86_400_000);
+    const BUCKET_MS = 5 * 60 * 1000; // 5-minute buckets
+
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, enabled: true },
+      select: { id: true, name: true, type: true },
+    });
+
+    if (monitors.length < 2) {
+      return { monitors: monitors.map(m => ({ id: m.id, name: m.name, type: m.type })), pairs: [], groups: [] };
+    }
+
+    const monitorIds = monitors.map(m => m.id);
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: {
+        monitorId: { in: monitorIds },
+        checkedAt: { gte: since },
+        level: { in: ['yellow', 'red'] },
+      },
+      select: { monitorId: true, checkedAt: true },
+    });
+
+    // Build failure window sets (5-min buckets)
+    const failureWindows = new Map<string, Set<number>>();
+    for (const id of monitorIds) failureWindows.set(id, new Set());
+    for (const run of runs) {
+      const bucket = Math.floor(run.checkedAt.getTime() / BUCKET_MS);
+      failureWindows.get(run.monitorId)?.add(bucket);
+    }
+
+    // Compute pairwise Jaccard similarity
+    const pairs: Array<{
+      aId: string; bId: string; similarity: number;
+      sharedWindows: number; aWindows: number; bWindows: number;
+    }> = [];
+
+    for (let i = 0; i < monitorIds.length; i++) {
+      for (let j = i + 1; j < monitorIds.length; j++) {
+        const aId = monitorIds[i];
+        const bId = monitorIds[j];
+        const aSet = failureWindows.get(aId)!;
+        const bSet = failureWindows.get(bId)!;
+        if (aSet.size === 0 && bSet.size === 0) continue;
+        let intersection = 0;
+        const [small, large] = aSet.size <= bSet.size ? [aSet, bSet] : [bSet, aSet];
+        for (const key of small) { if (large.has(key)) intersection++; }
+        const unionSize = aSet.size + bSet.size - intersection;
+        if (unionSize === 0) continue;
+        const similarity = intersection / unionSize;
+        if (similarity > 0.1) {
+          pairs.push({ aId, bId, similarity: Math.round(similarity * 1000) / 1000, sharedWindows: intersection, aWindows: aSet.size, bWindows: bSet.size });
+        }
+      }
+    }
+    pairs.sort((a, b) => b.similarity - a.similarity);
+
+    // Group via union-find (threshold 0.4)
+    const parent = new Map<string, string>();
+    const findRoot = (x: string): string => {
+      if (!parent.has(x)) parent.set(x, x);
+      if (parent.get(x) !== x) parent.set(x, findRoot(parent.get(x)!));
+      return parent.get(x)!;
+    };
+    const mergeRoots = (a: string, b: string) => {
+      const ra = findRoot(a); const rb = findRoot(b);
+      if (ra !== rb) parent.set(ra, rb);
+    };
+    for (const p of pairs) { if (p.similarity >= 0.4) mergeRoots(p.aId, p.bId); }
+
+    const groupMap = new Map<string, string[]>();
+    for (const id of monitorIds) {
+      if ((failureWindows.get(id)?.size ?? 0) === 0) continue;
+      const root = findRoot(id);
+      if (!groupMap.has(root)) groupMap.set(root, []);
+      groupMap.get(root)!.push(id);
+    }
+
+    const monitorNames = new Map(monitors.map(m => [m.id, m.name]));
+    const groups: Array<{ monitorIds: string[]; avgSimilarity: number; label: string }> = [];
+    for (const [, members] of groupMap) {
+      if (members.length < 2) continue;
+      let totalSim = 0; let count = 0;
+      for (let i = 0; i < members.length; i++) {
+        for (let j = i + 1; j < members.length; j++) {
+          const p = pairs.find(x =>
+            (x.aId === members[i] && x.bId === members[j]) ||
+            (x.aId === members[j] && x.bId === members[i]));
+          if (p) { totalSim += p.similarity; count++; }
+        }
+      }
+      groups.push({
+        monitorIds: members,
+        avgSimilarity: count > 0 ? Math.round((totalSim / count) * 1000) / 1000 : 0,
+        label: members.slice(0, 2).map(id => monitorNames.get(id) ?? id).join(' + ') + (members.length > 2 ? ` +${members.length - 2} more` : ''),
+      });
+    }
+    groups.sort((a, b) => b.avgSimilarity - a.avgSimilarity);
+
+    return { monitors: monitors.map(m => ({ id: m.id, name: m.name, type: m.type })), pairs, groups };
+  }
+
+
+  // ─── Fleet Health Report ─────────────────────────────────────────────────
+
+  /**
+   * Aggregates a comprehensive health overview of the entire monitor fleet.
+   * Returns reliability tiers, risk monitors, incident velocity, coverage gaps,
+   * type distribution, and fleet-level score.
+   */
+  async fleetHealthReport(userId: string): Promise<{
+    generatedAt: string;
+    fleetScore: number;
+    fleetGrade: string;
+    summary: {
+      total: number;
+      enabled: number;
+      up: number;
+      degraded: number;
+      down: number;
+      noData: number;
+    };
+    reliabilityTiers: {
+      tier: string;
+      label: string;
+      count: number;
+      color: string;
+      monitors: Array<{ id: string; name: string; uptimePct: number; score: number; grade: string }>;
+    }[];
+    atRisk: Array<{
+      id: string;
+      name: string;
+      reason: string;
+      severity: 'critical' | 'high' | 'medium';
+      uptimePct: number;
+      score: number;
+    }>;
+    incidentVelocity: {
+      last7d: number;
+      last30d: number;
+      trend: 'improving' | 'stable' | 'worsening';
+      weeklyBreakdown: Array<{ week: string; count: number }>;
+    };
+    typeDistribution: Array<{ type: string; count: number; avgUptime: number }>;
+    coverageGaps: {
+      noAlertChannel: number;
+      noSlaTarget: number;
+      noDescription: number;
+      totalGapScore: number;
+    };
+    topPerformers: Array<{ id: string; name: string; uptimePct: number; grade: string }>;
+    worstPerformers: Array<{ id: string; name: string; uptimePct: number; grade: string }>;
+  }> {
+    const now = new Date();
+    const since30d = new Date(now.getTime() - 30 * 86_400_000);
+    const since7d = new Date(now.getTime() - 7 * 86_400_000);
+
+    // Load all monitors
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        enabled: true,
+        slaTarget: true,
+        description: true,
+        monitorAlerts: { select: { monitorId: true } },
+      },
+    });
+
+    const total = monitors.length;
+    const enabled = monitors.filter((m) => m.enabled).length;
+
+    // Load last 30d runs for all monitors in one query
+    const allRuns = await this.prisma.monitorRun.findMany({
+      where: { userId, checkedAt: { gte: since30d } },
+      select: { monitorId: true, ok: true, checkedAt: true, latencyMs: true },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    // Group by monitorId
+    const runsByMonitor = new Map<string, typeof allRuns>();
+    for (const run of allRuns) {
+      if (!runsByMonitor.has(run.monitorId)) runsByMonitor.set(run.monitorId, []);
+      runsByMonitor.get(run.monitorId)!.push(run);
+    }
+
+    // Compute per-monitor stats
+    interface MonitorStats {
+      id: string;
+      name: string;
+      type: string;
+      uptimePct: number;
+      score: number;
+      grade: string;
+      hasAlertChannel: boolean;
+      hasSlaTarget: boolean;
+      hasDescription: boolean;
+      lastStatus: 'up' | 'degraded' | 'down' | 'noData';
+    }
+
+    const statsMap: MonitorStats[] = [];
+
+    for (const m of monitors) {
+      if (!m.enabled) continue;
+      const runs = runsByMonitor.get(m.id) ?? [];
+      const recentRuns = runs.filter((r) => r.checkedAt >= since7d);
+
+      let uptimePct = 100;
+      let lastStatus: MonitorStats['lastStatus'] = 'noData';
+
+      if (runs.length > 0) {
+        const ok30d = runs.filter((r) => r.ok).length;
+        uptimePct = Math.round((ok30d / runs.length) * 10000) / 100;
+        const last = runs[runs.length - 1];
+        lastStatus = last.ok ? 'up' : 'down';
+      }
+
+      if (recentRuns.length > 0) {
+        const recentFailed = recentRuns.filter((r) => !r.ok).length;
+        const recentPct = recentFailed / recentRuns.length;
+        if (recentPct > 0 && recentPct < 0.5) lastStatus = 'degraded';
+      }
+
+      // Score: simplified health (0–100)
+      const clamped = Math.max(0, uptimePct - 90);
+      const score = runs.length === 0 ? 50 : Math.min(100, Math.round((clamped / 10) * 100));
+
+      const grade =
+        score >= 95 ? 'A' :
+        score >= 85 ? 'B' :
+        score >= 70 ? 'C' :
+        score >= 55 ? 'D' : 'F';
+
+      statsMap.push({
+        id: m.id,
+        name: m.name,
+        type: m.type,
+        uptimePct,
+        score,
+        grade,
+        hasAlertChannel: m.monitorAlerts.length > 0,
+        hasSlaTarget: m.slaTarget !== null,
+        hasDescription: !!m.description?.trim(),
+        lastStatus,
+      });
+    }
+
+    // Fleet summary
+    const up = statsMap.filter((s) => s.lastStatus === 'up').length;
+    const degraded = statsMap.filter((s) => s.lastStatus === 'degraded').length;
+    const down = statsMap.filter((s) => s.lastStatus === 'down').length;
+    const noData = statsMap.filter((s) => s.lastStatus === 'noData').length;
+
+    // Fleet score: weighted average
+    const fleetScore = statsMap.length === 0 ? 100 :
+      Math.round(statsMap.reduce((acc, s) => acc + s.score, 0) / statsMap.length);
+    const fleetGrade =
+      fleetScore >= 95 ? 'A' :
+      fleetScore >= 85 ? 'B' :
+      fleetScore >= 70 ? 'C' :
+      fleetScore >= 55 ? 'D' : 'F';
+
+    // Reliability tiers
+    const tierDefs = [
+      { tier: 'elite', label: 'Elite (≥99.9%)', min: 99.9, color: 'green' },
+      { tier: 'strong', label: 'Strong (99–99.9%)', min: 99, color: 'blue' },
+      { tier: 'acceptable', label: 'Acceptable (95–99%)', min: 95, color: 'yellow' },
+      { tier: 'at-risk', label: 'At Risk (90–95%)', min: 90, color: 'orange' },
+      { tier: 'critical', label: 'Critical (<90%)', min: 0, color: 'red' },
+    ];
+
+    const reliabilityTiers = tierDefs.map((td, i) => {
+      const maxUptime = i === 0 ? 100 : tierDefs[i - 1].min;
+      const inTier = statsMap.filter(
+        (s) => s.uptimePct >= td.min && s.uptimePct < (i === 0 ? 101 : maxUptime),
+      );
+      return {
+        tier: td.tier,
+        label: td.label,
+        count: inTier.length,
+        color: td.color,
+        monitors: inTier.slice(0, 5).map((s) => ({
+          id: s.id,
+          name: s.name,
+          uptimePct: s.uptimePct,
+          score: s.score,
+          grade: s.grade,
+        })),
+      };
+    });
+
+    // At-risk monitors
+    const atRisk = statsMap
+      .filter((s) => s.uptimePct < 99.9 || s.lastStatus === 'down' || s.lastStatus === 'degraded')
+      .sort((a, b) => a.uptimePct - b.uptimePct)
+      .slice(0, 10)
+      .map((s) => {
+        let reason = '';
+        let severity: 'critical' | 'high' | 'medium' = 'medium';
+        if (s.lastStatus === 'down') { reason = 'Currently down'; severity = 'critical'; }
+        else if (s.lastStatus === 'degraded') { reason = 'Intermittent failures'; severity = 'high'; }
+        else if (s.uptimePct < 95) { reason = `Low uptime: ${s.uptimePct}%`; severity = 'high'; }
+        else { reason = `Uptime below 99.9%: ${s.uptimePct}%`; severity = 'medium'; }
+        return { id: s.id, name: s.name, reason, severity, uptimePct: s.uptimePct, score: s.score };
+      });
+
+    // Incident velocity (incidents created in last 30d, grouped by week)
+    const incidents = await this.prisma.incident.findMany({
+      where: { userId, createdAt: { gte: since30d } },
+      select: { createdAt: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const last7dIncidents = incidents.filter((i) => i.createdAt >= since7d).length;
+    const last30dIncidents = incidents.length;
+
+    // Weekly breakdown (last 4 weeks)
+    const weeklyBreakdown: Array<{ week: string; count: number }> = [];
+    for (let w = 3; w >= 0; w--) {
+      const weekStart = new Date(now.getTime() - (w + 1) * 7 * 86_400_000);
+      const weekEnd = new Date(now.getTime() - w * 7 * 86_400_000);
+      const label = `${weekStart.toISOString().slice(5, 10)}`;
+      const count = incidents.filter((i) => i.createdAt >= weekStart && i.createdAt < weekEnd).length;
+      weeklyBreakdown.push({ week: label, count });
+    }
+
+    // Trend: compare last 7d incidents vs prior 7d
+    const prior7dStart = new Date(now.getTime() - 14 * 86_400_000);
+    const prior7dIncidents = incidents.filter(
+      (i) => i.createdAt >= prior7dStart && i.createdAt < since7d,
+    ).length;
+    const incidentTrend =
+      last7dIncidents < prior7dIncidents ? 'improving' :
+      last7dIncidents > prior7dIncidents ? 'worsening' : 'stable';
+
+    // Type distribution
+    const typeMap = new Map<string, { count: number; totalUptime: number }>();
+    for (const s of statsMap) {
+      if (!typeMap.has(s.type)) typeMap.set(s.type, { count: 0, totalUptime: 0 });
+      const entry = typeMap.get(s.type)!;
+      entry.count++;
+      entry.totalUptime += s.uptimePct;
+    }
+    const typeDistribution = Array.from(typeMap.entries())
+      .map(([type, v]) => ({
+        type,
+        count: v.count,
+        avgUptime: v.count > 0 ? Math.round((v.totalUptime / v.count) * 100) / 100 : 0,
+      }))
+      .sort((a, b) => b.count - a.count);
+
+    // Coverage gaps
+    const noAlertChannel = statsMap.filter((s) => !s.hasAlertChannel).length;
+    const noSlaTarget = statsMap.filter((s) => !s.hasSlaTarget).length;
+    const noDescription = statsMap.filter((s) => !s.hasDescription).length;
+    const totalGapScore = statsMap.length === 0 ? 0 :
+      Math.round(((noAlertChannel * 2 + noSlaTarget + noDescription) / (statsMap.length * 4)) * 100);
+
+    // Top/worst performers
+    const sorted = [...statsMap].filter((s) => s.lastStatus !== 'noData').sort((a, b) => b.uptimePct - a.uptimePct);
+    const topPerformers = sorted.slice(0, 5).map((s) => ({
+      id: s.id, name: s.name, uptimePct: s.uptimePct, grade: s.grade,
+    }));
+    const worstPerformers = sorted.slice(-5).reverse().map((s) => ({
+      id: s.id, name: s.name, uptimePct: s.uptimePct, grade: s.grade,
+    }));
+
+    return {
+      generatedAt: now.toISOString(),
+      fleetScore,
+      fleetGrade,
+      summary: { total, enabled, up, degraded, down, noData },
+      reliabilityTiers,
+      atRisk,
+      incidentVelocity: {
+        last7d: last7dIncidents,
+        last30d: last30dIncidents,
+        trend: incidentTrend,
+        weeklyBreakdown,
+      },
+      typeDistribution,
+      coverageGaps: { noAlertChannel, noSlaTarget, noDescription, totalGapScore },
+      topPerformers,
+      worstPerformers,
+    };
+  }
+
 }
 
 export interface SuggestedMonitor {
@@ -4661,6 +6420,16 @@ export interface SuggestedMonitor {
   target: string;
   reason: string;
   intervalSec: number;
+}
+
+export interface OpenApiSuggestion {
+  key: string;
+  method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE' | 'HEAD' | 'OPTIONS';
+  path: string;
+  url: string;
+  expectedStatus: number;
+  summary?: string;
+  tags?: string[];
 }
 
 // ─── Pure simulation function (exported for unit tests) ────────────────────
@@ -4798,4 +6567,150 @@ export function simulateAlertRules(runs: SimulateRun[], config: SimulateConfig):
     noiseScore,
     timeline,
   };
+}
+
+
+// ─── Playground HTTP Request Helper ──────────────────────────────────────────
+interface PlaygroundHttpResult {
+  statusCode: number;
+  body: string;
+  latencyMs: number;
+  timings: { dnsMs?: number; tcpMs?: number; tlsMs?: number; ttfbMs?: number; downloadMs?: number };
+  responseHeaders: Record<string, string>;
+  redirectChain: string[];
+}
+
+async function playgroundTimedRequest(
+  url: string,
+  options: { method: string; timeoutMs: number; headers: Record<string, string>; body?: string },
+): Promise<Omit<PlaygroundHttpResult, 'redirectChain'>> {
+  return new Promise((resolve, reject) => {
+    const startMs = Date.now();
+    let dnsStart: number | null = null;
+    let dnsMs: number | undefined;
+    let tcpStart: number | null = null;
+    let tcpMs: number | undefined;
+    let tlsStart: number | null = null;
+    let tlsMs: number | undefined;
+    let ttfbMs: number | undefined;
+    let bodyStart: number | null = null;
+    let downloadMs: number | undefined;
+
+    let urlObj: URL;
+    try { urlObj = new URL(url); } catch { reject(new Error(`Invalid URL: ${url}`)); return; }
+
+    const isHttps = urlObj.protocol === 'https:';
+    const lib: typeof https | typeof http = isHttps ? https : http;
+    const requestOptions = {
+      hostname: urlObj.hostname,
+      port: urlObj.port !== '' ? parseInt(urlObj.port, 10) : isHttps ? 443 : 80,
+      path: (urlObj.pathname || '/') + urlObj.search,
+      method: options.method,
+      headers: { 'User-Agent': 'PulseDock-Playground/1.0', ...options.headers },
+      timeout: options.timeoutMs,
+    };
+    const chunks: Buffer[] = [];
+    const req = lib.request(requestOptions, (res) => {
+      ttfbMs = Date.now() - startMs;
+      bodyStart = Date.now();
+      res.on('data', (chunk: Buffer) => { chunks.push(chunk); });
+      res.on('end', () => {
+        downloadMs = bodyStart !== null ? Date.now() - bodyStart : undefined;
+        const latencyMs = Date.now() - startMs;
+        const body = Buffer.concat(chunks).toString('utf8');
+        const responseHeaders: Record<string, string> = {};
+        for (const [k, v] of Object.entries(res.headers)) {
+          if (v !== undefined) responseHeaders[k] = Array.isArray(v) ? v.join(', ') : (v as string);
+        }
+        resolve({ statusCode: res.statusCode ?? 0, body, latencyMs, timings: { dnsMs, tcpMs, tlsMs, ttfbMs, downloadMs }, responseHeaders });
+      });
+      res.on('error', reject);
+    });
+    req.on('socket', (socket) => {
+      dnsStart = Date.now();
+      socket.on('lookup', () => { if (dnsStart !== null) { dnsMs = Date.now() - dnsStart; } tcpStart = Date.now(); });
+      socket.on('connect', () => {
+        if (tcpStart !== null) { tcpMs = Date.now() - tcpStart; } else if (dnsStart !== null) { tcpMs = Date.now() - dnsStart; }
+        if (isHttps) tlsStart = Date.now();
+      });
+      socket.on('secureConnect', () => { if (tlsStart !== null) { tlsMs = Date.now() - tlsStart; } });
+    });
+    req.on('timeout', () => { req.destroy(new Error(`Request timed out after ${options.timeoutMs}ms`)); });
+    req.on('error', reject);
+    if (options.body && ['POST', 'PUT', 'PATCH'].includes(options.method)) { req.write(options.body); }
+    req.end();
+  });
+}
+
+async function playgroundHttpRequest(
+  url: string,
+  options: { method: string; timeoutMs: number; headers: Record<string, string>; body?: string; followRedirects: boolean },
+): Promise<PlaygroundHttpResult> {
+  const redirectChain: string[] = [];
+  let currentUrl = url;
+  let totalLatencyMs = 0;
+  let currentMethod = options.method;
+  let currentBody = options.body;
+  const maxRedirects = options.followRedirects ? 10 : 0;
+
+  for (let hop = 0; hop <= maxRedirects; hop++) {
+    const result = await playgroundTimedRequest(currentUrl, { ...options, method: currentMethod, body: currentBody });
+    totalLatencyMs += result.latencyMs;
+    const isRedirect = result.statusCode >= 301 && result.statusCode <= 308;
+    const location = result.responseHeaders['location'];
+    if (isRedirect && location && options.followRedirects) {
+      redirectChain.push(currentUrl);
+      try { currentUrl = new URL(location, currentUrl).href; } catch { return { ...result, latencyMs: totalLatencyMs, redirectChain }; }
+      if ([301, 302, 303].includes(result.statusCode) && currentMethod !== 'GET') { currentMethod = 'GET'; currentBody = undefined; }
+      continue;
+    }
+    return { ...result, latencyMs: totalLatencyMs, redirectChain };
+  }
+  throw new Error(`Too many redirects (>${maxRedirects}) from ${url}`);
+}
+
+// ─── Playground SSL Helper ─────────────────────────────────────────────────
+async function getPlaygroundSslInfo(
+  url: string,
+  timeoutMs: number,
+): Promise<{ daysRemaining: number; issuer: string; expiresAt: string; valid: boolean }> {
+  return new Promise((resolve, reject) => {
+    const parsed = new URL(url);
+    const hostname = parsed.hostname;
+    const port = parsed.port ? parseInt(parsed.port, 10) : 443;
+
+    const socket = tls.connect(
+      { host: hostname, port, servername: hostname, rejectUnauthorized: false },
+      () => {
+        const cert = socket.getPeerCertificate();
+        socket.end();
+
+        if (!cert || !cert.valid_to) {
+          reject(new Error('No certificate returned'));
+          return;
+        }
+
+        const expiresAt = new Date(cert.valid_to);
+        const now = new Date();
+        const daysRemaining = Math.floor((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+        const valid = daysRemaining > 0 && cert.valid_from ? new Date(cert.valid_from) <= now : daysRemaining > 0;
+        const issuerO = Array.isArray(cert.issuer?.O) ? cert.issuer.O[0] : cert.issuer?.O;
+        const issuerCN = Array.isArray(cert.issuer?.CN) ? cert.issuer.CN[0] : cert.issuer?.CN;
+        const issuer = (issuerO ?? issuerCN ?? 'Unknown') as string;
+
+        resolve({
+          daysRemaining,
+          issuer,
+          expiresAt: expiresAt.toISOString().split('T')[0],
+          valid,
+        });
+      },
+    );
+
+    socket.setTimeout(timeoutMs, () => {
+      socket.destroy(new Error('TLS connection timed out'));
+    });
+
+    socket.on('error', reject);
+  });
 }

@@ -49,11 +49,11 @@ export class CreateMonitorDto {
 
   @ApiProperty({
     description: 'Monitor type',
-    enum: ['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING', 'SMTP', 'BROWSER', 'WHOIS', 'FTP', 'IMAP', 'POP3', 'CT_LOG'],
+    enum: ['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING', 'SMTP', 'BROWSER', 'WHOIS', 'FTP', 'IMAP', 'POP3', 'CT_LOG', 'GRAPHQL', 'TRANSACTION'],
     example: 'HTTP',
   })
-  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING', 'SMTP', 'BROWSER', 'WHOIS', 'FTP', 'IMAP', 'POP3', 'CT_LOG'])
-  type!: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT' | 'DNS' | 'PING' | 'SMTP' | 'BROWSER' | 'WHOIS' | 'FTP' | 'IMAP' | 'POP3' | 'CT_LOG';
+  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING', 'SMTP', 'BROWSER', 'WHOIS', 'FTP', 'IMAP', 'POP3', 'CT_LOG', 'GRAPHQL', 'TRANSACTION'])
+  type!: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT' | 'DNS' | 'PING' | 'SMTP' | 'BROWSER' | 'WHOIS' | 'FTP' | 'IMAP' | 'POP3' | 'CT_LOG' | 'GRAPHQL' | 'TRANSACTION';
 
   @ApiPropertyOptional({ description: 'Check interval in seconds (min 10)', minimum: 10, example: 60 })
   @IsOptional()
@@ -323,6 +323,27 @@ export class CreateMonitorDto {
   @Type(() => HeaderAssertionDto)
   headerAssertions?: HeaderAssertionDto[];
 
+  // GraphQL monitor fields
+  @IsOptional()
+  @IsString()
+  @MaxLength(10_000)
+  graphqlQuery?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(5_000)
+  graphqlVariables?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  graphqlDataPath?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1_000)
+  graphqlExpectedValue?: string | null;
+
 }
 
 export class UpdateMonitorDto {
@@ -349,8 +370,8 @@ export class UpdateMonitorDto {
   target?: string;
 
   @IsOptional()
-  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING', 'SMTP', 'BROWSER', 'WHOIS', 'FTP', 'IMAP', 'POP3', 'CT_LOG'])
-  type?: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT' | 'DNS' | 'PING' | 'SMTP' | 'BROWSER' | 'WHOIS' | 'FTP' | 'IMAP' | 'POP3' | 'CT_LOG';
+  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING', 'SMTP', 'BROWSER', 'WHOIS', 'FTP', 'IMAP', 'POP3', 'CT_LOG', 'GRAPHQL', 'TRANSACTION'])
+  type?: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT' | 'DNS' | 'PING' | 'SMTP' | 'BROWSER' | 'WHOIS' | 'FTP' | 'IMAP' | 'POP3' | 'CT_LOG' | 'GRAPHQL' | 'TRANSACTION';
 
   @IsOptional()
   @IsInt()
@@ -549,6 +570,27 @@ export class UpdateMonitorDto {
   @Type(() => HeaderAssertionDto)
   headerAssertions?: HeaderAssertionDto[];
 
+  // GraphQL monitor fields
+  @IsOptional()
+  @IsString()
+  @MaxLength(10_000)
+  graphqlQuery?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(5_000)
+  graphqlVariables?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  graphqlDataPath?: string | null;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(1_000)
+  graphqlExpectedValue?: string | null;
+
 }
 
 export class RunMonitorDto {
@@ -585,8 +627,8 @@ export class ImportMonitorItemDto {
   @MaxLength(1024)
   target!: string;
 
-  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING', 'SMTP', 'BROWSER', 'WHOIS', 'FTP', 'IMAP', 'POP3', 'CT_LOG'])
-  type!: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT' | 'DNS' | 'PING' | 'SMTP' | 'BROWSER' | 'WHOIS' | 'FTP' | 'IMAP' | 'POP3' | 'CT_LOG';
+  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING', 'SMTP', 'BROWSER', 'WHOIS', 'FTP', 'IMAP', 'POP3', 'CT_LOG', 'GRAPHQL', 'TRANSACTION'])
+  type!: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT' | 'DNS' | 'PING' | 'SMTP' | 'BROWSER' | 'WHOIS' | 'FTP' | 'IMAP' | 'POP3' | 'CT_LOG' | 'GRAPHQL' | 'TRANSACTION';
 
   @IsOptional()
   @IsInt()

@@ -194,7 +194,7 @@ describe('MonitorsController', () => {
   it('addAlert() delegates to service.addMonitorAlert', async () => {
     service.addMonitorAlert.mockResolvedValue({ ok: true });
     await controller.addAlert(makeReq(), 'm-1', 'ch-1', {});
-    expect(service.addMonitorAlert).toHaveBeenCalledWith('user-1', 'm-1', 'ch-1', undefined);
+    expect(service.addMonitorAlert).toHaveBeenCalledWith('user-1', 'm-1', 'ch-1', undefined, undefined);
   });
 
   it('removeAlert() delegates to service.removeMonitorAlert', async () => {
@@ -336,7 +336,7 @@ describe('MonitorsController', () => {
   it('addAlert() passes notifyOn from body', async () => {
     service.addMonitorAlert.mockResolvedValue({ ok: true });
     await controller.addAlert(makeReq(), 'm-1', 'ch-1', { notifyOn: 'FIRST_ONLY' });
-    expect(service.addMonitorAlert).toHaveBeenCalledWith('user-1', 'm-1', 'ch-1', 'FIRST_ONLY');
+    expect(service.addMonitorAlert).toHaveBeenCalledWith('user-1', 'm-1', 'ch-1', 'FIRST_ONLY', undefined);
   });
 
   // ── listDependencies / addDependency / removeDependency ───────────────

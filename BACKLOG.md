@@ -14,6 +14,16 @@
 - **Last changes (12:24 UTC cycle):**
   - [x] **Incident Response Playbooks** — `IncidentPlaybook` Prisma model + migration. CRUD `/v1/playbooks`. Attach/detach playbook to monitors. On incident fire, playbook auto-snapshotted onto incident (`playbookSteps` JSON). Step completion tracking (`PATCH /v1/incidents/:id/playbook-step/:stepId`). Frontend `/incidents/playbooks`: cards grid with step counts + severity badges, create/edit modal with drag-step UX (type select: check/escalate/runbook/command/notify), empty state. Nav link added under Incidents. 8 unit tests.
 
+## Status Summary (2026-03-29 15:05 UTC)
+- **Build/Test:** ✅ 196 test files, 4422+ tests passing; 0 TS errors; zero `any` types; web + API build clean
+- **Deployment:** ✅ API + web running; public URL 200; all pages 200
+- **Branch:** heartbeat/2026-03-29-afternoon
+- **Last changes (15:05 UTC cycle):**
+  - [x] **Monitor Comparison View** — `GET /v1/monitors/compare?ids=...&days=N`. Select 2-4 monitors for side-by-side analysis: per-monitor uptime%, avg/P95 latency, failures, longest outage, daily uptime/latency breakdowns. Pearson correlation between monitor uptime patterns (strong_positive/moderate_positive/weak/moderate_negative/strong_negative). Frontend `/monitors/compare`: monitor selector with color-coded chips, period pills (1d-90d), metric comparison cards with 👑 crown icons, SVG uptime/latency overlay charts, correlation matrix, full stats table. 8 unit tests.
+  - [x] **Production Dockerfiles** — Multi-stage Dockerfiles for API (Node 22 Alpine, Prisma migrate on start) + Web. `.dockerignore`. Redis added to `docker-compose.prod.yml` with healthcheck. GitHub Actions workflow for Docker image publishing to GHCR on tags.
+  - [x] **Code quality fixes** — Removed all `any` casts in service-groups controller (used typed request pattern). Zero `any` types in production code.
+  - [x] **README stats update** — 4400+ tests, 5000+ tools, zero `any` types.
+
 ## Status Summary (2026-03-29 14:45 UTC)
 - **Build/Test:** ✅ All tests passing; 0 TS errors; web + API build clean
 - **Deployment:** ✅ API + web running; public URL 200

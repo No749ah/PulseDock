@@ -175,7 +175,8 @@ function MonitorsPageInner() {
   const [bulkEditForm, setBulkEditForm] = useState<{
     intervalSec: string; confirmations: string; retryCount: string;
     latencyAlertMs: string; slaTarget: string; flapDetectionEnabled: string; enabled: string;
-  }>({ intervalSec: "", confirmations: "", retryCount: "", latencyAlertMs: "", slaTarget: "", flapDetectionEnabled: "", enabled: "" });
+    alertChannelIds: string[];
+  }>({ intervalSec: "", confirmations: "", retryCount: "", latencyAlertMs: "", slaTarget: "", flapDetectionEnabled: "", enabled: "", alertChannelIds: [] });
   const [checkingNowId, setCheckingNowId] = useState<string | null>(null);
   const [snoozeMenuId, setSnoozeMenuId] = useState<string | null>(null);
   const [pauseMenuId, setPauseMenuId] = useState<string | null>(null);
@@ -882,6 +883,7 @@ function MonitorsPageInner() {
       if (bulkEditForm.slaTarget) body.slaTarget = parseFloat(bulkEditForm.slaTarget);
       if (bulkEditForm.flapDetectionEnabled !== "") body.flapDetectionEnabled = bulkEditForm.flapDetectionEnabled === "true";
       if (bulkEditForm.enabled !== "") body.enabled = bulkEditForm.enabled === "true";
+      if (bulkEditForm.alertChannelIds.length > 0) body.alertChannelIds = bulkEditForm.alertChannelIds;
       const result = await api<{ ok: boolean; affected: number; errors: Array<{ id: string; error: string }> }>("/v1/monitors/bulk-edit", user?.id, {
         method: "PATCH",
         body: JSON.stringify(body),
@@ -894,7 +896,7 @@ function MonitorsPageInner() {
         setMonitors((prev) => prev.map((m) => selectedIds.has(m.id) ? { ...m, intervalSec: body.intervalSec as number } : m));
       }
       setShowBulkEditModal(false);
-      setBulkEditForm({ intervalSec: "", confirmations: "", retryCount: "", latencyAlertMs: "", slaTarget: "", flapDetectionEnabled: "", enabled: "" });
+      setBulkEditForm({ intervalSec: "", confirmations: "", retryCount: "", latencyAlertMs: "", slaTarget: "", flapDetectionEnabled: "", enabled: "", alertChannelIds: [] });
       setSelectedIds(new Set());
       success(`${result.affected} monitor${result.affected !== 1 ? "s" : ""} updated`);
     } catch (e) {
@@ -2635,6 +2637,40 @@ function MonitorsPageInner() {
                 </select>
               </div>
             </div>
+            {allChannels.length > 0 && (
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1">
+                  Alert Channels
+                  <span className="ml-1 text-text-tertiary font-normal">(replaces existing on selected monitors)</span>
+                </label>
+                <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto p-2 rounded-xl border border-border bg-surface-elevated">
+                  {allChannels.map(ch => {
+                    const isSelected = bulkEditForm.alertChannelIds.includes(ch.id);
+                    return (
+                      <button
+                        key={ch.id}
+                        type="button"
+                        onClick={() => setBulkEditForm(f => ({
+                          ...f,
+                          alertChannelIds: isSelected
+                            ? f.alertChannelIds.filter(id => id !== ch.id)
+                            : [...f.alertChannelIds, ch.id],
+                        }))}
+                        className={`px-2.5 py-1 text-xs rounded-lg border transition-colors ${isSelected
+                          ? 'bg-accent/20 border-accent text-accent'
+                          : 'bg-surface border-border text-text-secondary hover:border-accent/50'
+                        }`}
+                      >
+                        {ch.name}
+                      </button>
+                    );
+                  })}
+                </div>
+                {bulkEditForm.alertChannelIds.length === 0 && (
+                  <p className="text-xs text-text-tertiary mt-1">No channels selected — existing assignments unchanged.</p>
+                )}
+              </div>
+            )}
             <div className="flex gap-3 pt-2">
               <Button variant="secondary" onClick={() => setShowBulkEditModal(false)} className="flex-1">Cancel</Button>
               <Button onClick={handleBulkEdit} disabled={bulkLoading} className="flex-1">

@@ -583,6 +583,22 @@ export class MonitorsController {
     return this.monitorsService.getSecurityHeadersSummary(req.user.id);
   }
 
+  @Get('latency-heatmap')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Fleet latency heatmap',
+    description: 'Returns per-monitor x per-day average latency heatmap. HTTP/BROWSER monitors only. Grade A (<200ms) through F (>=2000ms).',
+  })
+  @ApiQuery({ name: 'days', required: false, type: Number, description: 'Number of days (1-90, default 30)' })
+  @ApiResponse({ status: 200, description: 'Latency heatmap returned.' })
+  latencyHeatmap(
+    @Req() req: { user: { id: string } },
+    @Query('days') days?: string,
+  ) {
+    const d = parseInt(days ?? '30', 10);
+    return this.monitorsService.latencyHeatmap(req.user.id, Number.isFinite(d) ? d : 30);
+  }
+
   @Get('heatmap')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({ summary: 'Uptime heatmap', description: 'Returns a per-monitor × per-day uptime heatmap for the last N days (1-90). Each cell contains uptimePct, total checks, and failed checks. Monitors ordered by pinned-first then creation date.' })

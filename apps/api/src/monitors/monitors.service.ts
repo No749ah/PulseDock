@@ -8267,6 +8267,150 @@ export class MonitorsService {
     return { periodDays: safeDays, tags: tagResults };
   }
 
+  /**
+   * Returns a per-monitor × per-day average latency heatmap for the last N days.
+   * Each cell: avgLatencyMs (null if no data), p95LatencyMs, samples.
+   * Grade: A (<200ms avg), B (<500ms), C (<1000ms), D (<2000ms), F (>=2000ms), null (no data).
+   * Used by the /monitors/latency-heatmap page.
+   */
+  async latencyHeatmap(userId: string, days: number): Promise<{
+    monitors: Array<{
+      id: string;
+      name: string;
+      type: string;
+      folder: string | null;
+      days: Array<{
+        date: string;
+        avgLatencyMs: number | null;
+        p95LatencyMs: number | null;
+        samples: number;
+        grade: 'A' | 'B' | 'C' | 'D' | 'F' | null;
+      }>;
+    }>;
+    dates: string[];
+    summary: {
+      avgFleetLatency: number | null;
+      bestDay: string | null;
+      worstDay: string | null;
+    };
+  }> {
+    const clampedDays = Math.min(90, Math.max(1, days));
+
+    const monitors = await this.prisma.monitor.findMany({
+      where: {
+        userId,
+        type: { in: ['HTTP', 'BROWSER'] },
+        enabled: true,
+      },
+      select: { id: true, name: true, type: true, folder: { select: { name: true } } },
+      orderBy: [{ pinned: 'desc' }, { createdAt: 'asc' }],
+    });
+
+    const today = new Date();
+    today.setUTCHours(0, 0, 0, 0);
+    const since = new Date(today);
+    since.setUTCDate(today.getUTCDate() - clampedDays + 1);
+
+    const dates: string[] = [];
+    for (let i = 0; i < clampedDays; i++) {
+      const d = new Date(since);
+      d.setUTCDate(since.getUTCDate() + i);
+      dates.push(d.toISOString().slice(0, 10));
+    }
+
+    if (monitors.length === 0) {
+      return { monitors: [], dates, summary: { avgFleetLatency: null, bestDay: null, worstDay: null } };
+    }
+
+    const monitorIds = monitors.map(m => m.id);
+    const runs = await this.prisma.monitorRun.findMany({
+      where: {
+        userId,
+        monitorId: { in: monitorIds },
+        ok: true,
+        latencyMs: { not: null },
+        checkedAt: { gte: since },
+      },
+      select: { monitorId: true, checkedAt: true, latencyMs: true },
+    });
+
+    // Aggregate: monitorId -> date -> latency values
+    const agg = new Map<string, Map<string, number[]>>();
+    for (const run of runs) {
+      const dateStr = run.checkedAt.toISOString().slice(0, 10);
+      if (!agg.has(run.monitorId)) agg.set(run.monitorId, new Map());
+      const dayMap = agg.get(run.monitorId)!;
+      if (!dayMap.has(dateStr)) dayMap.set(dateStr, []);
+      dayMap.get(dateStr)!.push(run.latencyMs as number);
+    }
+
+    function gradeLatency(avgMs: number): 'A' | 'B' | 'C' | 'D' | 'F' {
+      if (avgMs < 200) return 'A';
+      if (avgMs < 500) return 'B';
+      if (avgMs < 1000) return 'C';
+      if (avgMs < 2000) return 'D';
+      return 'F';
+    }
+
+    function computeP95(values: number[]): number | null {
+      if (values.length === 0) return null;
+      const sorted = [...values].sort((a, b) => a - b);
+      const idx = Math.floor(0.95 * sorted.length);
+      return sorted[Math.min(idx, sorted.length - 1)];
+    }
+
+    // For fleet summary: per-day avg across all monitors
+    const dateAvgMap = new Map<string, number[]>();
+
+    const resultMonitors = monitors.map(m => {
+      const dayMap = agg.get(m.id);
+      return {
+        id: m.id,
+        name: m.name,
+        type: m.type,
+        folder: m.folder?.name ?? null,
+        days: dates.map(date => {
+          const values = dayMap?.get(date) ?? [];
+          if (values.length === 0) return { date, avgLatencyMs: null, p95LatencyMs: null, samples: 0, grade: null as null };
+          const avg = Math.round(values.reduce((s, v) => s + v, 0) / values.length);
+          const p95 = computeP95(values);
+          if (!dateAvgMap.has(date)) dateAvgMap.set(date, []);
+          dateAvgMap.get(date)!.push(avg);
+          return {
+            date,
+            avgLatencyMs: avg,
+            p95LatencyMs: p95,
+            samples: values.length,
+            grade: gradeLatency(avg) as 'A' | 'B' | 'C' | 'D' | 'F',
+          };
+        }),
+      };
+    });
+
+    // Fleet-level summary
+    const dateFleetAvgs = Array.from(dateAvgMap.entries())
+      .map(([date, vals]) => ({ date, avg: Math.round(vals.reduce((s, v) => s + v, 0) / vals.length) }))
+      .filter(d => d.avg > 0);
+
+    const allLatencies = dateFleetAvgs.map(d => d.avg);
+    const avgFleetLatency = allLatencies.length > 0
+      ? Math.round(allLatencies.reduce((s, v) => s + v, 0) / allLatencies.length)
+      : null;
+
+    const bestDay = dateFleetAvgs.length > 0
+      ? dateFleetAvgs.reduce((best, d) => d.avg < best.avg ? d : best).date
+      : null;
+    const worstDay = dateFleetAvgs.length > 0
+      ? dateFleetAvgs.reduce((worst, d) => d.avg > worst.avg ? d : worst).date
+      : null;
+
+    return {
+      monitors: resultMonitors,
+      dates,
+      summary: { avgFleetLatency, bestDay, worstDay },
+    };
+  }
+
 }
 
 export interface SuggestedMonitor {

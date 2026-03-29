@@ -1,3 +1,11 @@
+## Status Summary (2026-03-29 12:24 UTC)
+- **Build/Test:** ✅ 193 test files, 4340 tests passing; 0 TS errors; web + API build clean
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-29-midday
+- **Last changes (12:24 UTC cycle):**
+  - [x] **Incident Response Playbooks** — `IncidentPlaybook` Prisma model + migration. CRUD `/v1/playbooks`. Attach/detach playbook to monitors. On incident fire, playbook auto-snapshotted onto incident (`playbookSteps` JSON). Step completion tracking (`PATCH /v1/incidents/:id/playbook-step/:stepId`). Frontend `/incidents/playbooks`: cards grid with step counts + severity badges, create/edit modal with drag-step UX (type select: check/escalate/runbook/command/notify), empty state. Nav link added under Incidents. 8 unit tests.
+
 ## Status Summary (2026-03-29 12:10 UTC)
 - **Build/Test:** ✅ 234 test files, 5158 tests passing; 0 TS errors; web + API build clean
 - **Security/Audit:** ✅ 0 vulnerabilities

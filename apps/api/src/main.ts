@@ -113,15 +113,18 @@ async function bootstrap() {
     res.setHeader('x-request-id', requestId);
 
     // Intercept writeHead to inject X-Response-Time before headers are flushed
-    const origWriteHead = res.writeHead;
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (res as any).writeHead = function (this: AppResponse, ...args: any[]) {
+    const origWriteHead = res.writeHead.bind(res) as typeof res.writeHead;
+    res.writeHead = function (
+      this: AppResponse,
+      statusCode: number,
+      ...rest: unknown[]
+    ): AppResponse {
       if (!this.headersSent) {
         const ms = Date.now() - startedAt;
         this.setHeader('X-Response-Time', `${ms}ms`);
       }
-      return origWriteHead.apply(this, args);
-    };
+      return (origWriteHead as Function).call(this, statusCode, ...rest);
+    } as typeof res.writeHead;
 
     res.on('finish', () => {
       const ms = Date.now() - startedAt;

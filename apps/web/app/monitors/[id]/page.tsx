@@ -3,7 +3,7 @@
 import React, { useEffect, useState, useCallback } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { AlertCircle, AlertTriangle, Activity, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi, Shield, Globe, CheckCircle, XCircle, FileText, GitCompare, MessageSquare, Pin, List, BarChart2 } from "lucide-react";
+import { AlertCircle, AlertTriangle, Activity, Award, Clock, TrendingUp, Zap, Settings, Play, Power, PowerOff, GitBranch, Trash2, Plus, X, Gauge, Bookmark, Download, ChevronDown, Wifi, Shield, Globe, CheckCircle, XCircle, FileText, GitCompare, MessageSquare, Pin, List, BarChart2 } from "lucide-react";
 import { Breadcrumb } from "../../../components/breadcrumb";
 import { api } from "../../../lib/api";
 import { createRealtimeSocket } from "../../../lib/realtime";
@@ -1046,6 +1046,19 @@ export default function MonitorDetailPage() {
                   <Settings className="w-3.5 h-3.5" />
                   Edit
                 </Link>
+                <button
+                  onClick={() => {
+                    const user = getUser();
+                    if (!user) return;
+                    const months = monitor.slaTarget ? 3 : 1;
+                    window.open(`/api/v1/monitors/${monitor.id}/uptime-certificate?months=${months}`, '_blank');
+                  }}
+                  className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-border bg-surface-elevated text-text-secondary hover:text-accent hover:border-accent/50 transition-colors"
+                  title="Generate printable uptime certificate"
+                >
+                  <Award className="w-3.5 h-3.5" />
+                  Certificate
+                </button>
                 <button
                   onClick={async () => {
                     if (!confirm(`Delete "${monitor.name}"? This will also delete all check history.`)) return;

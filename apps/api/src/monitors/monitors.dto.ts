@@ -363,6 +363,13 @@ export class CreateMonitorDto {
   @MaxLength(1_000)
   graphqlExpectedValue?: string | null;
 
+  @ApiPropertyOptional({ description: 'Estimated business cost per hour of downtime in USD. Used to compute financial impact on the cost dashboard.', minimum: 0, maximum: 1000000, example: 500 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(1000000)
+  downtimeCostPerHour?: number;
+
 }
 
 export class UpdateMonitorDto {
@@ -625,6 +632,13 @@ export class UpdateMonitorDto {
   @IsString()
   @MaxLength(1_000)
   graphqlExpectedValue?: string | null;
+
+  @ApiPropertyOptional({ description: 'Estimated business cost per hour of downtime in USD.', minimum: 0, maximum: 1000000, example: 500 })
+  @IsOptional()
+  @IsNumber()
+  @Min(0)
+  @Max(1000000)
+  downtimeCostPerHour?: number;
 
 }
 

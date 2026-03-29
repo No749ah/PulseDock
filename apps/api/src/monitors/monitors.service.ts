@@ -205,6 +205,7 @@ export class MonitorsService {
       adaptiveIntervalDownSec: (m as typeof m & { adaptiveIntervalDownSec?: number | null }).adaptiveIntervalDownSec ?? null,
       adaptiveIntervalDegradedSec: (m as typeof m & { adaptiveIntervalDegradedSec?: number | null }).adaptiveIntervalDegradedSec ?? null,
       geoRegions: (m as typeof m & { geoRegions?: string[] }).geoRegions ?? [],
+      downtimeCostPerHour: (m as typeof m & { downtimeCostPerHour?: number | null }).downtimeCostPerHour ?? null,
       createdAt: m.createdAt.toISOString(),
     };
   }

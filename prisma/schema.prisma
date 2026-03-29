@@ -85,6 +85,7 @@ model User {
   alertGroups             AlertGroup[]
   annotations             MonitorAnnotation[]
   monitorConfigChanges    MonitorConfigChange[]
+  serviceGroups           MonitorServiceGroup[]
 }
 
 model Session {
@@ -180,6 +181,8 @@ model Monitor {
   graphqlVariables    String?     // JSON string of variables to pass with the query
   graphqlDataPath     String?     // JSONPath to expected field in response data (e.g. "$.data.__typename")
   graphqlExpectedValue String?    // Expected string value at graphqlDataPath (null = just check field exists)
+  // Business Impact / Downtime Cost Tracking
+  downtimeCostPerHour Float?      // Estimated business cost per hour of downtime (USD). Used to compute financial impact.
   createdAt           DateTime    @default(now())
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -942,6 +945,18 @@ model MonitorAnnotation {
   @@index([monitorId])
   @@index([monitorId, annotatedAt])
   @@index([userId])
+}
+
+model MonitorServiceGroup {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  monitorIds  String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 /// Queued notification for digest delivery (hourly_digest / daily_digest frequency)

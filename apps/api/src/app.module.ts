@@ -9,6 +9,8 @@ import { AuthService } from './auth/auth.service';
 import { AuthController } from './auth/auth.controller';
 import { MonitorsController } from './monitors/monitors.controller';
 import { AnnotationsController } from './monitors/annotations.controller';
+import { ServiceGroupsController } from './monitors/service-groups.controller';
+import { ServiceGroupsService } from './monitors/service-groups.service';
 import { MonitorsService } from './monitors/monitors.service';
 import { VersionDetectionService } from './monitors/version-detection.service';
 import { AlertsService } from './alerts/alerts.service';
@@ -117,6 +119,7 @@ import { SearchService } from './search/search.service';
     EscalationController,
     SearchController,
     AnnotationsController,
+    ServiceGroupsController,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
@@ -153,6 +156,7 @@ import { SearchService } from './search/search.service';
     DemoService,
     EscalationService,
     SearchService,
+    ServiceGroupsService,
   ],
 })
 export class AppModule implements NestModule {

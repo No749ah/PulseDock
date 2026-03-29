@@ -77,6 +77,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       { href: '/monitors/dependencies', label: 'Topology', icon: GitBranch },
       { href: '/monitors/correlation', label: 'Correlation', icon: GitMerge },
       { href: '/monitors/security', label: 'Security Headers', icon: Shield },
+      { href: '/monitors/services', label: 'Service Groups', icon: Layers },
       { href: '/ssl', label: 'SSL Certificates', icon: ShieldCheck },
       { href: '/versions', label: 'Version Tracking', icon: GitBranch },
     ],

@@ -52,6 +52,7 @@ interface DeliveryHistory {
 import { PERIOD_LABELS, formatDuration } from "./components/types";
 import { UptimeHeatmapChart } from "./components/UptimeHeatmapChart";
 import { ResponseBodyViewer } from "./components/ResponseBodyViewer";
+import { CertificateModal } from "./components/CertificateModal";
 
 // ── Latency Distribution Types ───────────────────────────────────────────────
 
@@ -348,6 +349,9 @@ export default function MonitorDetailPage() {
   // Share Token
   const [shareTokenLoading, setShareTokenLoading] = useState(false);
   const [shareTokenCopied, setShareTokenCopied] = useState(false);
+
+  // Certificate Modal
+  const [showCertModal, setShowCertModal] = useState(false);
 
   // Response Diff
   const [diffRunId, setDiffRunId] = useState<string | null>(null);
@@ -1047,14 +1051,9 @@ export default function MonitorDetailPage() {
                   Edit
                 </Link>
                 <button
-                  onClick={() => {
-                    const user = getUser();
-                    if (!user) return;
-                    const months = monitor.slaTarget ? 3 : 1;
-                    window.open(`/api/v1/monitors/${monitor.id}/uptime-certificate?months=${months}`, '_blank');
-                  }}
+                  onClick={() => setShowCertModal(true)}
                   className="inline-flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-xl border border-border bg-surface-elevated text-text-secondary hover:text-accent hover:border-accent/50 transition-colors"
-                  title="Generate printable uptime certificate"
+                  title="Generate shareable uptime certificate"
                 >
                   <Award className="w-3.5 h-3.5" />
                   Certificate
@@ -5614,6 +5613,15 @@ export default function MonitorDetailPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Certificate Modal */}
+      {showCertModal && monitor && (
+        <CertificateModal
+          monitor={monitor}
+          onClose={() => setShowCertModal(false)}
+          onGenerateShareToken={handleGenerateShareToken}
+        />
       )}
     </AppFrame>
   );

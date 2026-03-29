@@ -158,13 +158,13 @@ export default function ServicesPage() {
     setSaving(true);
     try {
       if (editGroup) {
-        await api(`/v1/service-groups/${editGroup.id}`, {
+        await api(`/v1/service-groups/${editGroup.id}`, undefined, {
           method: 'PATCH',
           body: JSON.stringify({ name: formName.trim(), description: formDescription.trim() || undefined, monitorIds: formMonitorIds }),
         });
         showSuccess('Service group updated');
       } else {
-        await api('/v1/service-groups', {
+        await api('/v1/service-groups', undefined, {
           method: 'POST',
           body: JSON.stringify({ name: formName.trim(), description: formDescription.trim() || undefined, monitorIds: formMonitorIds }),
         });
@@ -182,7 +182,7 @@ export default function ServicesPage() {
   async function handleDelete(g: ServiceGroup) {
     if (!window.confirm(`Delete "${g.name}"?`)) return;
     try {
-      await api(`/v1/service-groups/${g.id}`, { method: 'DELETE' });
+      await api(`/v1/service-groups/${g.id}`, undefined, { method: 'DELETE' });
       showSuccess('Deleted');
       if (expandedId === g.id) {
         setExpandedId(null);

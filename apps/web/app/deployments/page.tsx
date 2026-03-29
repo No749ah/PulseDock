@@ -75,18 +75,18 @@ export default function DeploymentsPage() {
       router.push('/login');
       return;
     }
-    setToken(user.token);
-    loadEvents(user.token);
+    setToken(user.id);
+    loadEvents(user.id);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
-  async function loadEvents(tok: string) {
+  async function loadEvents(_tok?: string) {
     setLoading(true);
     try {
       const params = new URLSearchParams({ days: '30' });
       if (envFilter !== 'all') params.set('environment', envFilter);
       if (statusFilter !== 'all') params.set('status', statusFilter);
-      const data = await api<DeploymentEvent[]>(`/deployments?${params}`, undefined, tok);
+      const data = await api<DeploymentEvent[]>(`/v1/deployments?${params}`);
       setEvents(data ?? []);
     } catch {
       showError('Failed to load deployment events');
@@ -98,9 +98,9 @@ export default function DeploymentsPage() {
   async function handleGenerateToken() {
     try {
       const data = await api<{ token: string }>(
-        '/deployments/token/generate',
+        '/v1/deployments/token/generate',
+        undefined,
         { method: 'POST' },
-        token,
       );
       if (data?.token) {
         setDeployToken(data.token);

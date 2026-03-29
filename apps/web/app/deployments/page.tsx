@@ -11,6 +11,8 @@ import {
   RotateCcw,
   Clock,
   Filter,
+  TrendingUp,
+  Activity,
 } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Card } from '../components/Card';
@@ -68,6 +70,13 @@ export default function DeploymentsPage() {
   const [token, setToken] = useState<string>('');
   const [deployToken, setDeployToken] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [summary, setSummary] = useState<{
+    total: number;
+    successRate: number | null;
+    byStatus: Record<string, number>;
+    topServices: Array<{ service: string; count: number }>;
+    environments: string[];
+  } | null>(null);
 
   useEffect(() => {
     const user = getUser();
@@ -77,6 +86,9 @@ export default function DeploymentsPage() {
     }
     setToken(user.id);
     loadEvents(user.id);
+    api<typeof summary>('/v1/deployments/summary?days=30')
+      .then(setSummary)
+      .catch(() => {});
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [router]);
 
@@ -154,6 +166,41 @@ export default function DeploymentsPage() {
             </Button>
           </div>
         </div>
+
+        {/* Summary stats */}
+        {summary && summary.total > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <Card className="p-4">
+              <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">
+                <Activity className="h-3 w-3" /> Total (30d)
+              </div>
+              <p className="text-2xl font-bold text-white">{summary.total}</p>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">
+                <TrendingUp className="h-3 w-3" /> Success Rate
+              </div>
+              <p className={`text-2xl font-bold ${
+                summary.successRate !== null && summary.successRate >= 80 ? 'text-green-400' :
+                summary.successRate !== null && summary.successRate >= 50 ? 'text-yellow-400' : 'text-red-400'
+              }`}>
+                {summary.successRate !== null ? `${summary.successRate}%` : '—'}
+              </p>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">
+                <XCircle className="h-3 w-3" /> Failed
+              </div>
+              <p className="text-2xl font-bold text-red-400">{summary.byStatus.FAILED ?? 0}</p>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center gap-2 text-gray-400 text-xs mb-1">
+                <RotateCcw className="h-3 w-3" /> Rollbacks
+              </div>
+              <p className="text-2xl font-bold text-yellow-400">{summary.byStatus.ROLLBACK ?? 0}</p>
+            </Card>
+          </div>
+        )}
 
         {/* Token display */}
         {deployToken && (

@@ -111,4 +111,65 @@ describe('DeploymentsService', () => {
       expect(result.deleted).toBe(true);
     });
   });
+
+  describe('listByMonitor', () => {
+    it('filters events by monitorId in monitorIds array', async () => {
+      const { svc, prisma } = buildService();
+      (prisma.deploymentEvent.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { id: 'dep-1', monitorIds: ['m1'] },
+      ]);
+      const result = await svc.listByMonitor('u1', 'm1');
+      expect(prisma.deploymentEvent.findMany).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: expect.objectContaining({ monitorIds: { has: 'm1' } }),
+        }),
+      );
+      expect(result).toHaveLength(1);
+    });
+
+    it('returns empty when no matching deployments', async () => {
+      const { svc, prisma } = buildService();
+      (prisma.deploymentEvent.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+      const result = await svc.listByMonitor('u1', 'm99');
+      expect(result).toHaveLength(0);
+    });
+  });
+
+  describe('getSummary', () => {
+    it('returns zero totals for empty event set', async () => {
+      const { svc, prisma } = buildService();
+      (prisma.deploymentEvent.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+      const result = await svc.getSummary('u1');
+      expect(result.total).toBe(0);
+      expect(result.successRate).toBeNull();
+      expect(result.topServices).toHaveLength(0);
+    });
+
+    it('computes success rate correctly', async () => {
+      const { svc, prisma } = buildService();
+      (prisma.deploymentEvent.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { status: 'SUCCESS', environment: 'production', service: 'api', createdAt: new Date() },
+        { status: 'SUCCESS', environment: 'production', service: 'api', createdAt: new Date() },
+        { status: 'FAILED', environment: 'production', service: 'api', createdAt: new Date() },
+        { status: 'FAILED', environment: 'staging', service: 'web', createdAt: new Date() },
+      ]);
+      const result = await svc.getSummary('u1');
+      expect(result.total).toBe(4);
+      expect(result.successRate).toBe(50);
+      expect(result.byStatus.SUCCESS).toBe(2);
+      expect(result.byStatus.FAILED).toBe(2);
+    });
+
+    it('returns top services sorted by deploy count', async () => {
+      const { svc, prisma } = buildService();
+      (prisma.deploymentEvent.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { status: 'SUCCESS', environment: 'production', service: 'api', createdAt: new Date() },
+        { status: 'SUCCESS', environment: 'production', service: 'api', createdAt: new Date() },
+        { status: 'SUCCESS', environment: 'production', service: 'web', createdAt: new Date() },
+      ]);
+      const result = await svc.getSummary('u1');
+      expect(result.topServices[0].service).toBe('api');
+      expect(result.topServices[0].count).toBe(2);
+    });
+  });
 });

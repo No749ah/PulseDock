@@ -13,40 +13,35 @@ export class ServiceGroupsController {
 
   @Get()
   @ApiOperation({ summary: 'List service groups' })
-  list(@Req() req: Request) {
-    const userId = (req as any).user.sub;
-    return this.serviceGroupsService.list(userId);
+  list(@Req() req: { user: { id: string } }) {
+    return this.serviceGroupsService.list(req.user.id);
   }
 
   @Post()
   @ApiOperation({ summary: 'Create a service group' })
-  create(@Req() req: Request, @Body() dto: CreateServiceGroupDto) {
-    const userId = (req as any).user.sub;
-    return this.serviceGroupsService.create(userId, dto);
+  create(@Req() req: { user: { id: string } }, @Body() dto: CreateServiceGroupDto) {
+    return this.serviceGroupsService.create(req.user.id, dto);
   }
 
   @Patch(':id')
   @ApiOperation({ summary: 'Update a service group' })
   @ApiParam({ name: 'id', description: 'Service group ID' })
-  update(@Req() req: Request, @Param('id') id: string, @Body() dto: UpdateServiceGroupDto) {
-    const userId = (req as any).user.sub;
-    return this.serviceGroupsService.update(userId, id, dto);
+  update(@Req() req: { user: { id: string } }, @Param('id') id: string, @Body() dto: UpdateServiceGroupDto) {
+    return this.serviceGroupsService.update(req.user.id, id, dto);
   }
 
   @Delete(':id')
   @HttpCode(204)
   @ApiOperation({ summary: 'Delete a service group' })
   @ApiParam({ name: 'id', description: 'Service group ID' })
-  async remove(@Req() req: Request, @Param('id') id: string) {
-    const userId = (req as any).user.sub;
-    await this.serviceGroupsService.remove(userId, id);
+  async remove(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    await this.serviceGroupsService.remove(req.user.id, id);
   }
 
   @Get(':id/status')
   @ApiOperation({ summary: 'Get aggregate status for a service group' })
   @ApiParam({ name: 'id', description: 'Service group ID' })
-  getStatus(@Req() req: Request, @Param('id') id: string) {
-    const userId = (req as any).user.sub;
-    return this.serviceGroupsService.getStatus(userId, id);
+  getStatus(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.serviceGroupsService.getStatus(req.user.id, id);
   }
 }

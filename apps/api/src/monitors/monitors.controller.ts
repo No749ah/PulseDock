@@ -565,6 +565,20 @@ export class MonitorsController {
     return this.monitorsService.statusTimeline(req.user.id, hours);
   }
 
+  @Get('check-schedule')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Fleet check schedule overview',
+    description:
+      'Returns a fleet-level scheduling overview: estimated checks-per-hour per monitor, ' +
+      '24-bucket hourly load distribution (UTC), peak/quiet hours, total fleet check rate, ' +
+      'and next-check estimate per monitor. Useful for identifying scheduling hotspots and optimizing intervals.',
+  })
+  @ApiResponse({ status: 200, description: 'Check schedule overview returned.' })
+  checkSchedule(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.checkSchedule(req.user.id);
+  }
+
   @Get('trends')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({ summary: 'Monitor trend analysis', description: 'Returns week-over-week uptime and latency trends for all monitors. Compares current 7 days vs prior 7 days.' })

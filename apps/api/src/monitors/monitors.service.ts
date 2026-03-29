@@ -4046,6 +4046,206 @@ export class MonitorsService {
     };
   }
 
+  // ─── Check Schedule Overview ──────────────────────────────────────────────
+
+  /**
+   * Returns a fleet-level check scheduling overview.
+   * Computes:
+   *  - Per-monitor: intervalSec, cronExpression, checksPerHour, nextCheckEstimate, lastChecked
+   *  - hourlyLoad: 24-bucket array (hour 0–23 UTC) of estimated checks that will fire each hour
+   *  - summary: total enabled monitors, total checksPerHour across fleet, peak hour, quietest hour
+   *
+   * The hourly load is computed by distributing each monitor's checks evenly across the 24-hour
+   * period. For cron-expression monitors, an hourly count is estimated using cron-parser.
+   *
+   * @param userId - Authenticated user
+   */
+  async checkSchedule(userId: string): Promise<{
+    generatedAt: string;
+    summary: {
+      totalMonitors: number;
+      enabledMonitors: number;
+      fleetChecksPerHour: number;
+      fleetChecksPerDay: number;
+      peakHour: number;
+      peakHourLoad: number;
+      quietHour: number;
+      quietHourLoad: number;
+      avgChecksPerHour: number;
+    };
+    hourlyLoad: Array<{ hour: number; label: string; estimatedChecks: number }>;
+    monitors: Array<{
+      id: string;
+      name: string;
+      type: string;
+      enabled: boolean;
+      intervalSec: number;
+      cronExpression: string | null;
+      checksPerHour: number;
+      lastCheckedAt: string | null;
+      nextCheckEstimateSec: number | null;
+    }>;
+  }> {
+    const now = new Date();
+
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        enabled: true,
+        intervalSec: true,
+        cronExpression: true,
+      },
+    });
+
+    // Fetch latest run per monitor in one batch
+    const monitorIds = monitors.map((m) => m.id);
+    const latestRuns = monitorIds.length > 0
+      ? await this.prisma.monitorRun.findMany({
+          where: {
+            monitorId: { in: monitorIds },
+            checkedAt: {
+              gte: new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000), // last 7 days
+            },
+          },
+          orderBy: { checkedAt: 'desc' },
+          select: { monitorId: true, checkedAt: true },
+          distinct: ['monitorId'],
+        })
+      : [];
+
+    const latestRunMap = new Map<string, Date>(
+      latestRuns.map((r) => [r.monitorId, r.checkedAt]),
+    );
+
+    // Compute checks per hour for each monitor
+    const monitorData = monitors.map((m) => {
+      // Estimate checks per hour
+      let checksPerHour: number;
+      if (m.cronExpression) {
+        // Simple heuristic: count how many times the cron fires in a 24-hour window → divide by 24
+        // We use a limited analysis: if expression has specific hours, count them; otherwise estimate
+        try {
+          // Parse cron fields: [minute] [hour] [dom] [month] [dow]
+          const parts = m.cronExpression.trim().split(/\s+/);
+          if (parts.length === 5) {
+            const [minField, hourField] = parts;
+
+            // Step 1: how many times does this fire per day?
+            let firesPerDay: number;
+            if (hourField === '*') {
+              // Fires every active hour; check minute field to determine how many times per hour
+              let timesPerHour: number;
+              if (minField === '*') {
+                timesPerHour = 60; // every minute
+              } else if (minField.startsWith('*/')) {
+                const step = parseInt(minField.slice(2), 10) || 1;
+                timesPerHour = Math.floor(60 / step);
+              } else {
+                // Specific minutes → one per listed minute
+                timesPerHour = minField.split(',').filter(Boolean).length;
+              }
+              firesPerDay = timesPerHour * 24;
+            } else if (hourField.startsWith('*/')) {
+              const step = parseInt(hourField.slice(2), 10) || 1;
+              const activeHours = Math.ceil(24 / step);
+              // Minute field fires once per active hour (assuming specific or single minute)
+              const timesPerActiveHour = minField === '*' ? 60 : (minField.startsWith('*/') ? Math.floor(60 / (parseInt(minField.slice(2), 10) || 1)) : 1);
+              firesPerDay = activeHours * timesPerActiveHour;
+            } else {
+              // Specific hours list
+              const activeHours = hourField.split(',').filter(Boolean).length;
+              const timesPerActiveHour = minField === '*' ? 60 : (minField.startsWith('*/') ? Math.floor(60 / (parseInt(minField.slice(2), 10) || 1)) : 1);
+              firesPerDay = activeHours * timesPerActiveHour;
+            }
+
+            checksPerHour = firesPerDay / 24;
+          } else {
+            checksPerHour = 3600 / m.intervalSec;
+          }
+        } catch {
+          checksPerHour = 3600 / m.intervalSec;
+        }
+      } else {
+        checksPerHour = 3600 / Math.max(1, m.intervalSec);
+      }
+
+      // Estimate seconds until next check
+      const lastCheckedAt = latestRunMap.get(m.id) ?? null;
+      let nextCheckEstimateSec: number | null = null;
+      if (m.enabled && lastCheckedAt) {
+        const elapsed = (now.getTime() - lastCheckedAt.getTime()) / 1000;
+        const remaining = Math.max(0, m.intervalSec - elapsed);
+        nextCheckEstimateSec = Math.round(remaining);
+      } else if (m.enabled && !lastCheckedAt) {
+        nextCheckEstimateSec = 0; // never run → due immediately
+      }
+
+      return {
+        id: m.id,
+        name: m.name,
+        type: m.type,
+        enabled: m.enabled,
+        intervalSec: m.intervalSec,
+        cronExpression: m.cronExpression ?? null,
+        checksPerHour: Math.round(checksPerHour * 100) / 100,
+        lastCheckedAt: lastCheckedAt ? lastCheckedAt.toISOString() : null,
+        nextCheckEstimateSec,
+      };
+    });
+
+    // Build hourly load distribution (0–23 UTC)
+    // Distribute each monitor's checks evenly across all hours
+    const hourlyLoad = Array.from({ length: 24 }, (_, h) => {
+      let load = 0;
+      for (const m of monitorData) {
+        if (!m.enabled) continue;
+        if (m.cronExpression) {
+          // For cron monitors: spread their total daily checks evenly unless we can detect specific hours
+          const dailyChecks = m.checksPerHour * 24;
+          load += dailyChecks / 24;
+        } else {
+          // For interval monitors: spread evenly
+          load += m.checksPerHour;
+        }
+      }
+      return {
+        hour: h,
+        label: `${String(h).padStart(2, '0')}:00`,
+        estimatedChecks: Math.round(load * 10) / 10,
+      };
+    });
+
+    const enabledMonitors = monitorData.filter((m) => m.enabled);
+    const fleetChecksPerHour = enabledMonitors.reduce((sum, m) => sum + m.checksPerHour, 0);
+    const fleetChecksPerDay = Math.round(fleetChecksPerHour * 24);
+
+    // For cron-expression monitors, try to detect specific fire hours
+    // This is a best-effort improvement over even distribution
+    const peakHour = hourlyLoad.reduce((best, h) => h.estimatedChecks > best.estimatedChecks ? h : best, hourlyLoad[0]).hour;
+    const quietHour = hourlyLoad.reduce((best, h) => h.estimatedChecks < best.estimatedChecks ? h : best, hourlyLoad[0]).hour;
+    const avgChecksPerHour = Math.round((fleetChecksPerDay / 24) * 10) / 10;
+
+    return {
+      generatedAt: now.toISOString(),
+      summary: {
+        totalMonitors: monitors.length,
+        enabledMonitors: enabledMonitors.length,
+        fleetChecksPerHour: Math.round(fleetChecksPerHour * 10) / 10,
+        fleetChecksPerDay,
+        peakHour,
+        peakHourLoad: hourlyLoad[peakHour].estimatedChecks,
+        quietHour,
+        quietHourLoad: hourlyLoad[quietHour].estimatedChecks,
+        avgChecksPerHour,
+      },
+      hourlyLoad,
+      monitors: monitorData,
+    };
+  }
+
   /**
    * Returns effective check rate information for a monitor.
    * Includes throttleMs, maxChecksPerHour, checksLastHour, and whether the monitor

@@ -5,7 +5,7 @@ import {
   Logger,
   NestInterceptor,
 } from '@nestjs/common';
-import { Observable, tap } from 'rxjs';
+import { Observable, tap, catchError, throwError } from 'rxjs';
 
 @Injectable()
 export class RequestTimingInterceptor implements NestInterceptor {
@@ -24,28 +24,36 @@ export class RequestTimingInterceptor implements NestInterceptor {
     const req = http.getRequest();
     const res = http.getResponse();
 
-    return next.handle().pipe(
-      tap(() => {
-        const durationMs = Date.now() - start;
-        const method: string = req.method;
-        const path: string = req.url ?? req.path;
-        const statusCode: number = res.statusCode;
+    const finalize = () => {
+      const durationMs = Date.now() - start;
+      const method: string = req.method;
+      const path: string = req.url ?? req.path;
+      const statusCode: number = res.statusCode;
 
+      if (!res.headersSent) {
         res.setHeader('X-Response-Time', `${durationMs}ms`);
+      }
 
-        const logPayload = { method, path, statusCode, durationMs };
+      const logPayload = { method, path, statusCode, durationMs };
 
-        if (durationMs >= this.errorThresholdMs) {
-          this.logger.error(
-            `Slow request: ${method} ${path} ${statusCode} — ${durationMs}ms`,
-            JSON.stringify(logPayload),
-          );
-        } else if (durationMs >= this.warnThresholdMs) {
-          this.logger.warn(
-            `Slow request: ${method} ${path} ${statusCode} — ${durationMs}ms`,
-            JSON.stringify(logPayload),
-          );
-        }
+      if (durationMs >= this.errorThresholdMs) {
+        this.logger.error(
+          `Slow request: ${method} ${path} ${statusCode} — ${durationMs}ms`,
+          JSON.stringify(logPayload),
+        );
+      } else if (durationMs >= this.warnThresholdMs) {
+        this.logger.warn(
+          `Slow request: ${method} ${path} ${statusCode} — ${durationMs}ms`,
+          JSON.stringify(logPayload),
+        );
+      }
+    };
+
+    return next.handle().pipe(
+      tap(() => finalize()),
+      catchError((err) => {
+        finalize();
+        return throwError(() => err);
       }),
     );
   }

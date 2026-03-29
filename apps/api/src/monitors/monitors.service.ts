@@ -9046,6 +9046,243 @@ export class MonitorsService {
     return { predictions, summary };
   }
 
+  // ─── Monitor Comparison ─────────────────────────────────────────────────
+
+  async compareMonitors(userId: string, monitorIds: string[], days: number) {
+    // Validate inputs
+    if (monitorIds.length < 2) {
+      throw new BadRequestException('At least 2 monitor IDs are required for comparison');
+    }
+    if (monitorIds.length > 4) {
+      throw new BadRequestException('At most 4 monitor IDs can be compared at once');
+    }
+    const clampedDays = Math.max(1, Math.min(90, days));
+
+    // Fetch monitors belonging to the user
+    const monitors = await this.prisma.monitor.findMany({
+      where: { id: { in: monitorIds }, userId },
+      select: { id: true, name: true, type: true, target: true },
+    });
+
+    if (monitors.length !== monitorIds.length) {
+      const found = new Set(monitors.map((m) => m.id));
+      const missing = monitorIds.filter((id) => !found.has(id));
+      throw new BadRequestException(`Monitors not found or not owned by you: ${missing.join(', ')}`);
+    }
+
+    const now = new Date();
+    const from = new Date(now.getTime() - clampedDays * 86_400_000);
+
+    // Fetch runs for all monitors in one query
+    const runs = await this.prisma.monitorRun.findMany({
+      where: {
+        monitorId: { in: monitorIds },
+        checkedAt: { gte: from },
+      },
+      select: { monitorId: true, ok: true, latencyMs: true, checkedAt: true },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    // Group runs by monitor
+    const runsByMonitor = new Map<string, typeof runs>();
+    for (const r of runs) {
+      let arr = runsByMonitor.get(r.monitorId);
+      if (!arr) { arr = []; runsByMonitor.set(r.monitorId, arr); }
+      arr.push(r);
+    }
+
+    // Helper: group runs by date string
+    const groupByDate = (monitorRuns: typeof runs) => {
+      const map = new Map<string, typeof runs>();
+      for (const r of monitorRuns) {
+        const dateStr = r.checkedAt.toISOString().slice(0, 10);
+        let arr = map.get(dateStr);
+        if (!arr) { arr = []; map.set(dateStr, arr); }
+        arr.push(r);
+      }
+      return map;
+    };
+
+    // Helper: compute p95
+    const p95 = (values: number[]) => {
+      if (values.length === 0) return null;
+      const sorted = [...values].sort((a, b) => a - b);
+      const idx = Math.ceil(sorted.length * 0.95) - 1;
+      return sorted[Math.max(0, idx)];
+    };
+
+    // Helper: longest consecutive failure streak in minutes
+    const longestOutage = (monitorRuns: typeof runs) => {
+      if (monitorRuns.length === 0) return 0;
+      let maxMin = 0;
+      let streakStart: Date | null = null;
+      let streakEnd: Date | null = null;
+      for (const r of monitorRuns) {
+        if (!r.ok) {
+          if (!streakStart) streakStart = r.checkedAt;
+          streakEnd = r.checkedAt;
+        } else {
+          if (streakStart && streakEnd) {
+            const min = (streakEnd.getTime() - streakStart.getTime()) / 60_000;
+            if (min > maxMin) maxMin = min;
+          }
+          streakStart = null;
+          streakEnd = null;
+        }
+      }
+      // Check final streak
+      if (streakStart && streakEnd) {
+        const min = (streakEnd.getTime() - streakStart.getTime()) / 60_000;
+        if (min > maxMin) maxMin = min;
+      }
+      return Math.round(maxMin);
+    };
+
+    // Build per-monitor stats
+    const monitorResults = monitors.map((m) => {
+      const mRuns = runsByMonitor.get(m.id) ?? [];
+      const totalChecks = mRuns.length;
+      const totalFailures = mRuns.filter((r) => !r.ok).length;
+      const uptimePct = totalChecks === 0 ? 100 : Math.round(((totalChecks - totalFailures) / totalChecks) * 10000) / 100;
+
+      const isHttp = ['HTTP', 'BROWSER'].includes(m.type);
+      const latencies = mRuns.map((r) => r.latencyMs).filter((v): v is number => v !== null);
+      const avgLatencyMs = isHttp && latencies.length > 0
+        ? Math.round(latencies.reduce((s, v) => s + v, 0) / latencies.length)
+        : null;
+      const p95LatencyMs = isHttp ? p95(latencies) : null;
+      const longestOutageMin = longestOutage(mRuns);
+
+      // Daily breakdown
+      const dailyMap = groupByDate(mRuns);
+
+      // Generate all dates in range
+      const allDates: string[] = [];
+      for (let d = new Date(from); d <= now; d = new Date(d.getTime() + 86_400_000)) {
+        allDates.push(d.toISOString().slice(0, 10));
+      }
+
+      const dailyUptime = allDates.map((date) => {
+        const dayRuns = dailyMap.get(date) ?? [];
+        const total = dayRuns.length;
+        const fails = dayRuns.filter((r) => !r.ok).length;
+        const dayLatencies = dayRuns.map((r) => r.latencyMs).filter((v): v is number => v !== null);
+        return {
+          date,
+          uptimePct: total === 0 ? 100 : Math.round(((total - fails) / total) * 10000) / 100,
+          avgLatencyMs: isHttp && dayLatencies.length > 0
+            ? Math.round(dayLatencies.reduce((s, v) => s + v, 0) / dayLatencies.length)
+            : null,
+        };
+      });
+
+      const dailyLatency = allDates.map((date) => {
+        const dayRuns = dailyMap.get(date) ?? [];
+        const dayLatencies = dayRuns.map((r) => r.latencyMs).filter((v): v is number => v !== null);
+        return {
+          date,
+          avgMs: isHttp && dayLatencies.length > 0
+            ? Math.round(dayLatencies.reduce((s, v) => s + v, 0) / dayLatencies.length)
+            : null,
+          p95Ms: isHttp ? p95(dayLatencies) : null,
+        };
+      });
+
+      return {
+        id: m.id,
+        name: m.name,
+        type: m.type,
+        target: m.target,
+        uptimePct,
+        avgLatencyMs,
+        p95LatencyMs,
+        totalChecks,
+        totalFailures,
+        longestOutageMin,
+        dailyUptime,
+        dailyLatency,
+      };
+    });
+
+    // Comparison metrics
+    const bestUptimeMonitor = monitorResults.reduce((best, m) => m.uptimePct > best.uptimePct ? m : best);
+    const httpMonitors = monitorResults.filter((m) => m.avgLatencyMs !== null);
+    const bestLatency = httpMonitors.length > 0
+      ? (() => {
+          const best = httpMonitors.reduce((b, m) => (m.avgLatencyMs! < b.avgLatencyMs! ? m : b));
+          return { monitorId: best.id, value: best.avgLatencyMs! };
+        })()
+      : null;
+    const mostReliable = monitorResults.reduce((best, m) =>
+      m.longestOutageMin < best.longestOutageMin ? m : best,
+    );
+
+    // Pearson correlations between all pairs
+    const correlations: Array<{
+      monitorA: string;
+      monitorB: string;
+      coefficient: number;
+      interpretation: 'strong_positive' | 'moderate_positive' | 'weak' | 'moderate_negative' | 'strong_negative';
+    }> = [];
+
+    for (let i = 0; i < monitorResults.length; i++) {
+      for (let j = i + 1; j < monitorResults.length; j++) {
+        const a = monitorResults[i];
+        const b = monitorResults[j];
+        const xs = a.dailyUptime.map((d) => d.uptimePct);
+        const ys = b.dailyUptime.map((d) => d.uptimePct);
+        const coeff = pearsonCorrelation(xs, ys);
+        let interpretation: typeof correlations[0]['interpretation'];
+        if (coeff >= 0.7) interpretation = 'strong_positive';
+        else if (coeff >= 0.3) interpretation = 'moderate_positive';
+        else if (coeff >= -0.3) interpretation = 'weak';
+        else if (coeff >= -0.7) interpretation = 'moderate_negative';
+        else interpretation = 'strong_negative';
+        correlations.push({ monitorA: a.id, monitorB: b.id, coefficient: Math.round(coeff * 1000) / 1000, interpretation });
+      }
+    }
+
+    return {
+      monitors: monitorResults,
+      comparison: {
+        bestUptime: { monitorId: bestUptimeMonitor.id, value: bestUptimeMonitor.uptimePct },
+        bestLatency,
+        mostReliable: { monitorId: mostReliable.id, longestOutageMin: mostReliable.longestOutageMin },
+        correlations,
+      },
+      period: {
+        days: clampedDays,
+        from: from.toISOString(),
+        to: now.toISOString(),
+      },
+    };
+  }
+
+}
+
+// ─── Pearson Correlation Helper ───────────────────────────────────────────────
+
+/**
+ * Compute Pearson correlation coefficient between two arrays.
+ * Returns a value between -1 and 1. Returns 0 for degenerate cases.
+ */
+export function pearsonCorrelation(xs: number[], ys: number[]): number {
+  const n = Math.min(xs.length, ys.length);
+  if (n < 2) return 0;
+
+  let sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0, sumY2 = 0;
+  for (let i = 0; i < n; i++) {
+    sumX += xs[i];
+    sumY += ys[i];
+    sumXY += xs[i] * ys[i];
+    sumX2 += xs[i] * xs[i];
+    sumY2 += ys[i] * ys[i];
+  }
+
+  const denom = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY));
+  if (denom === 0) return 0;
+
+  return (n * sumXY - sumX * sumY) / denom;
 }
 
 export interface SuggestedMonitor {

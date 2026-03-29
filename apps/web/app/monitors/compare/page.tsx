@@ -6,47 +6,72 @@ import { Button } from '../../components/Button';
 import { Card } from '../../components/Card';
 import { getUser } from '../../../components/auth';
 import { api } from '../../../lib/api';
-import { ArrowLeft, Plus, X, TrendingUp, TrendingDown, BarChart2, Activity, Zap } from 'lucide-react';
+import { GitCompareArrows, Plus, X, Crown, TrendingUp, TrendingDown, Activity, Zap, BarChart2 } from 'lucide-react';
 import Link from 'next/link';
 
-// Types
+const MONITOR_COLORS = ['#3b82f6', '#22c55e', '#f97316', '#a855f7'] as const;
+
 type MonitorSummary = { id: string; name: string; type: string; target: string; level: string; enabled: boolean };
-type CompareResult = {
+
+type CompareMonitor = {
   id: string;
   name: string;
   type: string;
   target: string;
-  level: string;
-  enabled: boolean;
   uptimePct: number;
   avgLatencyMs: number | null;
-  incidents: number;
-  totalDowntimeSec: number;
-  mttrSec: number;
+  p95LatencyMs: number | null;
   totalChecks: number;
+  totalFailures: number;
+  longestOutageMin: number;
+  dailyUptime: Array<{ date: string; uptimePct: number; avgLatencyMs: number | null }>;
+  dailyLatency: Array<{ date: string; avgMs: number | null; p95Ms: number | null }>;
 };
 
-const PERIODS = ['1d', '7d', '30d', '90d'] as const;
-type Period = (typeof PERIODS)[number];
-const PERIOD_LABELS: Record<Period, string> = { '1d': '24h', '7d': '7 days', '30d': '30 days', '90d': '90 days' };
+type Correlation = {
+  monitorA: string;
+  monitorB: string;
+  coefficient: number;
+  interpretation: 'strong_positive' | 'moderate_positive' | 'weak' | 'moderate_negative' | 'strong_negative';
+};
+
+type CompareResult = {
+  monitors: CompareMonitor[];
+  comparison: {
+    bestUptime: { monitorId: string; value: number };
+    bestLatency: { monitorId: string; value: number } | null;
+    mostReliable: { monitorId: string; longestOutageMin: number };
+    correlations: Correlation[];
+  };
+  period: { days: number; from: string; to: string };
+};
+
+const DAYS_OPTIONS = [
+  { value: 1, label: '24h' },
+  { value: 7, label: '7d' },
+  { value: 14, label: '14d' },
+  { value: 30, label: '30d' },
+  { value: 90, label: '90d' },
+];
 
 function StatusDot({ level }: { level: string }) {
-  const color =
-    level === 'red' ? 'bg-red-500' : level === 'yellow' ? 'bg-yellow-500' : 'bg-green-500';
+  const color = level === 'red' ? 'bg-red-500' : level === 'yellow' ? 'bg-yellow-500' : 'bg-green-500';
   return <span className={`inline-block w-2 h-2 rounded-full ${color}`} />;
 }
 
-function formatDuration(sec: number): string {
-  if (sec < 60) return `${sec}s`;
-  if (sec < 3600) return `${Math.round(sec / 60)}m`;
-  return `${(sec / 3600).toFixed(1)}h`;
-}
+const interpLabels: Record<string, { label: string; color: string }> = {
+  strong_positive: { label: 'Strong +', color: 'text-green-400' },
+  moderate_positive: { label: 'Moderate +', color: 'text-green-300' },
+  weak: { label: 'Weak', color: 'text-text-muted' },
+  moderate_negative: { label: 'Moderate −', color: 'text-orange-400' },
+  strong_negative: { label: 'Strong −', color: 'text-red-400' },
+};
 
 export default function MonitorComparePage() {
   const [allMonitors, setAllMonitors] = useState<MonitorSummary[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const [period, setPeriod] = useState<Period>('30d');
-  const [results, setResults] = useState<CompareResult[]>([]);
+  const [days, setDays] = useState(7);
+  const [result, setResult] = useState<CompareResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -56,7 +81,6 @@ export default function MonitorComparePage() {
     api<{ monitors?: MonitorSummary[] } | MonitorSummary[]>('/v1/monitors', user.id)
       .then((data) => {
         const monitors = Array.isArray(data) ? data : (data as { monitors?: MonitorSummary[] }).monitors ?? [];
-        // Filter out version monitors
         setAllMonitors(monitors.filter((m) => m.type !== 'GIT_RELEASE' && m.type !== 'DOCKER_IMAGE'));
       })
       .catch(() => {});
@@ -69,49 +93,44 @@ export default function MonitorComparePage() {
     setLoading(true);
     setError(null);
     try {
-      const data = await api<{ monitors: CompareResult[]; period: string }>(
-        '/v1/monitors/compare',
-        user.id,
-        { method: 'POST', body: JSON.stringify({ monitorIds: selectedIds, period }) },
-      );
-      setResults(data.monitors);
+      const ids = selectedIds.join(',');
+      const data = await api<CompareResult>(`/v1/monitors/compare?ids=${ids}&days=${days}`, user.id);
+      setResult(data);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Comparison failed');
     } finally {
       setLoading(false);
     }
-  }, [selectedIds, period]);
+  }, [selectedIds, days]);
 
   const addMonitor = (id: string) => {
-    if (selectedIds.includes(id) || selectedIds.length >= 5) return;
+    if (selectedIds.includes(id) || selectedIds.length >= 4) return;
     setSelectedIds((prev) => [...prev, id]);
   };
 
   const removeMonitor = (id: string) => {
     setSelectedIds((prev) => prev.filter((x) => x !== id));
-    setResults((prev) => prev.filter((r) => r.id !== id));
   };
 
-  const sorted = [...results].sort((a, b) => b.uptimePct - a.uptimePct);
+  const getMonitorColor = (id: string) => {
+    const idx = result?.monitors.findIndex((m) => m.id === id) ?? 0;
+    return MONITOR_COLORS[idx % MONITOR_COLORS.length];
+  };
+
+  const getMonitorName = (id: string) => result?.monitors.find((m) => m.id === id)?.name ?? id;
 
   return (
-    <AppFrame title="Monitor Comparison" subtitle="Compare 2–5 monitors side by side">
+    <AppFrame title="Monitor Comparison" subtitle="Side-by-side performance analysis of your monitors">
       <div className="max-w-6xl mx-auto space-y-6">
         {/* Header */}
-        <div className="flex items-center gap-3">
-          <Link
-            href="/monitors"
-            className="p-2 rounded-lg hover:bg-surface-elevated text-text-secondary hover:text-text-primary transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Link>
-          <div>
-            <h1 className="text-xl font-bold text-text-primary flex items-center gap-2">
-              <BarChart2 className="w-5 h-5 text-accent" />
-              Monitor Comparison
-            </h1>
-            <p className="text-sm text-text-secondary">Compare 2–5 monitors side by side</p>
-          </div>
+        <div>
+          <h1 className="text-xl font-bold text-text-primary flex items-center gap-2">
+            <GitCompareArrows className="w-5 h-5 text-accent" />
+            Monitor Comparison
+          </h1>
+          <p className="text-sm text-text-secondary mt-1">
+            Select 2–4 monitors to compare side-by-side with statistical analysis
+          </p>
         </div>
 
         {/* Configuration */}
@@ -119,40 +138,38 @@ export default function MonitorComparePage() {
           {/* Period selector */}
           <div className="flex items-center gap-2 flex-wrap">
             <span className="text-sm text-text-secondary">Period:</span>
-            {PERIODS.map((p) => (
+            {DAYS_OPTIONS.map((opt) => (
               <button
-                key={p}
-                onClick={() => setPeriod(p)}
+                key={opt.value}
+                onClick={() => setDays(opt.value)}
                 className={`px-3 py-1 rounded-lg text-xs font-medium transition-colors ${
-                  period === p
+                  days === opt.value
                     ? 'bg-accent text-white'
                     : 'bg-surface-elevated text-text-secondary hover:text-text-primary'
                 }`}
               >
-                {PERIOD_LABELS[p]}
+                {opt.label}
               </button>
             ))}
           </div>
 
-          {/* Monitor selector */}
+          {/* Selected monitors */}
           <div>
             <div className="text-sm font-medium text-text-primary mb-2">
-              Select monitors ({selectedIds.length}/5)
+              Monitors ({selectedIds.length}/4)
             </div>
             <div className="flex flex-wrap gap-2 mb-3">
-              {selectedIds.map((id) => {
+              {selectedIds.map((id, idx) => {
                 const m = allMonitors.find((x) => x.id === id);
                 return m ? (
                   <div
                     key={id}
-                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-accent/15 text-accent text-xs font-medium border border-accent/30"
+                    className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium border"
+                    style={{ borderColor: MONITOR_COLORS[idx], color: MONITOR_COLORS[idx], backgroundColor: `${MONITOR_COLORS[idx]}15` }}
                   >
-                    <StatusDot level={m.level} />
+                    <span className="w-2 h-2 rounded-full" style={{ backgroundColor: MONITOR_COLORS[idx] }} />
                     {m.name}
-                    <button
-                      onClick={() => removeMonitor(id)}
-                      className="hover:text-red-400 transition-colors ml-0.5"
-                    >
+                    <button onClick={() => removeMonitor(id)} className="hover:text-red-400 ml-0.5">
                       <X className="w-3 h-3" />
                     </button>
                   </div>
@@ -164,7 +181,7 @@ export default function MonitorComparePage() {
             </div>
 
             {/* Monitor picker */}
-            {selectedIds.length < 5 && (
+            {selectedIds.length < 4 && (
               <div className="max-h-40 overflow-y-auto rounded-lg border border-border bg-surface space-y-0.5 p-1">
                 {allMonitors
                   .filter((m) => !selectedIds.includes(m.id))
@@ -180,25 +197,15 @@ export default function MonitorComparePage() {
                       <Plus className="w-3.5 h-3.5 text-accent flex-shrink-0" />
                     </button>
                   ))}
-                {allMonitors.filter((m) => !selectedIds.includes(m.id)).length === 0 && (
-                  <p className="text-xs text-text-muted p-2 text-center">All monitors selected</p>
-                )}
               </div>
             )}
           </div>
 
-          <Button
-            onClick={runComparison}
-            disabled={selectedIds.length < 2 || loading}
-            className="w-full sm:w-auto"
-          >
-            {loading
-              ? 'Comparing…'
-              : `Compare ${selectedIds.length < 2 ? '(select 2+)' : selectedIds.length + ' monitors'}`}
+          <Button onClick={runComparison} disabled={selectedIds.length < 2 || loading} className="w-full sm:w-auto">
+            {loading ? 'Comparing…' : selectedIds.length < 2 ? 'Select at least 2 monitors' : `Compare ${selectedIds.length} monitors`}
           </Button>
         </Card>
 
-        {/* Error */}
         {error && (
           <Card className="p-4 border-danger/30 bg-danger/5">
             <p className="text-sm text-danger">{error}</p>
@@ -206,184 +213,322 @@ export default function MonitorComparePage() {
         )}
 
         {/* Results */}
-        {sorted.length > 0 && (
-          <div className="space-y-4">
-            <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider">
-              Comparison — last {PERIOD_LABELS[period]}
-            </h2>
-
-            {/* Summary table */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-border">
-                    <th className="text-left py-2 px-3 text-text-secondary font-medium">Monitor</th>
-                    <th className="text-right py-2 px-3 text-text-secondary font-medium">Uptime %</th>
-                    <th className="text-right py-2 px-3 text-text-secondary font-medium">
-                      Avg Latency
-                    </th>
-                    <th className="text-right py-2 px-3 text-text-secondary font-medium">
-                      Incidents
-                    </th>
-                    <th className="text-right py-2 px-3 text-text-secondary font-medium">
-                      Downtime
-                    </th>
-                    <th className="text-right py-2 px-3 text-text-secondary font-medium">MTTR</th>
-                    <th className="text-right py-2 px-3 text-text-secondary font-medium">Checks</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {sorted.map((r, i) => {
-                    const uptimeColor =
-                      r.uptimePct >= 99.9
-                        ? 'text-success'
-                        : r.uptimePct >= 99
-                          ? 'text-success/80'
-                          : r.uptimePct >= 95
-                            ? 'text-warning'
-                            : 'text-danger';
-                    const isTop = i === 0;
-                    const isBottom = i === sorted.length - 1 && sorted.length > 1;
-                    return (
-                      <tr
-                        key={r.id}
-                        className="border-b border-border/50 hover:bg-surface-elevated/50 transition-colors"
-                      >
-                        <td className="py-2.5 px-3">
-                          <div className="flex items-center gap-2">
-                            <StatusDot level={r.level} />
-                            <Link
-                              href={`/monitors/${r.id}`}
-                              className="font-medium text-text-primary hover:text-accent transition-colors"
-                            >
-                              {r.name}
-                            </Link>
-                            {isTop && sorted.length > 1 && (
-                              <span className="text-xs px-1.5 py-0.5 rounded bg-success/15 text-success flex items-center gap-0.5">
-                                <TrendingUp className="w-2.5 h-2.5" /> Best
-                              </span>
-                            )}
-                            {isBottom &&
-                              sorted.length > 1 &&
-                              r.uptimePct < sorted[0].uptimePct && (
-                                <span className="text-xs px-1.5 py-0.5 rounded bg-danger/15 text-danger flex items-center gap-0.5">
-                                  <TrendingDown className="w-2.5 h-2.5" /> Needs attention
-                                </span>
-                              )}
-                          </div>
-                          <div className="text-xs text-text-muted truncate max-w-[200px] mt-0.5">
-                            {r.target}
-                          </div>
-                        </td>
-                        <td
-                          className={`py-2.5 px-3 text-right font-bold tabular-nums ${uptimeColor}`}
-                        >
-                          {r.uptimePct}%
-                        </td>
-                        <td className="py-2.5 px-3 text-right text-text-primary tabular-nums">
-                          {r.avgLatencyMs != null ? `${r.avgLatencyMs}ms` : '—'}
-                        </td>
-                        <td
-                          className={`py-2.5 px-3 text-right tabular-nums ${
-                            r.incidents > 0 ? 'text-danger' : 'text-success'
-                          }`}
-                        >
-                          {r.incidents}
-                        </td>
-                        <td className="py-2.5 px-3 text-right text-text-secondary tabular-nums">
-                          {r.totalDowntimeSec > 0 ? formatDuration(r.totalDowntimeSec) : '0s'}
-                        </td>
-                        <td className="py-2.5 px-3 text-right text-text-secondary tabular-nums">
-                          {r.mttrSec > 0 ? formatDuration(r.mttrSec) : '—'}
-                        </td>
-                        <td className="py-2.5 px-3 text-right text-text-secondary tabular-nums">
-                          {r.totalChecks}
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Uptime bar chart */}
-            <Card className="p-4">
-              <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3 flex items-center gap-2">
-                <Activity className="w-4 h-4" />
-                Uptime Comparison
-              </h3>
-              <div className="space-y-3">
-                {sorted.map((r) => {
-                  const color =
-                    r.uptimePct >= 99.9
-                      ? 'bg-success'
-                      : r.uptimePct >= 99
-                        ? 'bg-success/70'
-                        : r.uptimePct >= 95
-                          ? 'bg-warning'
-                          : 'bg-danger';
-                  return (
-                    <div key={r.id} className="space-y-1">
-                      <div className="flex items-center justify-between text-xs">
-                        <span className="text-text-primary font-medium">{r.name}</span>
-                        <span className="text-text-secondary tabular-nums">{r.uptimePct}%</span>
+        {result && (
+          <div className="space-y-6">
+            {/* Metric comparison cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+              {/* Uptime */}
+              <Card className="p-4">
+                <div className="text-xs text-text-muted uppercase tracking-wider mb-2">Uptime</div>
+                <div className="space-y-2">
+                  {result.monitors.map((m, idx) => (
+                    <div key={m.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: MONITOR_COLORS[idx] }} />
+                        <span className="text-xs text-text-secondary truncate max-w-[80px]">{m.name}</span>
                       </div>
-                      <div className="h-2 rounded-full bg-surface-elevated overflow-hidden">
-                        <div
-                          className={`h-full rounded-full ${color} transition-all duration-500`}
-                          style={{ width: `${Math.max(r.uptimePct, 0)}%` }}
-                        />
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-bold tabular-nums text-text-primary">{m.uptimePct}%</span>
+                        {result.comparison.bestUptime.monitorId === m.id && <Crown className="w-3 h-3 text-yellow-400" />}
                       </div>
                     </div>
+                  ))}
+                </div>
+              </Card>
+
+              {/* Avg Latency */}
+              <Card className="p-4">
+                <div className="text-xs text-text-muted uppercase tracking-wider mb-2">Avg Latency</div>
+                <div className="space-y-2">
+                  {result.monitors.map((m, idx) => (
+                    <div key={m.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: MONITOR_COLORS[idx] }} />
+                        <span className="text-xs text-text-secondary truncate max-w-[80px]">{m.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-bold tabular-nums text-text-primary">{m.avgLatencyMs != null ? `${m.avgLatencyMs}ms` : '—'}</span>
+                        {result.comparison.bestLatency?.monitorId === m.id && <Crown className="w-3 h-3 text-yellow-400" />}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              {/* P95 Latency */}
+              <Card className="p-4">
+                <div className="text-xs text-text-muted uppercase tracking-wider mb-2">P95 Latency</div>
+                <div className="space-y-2">
+                  {result.monitors.map((m, idx) => (
+                    <div key={m.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: MONITOR_COLORS[idx] }} />
+                        <span className="text-xs text-text-secondary truncate max-w-[80px]">{m.name}</span>
+                      </div>
+                      <span className="text-sm font-bold tabular-nums text-text-primary">{m.p95LatencyMs != null ? `${m.p95LatencyMs}ms` : '—'}</span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              {/* Failures */}
+              <Card className="p-4">
+                <div className="text-xs text-text-muted uppercase tracking-wider mb-2">Failures</div>
+                <div className="space-y-2">
+                  {result.monitors.map((m, idx) => (
+                    <div key={m.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: MONITOR_COLORS[idx] }} />
+                        <span className="text-xs text-text-secondary truncate max-w-[80px]">{m.name}</span>
+                      </div>
+                      <span className={`text-sm font-bold tabular-nums ${m.totalFailures > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                        {m.totalFailures}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+
+              {/* Longest Outage */}
+              <Card className="p-4">
+                <div className="text-xs text-text-muted uppercase tracking-wider mb-2">Longest Outage</div>
+                <div className="space-y-2">
+                  {result.monitors.map((m, idx) => (
+                    <div key={m.id} className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-2 h-2 rounded-full" style={{ backgroundColor: MONITOR_COLORS[idx] }} />
+                        <span className="text-xs text-text-secondary truncate max-w-[80px]">{m.name}</span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-bold tabular-nums text-text-primary">
+                          {m.longestOutageMin > 0 ? `${m.longestOutageMin}m` : '0'}
+                        </span>
+                        {result.comparison.mostReliable.monitorId === m.id && <Crown className="w-3 h-3 text-yellow-400" />}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            </div>
+
+            {/* Uptime Overlay Chart */}
+            <Card className="p-4">
+              <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4 flex items-center gap-2">
+                <Activity className="w-4 h-4" /> Daily Uptime
+              </h3>
+              <div className="relative h-48">
+                {result.monitors[0]?.dailyUptime.length > 0 && (() => {
+                  const allDates = result.monitors[0].dailyUptime;
+                  const width = 100 / Math.max(allDates.length - 1, 1);
+                  return (
+                    <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full">
+                      {/* Grid lines */}
+                      {[100, 99, 98, 95, 90].map((pct) => {
+                        const y = 100 - pct;
+                        return <line key={pct} x1="0" y1={y} x2="100" y2={y} stroke="currentColor" strokeOpacity="0.1" strokeWidth="0.2" />;
+                      })}
+                      {/* Lines for each monitor */}
+                      {result.monitors.map((m, idx) => {
+                        const points = m.dailyUptime
+                          .map((d, i) => `${(i / Math.max(allDates.length - 1, 1)) * 100},${100 - d.uptimePct}`)
+                          .join(' ');
+                        return (
+                          <polyline
+                            key={m.id}
+                            points={points}
+                            fill="none"
+                            stroke={MONITOR_COLORS[idx]}
+                            strokeWidth="0.8"
+                            strokeLinejoin="round"
+                          />
+                        );
+                      })}
+                    </svg>
                   );
-                })}
+                })()}
+                {/* Date labels */}
+                {result.monitors[0]?.dailyUptime.length > 0 && (
+                  <div className="flex justify-between text-[10px] text-text-muted mt-1">
+                    <span>{result.monitors[0].dailyUptime[0]?.date}</span>
+                    <span>{result.monitors[0].dailyUptime[result.monitors[0].dailyUptime.length - 1]?.date}</span>
+                  </div>
+                )}
+              </div>
+              {/* Legend */}
+              <div className="flex flex-wrap gap-4 mt-3">
+                {result.monitors.map((m, idx) => (
+                  <div key={m.id} className="flex items-center gap-1.5 text-xs text-text-secondary">
+                    <span className="w-3 h-0.5 rounded" style={{ backgroundColor: MONITOR_COLORS[idx] }} />
+                    {m.name}
+                  </div>
+                ))}
               </div>
             </Card>
 
-            {/* Latency comparison */}
-            {sorted.some((r) => r.avgLatencyMs != null) && (
+            {/* Latency Overlay Chart */}
+            {result.monitors.some((m) => m.avgLatencyMs != null) && (
               <Card className="p-4">
-                <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3 flex items-center gap-2">
-                  <Zap className="w-4 h-4" />
-                  Avg Latency Comparison
+                <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-4 flex items-center gap-2">
+                  <Zap className="w-4 h-4" /> Daily Latency
                 </h3>
-                <div className="space-y-3">
+                <div className="relative h-48">
                   {(() => {
-                    const maxLatency = Math.max(...sorted.map((r) => r.avgLatencyMs ?? 0));
-                    return sorted.map((r) => {
-                      const lat = r.avgLatencyMs;
-                      const pct =
-                        maxLatency > 0 && lat != null ? (lat / maxLatency) * 100 : 0;
-                      const color =
-                        lat == null
-                          ? 'bg-surface-elevated'
-                          : lat < 500
-                            ? 'bg-success'
-                            : lat < 2000
-                              ? 'bg-warning'
-                              : 'bg-danger';
-                      return (
-                        <div key={r.id} className="space-y-1">
-                          <div className="flex items-center justify-between text-xs">
-                            <span className="text-text-primary font-medium">{r.name}</span>
-                            <span className="text-text-secondary tabular-nums">
-                              {lat != null ? `${lat}ms` : '—'}
-                            </span>
-                          </div>
-                          <div className="h-2 rounded-full bg-surface-elevated overflow-hidden">
-                            <div
-                              className={`h-full rounded-full ${color} transition-all duration-500`}
-                              style={{ width: `${pct}%` }}
+                    const allLatencies = result.monitors.flatMap((m) => m.dailyLatency.map((d) => d.avgMs).filter((v): v is number => v != null));
+                    const maxLat = Math.max(...allLatencies, 1);
+                    const allDates = result.monitors[0]?.dailyLatency ?? [];
+                    return (
+                      <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="w-full h-full">
+                        {result.monitors.map((m, idx) => {
+                          const points = m.dailyLatency
+                            .map((d, i) => {
+                              const y = d.avgMs != null ? 100 - (d.avgMs / maxLat) * 90 : 100;
+                              return `${(i / Math.max(allDates.length - 1, 1)) * 100},${y}`;
+                            })
+                            .join(' ');
+                          return (
+                            <polyline
+                              key={m.id}
+                              points={points}
+                              fill="none"
+                              stroke={MONITOR_COLORS[idx]}
+                              strokeWidth="0.8"
+                              strokeLinejoin="round"
                             />
-                          </div>
-                        </div>
-                      );
-                    });
+                          );
+                        })}
+                        {/* P95 dashed lines */}
+                        {result.monitors.map((m, idx) => {
+                          const points = m.dailyLatency
+                            .map((d, i) => {
+                              const y = d.p95Ms != null ? 100 - (d.p95Ms / maxLat) * 90 : 100;
+                              return `${(i / Math.max(allDates.length - 1, 1)) * 100},${y}`;
+                            })
+                            .join(' ');
+                          return (
+                            <polyline
+                              key={`p95-${m.id}`}
+                              points={points}
+                              fill="none"
+                              stroke={MONITOR_COLORS[idx]}
+                              strokeWidth="0.4"
+                              strokeDasharray="2,2"
+                              strokeLinejoin="round"
+                              opacity={0.6}
+                            />
+                          );
+                        })}
+                      </svg>
+                    );
                   })()}
+                  {result.monitors[0]?.dailyLatency.length > 0 && (
+                    <div className="flex justify-between text-[10px] text-text-muted mt-1">
+                      <span>{result.monitors[0].dailyLatency[0]?.date}</span>
+                      <span>{result.monitors[0].dailyLatency[result.monitors[0].dailyLatency.length - 1]?.date}</span>
+                    </div>
+                  )}
+                </div>
+                <div className="flex flex-wrap gap-4 mt-3">
+                  {result.monitors.map((m, idx) => (
+                    <div key={m.id} className="flex items-center gap-1.5 text-xs text-text-secondary">
+                      <span className="w-3 h-0.5 rounded" style={{ backgroundColor: MONITOR_COLORS[idx] }} />
+                      {m.name} (solid=avg, dashed=p95)
+                    </div>
+                  ))}
                 </div>
               </Card>
             )}
+
+            {/* Correlation Matrix */}
+            {result.comparison.correlations.length > 0 && (
+              <Card className="p-4">
+                <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3 flex items-center gap-2">
+                  <BarChart2 className="w-4 h-4" /> Uptime Correlation
+                </h3>
+                <p className="text-xs text-text-muted mb-3">
+                  High positive correlation suggests monitors share infrastructure or dependencies.
+                </p>
+                <div className="space-y-2">
+                  {result.comparison.correlations.map((c) => {
+                    const interp = interpLabels[c.interpretation] ?? interpLabels.weak;
+                    return (
+                      <div key={`${c.monitorA}-${c.monitorB}`} className="flex items-center gap-3 text-sm">
+                        <span className="text-text-primary font-medium" style={{ color: getMonitorColor(c.monitorA) }}>
+                          {getMonitorName(c.monitorA)}
+                        </span>
+                        <span className="text-text-muted">↔</span>
+                        <span className="text-text-primary font-medium" style={{ color: getMonitorColor(c.monitorB) }}>
+                          {getMonitorName(c.monitorB)}
+                        </span>
+                        <span className="ml-auto font-bold tabular-nums text-text-primary">{c.coefficient.toFixed(3)}</span>
+                        <span className={`text-xs font-medium ${interp.color}`}>{interp.label}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              </Card>
+            )}
+
+            {/* Full Stats Table */}
+            <Card className="p-4">
+              <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
+                Full Statistics
+              </h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border">
+                      <th className="text-left py-2 px-3 text-text-secondary font-medium">Monitor</th>
+                      <th className="text-right py-2 px-3 text-text-secondary font-medium">Uptime</th>
+                      <th className="text-right py-2 px-3 text-text-secondary font-medium">Avg Latency</th>
+                      <th className="text-right py-2 px-3 text-text-secondary font-medium">P95 Latency</th>
+                      <th className="text-right py-2 px-3 text-text-secondary font-medium">Checks</th>
+                      <th className="text-right py-2 px-3 text-text-secondary font-medium">Failures</th>
+                      <th className="text-right py-2 px-3 text-text-secondary font-medium">Longest Outage</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {result.monitors.map((m, idx) => (
+                      <tr key={m.id} className="border-b border-border/50 hover:bg-surface-elevated/50">
+                        <td className="py-2.5 px-3">
+                          <div className="flex items-center gap-2">
+                            <span className="w-2 h-2 rounded-full" style={{ backgroundColor: MONITOR_COLORS[idx] }} />
+                            <Link href={`/monitors/${m.id}`} className="font-medium text-text-primary hover:text-accent transition-colors">
+                              {m.name}
+                            </Link>
+                            <span className="text-[10px] px-1.5 py-0.5 rounded bg-surface-elevated text-text-muted">{m.type}</span>
+                          </div>
+                        </td>
+                        <td className={`py-2.5 px-3 text-right font-bold tabular-nums ${m.uptimePct >= 99.9 ? 'text-green-400' : m.uptimePct >= 95 ? 'text-yellow-400' : 'text-red-400'}`}>
+                          {m.uptimePct}%
+                        </td>
+                        <td className="py-2.5 px-3 text-right tabular-nums text-text-primary">
+                          {m.avgLatencyMs != null ? `${m.avgLatencyMs}ms` : '—'}
+                        </td>
+                        <td className="py-2.5 px-3 text-right tabular-nums text-text-primary">
+                          {m.p95LatencyMs != null ? `${m.p95LatencyMs}ms` : '—'}
+                        </td>
+                        <td className="py-2.5 px-3 text-right tabular-nums text-text-secondary">{m.totalChecks}</td>
+                        <td className={`py-2.5 px-3 text-right tabular-nums ${m.totalFailures > 0 ? 'text-red-400' : 'text-green-400'}`}>
+                          {m.totalFailures}
+                        </td>
+                        <td className="py-2.5 px-3 text-right tabular-nums text-text-secondary">
+                          {m.longestOutageMin > 0 ? `${m.longestOutageMin}min` : '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
           </div>
+        )}
+
+        {/* Empty state */}
+        {!result && !loading && !error && (
+          <Card className="p-8 text-center">
+            <GitCompareArrows className="w-12 h-12 text-text-muted mx-auto mb-3" />
+            <p className="text-text-secondary">Select 2–4 monitors above and click Compare to see side-by-side analysis</p>
+          </Card>
         )}
       </div>
     </AppFrame>

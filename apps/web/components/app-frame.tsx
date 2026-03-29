@@ -31,6 +31,7 @@ import {
   Gauge,
   Target,
   GitBranch,
+  GitCompareArrows,
   GitMerge,
   Globe,
   LogOut,
@@ -92,7 +93,7 @@ const navGroups: NavGroup[] = [
     ],
     secondary: [
       { href: '/monitors/live', label: 'Live Feed', icon: Activity },
-      { href: '/monitors/compare', label: 'Compare', icon: BarChart2 },
+      { href: '/monitors/compare', label: 'Compare', icon: GitCompareArrows },
       { href: '/monitors/heatmap', label: 'Uptime Heatmap', icon: Layers },
       { href: '/monitors/trends', label: 'Trends', icon: TrendingUp },
       { href: '/monitors/timeline', label: 'Status Timeline', icon: Layers },

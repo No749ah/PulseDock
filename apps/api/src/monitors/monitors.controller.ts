@@ -39,6 +39,21 @@ export class MonitorsController {
     return this.monitorsService.list(req.user.id, tag);
   }
 
+  @Get('compare')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'Compare 2-4 monitors side by side with statistical analysis' })
+  @ApiQuery({ name: 'ids', description: 'Comma-separated monitor IDs (2-4)', required: true })
+  @ApiQuery({ name: 'days', description: 'Period in days (1-90)', required: false })
+  @ApiResponse({ status: 200, description: 'Comparison data for selected monitors' })
+  compareMonitors(
+    @Req() req: { user: { id: string } },
+    @Query('ids') ids: string,
+    @Query('days', new DefaultValuePipe(7)) days: number,
+  ) {
+    const monitorIds = ids.split(',').map((s) => s.trim()).filter(Boolean);
+    return this.monitorsService.compareMonitors(req.user.id, monitorIds, +days);
+  }
+
   @Get(':id')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({ summary: 'Get a single monitor', description: 'Returns full monitor details including mute status and active acknowledgement.' })

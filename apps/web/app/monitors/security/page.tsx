@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
 import {
   ShieldCheck,
   ShieldAlert,
@@ -173,7 +172,6 @@ function HeaderMiniGrid({ headers }: { headers: Array<{ name: string; present: b
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function SecurityHeadersPage() {
-  const router = useRouter();
   const { error: toastError } = useToast();
   const [data, setData] = useState<SecuritySummary | null>(null);
   const [loading, setLoading] = useState(true);
@@ -184,7 +182,7 @@ export default function SecurityHeadersPage() {
   const load = async () => {
     setLoading(true);
     try {
-      const user = await getUser(router);
+      const user = getUser();
       if (!user) return;
       const res = await api<SecuritySummary>('/v1/monitors/security-headers');
       setData(res);

@@ -1917,6 +1917,71 @@ export function MonitorFormModal({
             </div>
           </div>
 
+          {/* Adaptive Check Interval */}
+          <div className="border border-border rounded-lg p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <label className="block text-sm font-semibold text-text-primary">Adaptive Check Interval</label>
+                <p className="mt-0.5 text-xs text-text-secondary">
+                  Automatically increase check frequency when the monitor is degraded or down, then return to normal on recovery. Catches faster recovery times and reduces alert lag.
+                </p>
+              </div>
+              <label className="relative inline-flex items-center cursor-pointer shrink-0 ml-4">
+                <input
+                  type="checkbox"
+                  className="sr-only peer"
+                  checked={(formData as MonitorFormData & { adaptiveIntervalEnabled?: boolean }).adaptiveIntervalEnabled ?? false}
+                  onChange={(e) => onSetFormData({ ...formData, adaptiveIntervalEnabled: e.target.checked })}
+                />
+                <div className="w-9 h-5 bg-surface-raised rounded-full peer peer-checked:bg-accent after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:after:translate-x-4 border border-border" />
+              </label>
+            </div>
+            {(formData as MonitorFormData & { adaptiveIntervalEnabled?: boolean }).adaptiveIntervalEnabled && (
+              <div className="grid grid-cols-2 gap-4 pt-1">
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">When DOWN (red) — interval (sec)</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="10"
+                      max="3600"
+                      step="5"
+                      placeholder={`Default: ${Math.max(10, Math.floor(((formData as MonitorFormData).intervalSec ?? 60) / 4))}s`}
+                      value={(formData as MonitorFormData & { adaptiveIntervalDownSec?: number | null }).adaptiveIntervalDownSec ?? ""}
+                      onChange={(e) => {
+                        const val = e.target.value === "" ? null : parseInt(e.target.value, 10);
+                        onSetFormData({ ...formData, adaptiveIntervalDownSec: val && val >= 10 ? val : null });
+                      }}
+                      className="w-28 px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                    />
+                    <span className="text-xs text-text-muted">sec</span>
+                  </div>
+                  <p className="text-xs text-text-muted mt-1">Leave blank to use ¼ of normal interval</p>
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-text-secondary mb-1">When DEGRADED (yellow) — interval (sec)</label>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="15"
+                      max="3600"
+                      step="5"
+                      placeholder={`Default: ${Math.max(15, Math.floor(((formData as MonitorFormData).intervalSec ?? 60) / 2))}s`}
+                      value={(formData as MonitorFormData & { adaptiveIntervalDegradedSec?: number | null }).adaptiveIntervalDegradedSec ?? ""}
+                      onChange={(e) => {
+                        const val = e.target.value === "" ? null : parseInt(e.target.value, 10);
+                        onSetFormData({ ...formData, adaptiveIntervalDegradedSec: val && val >= 15 ? val : null });
+                      }}
+                      className="w-28 px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                    />
+                    <span className="text-xs text-text-muted">sec</span>
+                  </div>
+                  <p className="text-xs text-text-muted mt-1">Leave blank to use ½ of normal interval</p>
+                </div>
+              </div>
+            )}
+          </div>
+
           {/* Geo Regions */}
           <GeoRegionsInput
             regions={(formData as MonitorFormData).geoRegions ?? []}

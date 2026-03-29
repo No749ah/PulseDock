@@ -1,5 +1,5 @@
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { BadRequestException } from '@nestjs/common';
-import { vi } from 'vitest';
 import { MonitorsService } from './monitors.service';
 
 // Minimal stub — previewFromOpenApi and importFromOpenApi have no Prisma dependency for preview
@@ -159,12 +159,11 @@ describe('MonitorsService.importFromOpenApi', () => {
     service = makeService();
     // Mock create to avoid Prisma
     let idCounter = 0;
-    vi.spyOn(service, 'create' as keyof MonitorsService).mockImplementation(
-      async (_userId: string, body: { name: string; target: string }) => {
-        idCounter++;
-        return { id: `mock-${idCounter}`, name: body.name, target: body.target } as never;
-      },
-    );
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    (service as any).create = async (_userId: string, body: { name: string; target: string }) => {
+      idCounter++;
+      return { id: `mock-${idCounter}`, name: body.name, target: body.target };
+    };
   });
 
   afterEach(() => {
@@ -182,7 +181,7 @@ describe('MonitorsService.importFromOpenApi', () => {
     expect(result.created).toBe(2);
     expect(result.monitors).toHaveLength(2);
 
-    const names = result.monitors.map((m: { name: string }) => m.name);
+    const names = (result.monitors as { name: string }[]).map((m) => m.name);
     expect(names).toContain('List users');
     expect(names).toContain('Create user');
   });

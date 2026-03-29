@@ -180,6 +180,9 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
         headerBaselineSetAt: true,
         statusWebhookUrl: true,
         statusWebhookSecret: true,
+        adaptiveIntervalEnabled: true,
+        adaptiveIntervalDownSec: true,
+        adaptiveIntervalDegradedSec: true,
         runs: {
           take: 1,
           orderBy: { checkedAt: 'desc' },
@@ -210,8 +213,23 @@ export class ChecksScheduler implements BeforeApplicationShutdown {
       if (monitor.cronExpression) {
         if (!isCronDue(monitor.cronExpression, latest?.checkedAt ?? null)) return false;
       } else {
-        // Otherwise fall back to fixed interval
-        if (latest && cycleStart - latest.checkedAt.getTime() < monitor.intervalSec * 1000) return false;
+        // Determine effective interval (adaptive interval when enabled and monitor is degraded/down)
+        let effectiveIntervalSec = monitor.intervalSec;
+        const adaptiveMonitor = monitor as typeof monitor & {
+          adaptiveIntervalEnabled?: boolean | null;
+          adaptiveIntervalDownSec?: number | null;
+          adaptiveIntervalDegradedSec?: number | null;
+        };
+        if (adaptiveMonitor.adaptiveIntervalEnabled && latest?.level) {
+          if (latest.level === 'red') {
+            // Down: use adaptiveIntervalDownSec or default to intervalSec / 4 (min 10s)
+            effectiveIntervalSec = adaptiveMonitor.adaptiveIntervalDownSec ?? Math.max(10, Math.floor(monitor.intervalSec / 4));
+          } else if (latest.level === 'yellow') {
+            // Degraded: use adaptiveIntervalDegradedSec or default to intervalSec / 2 (min 15s)
+            effectiveIntervalSec = adaptiveMonitor.adaptiveIntervalDegradedSec ?? Math.max(15, Math.floor(monitor.intervalSec / 2));
+          }
+        }
+        if (latest && cycleStart - latest.checkedAt.getTime() < effectiveIntervalSec * 1000) return false;
       }
 
       // Throttle: ensure at least throttleMs has elapsed since last check

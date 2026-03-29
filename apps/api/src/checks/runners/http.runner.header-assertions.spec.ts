@@ -2,6 +2,7 @@
  * Unit tests for evaluateHeaderAssertions() — pure function, no HTTP mocking needed.
  */
 
+import { describe, it, expect } from 'vitest';
 import { evaluateHeaderAssertions } from './http.runner';
 
 describe('evaluateHeaderAssertions', () => {

@@ -47,9 +47,9 @@ function makeService(prismaOverrides: Record<string, unknown> = {}): MonitorsSer
 describe('MonitorsService.dependencyGraph', () => {
   it('returns empty graph when no monitors exist', async () => {
     const svc = makeService();
-    (svc as never)['prisma'].monitor.findMany.mockResolvedValue([]);
-    (svc as never)['prisma'].monitorRun.findMany.mockResolvedValue([]);
-    (svc as never)['prisma'].monitorDependency.findMany.mockResolvedValue([]);
+    ((svc as unknown as { prisma: ReturnType<typeof makePrisma> }).prisma).monitor.findMany.mockResolvedValue([]);
+    ((svc as unknown as { prisma: ReturnType<typeof makePrisma> }).prisma).monitorRun.findMany.mockResolvedValue([]);
+    ((svc as unknown as { prisma: ReturnType<typeof makePrisma> }).prisma).monitorDependency.findMany.mockResolvedValue([]);
 
     const result = await svc.dependencyGraph('user-1');
     expect(result.nodes).toHaveLength(0);
@@ -73,8 +73,8 @@ describe('MonitorsService.dependencyGraph', () => {
     };
 
     const svc = makeService();
-    (svc as never)['prisma'].monitor.findMany.mockResolvedValue([monitor]);
-    (svc as never)['prisma'].monitorRun.findMany.mockImplementation((args: { orderBy?: { checkedAt?: string } }) => {
+    ((svc as unknown as { prisma: ReturnType<typeof makePrisma> }).prisma).monitor.findMany.mockResolvedValue([monitor]);
+    ((svc as unknown as { prisma: ReturnType<typeof makePrisma> }).prisma).monitorRun.findMany.mockImplementation((args: { orderBy?: { checkedAt?: string } }) => {
       // Return latest run for the "distinct monitorId" query (no gte filter)
       if (!args?.orderBy?.checkedAt) return Promise.resolve([]);
       return Promise.resolve([{
@@ -85,7 +85,7 @@ describe('MonitorsService.dependencyGraph', () => {
         checkedAt: now,
       }]);
     });
-    (svc as never)['prisma'].monitorDependency.findMany.mockResolvedValue([]);
+    ((svc as unknown as { prisma: ReturnType<typeof makePrisma> }).prisma).monitorDependency.findMany.mockResolvedValue([]);
 
     const result = await svc.dependencyGraph('user-1');
     expect(result.nodes).toHaveLength(1);
@@ -102,11 +102,11 @@ describe('MonitorsService.dependencyGraph', () => {
       id: 'm1', name: 'DB', type: 'TCP', enabled: true, folderId: null, folder: null, mutedUntil: null, pinned: false, createdAt: now,
     };
     const svc = makeService();
-    (svc as never)['prisma'].monitor.findMany.mockResolvedValue([monitor]);
-    (svc as never)['prisma'].monitorRun.findMany.mockImplementation(() =>
+    ((svc as unknown as { prisma: ReturnType<typeof makePrisma> }).prisma).monitor.findMany.mockResolvedValue([monitor]);
+    ((svc as unknown as { prisma: ReturnType<typeof makePrisma> }).prisma).monitorRun.findMany.mockImplementation(() =>
       Promise.resolve([{ monitorId: 'm1', ok: false, level: 'red', latencyMs: null, checkedAt: now }])
     );
-    (svc as never)['prisma'].monitorDependency.findMany.mockResolvedValue([]);
+    ((svc as unknown as { prisma: ReturnType<typeof makePrisma> }).prisma).monitorDependency.findMany.mockResolvedValue([]);
 
     const result = await svc.dependencyGraph('user-1');
     expect(result.nodes[0].status).toBe('down');
@@ -119,9 +119,9 @@ describe('MonitorsService.dependencyGraph', () => {
       id: 'm1', name: 'Paused', type: 'HTTP', enabled: false, folderId: null, folder: null, mutedUntil: null, pinned: false, createdAt: now,
     };
     const svc = makeService();
-    (svc as never)['prisma'].monitor.findMany.mockResolvedValue([monitor]);
-    (svc as never)['prisma'].monitorRun.findMany.mockResolvedValue([]);
-    (svc as never)['prisma'].monitorDependency.findMany.mockResolvedValue([]);
+    ((svc as unknown as { prisma: ReturnType<typeof makePrisma> }).prisma).monitor.findMany.mockResolvedValue([monitor]);
+    ((svc as unknown as { prisma: ReturnType<typeof makePrisma> }).prisma).monitorRun.findMany.mockResolvedValue([]);
+    ((svc as unknown as { prisma: ReturnType<typeof makePrisma> }).prisma).monitorDependency.findMany.mockResolvedValue([]);
 
     const result = await svc.dependencyGraph('user-1');
     expect(result.nodes[0].status).toBe('paused');
@@ -138,9 +138,9 @@ describe('MonitorsService.dependencyGraph', () => {
     const deps = [{ monitorId: 'app', dependsOnId: 'db' }];
 
     const svc = makeService();
-    (svc as never)['prisma'].monitor.findMany.mockResolvedValue(monitors);
-    (svc as never)['prisma'].monitorRun.findMany.mockResolvedValue([]);
-    (svc as never)['prisma'].monitorDependency.findMany.mockResolvedValue(deps);
+    ((svc as unknown as { prisma: ReturnType<typeof makePrisma> }).prisma).monitor.findMany.mockResolvedValue(monitors);
+    ((svc as unknown as { prisma: ReturnType<typeof makePrisma> }).prisma).monitorRun.findMany.mockResolvedValue([]);
+    ((svc as unknown as { prisma: ReturnType<typeof makePrisma> }).prisma).monitorDependency.findMany.mockResolvedValue(deps);
 
     const result = await svc.dependencyGraph('user-1');
 
@@ -166,9 +166,9 @@ describe('MonitorsService.dependencyGraph', () => {
       id: 'm1', name: 'Muted', type: 'HTTP', enabled: true, folderId: null, folder: null, mutedUntil: future, pinned: false, createdAt: now,
     };
     const svc = makeService();
-    (svc as never)['prisma'].monitor.findMany.mockResolvedValue([monitor]);
-    (svc as never)['prisma'].monitorRun.findMany.mockResolvedValue([]);
-    (svc as never)['prisma'].monitorDependency.findMany.mockResolvedValue([]);
+    ((svc as unknown as { prisma: ReturnType<typeof makePrisma> }).prisma).monitor.findMany.mockResolvedValue([monitor]);
+    ((svc as unknown as { prisma: ReturnType<typeof makePrisma> }).prisma).monitorRun.findMany.mockResolvedValue([]);
+    ((svc as unknown as { prisma: ReturnType<typeof makePrisma> }).prisma).monitorDependency.findMany.mockResolvedValue([]);
 
     const result = await svc.dependencyGraph('user-1');
     expect(result.nodes[0].isMuted).toBe(true);
@@ -180,9 +180,9 @@ describe('MonitorsService.dependencyGraph', () => {
       id: 'm1', name: 'App', type: 'HTTP', enabled: true, folderId: 'f1', folder: { name: 'Production' }, mutedUntil: null, pinned: false, createdAt: now,
     };
     const svc = makeService();
-    (svc as never)['prisma'].monitor.findMany.mockResolvedValue([monitor]);
-    (svc as never)['prisma'].monitorRun.findMany.mockResolvedValue([]);
-    (svc as never)['prisma'].monitorDependency.findMany.mockResolvedValue([]);
+    ((svc as unknown as { prisma: ReturnType<typeof makePrisma> }).prisma).monitor.findMany.mockResolvedValue([monitor]);
+    ((svc as unknown as { prisma: ReturnType<typeof makePrisma> }).prisma).monitorRun.findMany.mockResolvedValue([]);
+    ((svc as unknown as { prisma: ReturnType<typeof makePrisma> }).prisma).monitorDependency.findMany.mockResolvedValue([]);
 
     const result = await svc.dependencyGraph('user-1');
     expect(result.nodes[0].folderName).toBe('Production');

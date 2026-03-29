@@ -128,7 +128,7 @@ describe('CopyButton — render mode selection', () => {
 });
 
 describe('CopyButton — clipboard failure graceful degradation', () => {
-  it('clipboard failure does not throw (silent catch)', () => {
+  it('clipboard failure does not throw (silent catch)', async () => {
     // Simulate the catch block: error is silently swallowed
     const silentCopy = async () => {
       try {
@@ -138,7 +138,7 @@ describe('CopyButton — clipboard failure graceful degradation', () => {
       }
     };
 
-    expect(silentCopy()).resolves.toBeUndefined();
+    await expect(silentCopy()).resolves.toBeUndefined();
   });
 
   it('successful copy does not throw', async () => {

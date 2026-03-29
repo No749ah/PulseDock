@@ -167,6 +167,12 @@ export type MonitorFormData = {
   throttleMs?: number | null;
   /** Hard cap on checks per hour. Max 360. */
   maxChecksPerHour?: number | null;
+  /** When enabled, check frequency automatically increases when monitor is degraded/down. */
+  adaptiveIntervalEnabled?: boolean;
+  /** Check interval (seconds) when monitor is DOWN (red). Null = intervalSec / 4. */
+  adaptiveIntervalDownSec?: number | null;
+  /** Check interval (seconds) when monitor is DEGRADED (yellow). Null = intervalSec / 2. */
+  adaptiveIntervalDegradedSec?: number | null;
   /** Geo region tags for simulated multi-region monitoring (round-robin). */
   geoRegions?: string[];
   /** JSONPath to extract a numeric metric from response body (HTTP/BROWSER only) */

@@ -163,6 +163,9 @@ model Monitor {
   // Rate Limiting / Throttling
   throttleMs          Int?        // min ms between consecutive checks (null = no throttle)
   maxChecksPerHour    Int?        // hard cap on checks/hour (null = no cap, max 360)
+  adaptiveIntervalEnabled Boolean @default(false) // when true, use faster interval on degraded/down
+  adaptiveIntervalDownSec Int?    // interval when monitor is red (e.g. 15s); null = intervalSec / 4
+  adaptiveIntervalDegradedSec Int? // interval when monitor is yellow (e.g. 30s); null = intervalSec / 2
   geoRegions          String[]    @default([])  // configured regions to round-robin through (e.g. ["us-east-1", "eu-west-1"])
   // Custom Metric Capture (HTTP/BROWSER monitors only)
   metricPath          String?     // JSONPath to extract from response body (e.g. "$.queue.depth")

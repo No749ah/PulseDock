@@ -277,6 +277,25 @@ export class CreateMonitorDto {
   @Max(360)
   maxChecksPerHour?: number;
 
+  @ApiPropertyOptional({ description: 'When enabled, check frequency automatically increases when the monitor is degraded or down, and returns to normal on recovery.', example: true })
+  @IsOptional()
+  @IsBoolean()
+  adaptiveIntervalEnabled?: boolean;
+
+  @ApiPropertyOptional({ description: 'Check interval (seconds) to use when monitor is DOWN (red). Minimum 10s. Null = intervalSec / 4.', minimum: 10, maximum: 3600, example: 15 })
+  @IsOptional()
+  @IsInt()
+  @Min(10)
+  @Max(3600)
+  adaptiveIntervalDownSec?: number;
+
+  @ApiPropertyOptional({ description: 'Check interval (seconds) to use when monitor is DEGRADED (yellow). Minimum 15s. Null = intervalSec / 2.', minimum: 15, maximum: 3600, example: 30 })
+  @IsOptional()
+  @IsInt()
+  @Min(15)
+  @Max(3600)
+  adaptiveIntervalDegradedSec?: number;
+
   @ApiPropertyOptional({ description: 'Geo region tags for simulated multi-region monitoring (max 10 regions, 50 chars each). Round-robin assignment to runs.', example: ['us-east-1', 'eu-west-1', 'ap-southeast-1'] })
   @IsOptional()
   @IsArray()
@@ -533,6 +552,22 @@ export class UpdateMonitorDto {
   @Min(1)
   @Max(360)
   maxChecksPerHour?: number;
+
+  @IsOptional()
+  @IsBoolean()
+  adaptiveIntervalEnabled?: boolean;
+
+  @IsOptional()
+  @IsInt()
+  @Min(10)
+  @Max(3600)
+  adaptiveIntervalDownSec?: number | null;
+
+  @IsOptional()
+  @IsInt()
+  @Min(15)
+  @Max(3600)
+  adaptiveIntervalDegradedSec?: number | null;
 
   @IsOptional()
   @IsArray()

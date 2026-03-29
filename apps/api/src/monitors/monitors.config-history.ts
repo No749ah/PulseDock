@@ -11,7 +11,8 @@ export const TRACKED_FIELDS = [
   'flapThreshold', 'latencyAlertMs', 'anomalyDetection', 'anomalyMultiplier',
   'cronExpression', 'scheduleEnabled', 'scheduleDays', 'scheduleStartHour',
   'scheduleEndHour', 'sliLatencyTarget', 'rtoMinutes', 'throttleMs',
-  'maxChecksPerHour', 'metricPath', 'metricName', 'metricAlertMin', 'metricAlertMax',
+  'maxChecksPerHour', 'adaptiveIntervalEnabled', 'adaptiveIntervalDownSec', 'adaptiveIntervalDegradedSec',
+  'metricPath', 'metricName', 'metricAlertMin', 'metricAlertMax',
   'graphqlQuery', 'graphqlDataPath', 'graphqlExpectedValue',
 ] as const;
 

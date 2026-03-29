@@ -9,6 +9,8 @@ import { SearchService, SearchResultDto } from './search.service';
 function makeSearchService(): SearchService {
   return {
     search: vi.fn().mockResolvedValue({
+      query: '',
+      total: 0,
       monitors: [],
       incidents: [],
       status_pages: [],
@@ -18,6 +20,8 @@ function makeSearchService(): SearchService {
 }
 
 const emptyResult: SearchResultDto = {
+  query: '',
+  total: 0,
   monitors: [],
   incidents: [],
   status_pages: [],
@@ -113,7 +117,9 @@ describe('SearchController', () => {
 
   it('returns search results', async () => {
     vi.mocked(service.search).mockResolvedValue({
-      monitors: [{ id: 'm1', name: 'My API', type: 'HTTP', target: '', score: 1 }],
+      query: 'api',
+      total: 1,
+      monitors: [{ id: 'm1', type: 'monitor', title: 'My API', subtitle: 'HTTP', url: '/monitors/m1' }],
       incidents: [],
       status_pages: [],
       versions: [],
@@ -123,7 +129,7 @@ describe('SearchController', () => {
     const result = await controller.search(req, 'api');
 
     expect(result.monitors).toHaveLength(1);
-    expect(result.monitors[0].name).toBe('My API');
+    expect(result.monitors[0].title).toBe('My API');
   });
 
   it('trims whitespace from types param', async () => {

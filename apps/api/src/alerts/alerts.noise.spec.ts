@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { AlertsService } from './alerts.service';
 import type { PrismaService } from '../common/prisma.service';
 import type { MailerService } from '../common/mailer.service';
@@ -7,16 +7,13 @@ import type { RealtimeEvents } from '../realtime/realtime.events';
 import type { NotificationsService } from '../notifications/notifications.service';
 
 type MockPrisma = {
-  alertDeliveryLog: {
-    findMany: ReturnType<typeof vi.fn>;
-  };
+  alertDeliveryLog: { create: ReturnType<typeof vi.fn>; findMany: ReturnType<typeof vi.fn>; findFirst: ReturnType<typeof vi.fn> };
   monitor: {
     findMany: ReturnType<typeof vi.fn>;
   };
   alertChannel: { findMany: ReturnType<typeof vi.fn> };
   monitorAlert: { findMany: ReturnType<typeof vi.fn>; updateMany: ReturnType<typeof vi.fn> };
   alertGroup: { findMany: ReturnType<typeof vi.fn>; deleteMany: ReturnType<typeof vi.fn> };
-  alertDeliveryLog: { create: ReturnType<typeof vi.fn>; findMany: ReturnType<typeof vi.fn>; findFirst: ReturnType<typeof vi.fn> };
 };
 
 function makePrisma(): MockPrisma {

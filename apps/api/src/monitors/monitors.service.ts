@@ -201,6 +201,9 @@ export class MonitorsService {
       headerAssertions: (m as typeof m & { headerAssertions?: unknown }).headerAssertions ?? null,
       throttleMs: (m as typeof m & { throttleMs?: number | null }).throttleMs ?? null,
       maxChecksPerHour: (m as typeof m & { maxChecksPerHour?: number | null }).maxChecksPerHour ?? null,
+      adaptiveIntervalEnabled: (m as typeof m & { adaptiveIntervalEnabled?: boolean }).adaptiveIntervalEnabled ?? false,
+      adaptiveIntervalDownSec: (m as typeof m & { adaptiveIntervalDownSec?: number | null }).adaptiveIntervalDownSec ?? null,
+      adaptiveIntervalDegradedSec: (m as typeof m & { adaptiveIntervalDegradedSec?: number | null }).adaptiveIntervalDegradedSec ?? null,
       geoRegions: (m as typeof m & { geoRegions?: string[] }).geoRegions ?? [],
       createdAt: m.createdAt.toISOString(),
     };
@@ -252,6 +255,9 @@ export class MonitorsService {
     statusWebhookUrl?: string | null;
     throttleMs?: number;
     maxChecksPerHour?: number;
+    adaptiveIntervalEnabled?: boolean;
+    adaptiveIntervalDownSec?: number | null;
+    adaptiveIntervalDegradedSec?: number | null;
     geoRegions?: string[];
     metricPath?: string | null;
     metricName?: string | null;
@@ -320,6 +326,9 @@ export class MonitorsService {
         ...(body.statusWebhookSecret !== undefined ? { statusWebhookSecret: body.statusWebhookSecret ?? null } : {}),
         ...(body.throttleMs !== undefined ? { throttleMs: body.throttleMs } : {}),
         ...(body.maxChecksPerHour !== undefined ? { maxChecksPerHour: body.maxChecksPerHour } : {}),
+        ...(body.adaptiveIntervalEnabled !== undefined ? { adaptiveIntervalEnabled: body.adaptiveIntervalEnabled } : {}),
+        ...(body.adaptiveIntervalDownSec !== undefined ? { adaptiveIntervalDownSec: body.adaptiveIntervalDownSec ?? null } : {}),
+        ...(body.adaptiveIntervalDegradedSec !== undefined ? { adaptiveIntervalDegradedSec: body.adaptiveIntervalDegradedSec ?? null } : {}),
         ...(body.geoRegions !== undefined ? { geoRegions: body.geoRegions } : {}),
         ...(body.metricPath !== undefined ? { metricPath: body.metricPath ?? null } : {}),
         ...(body.metricName !== undefined ? { metricName: body.metricName ?? null } : {}),
@@ -449,6 +458,9 @@ export class MonitorsService {
     statusWebhookUrl?: string | null;
     throttleMs?: number | null;
     maxChecksPerHour?: number | null;
+    adaptiveIntervalEnabled?: boolean;
+    adaptiveIntervalDownSec?: number | null;
+    adaptiveIntervalDegradedSec?: number | null;
     geoRegions?: string[];
     metricPath?: string | null;
     metricName?: string | null;
@@ -523,6 +535,9 @@ export class MonitorsService {
         ...(body.statusWebhookSecret !== undefined ? { statusWebhookSecret: body.statusWebhookSecret ?? null } : {}),
         ...(body.throttleMs !== undefined ? { throttleMs: body.throttleMs } : {}),
         ...(body.maxChecksPerHour !== undefined ? { maxChecksPerHour: body.maxChecksPerHour } : {}),
+        ...(body.adaptiveIntervalEnabled !== undefined ? { adaptiveIntervalEnabled: body.adaptiveIntervalEnabled } : {}),
+        ...(body.adaptiveIntervalDownSec !== undefined ? { adaptiveIntervalDownSec: body.adaptiveIntervalDownSec ?? null } : {}),
+        ...(body.adaptiveIntervalDegradedSec !== undefined ? { adaptiveIntervalDegradedSec: body.adaptiveIntervalDegradedSec ?? null } : {}),
         ...(body.geoRegions !== undefined ? { geoRegions: body.geoRegions } : {}),
         ...(body.metricPath !== undefined ? { metricPath: body.metricPath ?? null } : {}),
         ...(body.metricName !== undefined ? { metricName: body.metricName ?? null } : {}),
@@ -567,6 +582,9 @@ export class MonitorsService {
       rtoMinutes: body.rtoMinutes !== undefined ? body.rtoMinutes : current.rtoMinutes,
       throttleMs: body.throttleMs !== undefined ? body.throttleMs : current.throttleMs,
       maxChecksPerHour: body.maxChecksPerHour !== undefined ? body.maxChecksPerHour : current.maxChecksPerHour,
+      adaptiveIntervalEnabled: body.adaptiveIntervalEnabled !== undefined ? body.adaptiveIntervalEnabled : (current as typeof current & { adaptiveIntervalEnabled?: boolean }).adaptiveIntervalEnabled ?? false,
+      adaptiveIntervalDownSec: body.adaptiveIntervalDownSec !== undefined ? body.adaptiveIntervalDownSec : (current as typeof current & { adaptiveIntervalDownSec?: number | null }).adaptiveIntervalDownSec ?? null,
+      adaptiveIntervalDegradedSec: body.adaptiveIntervalDegradedSec !== undefined ? body.adaptiveIntervalDegradedSec : (current as typeof current & { adaptiveIntervalDegradedSec?: number | null }).adaptiveIntervalDegradedSec ?? null,
       metricPath: body.metricPath !== undefined ? body.metricPath : current.metricPath,
       metricName: body.metricName !== undefined ? body.metricName : current.metricName,
       metricAlertMin: body.metricAlertMin !== undefined ? body.metricAlertMin : current.metricAlertMin,
@@ -1297,6 +1315,95 @@ export class MonitorsService {
       message: r.message,
       level: (r.level as 'green' | 'yellow' | 'red'),
     }));
+  }
+
+  /**
+   * Returns a real-time live feed of recent check runs across all monitors.
+   * Supports polling via `since` (ISO timestamp) to fetch only new runs.
+   * Returns up to `limit` runs (max 200) ordered newest-first.
+   * Also computes live stats: checks/min, failure rate, avg latency.
+   *
+   * @param userId - Authenticated user
+   * @param opts.limit - Max runs to return (default 100, max 200)
+   * @param opts.since - ISO timestamp; only return runs after this time
+   * @param opts.level - Filter by level: green | yellow | red
+   * @param opts.type - Filter by monitor type (e.g. HTTP, TCP, SSL)
+   */
+  async liveFeed(
+    userId: string,
+    opts?: { limit?: number; since?: string; level?: string; type?: string },
+  ) {
+    const limit = Math.min(200, Math.max(1, opts?.limit ?? 100));
+    const since = opts?.since ? new Date(opts.since) : undefined;
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: {
+        monitor: {
+          userId,
+          ...(opts?.type ? { type: opts.type as never } : {}),
+        },
+        ...(since ? { checkedAt: { gt: since } } : {}),
+        ...(opts?.level ? { level: opts.level } : {}),
+      },
+      orderBy: { checkedAt: 'desc' },
+      take: limit,
+      include: {
+        monitor: { select: { id: true, name: true, type: true, target: true } },
+      },
+    });
+
+    const items = runs.map((r) => ({
+      id: r.id,
+      monitorId: r.monitorId,
+      monitorName: r.monitor?.name ?? null,
+      monitorType: r.monitor?.type ?? null,
+      monitorUrl: r.monitor?.target ?? null,
+      checkedAt: r.checkedAt.toISOString(),
+      ok: r.ok,
+      statusCode: r.status,
+      latencyMs: r.latencyMs,
+      message: r.message,
+      level: (r.level as 'green' | 'yellow' | 'red'),
+      responseSizeBytes: r.responseSizeBytes ?? null,
+    }));
+
+    // Compute live stats from last 60 seconds of runs (or all returned if fewer)
+    const statsWindow = since
+      ? items
+      : items.slice(0, Math.min(items.length, 100));
+
+    const totalRuns = statsWindow.length;
+    const failedRuns = statsWindow.filter((r) => r.level === 'red').length;
+    const degradedRuns = statsWindow.filter((r) => r.level === 'yellow').length;
+    const latencies = statsWindow.filter((r) => r.latencyMs != null).map((r) => r.latencyMs as number);
+    const avgLatencyMs = latencies.length > 0
+      ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length)
+      : null;
+
+    // Estimate checks/min from run timestamps
+    let checksPerMin: number | null = null;
+    if (items.length >= 2) {
+      const newest = new Date(items[0].checkedAt).getTime();
+      const oldest = new Date(items[items.length - 1].checkedAt).getTime();
+      const spanMs = newest - oldest;
+      if (spanMs > 0) {
+        checksPerMin = Math.round((items.length / spanMs) * 60_000 * 10) / 10;
+      }
+    }
+
+    return {
+      items,
+      stats: {
+        totalRuns,
+        failedRuns,
+        degradedRuns,
+        successRuns: totalRuns - failedRuns - degradedRuns,
+        failureRatePct: totalRuns > 0 ? Math.round((failedRuns / totalRuns) * 1000) / 10 : 0,
+        avgLatencyMs,
+        checksPerMin,
+      },
+      latestCheckedAt: items.length > 0 ? items[0].checkedAt : null,
+    };
   }
 
   /**

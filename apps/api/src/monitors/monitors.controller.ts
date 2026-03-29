@@ -520,6 +520,32 @@ export class MonitorsController {
     return this.monitorsService.uptimeHeatmap(req.user.id, days);
   }
 
+  @Get('live-feed')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Real-time live check feed',
+    description:
+      'Returns recent check runs across all monitors for live ops console display. ' +
+      'Supports incremental polling via `since` (ISO timestamp) to fetch only new runs. ' +
+      'Returns run items plus live stats (checks/min, failure rate, avg latency). ' +
+      'Use `level` to filter by green/yellow/red. Use `type` to filter by monitor type.',
+  })
+  @ApiQuery({ name: 'limit', required: false, description: 'Max runs to return (default 100, max 200)' })
+  @ApiQuery({ name: 'since', required: false, description: 'ISO timestamp — only return runs after this time (for incremental polling)' })
+  @ApiQuery({ name: 'level', required: false, description: 'Filter by level: green | yellow | red' })
+  @ApiQuery({ name: 'type', required: false, description: 'Filter by monitor type (e.g. HTTP, TCP, SSL)' })
+  @ApiResponse({ status: 200, description: 'Live feed items and stats returned.' })
+  liveFeed(
+    @Req() req: { user: { id: string } },
+    @Query('limit') limitParam?: string,
+    @Query('since') since?: string,
+    @Query('level') level?: string,
+    @Query('type') type?: string,
+  ) {
+    const limit = limitParam ? Math.min(200, Math.max(1, parseInt(limitParam, 10) || 100)) : 100;
+    return this.monitorsService.liveFeed(req.user.id, { limit, since, level, type });
+  }
+
   @Get('status-timeline')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({

@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { MaintenanceService, isWindowActive } from './maintenance.service';
+import { MaintenanceRecurrence } from './maintenance.dto';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -484,7 +485,7 @@ describe('MaintenanceService', () => {
 
     it('updates recurrence fields', async () => {
       prisma.maintenanceWindow.findUnique.mockResolvedValue(makeWindow());
-      await service.update('mw-1', 'user-1', { recurrence: 'WEEKLY', recurrenceDays: '1,3,5' });
+      await service.update('mw-1', 'user-1', { recurrence: MaintenanceRecurrence.WEEKLY, recurrenceDays: '1,3,5' });
       expect(prisma._tx.maintenanceWindow.update).toHaveBeenCalledWith(
         expect.objectContaining({
           data: expect.objectContaining({ recurrence: 'WEEKLY', recurrenceDays: '1,3,5' }),

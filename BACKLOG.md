@@ -1,3 +1,12 @@
+## Status Summary (2026-03-29 19:18 UTC)
+- **Build/Test:** ✅ 247 test files, 5346 tests passing (4567 API + 757 web + 12 agent + 10 CLI); 0 TS errors; code quality 8/8 (zero `any` types); web + API build clean
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-29-afternoon
+- **Last changes (19:18 UTC cycle):**
+  - [x] **Prometheus check execution metrics** — `pulsedock_checks_executed_total{type,result}` counter tracks per-type ok/fail check counts. `pulsedock_check_duration_ms{type}` histogram with 10 buckets (50ms–60s) for check latency distribution. `pulsedock_checks_in_flight` gauge for concurrent check monitoring. MetricsService wired into ChecksService via @Optional() DI. 4 new tests.
+  - [x] **README + CHANGELOG updates** — Test badge 5340+, changelog entries for Prometheus metrics.
+
 ## Status Summary (2026-03-29 18:18 UTC)
 - **Build/Test:** ✅ 247 test files, 5342 tests passing (4563 API + 757 web + 12 agent + 10 CLI); 0 TS errors; code quality 8/8 (zero `any` types); web + API build clean
 - **Security/Audit:** ✅ 0 vulnerabilities

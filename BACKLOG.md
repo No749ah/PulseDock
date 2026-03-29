@@ -1,3 +1,11 @@
+## Status Summary (2026-03-29 15:30 UTC)
+- **Build/Test:** ✅ 240 test files, 5247 tests passing; 0 TS errors; web + API build clean
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-29-afternoon
+- **Last changes (15:30 UTC cycle):**
+  - [x] **Test coverage boost for low-coverage modules (+34 tests)** — Deployments service: list filters (service/environment/status/days), update, getMonitorImpact (before/after latency, null handling, missing deployment). Deployments controller: all 8 endpoints + verifyDeployment (linked monitors, failure handling), PublicDeploymentsController receive. Playbooks: getForIncident (live/none sources), markStep, update, delete, findOne, attachToMonitor (null clear, bad playbook). Dependencies: getImpactAnalysis (root causes, downstream depth, missing monitor), setDependencies (empty clear, missing monitor), removeDependency, getDependenciesForMonitor, getDependencyGraph (nodes+edges build), cycle handling.
+
 ## Status Summary (2026-03-29 12:48 UTC)
 - **Build/Test:** ✅ 194 test files, 4348 tests passing; 0 TS errors; web + API build clean
 - **Security/Audit:** ✅ 0 vulnerabilities

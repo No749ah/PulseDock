@@ -1,3 +1,11 @@
+## Status Summary (2026-03-29 12:48 UTC)
+- **Build/Test:** ✅ 194 test files, 4348 tests passing; 0 TS errors; web + API build clean
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-29-afternoon
+- **Last changes (12:48 UTC cycle):**
+  - [x] **Monitor Dependencies & Impact Analysis** — `MonitorDependency` Prisma model + migration. Full CRUD: `GET /v1/dependencies/graph` (full dep graph with live status), `POST /v1/monitors/:id/dependencies` (set/replace deps, validates no self-deps, validates dep monitors exist), `DELETE /v1/monitors/:id/dependencies/:dependsOnId`, `GET /v1/monitors/:id/impact` (BFS downstream + upstream root-cause analysis with depth indicators). Frontend `/monitors/dependencies`: two-panel layout — left panel shows configured monitors + dep counts, right panel is a multi-checkbox config UX + impact analysis section with downstream depth arrows. Nav link added under Monitoring. 8 unit tests.
+
 ## Status Summary (2026-03-29 12:24 UTC)
 - **Build/Test:** ✅ 193 test files, 4340 tests passing; 0 TS errors; web + API build clean
 - **Security/Audit:** ✅ 0 vulnerabilities

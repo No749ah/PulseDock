@@ -2095,6 +2095,16 @@ export class MonitorsController {
     return this.monitorsService.anomalyReport(req.user.id, validH);
   }
 
+  // ─── Failure Prediction ─────────────────────────────────────────────────
+
+  @Get('failure-prediction')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'Predict which monitors are likely to fail based on trend analysis' })
+  @ApiResponse({ status: 200, description: 'Failure prediction data for all monitors' })
+  getFailurePrediction(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.failurePrediction(req.user.id);
+  }
+
   // ─── Config Change History ──────────────────────────────────────────────
 
   @Get(':id/config-history')

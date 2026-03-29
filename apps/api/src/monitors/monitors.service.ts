@@ -8857,6 +8857,195 @@ export class MonitorsService {
     };
   }
 
+  // ─── Failure Prediction ─────────────────────────────────────────────────
+
+  async failurePrediction(userId: string): Promise<{
+    predictions: Array<{
+      monitorId: string;
+      monitorName: string;
+      monitorType: string;
+      currentUptimePct: number;
+      currentAvgLatencyMs: number | null;
+      riskScore: number;
+      prediction: 'stable' | 'watch' | 'at_risk' | 'likely_failure';
+      estimatedHoursToFailure: number | null;
+      trend: {
+        uptimeSlopePctPerDay: number;
+        latencySlopeMsPerDay: number | null;
+      };
+      lastCheckOk: boolean | null;
+      checkCount: number;
+    }>;
+    summary: {
+      total: number;
+      stable: number;
+      watch: number;
+      atRisk: number;
+      likelyFailure: number;
+      avgFleetRisk: number;
+    };
+  }> {
+    const since7d = new Date(Date.now() - 7 * 24 * 3_600_000);
+    const since24h = new Date(Date.now() - 24 * 3_600_000);
+
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, enabled: true },
+      select: { id: true, name: true, type: true },
+    });
+
+    const allRuns = await this.prisma.monitorRun.findMany({
+      where: {
+        monitorId: { in: monitors.map((m) => m.id) },
+        checkedAt: { gte: since7d },
+      },
+      select: { monitorId: true, ok: true, latencyMs: true, checkedAt: true },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    // Group by monitorId
+    const runsByMonitor = new Map<string, typeof allRuns>();
+    for (const r of allRuns) {
+      if (!runsByMonitor.has(r.monitorId)) runsByMonitor.set(r.monitorId, []);
+      runsByMonitor.get(r.monitorId)!.push(r);
+    }
+
+    const predictions: Awaited<ReturnType<MonitorsService['failurePrediction']>>['predictions'] = [];
+
+    for (const monitor of monitors) {
+      const runs = runsByMonitor.get(monitor.id) ?? [];
+
+      // Skip if fewer than 10 runs
+      if (runs.length < 10) continue;
+
+      // ── Daily buckets for 7d trend (day 0 = oldest, day 6 = most recent) ──
+      const dailyBuckets: Array<{ day: number; okCount: number; totalCount: number; totalLatency: number; latencyCount: number }> =
+        Array.from({ length: 7 }, (_, i) => ({ day: i, okCount: 0, totalCount: 0, totalLatency: 0, latencyCount: 0 }));
+
+      const now = Date.now();
+      for (const r of runs) {
+        const ageMs = now - r.checkedAt.getTime();
+        const dayIdx = Math.min(6, Math.floor(ageMs / (24 * 3_600_000)));
+        const bucket = dailyBuckets[6 - dayIdx]; // 6 = most recent
+        if (!bucket) continue;
+        bucket.totalCount++;
+        if (r.ok) bucket.okCount++;
+        if (r.latencyMs !== null && r.latencyMs !== undefined) {
+          bucket.totalLatency += r.latencyMs;
+          bucket.latencyCount++;
+        }
+      }
+
+      // ── Uptime trend ─────────────────────────────────────────────────
+      const uptimePoints = dailyBuckets
+        .filter((b) => b.totalCount > 0)
+        .map((b) => ({ x: b.day, y: (b.okCount / b.totalCount) * 100 }));
+
+      const uptimeReg = uptimePoints.length >= 2 ? linearRegression(uptimePoints) : { slope: 0, intercept: 100 };
+
+      // ── Latency trend ─────────────────────────────────────────────────
+      const latencyPoints = dailyBuckets
+        .filter((b) => b.latencyCount > 0)
+        .map((b) => ({ x: b.day, y: b.totalLatency / b.latencyCount }));
+
+      const latencyReg = latencyPoints.length >= 2 ? linearRegression(latencyPoints) : null;
+
+      // ── Overall 7d stats ──────────────────────────────────────────────
+      const totalRuns = runs.length;
+      const okRuns = runs.filter((r) => r.ok).length;
+      const currentUptimePct = Math.round((okRuns / totalRuns) * 10000) / 100;
+
+      const latencyRuns = runs.filter((r) => r.latencyMs !== null && r.latencyMs !== undefined);
+      const currentAvgLatencyMs =
+        latencyRuns.length > 0
+          ? Math.round(latencyRuns.reduce((sum, r) => sum + (r.latencyMs ?? 0), 0) / latencyRuns.length)
+          : null;
+
+      // ── 24h failure burst ─────────────────────────────────────────────
+      const recent24hRuns = runs.filter((r) => r.checkedAt >= since24h);
+      const recent24hFailRate =
+        recent24hRuns.length > 0 ? recent24hRuns.filter((r) => !r.ok).length / recent24hRuns.length : 0;
+      const overall7dFailRate = totalRuns > 0 ? (totalRuns - okRuns) / totalRuns : 0;
+
+      // ── Risk score ───────────────────────────────────────────────────
+      let riskScore = 100 - currentUptimePct;
+
+      const uptimeSlope = uptimeReg.slope;
+      if (uptimeSlope < -2) riskScore += 30;
+      else if (uptimeSlope < -0.5) riskScore += 20;
+
+      if (latencyReg !== null && latencyPoints.length >= 2) {
+        const avgLatencyBase = latencyPoints[0]?.y ?? 1;
+        if (avgLatencyBase > 0) {
+          const latencyPctIncreasePerDay = (latencyReg.slope / avgLatencyBase) * 100;
+          if (latencyPctIncreasePerDay > 20) riskScore += 20;
+          else if (latencyPctIncreasePerDay > 5) riskScore += 10;
+        }
+      }
+
+      if (overall7dFailRate > 0 && recent24hFailRate >= overall7dFailRate * 2) riskScore += 25;
+
+      if (currentUptimePct < 95) riskScore += 15;
+
+      riskScore = Math.min(100, Math.max(0, Math.round(riskScore)));
+
+      // ── Prediction label ─────────────────────────────────────────────
+      let prediction: 'stable' | 'watch' | 'at_risk' | 'likely_failure';
+      if (riskScore < 15) prediction = 'stable';
+      else if (riskScore <= 35) prediction = 'watch';
+      else if (riskScore <= 60) prediction = 'at_risk';
+      else prediction = 'likely_failure';
+
+      // ── Estimated hours to failure ────────────────────────────────────
+      let estimatedHoursToFailure: number | null = null;
+      if (prediction === 'at_risk' || prediction === 'likely_failure') {
+        if (uptimeSlope < 0 && currentUptimePct > 0) {
+          // Hours until uptime hits 0% at current daily degradation rate
+          const daysToZero = currentUptimePct / Math.abs(uptimeSlope);
+          const hours = Math.round(daysToZero * 24);
+          estimatedHoursToFailure = Math.min(168, Math.max(1, hours));
+        }
+      }
+
+      // ── Last check ───────────────────────────────────────────────────
+      const lastRun = runs[runs.length - 1];
+      const lastCheckOk = lastRun ? lastRun.ok : null;
+
+      predictions.push({
+        monitorId: monitor.id,
+        monitorName: monitor.name,
+        monitorType: monitor.type,
+        currentUptimePct,
+        currentAvgLatencyMs,
+        riskScore,
+        prediction,
+        estimatedHoursToFailure,
+        trend: {
+          uptimeSlopePctPerDay: Math.round(uptimeSlope * 100) / 100,
+          latencySlopeMsPerDay: latencyReg !== null ? Math.round(latencyReg.slope * 100) / 100 : null,
+        },
+        lastCheckOk,
+        checkCount: totalRuns,
+      });
+    }
+
+    // Sort by risk score descending
+    predictions.sort((a, b) => b.riskScore - a.riskScore);
+
+    const summary = {
+      total: predictions.length,
+      stable: predictions.filter((p) => p.prediction === 'stable').length,
+      watch: predictions.filter((p) => p.prediction === 'watch').length,
+      atRisk: predictions.filter((p) => p.prediction === 'at_risk').length,
+      likelyFailure: predictions.filter((p) => p.prediction === 'likely_failure').length,
+      avgFleetRisk:
+        predictions.length > 0
+          ? Math.round(predictions.reduce((s, p) => s + p.riskScore, 0) / predictions.length)
+          : 0,
+    };
+
+    return { predictions, summary };
+  }
+
 }
 
 export interface SuggestedMonitor {
@@ -9159,4 +9348,29 @@ async function getPlaygroundSslInfo(
 
     socket.on('error', reject);
   });
+}
+
+
+// ─── Linear Regression Helper ─────────────────────────────────────────────────
+
+/**
+ * Simple ordinary-least-squares linear regression.
+ * Returns { slope, intercept } for the line y = slope * x + intercept.
+ */
+export function linearRegression(points: { x: number; y: number }[]): { slope: number; intercept: number } {
+  const n = points.length;
+  if (n < 2) return { slope: 0, intercept: points[0]?.y ?? 0 };
+
+  const sumX = points.reduce((s, p) => s + p.x, 0);
+  const sumY = points.reduce((s, p) => s + p.y, 0);
+  const sumXY = points.reduce((s, p) => s + p.x * p.y, 0);
+  const sumX2 = points.reduce((s, p) => s + p.x * p.x, 0);
+
+  const denom = n * sumX2 - sumX * sumX;
+  if (denom === 0) return { slope: 0, intercept: sumY / n };
+
+  const slope = (n * sumXY - sumX * sumY) / denom;
+  const intercept = (sumY - slope * sumX) / n;
+
+  return { slope, intercept };
 }

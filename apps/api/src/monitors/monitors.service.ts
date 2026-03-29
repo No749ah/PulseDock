@@ -2298,7 +2298,7 @@ export class MonitorsService {
 
     const result = await this.prisma.monitorDependency.upsert({
       where: { monitorId_dependsOnId: { monitorId, dependsOnId } },
-      create: { monitorId, dependsOnId },
+      create: { userId, monitorId, dependsOnId },
       update: {},
       include: { dependsOn: { select: { id: true, name: true, type: true, target: true } } },
     });

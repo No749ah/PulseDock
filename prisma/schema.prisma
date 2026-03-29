@@ -89,6 +89,7 @@ model User {
   deployToken             String?              @unique
   deployEvents            DeploymentEvent[]
   playbooks               IncidentPlaybook[]
+  monitorDependencies     MonitorDependency[]
 }
 
 model Session {
@@ -198,9 +199,9 @@ model Monitor {
   maintenanceWindows MaintenanceWindowMonitor[]
   incidentMonitors   IncidentMonitor[]
   // Dependency graph: this monitor depends on other monitors
-  dependencies  MonitorDependency[] @relation("DependentMonitor")
+  dependencies  MonitorDependency[] @relation("DependencyMonitor")
   // Monitors that depend on this monitor
-  dependents    MonitorDependency[] @relation("DependencyMonitor")
+  dependents    MonitorDependency[] @relation("DependencyDependsOn")
   events        MonitorEvent[]
   acknowledgements AlertAcknowledgement[]
   annotations   MonitorAnnotation[]
@@ -233,16 +234,19 @@ model AlertAcknowledgement {
 /// Monitor dependency: when the "dependency" monitor is down, suppress alerts on the "dependent" monitor
 model MonitorDependency {
   id           String   @id @default(cuid())
+  userId       String
   /// The monitor that is suppressed when the dependency is down
   monitorId    String
   /// The monitor that must be UP for the dependent monitor to alert normally
   dependsOnId  String
   createdAt    DateTime @default(now())
 
-  monitor    Monitor @relation("DependentMonitor", fields: [monitorId], references: [id], onDelete: Cascade)
-  dependsOn  Monitor @relation("DependencyMonitor", fields: [dependsOnId], references: [id], onDelete: Cascade)
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monitor    Monitor @relation("DependencyMonitor", fields: [monitorId], references: [id], onDelete: Cascade)
+  dependsOn  Monitor @relation("DependencyDependsOn", fields: [dependsOnId], references: [id], onDelete: Cascade)
 
   @@unique([monitorId, dependsOnId])
+  @@index([userId])
   @@index([monitorId])
   @@index([dependsOnId])
 }

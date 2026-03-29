@@ -77,6 +77,10 @@ import { SearchService } from './search/search.service';
 import { DeploymentsController, PublicDeploymentsController } from './deployments/deployments.controller';
 import { DeploymentsService } from './deployments/deployments.service';
 import { PlaybooksModule } from './playbooks/playbooks.module';
+import { PlaybooksController } from './playbooks/playbooks.controller';
+import { PlaybooksService } from './playbooks/playbooks.service';
+import { DependenciesController } from './dependencies/dependencies.controller';
+import { DependenciesService } from './dependencies/dependencies.service';
 
 @Module({
   imports: [
@@ -126,6 +130,8 @@ import { PlaybooksModule } from './playbooks/playbooks.module';
     ServiceGroupsController,
     DeploymentsController,
     PublicDeploymentsController,
+    DependenciesController,
+    PlaybooksController,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
@@ -164,6 +170,8 @@ import { PlaybooksModule } from './playbooks/playbooks.module';
     SearchService,
     ServiceGroupsService,
     DeploymentsService,
+    DependenciesService,
+    PlaybooksService,
   ],
 })
 export class AppModule implements NestModule {

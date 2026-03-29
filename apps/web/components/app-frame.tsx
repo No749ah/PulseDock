@@ -99,7 +99,7 @@ const navGroups: NavGroup[] = [
       { href: '/monitors/schedule', label: 'Check Schedule', icon: Clock },
       { href: '/monitors/downtime-cost', label: 'Cost Impact', icon: Target },
       { href: '/monitors/anomaly', label: 'Anomaly Report', icon: AlertTriangle },
-      { href: '/monitors/dependencies', label: 'Topology', icon: GitBranch },
+      { href: '/monitors/dependencies', label: 'Dependencies', icon: GitBranch },
       { href: '/monitors/correlation', label: 'Correlation', icon: GitMerge },
       { href: '/monitors/security', label: 'Security Headers', icon: Shield },
       { href: '/monitors/services', label: 'Service Groups', icon: Layers },

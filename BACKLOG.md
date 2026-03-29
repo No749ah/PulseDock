@@ -17,6 +17,20 @@
   - [x] **Fix AlertDeliveryLog schema mismatch** — `deliveryResponseTime()` was referencing non-existent fields (`userId`, `sentAt`, `channel`) on `AlertDeliveryLog`. Fixed: filter by `alertChannel.userId`, replaced `sentAt - createdAt` latency with `durationMs`, renamed relation from `channel` to `alertChannel`. Unblocked API build. Also committed previously pending alert response-time + version drift pages.
   - [x] **Maintenance Window Effectiveness** — `GET /v1/maintenance/effectiveness?days=N`. For each past one-shot window: failure rate during window vs equal-duration baseline period, suppressed alert count, post-maintenance recovery time (first ok check within 30min after window), status classification (effective/over-active/no-data). Fleet summary: noise reduction %, avg duration, total suppressed alerts. Frontend `/maintenance/effectiveness`: period selector, expandable window cards with failure rate comparison bars, recovery stats, smart recommendations. Nav link added. 6 unit tests.
 
+## Status Summary (2026-03-29 08:50 UTC)
+- **Build/Test:** ✅ 237 test files, ~5160 tests passing; 0 TS errors; web + API build clean
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-29-early
+- **Last changes (08:50 UTC cycle):**
+  - [x] **HTTP Timing Breakdown** — `GET /v1/monitors/timing-breakdown?days=N`. Fleet DNS/TCP/TLS/TTFB/Download aggregation. Bottleneck detection per monitor + fleet. Waterfall bar visualization, clickable phase filter. 6 unit tests.
+  - [x] **Alert Channels Health** — `GET /v1/alerts/channels-health`. Per-channel success rate, delivery counts, health status (healthy/degraded/failing/no-data). Frontend `/alerts/channels`. 6 unit tests.
+  - [x] **Check Interval Optimizer** — `GET /v1/monitors/interval-optimizer`. Data-driven check frequency recommendations (increase/decrease/optimal/new) based on incident history + detection times. 6 unit tests.
+  - [x] **Status Page View Analytics** — `GET /v1/status-pages/analytics`. View count tracking on public page fetches. Total views, per-page stats. Frontend `/status/analytics`. 4 unit tests.
+  - [x] **Deployment Events** — Full CRUD CI/CD integration hooks. 9 unit tests.
+  - [x] **Version Drift Report** — Semver gap analysis, major/minor/patch scoring. 8 unit tests.
+  - [x] **Alert Response Time** — Delivery latency P50/P95/max per channel. 5 unit tests.
+
 ## Status Summary (2026-03-29 08:25 UTC)
 - **Build/Test:** ✅ 233 test files, 5120 tests passing; 0 TS errors; web + API build clean
 - **Security/Audit:** ✅ 0 vulnerabilities

@@ -1,3 +1,21 @@
+## Status Summary (2026-03-29 12:24 UTC)
+- **Build/Test:** ✅ 193 test files, 4340 tests passing; 0 TS errors; web + API build clean
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-29-midday
+- **Last changes (12:24 UTC cycle):**
+  - [x] **Incident Response Playbooks** — `IncidentPlaybook` Prisma model + migration. CRUD `/v1/playbooks`. Attach/detach playbook to monitors. On incident fire, playbook auto-snapshotted onto incident (`playbookSteps` JSON). Step completion tracking (`PATCH /v1/incidents/:id/playbook-step/:stepId`). Frontend `/incidents/playbooks`: cards grid with step counts + severity badges, create/edit modal with drag-step UX (type select: check/escalate/runbook/command/notify), empty state. Nav link added under Incidents. 8 unit tests.
+
+## Status Summary (2026-03-29 12:10 UTC)
+- **Build/Test:** ✅ 234 test files, 5158 tests passing; 0 TS errors; web + API build clean
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-29-midday (merged early → dev at 12:00 UTC)
+- **Last changes (12:10 UTC cycle):**
+  - [x] **Collapsible sidebar navigation** — Restructured 51 flat nav items into 6 groups (Overview, Monitoring, Alerting, Operations, Insights, Administration) with primary (always visible) and secondary (collapsible) items. Reduces initial sidebar from ~51 to ~22 visible items. "N more" toggle per group. Auto-expands group when navigating to a secondary page. Collapsed state persisted in localStorage. Removed duplicate heatmap entry. Split old "Management" into "Alerting" + "Operations" for clarity.
+  - [x] **Uncommitted changes** — Committed pending deployment events improvements + API key usage tests from previous cycle.
+  - [x] **Branch management** — Merged heartbeat/2026-03-29-early → dev, deleted old branch, created heartbeat/2026-03-29-midday.
+
 ## Status Summary (2026-03-29 08:35 UTC)
 - **Build/Test:** ✅ API build clean, 0 TS errors, all pages 200; public URL 200
 - **Security/Audit:** ✅ 0 vulnerabilities

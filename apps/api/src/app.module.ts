@@ -76,6 +76,7 @@ import { SearchController } from './search/search.controller';
 import { SearchService } from './search/search.service';
 import { DeploymentsController, PublicDeploymentsController } from './deployments/deployments.controller';
 import { DeploymentsService } from './deployments/deployments.service';
+import { PlaybooksModule } from './playbooks/playbooks.module';
 
 @Module({
   imports: [
@@ -83,6 +84,7 @@ import { DeploymentsService } from './deployments/deployments.service';
     JwtModule.register({}),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
     RealtimeModule,
+    PlaybooksModule,
   ],
   controllers: [
     AppController,

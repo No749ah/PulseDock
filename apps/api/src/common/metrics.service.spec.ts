@@ -91,6 +91,16 @@ describe('MetricsService', () => {
       const text = service.prometheusText();
       expect(text.endsWith('\n')).toBe(true);
     });
+
+    it('includes process memory gauges', () => {
+      const text = service.prometheusText();
+      expect(text).toContain('# HELP pulsedock_process_heap_used_bytes');
+      expect(text).toContain('# TYPE pulsedock_process_heap_used_bytes gauge');
+      expect(text).toMatch(/pulsedock_process_heap_used_bytes \d+/);
+      expect(text).toContain('pulsedock_process_rss_bytes');
+      expect(text).toContain('pulsedock_process_heap_total_bytes');
+      expect(text).toContain('pulsedock_process_external_bytes');
+    });
   });
 
   describe('observeHttpDuration()', () => {

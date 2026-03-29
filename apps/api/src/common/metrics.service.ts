@@ -116,10 +116,27 @@ export class MetricsService {
     lines.push(`pulsedock_http_request_duration_ms_sum ${this.httpDurationSum}`);
     lines.push(`pulsedock_http_request_duration_ms_count ${this.httpDurationCount}`);
 
-    // Add process uptime as a gauge
+    // Process metrics
     lines.push('# HELP pulsedock_process_uptime_seconds Process uptime in seconds');
     lines.push('# TYPE pulsedock_process_uptime_seconds gauge');
     lines.push(`pulsedock_process_uptime_seconds ${Math.floor(process.uptime())}`);
+
+    const mem = process.memoryUsage();
+    lines.push('# HELP pulsedock_process_heap_used_bytes Process heap memory used in bytes');
+    lines.push('# TYPE pulsedock_process_heap_used_bytes gauge');
+    lines.push(`pulsedock_process_heap_used_bytes ${mem.heapUsed}`);
+
+    lines.push('# HELP pulsedock_process_heap_total_bytes Process heap memory total in bytes');
+    lines.push('# TYPE pulsedock_process_heap_total_bytes gauge');
+    lines.push(`pulsedock_process_heap_total_bytes ${mem.heapTotal}`);
+
+    lines.push('# HELP pulsedock_process_rss_bytes Process resident set size in bytes');
+    lines.push('# TYPE pulsedock_process_rss_bytes gauge');
+    lines.push(`pulsedock_process_rss_bytes ${mem.rss}`);
+
+    lines.push('# HELP pulsedock_process_external_bytes Process external memory in bytes (C++ objects bound to JS)');
+    lines.push('# TYPE pulsedock_process_external_bytes gauge');
+    lines.push(`pulsedock_process_external_bytes ${mem.external}`);
 
     // Trailing newline required by Prometheus text format
     lines.push('');

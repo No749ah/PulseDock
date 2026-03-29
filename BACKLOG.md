@@ -7,6 +7,18 @@
   - [x] **Fix AlertDeliveryLog schema mismatch** — `deliveryResponseTime()` was referencing non-existent fields (`userId`, `sentAt`, `channel`) on `AlertDeliveryLog`. Fixed: filter by `alertChannel.userId`, replaced `sentAt - createdAt` latency with `durationMs`, renamed relation from `channel` to `alertChannel`. Unblocked API build. Also committed previously pending alert response-time + version drift pages.
   - [x] **Maintenance Window Effectiveness** — `GET /v1/maintenance/effectiveness?days=N`. For each past one-shot window: failure rate during window vs equal-duration baseline period, suppressed alert count, post-maintenance recovery time (first ok check within 30min after window), status classification (effective/over-active/no-data). Fleet summary: noise reduction %, avg duration, total suppressed alerts. Frontend `/maintenance/effectiveness`: period selector, expandable window cards with failure rate comparison bars, recovery stats, smart recommendations. Nav link added. 6 unit tests.
 
+## Status Summary (2026-03-29 08:25 UTC)
+- **Build/Test:** ✅ 233 test files, 5120 tests passing; 0 TS errors; web + API build clean
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-29-early
+- **Last changes (08:25 UTC cycle):**
+  - [x] **Deployment Events** — `DeploymentEvent` Prisma model + migration. Full CRUD `/v1/deployments`. Alert suppression during deployments (`suppressAlerts` flag). Auto-annotates linked monitors. Frontend `/deployments` page. 9 unit tests.
+  - [x] **Version Drift Report** — `GET /v1/monitors/version-drift`. Semver gap analysis per version monitor (major/minor/patch/up-to-date/unknown). Sort by severity. Drift score formula. Frontend `/versions/drift`: filter pills, searchable table, drift progress bars. 8 unit tests.
+  - [x] **Alert Response Time** — `GET /v1/alerts/response-time?days=N` (1–90d). Delivery latency per channel: avg, P50, P95, max. Fleet stats + daily trend chart. Frontend `/alerts/response-time`. 5 unit tests.
+  - [x] **Maintenance Window Effectiveness** — `GET /v1/maintenance/effectiveness`. Per-window failure rate during vs baseline, suppressed alerts count, post-maintenance recovery time. 
+  - [x] **Reliability Trends, Latency Heatmap, Incident Insights** — (from prior cycle)
+
 ## Status Summary (2026-03-29 07:52 UTC)
 - **Build/Test:** ✅ 228 test files, 5095 tests passing; 0 TS errors; web + API build clean
 - **Security/Audit:** ✅ 0 vulnerabilities

@@ -14,6 +14,17 @@
 - **Last changes (12:24 UTC cycle):**
   - [x] **Incident Response Playbooks** — `IncidentPlaybook` Prisma model + migration. CRUD `/v1/playbooks`. Attach/detach playbook to monitors. On incident fire, playbook auto-snapshotted onto incident (`playbookSteps` JSON). Step completion tracking (`PATCH /v1/incidents/:id/playbook-step/:stepId`). Frontend `/incidents/playbooks`: cards grid with step counts + severity badges, create/edit modal with drag-step UX (type select: check/escalate/runbook/command/notify), empty state. Nav link added under Incidents. 8 unit tests.
 
+## Status Summary (2026-03-29 14:40 UTC)
+- **Build/Test:** ✅ 237 test files, 5183 tests passing; 0 TS errors; web + API build clean
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-29-afternoon
+- **Last changes (14:40 UTC cycle):**
+  - [x] **Fix migration failures** — Resolved 2 failed migrations (20260329090000_add_status_page_view_count, 20260329121300_add_incident_playbooks) by marking as rolled-back/applied. Applied pending migrations (20260329123000_add_monitor_dependencies_userid, 20260329140000_add_monitor_priority).
+  - [x] **Monitor priority field — full implementation** — Prisma schema `priority Int @default(0)` on Monitor model. Migration `20260329140000_add_monitor_priority`. DTO updates (create + update + bulk edit). Service methods (create clamps 0-4, update clamps 0-4, bulk edit with clamp, list/getOne mapping). Frontend: P1/P2/P3/P4 colored badges in monitors list + detail page header. Priority selector dropdown in Advanced Settings of monitor form. 9 unit tests.
+  - [x] **Fix playbooks page TS errors** — `api.get/post/patch/delete` → standard `api()` function pattern. `addToast()` → `useToast().success/error()`.
+  - [x] **Fix migration idempotency** — Rewrote `add_incident_playbooks` migration to use `IF NOT EXISTS` to survive partial runs.
+
 ## Status Summary (2026-03-29 12:10 UTC)
 - **Build/Test:** ✅ 234 test files, 5158 tests passing; 0 TS errors; web + API build clean
 - **Security/Audit:** ✅ 0 vulnerabilities

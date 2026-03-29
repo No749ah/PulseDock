@@ -1,4 +1,5 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { monitorEventLoopDelay, type IntervalHistogram } from 'node:perf_hooks';
 import type { PrismaService } from './prisma.service';
 
 const METRIC_DEFS: Record<string, { help: string; type: 'counter' | 'gauge'; prometheusName: string }> = {
@@ -35,7 +36,24 @@ function sanitizeLabel(value: string): string {
  * TSDB via OpenTelemetry rather than extending this service.
  */
 @Injectable()
-export class MetricsService {
+export class MetricsService implements OnModuleInit, OnModuleDestroy {
+  /** Event loop delay histogram (20ms resolution). */
+  private eld: IntervalHistogram | null = null;
+
+  onModuleInit() {
+    try {
+      this.eld = monitorEventLoopDelay({ resolution: 20 });
+      this.eld.enable();
+    } catch {
+      // Graceful fallback if perf_hooks unavailable
+      this.eld = null;
+    }
+  }
+
+  onModuleDestroy() {
+    this.eld?.disable();
+  }
+
   private readonly counters = {
     requestsTotal: 0,
     errorsTotal: 0,
@@ -222,6 +240,54 @@ export class MetricsService {
     lines.push('# HELP pulsedock_process_external_bytes Process external memory in bytes (C++ objects bound to JS)');
     lines.push('# TYPE pulsedock_process_external_bytes gauge');
     lines.push(`pulsedock_process_external_bytes ${mem.external}`);
+
+    // Event loop delay metrics (from perf_hooks monitorEventLoopDelay)
+    if (this.eld) {
+      const toMs = (ns: number) => Number((ns / 1e6).toFixed(3));
+      lines.push('# HELP pulsedock_eventloop_lag_min_ms Minimum event loop delay in milliseconds');
+      lines.push('# TYPE pulsedock_eventloop_lag_min_ms gauge');
+      lines.push(`pulsedock_eventloop_lag_min_ms ${toMs(this.eld.min)}`);
+
+      lines.push('# HELP pulsedock_eventloop_lag_max_ms Maximum event loop delay in milliseconds');
+      lines.push('# TYPE pulsedock_eventloop_lag_max_ms gauge');
+      lines.push(`pulsedock_eventloop_lag_max_ms ${toMs(this.eld.max)}`);
+
+      lines.push('# HELP pulsedock_eventloop_lag_mean_ms Mean event loop delay in milliseconds');
+      lines.push('# TYPE pulsedock_eventloop_lag_mean_ms gauge');
+      lines.push(`pulsedock_eventloop_lag_mean_ms ${toMs(this.eld.mean)}`);
+
+      lines.push('# HELP pulsedock_eventloop_lag_p50_ms Event loop delay 50th percentile in milliseconds');
+      lines.push('# TYPE pulsedock_eventloop_lag_p50_ms gauge');
+      lines.push(`pulsedock_eventloop_lag_p50_ms ${toMs(this.eld.percentile(50))}`);
+
+      lines.push('# HELP pulsedock_eventloop_lag_p99_ms Event loop delay 99th percentile in milliseconds');
+      lines.push('# TYPE pulsedock_eventloop_lag_p99_ms gauge');
+      lines.push(`pulsedock_eventloop_lag_p99_ms ${toMs(this.eld.percentile(99))}`);
+    }
+
+    // Active handles and requests (Node.js process health indicators)
+    const activeHandles = (process as NodeJS.Process & { _getActiveHandles?: () => unknown[] })._getActiveHandles?.()?.length ?? -1;
+    const activeRequests = (process as NodeJS.Process & { _getActiveRequests?: () => unknown[] })._getActiveRequests?.()?.length ?? -1;
+    if (activeHandles >= 0) {
+      lines.push('# HELP pulsedock_process_active_handles Number of active libuv handles');
+      lines.push('# TYPE pulsedock_process_active_handles gauge');
+      lines.push(`pulsedock_process_active_handles ${activeHandles}`);
+    }
+    if (activeRequests >= 0) {
+      lines.push('# HELP pulsedock_process_active_requests Number of active libuv requests');
+      lines.push('# TYPE pulsedock_process_active_requests gauge');
+      lines.push(`pulsedock_process_active_requests ${activeRequests}`);
+    }
+
+    // CPU usage (user + system time in seconds since process start)
+    const cpuUsage = process.cpuUsage();
+    lines.push('# HELP pulsedock_process_cpu_user_seconds_total Total user CPU time in seconds');
+    lines.push('# TYPE pulsedock_process_cpu_user_seconds_total counter');
+    lines.push(`pulsedock_process_cpu_user_seconds_total ${(cpuUsage.user / 1e6).toFixed(3)}`);
+
+    lines.push('# HELP pulsedock_process_cpu_system_seconds_total Total system CPU time in seconds');
+    lines.push('# TYPE pulsedock_process_cpu_system_seconds_total counter');
+    lines.push(`pulsedock_process_cpu_system_seconds_total ${(cpuUsage.system / 1e6).toFixed(3)}`);
 
     // Trailing newline required by Prometheus text format
     lines.push('');

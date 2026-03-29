@@ -183,6 +183,47 @@ describe('MetricsService', () => {
     });
   });
 
+  describe('event loop lag metrics', () => {
+    it('includes event loop lag gauges after onModuleInit', async () => {
+      service.onModuleInit();
+      // Give the event loop delay histogram time to collect at least one sample
+      await new Promise((resolve) => setTimeout(resolve, 50));
+      const text = service.prometheusText();
+      expect(text).toContain('# HELP pulsedock_eventloop_lag_min_ms');
+      expect(text).toContain('# TYPE pulsedock_eventloop_lag_min_ms gauge');
+      expect(text).toContain('pulsedock_eventloop_lag_mean_ms');
+      expect(text).toContain('pulsedock_eventloop_lag_p50_ms');
+      expect(text).toContain('pulsedock_eventloop_lag_p99_ms');
+      expect(text).toContain('pulsedock_eventloop_lag_max_ms');
+      service.onModuleDestroy();
+    });
+
+    it('omits event loop lag when eld is null (not initialized)', () => {
+      // Don't call onModuleInit — eld stays null
+      const text = service.prometheusText();
+      expect(text).not.toContain('pulsedock_eventloop_lag_min_ms');
+      expect(text).not.toContain('pulsedock_eventloop_lag_p99_ms');
+    });
+  });
+
+  describe('CPU usage metrics', () => {
+    it('includes CPU user and system time counters', () => {
+      const text = service.prometheusText();
+      expect(text).toContain('# HELP pulsedock_process_cpu_user_seconds_total');
+      expect(text).toContain('# TYPE pulsedock_process_cpu_user_seconds_total counter');
+      expect(text).toMatch(/pulsedock_process_cpu_user_seconds_total \d/);
+      expect(text).toContain('pulsedock_process_cpu_system_seconds_total');
+    });
+  });
+
+  describe('active handles/requests metrics', () => {
+    it('includes active handles gauge when available', () => {
+      const text = service.prometheusText();
+      // Node.js always has _getActiveHandles
+      expect(text).toContain('pulsedock_process_active_handles');
+    });
+  });
+
   describe('prometheusFullText()', () => {
     function makePrisma(opts: {
       monitors?: object[];

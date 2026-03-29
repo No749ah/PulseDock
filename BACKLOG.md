@@ -1,3 +1,11 @@
+## Status Summary (2026-03-29 03:55 UTC)
+- **Build/Test:** ✅ Clean build + 4259 API + 757 web + 10 CLI + 12 agent = 5038 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-29-early
+- **Last changes (03:55 UTC cycle):**
+  - [x] **Check Schedule Overview** — `GET /v1/monitors/check-schedule`. Fleet-level scheduling view: per-monitor checksPerHour (supports both intervalSec and cron-expression monitors), 24-bucket UTC hourly load distribution, nextCheckEstimateSec per monitor, peak/quiet hour detection, fleet totals. Improved cron parsing handles minute-field step expressions (e.g. `*/6 * * * *` = 10/hr). 13 unit tests. `/monitors/schedule` frontend: stat cards (active monitors, checks/hr, checks/day, peak hour), hourly load bar chart (color-coded by % of peak), scheduling hotspot warning when peak > 2× avg, searchable monitor table sorted by checks/hr. Nav link added.
+
 ## Status Summary (2026-03-29 03:40 UTC)
 - **Build/Test:** ✅ Clean build + 4246 API + 757 web + 10 CLI + 12 agent = 5025 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

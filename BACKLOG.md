@@ -1,3 +1,14 @@
+## Status Summary (2026-03-29 18:18 UTC)
+- **Build/Test:** ✅ 247 test files, 5342 tests passing (4563 API + 757 web + 12 agent + 10 CLI); 0 TS errors; code quality 8/8 (zero `any` types); web + API build clean
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-29-afternoon
+- **Last changes (18:18 UTC cycle):**
+  - [x] **Eliminate last `any` type** — Replaced `(res as any).writeHead` in main.ts with properly typed function override. Code quality now 8/8 with zero `any` types in production code.
+  - [x] **HTTP request duration histogram** — `pulsedock_http_request_duration_ms` Prometheus histogram with 11 buckets (5ms→10s). Every HTTP request observed via Express middleware. Enables Grafana p50/p95/p99 latency dashboards. 3 new tests.
+  - [x] **Process memory Prometheus gauges** — `pulsedock_process_heap_used_bytes`, `pulsedock_process_heap_total_bytes`, `pulsedock_process_rss_bytes`, `pulsedock_process_external_bytes`. Critical for self-hosted instance monitoring. 1 new test.
+  - [x] **Dependency patches** — vitest 4.1.1→4.1.2, @vitest/coverage-v8 4.1.1→4.1.2, @tabler/icons-react 3.40.0→3.41.0.
+
 ## Status Summary (2026-03-29 17:20 UTC)
 - **Build/Test:** ✅ 244 test files, 5308 tests passing (4551 API + 757 web); 0 TS errors; code quality 8/8; web + API build clean
 - **Security/Audit:** ✅ 0 vulnerabilities

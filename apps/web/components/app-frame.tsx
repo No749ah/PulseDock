@@ -58,27 +58,45 @@ type NavItem = {
   adminOnly?: boolean;
 };
 
-const navGroups: Array<{ label: string; items: NavItem[] }> = [
+/**
+ * Navigation structure: each group has primary items (always visible) and
+ * secondary items (shown when the group is expanded). Groups auto-expand
+ * when the active page is within them. Collapsed state is persisted in
+ * localStorage so the sidebar remembers user preferences.
+ */
+type NavGroup = {
+  label: string;
+  /** Always-visible items */
+  primary: NavItem[];
+  /** Items shown only when this group is expanded */
+  secondary?: NavItem[];
+};
+
+const navGroups: NavGroup[] = [
   {
     label: 'Overview',
-    items: [
+    primary: [
       { href: '/dashboard', label: 'Dashboard', icon: Gauge },
       { href: '/dashboard/wallboard', label: 'Wallboard', icon: Tv },
     ],
   },
   {
     label: 'Monitoring',
-    items: [
+    primary: [
       { href: '/monitors', label: 'Uptime Checks', icon: Activity },
+      { href: '/monitors/fleet', label: 'Fleet Health', icon: Shield },
+      { href: '/monitors/sla', label: 'SLA Dashboard', icon: Target },
+      { href: '/ssl', label: 'SSL Certificates', icon: ShieldCheck },
+      { href: '/versions', label: 'Version Tracking', icon: GitBranch },
+    ],
+    secondary: [
       { href: '/monitors/live', label: 'Live Feed', icon: Activity },
       { href: '/monitors/compare', label: 'Compare', icon: BarChart2 },
-      { href: '/monitors/heatmap', label: 'Heatmap', icon: Layers },
+      { href: '/monitors/heatmap', label: 'Uptime Heatmap', icon: Layers },
       { href: '/monitors/trends', label: 'Trends', icon: TrendingUp },
       { href: '/monitors/timeline', label: 'Status Timeline', icon: Layers },
       { href: '/monitors/coverage', label: 'Coverage', icon: ShieldCheck },
       { href: '/monitors/schedule', label: 'Check Schedule', icon: Clock },
-      { href: '/monitors/sla', label: 'SLA Dashboard', icon: Target },
-      { href: '/monitors/fleet', label: 'Fleet Health', icon: Shield },
       { href: '/monitors/downtime-cost', label: 'Cost Impact', icon: Target },
       { href: '/monitors/anomaly', label: 'Anomaly Report', icon: AlertTriangle },
       { href: '/monitors/dependencies', label: 'Topology', icon: GitBranch },
@@ -92,52 +110,177 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       { href: '/monitors/reliability', label: 'Reliability Trends', icon: Sparkles },
       { href: '/monitors/timing-breakdown', label: 'Timing Breakdown', icon: Zap },
       { href: '/monitors/interval-optimizer', label: 'Interval Optimizer', icon: Settings },
-      { href: '/ssl', label: 'SSL Certificates', icon: ShieldCheck },
-      { href: '/versions', label: 'Version Tracking', icon: GitBranch },
       { href: '/versions/drift', label: 'Drift Report', icon: GitBranch },
     ],
   },
   {
-    label: 'Management',
-    items: [
-      { href: '/alerts', label: 'Alerts', icon: AlertTriangle },
+    label: 'Alerting',
+    primary: [
+      { href: '/alerts', label: 'Alert Channels', icon: AlertTriangle },
       { href: '/alerts/routing', label: 'Routing Rules', icon: GitBranch },
+      { href: '/incidents', label: 'Incidents', icon: AlertOctagon },
+    ],
+    secondary: [
       { href: '/alerts/escalation', label: 'Escalation', icon: AlertOctagon },
       { href: '/alerts/analytics', label: 'Alert Analytics', icon: BarChart2 },
       { href: '/alerts/noise', label: 'Noise Analysis', icon: VolumeX },
       { href: '/alerts/history', label: 'Delivery History', icon: ClipboardList },
       { href: '/alerts/response-time', label: 'Response Time', icon: Zap },
       { href: '/alerts/channels', label: 'Channel Health', icon: Activity },
-      { href: '/incidents', label: 'Incidents', icon: AlertOctagon },
       { href: '/incidents/insights', label: 'Incident Insights', icon: BarChart2 },
+    ],
+  },
+  {
+    label: 'Operations',
+    primary: [
       { href: '/deployments', label: 'Deployments', icon: Rocket },
       { href: '/maintenance', label: 'Maintenance', icon: CalendarClock },
-      { href: '/maintenance/effectiveness', label: 'Window Effectiveness', icon: CalendarClock },
-
-      { href: '/projects', label: 'Projects', icon: Folder },
       { href: '/status-pages', label: 'Status Pages', icon: Globe },
+      { href: '/projects', label: 'Projects', icon: Folder },
+    ],
+    secondary: [
+      { href: '/maintenance/effectiveness', label: 'Window Effectiveness', icon: CalendarClock },
       { href: '/status/analytics', label: 'Page Analytics', icon: BarChart2 },
     ],
   },
   {
     label: 'Insights',
-    items: [
+    primary: [
       { href: '/activity', label: 'Activity Feed', icon: Activity },
-      { href: '/monitors/heatmap', label: 'Uptime Heatmap', icon: Layers },
       { href: '/mttr', label: 'Reliability Analytics', icon: Timer },
       { href: '/reports', label: 'Reports', icon: BarChart2 },
+    ],
+    secondary: [
       { href: '/reports/digest', label: 'Digest', icon: BookOpen },
     ],
   },
-
   {
     label: 'Administration',
-    items: [
+    primary: [
       { href: '/admin', label: 'Admin', icon: Shield, adminOnly: true },
       { href: '/changelog', label: 'Changelog', icon: ScrollText },
     ],
   },
 ];
+
+const NAV_COLLAPSED_KEY = 'pulsedock-nav-collapsed';
+
+/** Collapsible sidebar navigation. Secondary items hide behind a "Show more" toggle per group. */
+function NavSidebar({
+  navGroups,
+  pathname,
+  isAdmin,
+  downMonitorCount,
+}: {
+  navGroups: NavGroup[];
+  pathname: string;
+  isAdmin: boolean;
+  downMonitorCount: number;
+}) {
+  // Load collapsed state from localStorage
+  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
+    try {
+      return JSON.parse(localStorage.getItem(NAV_COLLAPSED_KEY) || '{}');
+    } catch {
+      return {};
+    }
+  });
+
+  const toggleGroup = (label: string) => {
+    setCollapsed((prev) => {
+      const next = { ...prev, [label]: !prev[label] };
+      try { localStorage.setItem(NAV_COLLAPSED_KEY, JSON.stringify(next)); } catch {}
+      return next;
+    });
+  };
+
+  // Auto-expand group if the current page is in its secondary items
+  useEffect(() => {
+    for (const group of navGroups) {
+      if (group.secondary?.some((item) => pathname === item.href || pathname.startsWith(item.href + '/'))) {
+        setCollapsed((prev) => {
+          if (prev[group.label]) {
+            const next = { ...prev, [group.label]: false };
+            try { localStorage.setItem(NAV_COLLAPSED_KEY, JSON.stringify(next)); } catch {}
+            return next;
+          }
+          return prev;
+        });
+      }
+    }
+  // Only run on pathname change
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname]);
+
+  const renderItem = (item: NavItem) => {
+    const isActive = pathname === item.href;
+    return (
+      <li key={item.href}>
+        <Link
+          href={item.href}
+          className={[
+            'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+            isActive
+              ? 'bg-accent/15 text-accent border border-accent/25'
+              : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated',
+          ].join(' ')}
+        >
+          <item.icon
+            className={['w-4 h-4 shrink-0', isActive ? 'text-accent' : 'text-text-secondary'].join(' ')}
+          />
+          <span className="truncate">{item.label}</span>
+          {item.href === '/monitors' && downMonitorCount > 0 && (
+            <span className="ml-auto flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-danger text-[9px] font-bold text-white leading-none">
+              {downMonitorCount > 9 ? '9+' : downMonitorCount}
+            </span>
+          )}
+        </Link>
+      </li>
+    );
+  };
+
+  return (
+    <nav aria-label="Main navigation" className="flex-1 overflow-y-auto py-4 px-3 space-y-4">
+      {navGroups.map((group) => {
+        const primaryItems = group.primary.filter((item) => !item.adminOnly || isAdmin);
+        const secondaryItems = (group.secondary ?? []).filter((item) => !item.adminOnly || isAdmin);
+        const allItems = [...primaryItems, ...secondaryItems];
+        if (!allItems.length) return null;
+
+        const isGroupCollapsed = collapsed[group.label] !== false && secondaryItems.length > 0;
+        const hasSecondary = secondaryItems.length > 0;
+
+        return (
+          <div key={group.label}>
+            <p className="px-2 mb-1 text-[10px] font-semibold uppercase tracking-widest text-text-secondary/60">
+              {group.label}
+            </p>
+            <ul className="space-y-0.5">
+              {primaryItems.map(renderItem)}
+              {hasSecondary && !isGroupCollapsed && secondaryItems.map(renderItem)}
+            </ul>
+            {hasSecondary && (
+              <button
+                onClick={() => toggleGroup(group.label)}
+                className="flex items-center gap-1.5 px-3 py-1.5 mt-0.5 text-[11px] font-medium text-text-secondary/50 hover:text-text-secondary transition-colors w-full"
+              >
+                <ChevronDown
+                  className={[
+                    'w-3 h-3 transition-transform duration-200',
+                    isGroupCollapsed ? '' : 'rotate-180',
+                  ].join(' ')}
+                />
+                {isGroupCollapsed
+                  ? `${secondaryItems.length} more`
+                  : 'Show less'}
+              </button>
+            )}
+          </div>
+        );
+      })}
+    </nav>
+  );
+}
 
 export function AppFrame({
   title,
@@ -345,50 +488,13 @@ export function AppFrame({
           </button>
         </div>
 
-        {/* Nav groups */}
-        <nav aria-label="Main navigation" className="flex-1 overflow-y-auto py-4 px-3 space-y-5">
-          {navGroups.map((group) => {
-            const items = group.items.filter(
-              (item) => !item.adminOnly || user?.role === 'admin',
-            );
-            if (!items.length) return null;
-            return (
-              <div key={group.label}>
-                <p className="px-2 mb-1.5 text-[10px] font-semibold uppercase tracking-widest text-text-secondary/60">
-                  {group.label}
-                </p>
-                <ul className="space-y-0.5">
-                  {items.map((item) => {
-                    const isActive = pathname === item.href;
-                    return (
-                      <li key={item.href}>
-                        <Link
-                          href={item.href}
-                          className={[
-                            'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                            isActive
-                              ? 'bg-accent/15 text-accent border border-accent/25'
-                              : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated',
-                          ].join(' ')}
-                        >
-                          <item.icon
-                            className={['w-4 h-4', isActive ? 'text-accent' : 'text-text-secondary'].join(' ')}
-                          />
-                          {item.label}
-                          {item.href === '/monitors' && downMonitorCount > 0 && (
-                            <span className="ml-auto flex h-4 min-w-4 px-1 items-center justify-center rounded-full bg-danger text-[9px] font-bold text-white leading-none">
-                              {downMonitorCount > 9 ? '9+' : downMonitorCount}
-                            </span>
-                          )}
-                        </Link>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            );
-          })}
-        </nav>
+        {/* Nav groups with collapsible secondary items */}
+        <NavSidebar
+          navGroups={navGroups}
+          pathname={pathname}
+          isAdmin={user?.role === 'admin'}
+          downMonitorCount={downMonitorCount}
+        />
 
         {/* Sidebar footer */}
         <div className="px-4 py-3 border-t border-border/40 shrink-0 space-y-1">

@@ -22,6 +22,7 @@ import {
   TrendingDown,
   Clock,
   Zap,
+  Award,
 } from 'lucide-react';
 import { AppFrame } from '../../../components/app-frame';
 import { Card } from '../../components/Card';
@@ -516,6 +517,32 @@ export default function SlaPage() {
     }
   };
 
+  const [certLoadingId, setCertLoadingId] = useState<string | null>(null);
+  const handleDownloadCertificate = async (monitorId: string, months: number) => {
+    try {
+      setCertLoadingId(monitorId);
+      const { API_BASE } = await import('../../../lib/api');
+      // Fetch the certificate HTML from the API using credentials (cookie-based auth)
+      const res = await fetch(
+        `${API_BASE}/v1/monitors/${monitorId}/uptime-certificate?months=${months}`,
+        { credentials: 'include' }
+      );
+      if (!res.ok) throw new Error('Failed to generate certificate');
+      const html = await res.text();
+      const blob = new Blob([html], { type: 'text/html' });
+      const url = URL.createObjectURL(blob);
+      const win = window.open(url, '_blank');
+      if (win) {
+        win.focus();
+        setTimeout(() => URL.revokeObjectURL(url), 15000);
+      }
+    } catch {
+      showError('Failed to generate uptime certificate');
+    } finally {
+      setCertLoadingId(null);
+    }
+  };
+
   const toggleSort = (key: SortKey) => {
     if (sortKey === key) setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
     else { setSortKey(key); setSortDir('asc'); }
@@ -670,6 +697,7 @@ export default function SlaPage() {
                       Status <SortIcon k="compliant" />
                     </button>
                   </th>
+                  <th className="px-4 py-3 text-left text-xs font-semibold text-text-secondary uppercase tracking-wider hidden md:table-cell">Cert</th>
                 </tr>
               </TableHead>
               <TableBody>
@@ -726,6 +754,20 @@ export default function SlaPage() {
                             <Circle className="w-3 h-3" /> No Target
                           </span>
                         )}
+                      </TableCell>
+                      <TableCell className="hidden md:table-cell">
+                        <button
+                          type="button"
+                          onClick={() => handleDownloadCertificate(m.id, reportMonths)}
+                          disabled={certLoadingId === m.id}
+                          title={`Download ${reportMonths}mo uptime certificate`}
+                          className="inline-flex items-center gap-1 px-2 py-1.5 text-xs rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/30 hover:bg-indigo-500/20 transition-colors disabled:opacity-50"
+                        >
+                          {certLoadingId === m.id
+                            ? <RefreshCw className="w-3 h-3 animate-spin" />
+                            : <Award className="w-3 h-3" />}
+                          Cert
+                        </button>
                       </TableCell>
                     </TableRow>
                   );

@@ -1930,4 +1930,32 @@ export class MonitorsController {
   ) {
     return this.monitorsService.getConfigHistory(req.user.id, id, limit ? parseInt(limit, 10) : 50);
   }
+
+  // ─── Uptime Certificate ──────────────────────────────────────────────────
+
+  @Get(':id/uptime-certificate')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Generate a printable uptime certificate for a monitor',
+    description:
+      'Returns a self-contained HTML document (printable to PDF) certifying the monitor\'s uptime achievement over the specified period. Includes monthly breakdown, SLA compliance status, and a unique certificate ID.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'months', required: false, enum: [1, 3, 6, 12], description: 'Period in months (default 1)' })
+  @ApiResponse({ status: 200, description: 'HTML certificate returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  @ApiResponse({ status: 403, description: 'Access denied.' })
+  async uptimeCertificate(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Res() res: import('express').Response,
+    @Query('months') months?: string,
+  ) {
+    const m = parseInt(months ?? '1', 10);
+    const safeMonths = ([1, 3, 6, 12] as const).includes(m as 1 | 3 | 6 | 12) ? m : 1;
+    const html = await this.monitorsService.uptimeCertificate(req.user.id, id, safeMonths);
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.send(html);
+  }
 }

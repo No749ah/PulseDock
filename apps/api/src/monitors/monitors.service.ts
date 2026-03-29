@@ -5488,6 +5488,249 @@ export class MonitorsService {
     };
   }
 
+  // ─── Uptime Certificate ───────────────────────────────────────────────────
+
+  // HTML escape helper for certificate generation
+  private _certEscapeHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
+  /**
+   * Generate a printable HTML uptime certificate for a monitor.
+   * Shows: monitor name, period, actual uptime %, SLA target, compliance status.
+   *
+   * @param userId - Owner of the monitor
+   * @param monitorId - Monitor to certify
+   * @param months - Period in months (1, 3, 6, or 12)
+   * @returns HTML string ready to render or print
+   */
+  async uptimeCertificate(userId: string, monitorId: string, months: number): Promise<string> {
+    const safeMonths = ([1, 3, 6, 12] as const).includes(months as 1 | 3 | 6 | 12) ? months : 1;
+    const now = new Date();
+    const periodStart = new Date(now.getFullYear(), now.getMonth() - (safeMonths - 1), 1);
+
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, userId },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        target: true,
+        slaTarget: true,
+        description: true,
+        enabled: true,
+      },
+    });
+
+    if (!monitor) throw new Error('Monitor not found');
+
+    // Count checks in the period
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId, checkedAt: { gte: periodStart, lt: now } },
+      select: { ok: true, checkedAt: true },
+    });
+
+    const totalChecks = runs.length;
+    const failedChecks = runs.filter((r) => !r.ok).length;
+    const successChecks = totalChecks - failedChecks;
+    const uptimePct = totalChecks === 0 ? null : (successChecks / totalChecks) * 100;
+    const slaTarget = monitor.slaTarget ? Number(monitor.slaTarget) : null;
+    const compliant = uptimePct !== null && slaTarget !== null ? uptimePct >= slaTarget : null;
+
+    // Build monthly breakdown
+    const monthlyBreakdown: Array<{ label: string; uptime: number | null; checks: number; passed: boolean | null }> = [];
+    for (let i = safeMonths - 1; i >= 0; i--) {
+      const mStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const mEnd = i === 0 ? now : new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      const mLabel = mStart.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      const mRuns = runs.filter((r) => r.checkedAt >= mStart && r.checkedAt < mEnd);
+      const mTotal = mRuns.length;
+      const mFailed = mRuns.filter((r) => !r.ok).length;
+      const mUptime = mTotal === 0 ? null : ((mTotal - mFailed) / mTotal) * 100;
+      monthlyBreakdown.push({
+        label: mLabel,
+        uptime: mUptime,
+        checks: mTotal,
+        passed: mUptime !== null && slaTarget !== null ? mUptime >= slaTarget : null,
+      });
+    }
+
+    // Generate unique certificate ID
+    const certId = `PD-CERT-${monitorId.slice(-8).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+
+    const periodLabel =
+      safeMonths === 1
+        ? 'Last Month'
+        : safeMonths === 3
+          ? 'Last 3 Months'
+          : safeMonths === 6
+            ? 'Last 6 Months'
+            : 'Last 12 Months';
+
+    const periodFull = `${periodStart.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} – ${now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+
+    const uptimeFormatted =
+      uptimePct !== null ? `${uptimePct.toFixed(4)}%` : 'Insufficient Data';
+
+    const complianceColor =
+      compliant === true ? '#22c55e' : compliant === false ? '#ef4444' : '#a3a3a3';
+    const complianceLabel =
+      compliant === true ? 'SLA COMPLIANT' : compliant === false ? 'SLA BREACH' : 'NO TARGET';
+    const complianceIcon = compliant === true ? '✓' : compliant === false ? '✗' : '—';
+
+    const monthRows = monthlyBreakdown
+      .map((m) => {
+        const color = m.passed === true ? '#22c55e' : m.passed === false ? '#ef4444' : '#a3a3a3';
+        const icon = m.passed === true ? '✓' : m.passed === false ? '✗' : '—';
+        const uptime = m.uptime !== null ? `${m.uptime.toFixed(3)}%` : 'No data';
+        return `
+        <tr>
+          <td style="padding:10px 16px;border-bottom:1px solid #2a2a3a;color:#c9c9d0">${m.label}</td>
+          <td style="padding:10px 16px;border-bottom:1px solid #2a2a3a;color:#c9c9d0;text-align:center">${m.checks.toLocaleString()}</td>
+          <td style="padding:10px 16px;border-bottom:1px solid #2a2a3a;font-family:monospace;font-weight:600;color:${color};text-align:center">${uptime}</td>
+          <td style="padding:10px 16px;border-bottom:1px solid #2a2a3a;text-align:center"><span style="color:${color};font-weight:700;font-size:18px">${icon}</span></td>
+        </tr>`;
+      })
+      .join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Uptime Certificate – ${this._certEscapeHtml(monitor.name)}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0a0a12;
+    color: #e1e1e8;
+    min-height: 100vh;
+    padding: 32px 16px;
+  }
+  .page { max-width: 820px; margin: 0 auto; }
+  @media print {
+    body { background: #ffffff; color: #0a0a12; padding: 0; }
+    .certificate { background: #ffffff !important; border: 2px solid #ddd !important; box-shadow: none !important; }
+    .cert-header { background: #1a1a2e !important; }
+    .no-print { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- Print button -->
+<div class="no-print" style="text-align:right;margin-bottom:20px">
+  <button onclick="window.print()" style="background:#6366f1;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">🖨 Print / Save PDF</button>
+</div>
+
+<!-- Certificate -->
+<div class="certificate" style="background:#12121e;border:1px solid #2a2a3a;border-radius:16px;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,0.5)">
+
+  <!-- Header -->
+  <div class="cert-header" style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);padding:48px 40px;text-align:center;border-bottom:1px solid #2a2a3a">
+    <div style="font-size:13px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#6366f1;margin-bottom:16px">PulseDock Monitoring</div>
+    <div style="font-size:36px;font-weight:800;color:#fff;letter-spacing:-0.5px;line-height:1.1;margin-bottom:8px">Uptime Performance<br>Certificate</div>
+    <div style="width:60px;height:3px;background:linear-gradient(90deg,#6366f1,#a78bfa);margin:20px auto;border-radius:2px"></div>
+    <div style="font-size:14px;color:#8b8b9e;margin-top:12px">${periodFull}</div>
+  </div>
+
+  <!-- Body -->
+  <div style="padding:40px">
+
+    <!-- Monitor info -->
+    <div style="margin-bottom:36px">
+      <div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#6366f1;margin-bottom:8px">Monitor</div>
+      <div style="font-size:28px;font-weight:700;color:#fff;margin-bottom:6px">${this._certEscapeHtml(monitor.name)}</div>
+      ${monitor.target ? `<div style="font-size:14px;color:#8b8b9e;font-family:monospace">${this._certEscapeHtml(monitor.target)}</div>` : ''}
+      ${monitor.description ? `<div style="font-size:14px;color:#a3a3b0;margin-top:6px">${this._certEscapeHtml(monitor.description)}</div>` : ''}
+    </div>
+
+    <!-- Key stats -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:36px">
+
+      <div style="background:#1a1a2e;border:1px solid #2a2a3a;border-radius:12px;padding:20px;text-align:center">
+        <div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#8b8b9e;margin-bottom:8px">Achieved Uptime</div>
+        <div style="font-size:32px;font-weight:800;color:#c084fc;font-family:monospace">${uptimeFormatted}</div>
+        <div style="font-size:12px;color:#8b8b9e;margin-top:4px">${periodLabel}</div>
+      </div>
+
+      <div style="background:#1a1a2e;border:1px solid #2a2a3a;border-radius:12px;padding:20px;text-align:center">
+        <div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#8b8b9e;margin-bottom:8px">SLA Target</div>
+        <div style="font-size:32px;font-weight:800;color:#e1e1e8;font-family:monospace">${slaTarget !== null ? `${slaTarget}%` : '—'}</div>
+        <div style="font-size:12px;color:#8b8b9e;margin-top:4px">${slaTarget !== null ? 'Configured target' : 'No target set'}</div>
+      </div>
+
+      <div style="background:#1a1a2e;border:1px solid #2a2a3a;border-radius:12px;padding:20px;text-align:center">
+        <div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#8b8b9e;margin-bottom:8px">Total Checks</div>
+        <div style="font-size:32px;font-weight:800;color:#e1e1e8">${totalChecks.toLocaleString()}</div>
+        <div style="font-size:12px;color:#8b8b9e;margin-top:4px">${failedChecks.toLocaleString()} failed</div>
+      </div>
+
+      <div style="background:${complianceColor}18;border:2px solid ${complianceColor}40;border-radius:12px;padding:20px;text-align:center">
+        <div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:${complianceColor};opacity:0.8;margin-bottom:8px">Status</div>
+        <div style="font-size:40px;font-weight:800;color:${complianceColor}">${complianceIcon}</div>
+        <div style="font-size:13px;font-weight:700;color:${complianceColor};margin-top:4px">${complianceLabel}</div>
+      </div>
+
+    </div>
+
+    <!-- Monthly breakdown -->
+    ${
+      safeMonths > 1
+        ? `<div style="margin-bottom:36px">
+      <div style="font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#8b8b9e;margin-bottom:12px">Monthly Breakdown</div>
+      <div style="background:#1a1a2e;border:1px solid #2a2a3a;border-radius:12px;overflow:hidden">
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:#12121e">
+              <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#6366f1;border-bottom:1px solid #2a2a3a">Month</th>
+              <th style="padding:10px 16px;text-align:center;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#6366f1;border-bottom:1px solid #2a2a3a">Checks</th>
+              <th style="padding:10px 16px;text-align:center;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#6366f1;border-bottom:1px solid #2a2a3a">Uptime</th>
+              <th style="padding:10px 16px;text-align:center;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#6366f1;border-bottom:1px solid #2a2a3a">SLA</th>
+            </tr>
+          </thead>
+          <tbody>${monthRows}</tbody>
+        </table>
+      </div>
+    </div>`
+        : ''
+    }
+
+    <!-- Divider -->
+    <div style="border-top:1px solid #2a2a3a;margin:32px 0"></div>
+
+    <!-- Certificate footer -->
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px">
+      <div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#6366f1;margin-bottom:4px">Certificate ID</div>
+        <div style="font-family:monospace;font-size:13px;color:#8b8b9e">${certId}</div>
+        <div style="font-size:12px;color:#8b8b9e;margin-top:6px">Issued by PulseDock on ${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+        <div style="font-size:11px;color:#555568;margin-top:2px">This certificate reflects historical check data and is for informational purposes only.</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#6366f1;margin-bottom:6px">Monitor Type</div>
+        <div style="font-size:13px;color:#8b8b9e">${monitor.type}</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</div>
+</body>
+</html>`;
+
+    return html;
+  }
+
   // ─── OpenAPI Import ────────────────────────────────────────────────────────
 
   async previewFromOpenApi(opts: {

@@ -128,6 +128,7 @@ const navGroups: NavGroup[] = [
       { href: '/alerts/response-time', label: 'Response Time', icon: Zap },
       { href: '/alerts/channels', label: 'Channel Health', icon: Activity },
       { href: '/incidents/insights', label: 'Incident Insights', icon: BarChart2 },
+      { href: '/incidents/playbooks', label: 'Playbooks', icon: BookOpen },
     ],
   },
   {

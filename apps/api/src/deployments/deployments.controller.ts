@@ -16,12 +16,16 @@ import {
 import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
 import { AuthGuard } from '../common/auth.guard';
 import { DeploymentsService } from './deployments.service';
+import { MonitorsService } from '../monitors/monitors.service';
 import { CreateDeploymentDto, UpdateDeploymentDto } from './deployments.dto';
 
 @ApiTags('deployments')
 @Controller('v1/deployments')
 export class DeploymentsController {
-  constructor(private readonly svc: DeploymentsService) {}
+  constructor(
+    private readonly svc: DeploymentsService,
+    private readonly monitorsService: MonitorsService,
+  ) {}
 
   @Post()
   @UseGuards(AuthGuard)
@@ -127,6 +131,54 @@ export class DeploymentsController {
     @Param('monitorId') monitorId: string,
   ) {
     return this.svc.getMonitorImpact(req.user.id, monitorId, id);
+  }
+
+  @Post(':id/verify')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Run immediate health checks on all monitors linked to this deployment' })
+  @ApiResponse({ status: 200, description: 'Per-monitor check results' })
+  async verifyDeployment(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    const event = await this.svc.findOne(req.user.id, id);
+    const monitorIds: string[] = event.monitorIds ?? [];
+    if (monitorIds.length === 0) {
+      return { results: [], message: 'No monitors linked to this deployment' };
+    }
+    // Run checks concurrently (up to 10 monitors)
+    const results = await Promise.allSettled(
+      monitorIds.slice(0, 10).map(async (mid) => {
+        const run = await this.monitorsService.runNow(req.user.id, mid);
+        return { monitorId: mid, run };
+      }),
+    );
+    return {
+      deploymentId: id,
+      verifiedAt: new Date().toISOString(),
+      results: results.map((r, i) => {
+        if (r.status === 'fulfilled') {
+          const run = r.value.run as { ok?: boolean; level?: string; latencyMs?: number; message?: string; statusCode?: number } | null;
+          return {
+            monitorId: monitorIds[i],
+            ok: run?.ok ?? false,
+            level: run?.level ?? 'unknown',
+            latencyMs: run?.latencyMs ?? null,
+            message: run?.message ?? null,
+            statusCode: run?.statusCode ?? null,
+          };
+        }
+        return {
+          monitorId: monitorIds[i],
+          ok: false,
+          level: 'error',
+          latencyMs: null,
+          message: r.reason instanceof Error ? r.reason.message : 'Check failed',
+          statusCode: null,
+        };
+      }),
+    };
   }
 }
 

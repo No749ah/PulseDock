@@ -88,6 +88,7 @@ model User {
   serviceGroups           MonitorServiceGroup[]
   deployToken             String?              @unique
   deployEvents            DeploymentEvent[]
+  playbooks               IncidentPlaybook[]
 }
 
 model Session {
@@ -204,7 +205,8 @@ model Monitor {
   acknowledgements AlertAcknowledgement[]
   annotations   MonitorAnnotation[]
   configChanges MonitorConfigChange[]
-
+  playbookId    String?
+  playbook      IncidentPlaybook? @relation("MonitorPlaybook", fields: [playbookId], references: [id], onDelete: SetNull)
 
   @@index([userId])
   @@index([enabled])
@@ -622,6 +624,8 @@ model Incident {
   autoCreated      Boolean          @default(false) // true when auto-created by monitor check
   rootCause        String?          // Post-mortem: root cause analysis
   postmortemNotes  String?          // Post-mortem: lessons learned / action items
+  playbookSteps    Json?
+  playbookId       String?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
@@ -1010,4 +1014,20 @@ model NotificationQueueItem {
   @@index([userId])
   @@index([userId, sentAt])
   @@index([createdAt])
+}
+
+model IncidentPlaybook {
+  id            String   @id @default(cuid())
+  userId        String
+  name          String
+  description   String?
+  steps         Json
+  forSeverities String[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monitors Monitor[] @relation("MonitorPlaybook")
+
+  @@index([userId])
 }

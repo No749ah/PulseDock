@@ -86,6 +86,8 @@ model User {
   annotations             MonitorAnnotation[]
   monitorConfigChanges    MonitorConfigChange[]
   serviceGroups           MonitorServiceGroup[]
+  deployToken             String?              @unique
+  deployEvents            DeploymentEvent[]
 }
 
 model Session {
@@ -958,6 +960,36 @@ model MonitorServiceGroup {
   updatedAt   DateTime @updatedAt
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+enum DeploymentStatus {
+  STARTED
+  SUCCESS
+  FAILED
+  ROLLBACK
+}
+
+model DeploymentEvent {
+  id             String           @id @default(cuid())
+  userId         String
+  service        String
+  environment    String           @default("production")
+  version        String?
+  status         DeploymentStatus @default(STARTED)
+  deployedBy     String?
+  commitSha      String?
+  commitMessage  String?
+  branch         String?
+  sourceUrl      String?
+  notes          String?
+  durationMs     Int?
+  monitorIds     String[]         @default([])
+  suppressAlerts Boolean          @default(false)
+  suppressUntil  DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 /// Queued notification for digest delivery (hourly_digest / daily_digest frequency)

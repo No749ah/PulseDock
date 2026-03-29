@@ -24,6 +24,7 @@ import {
   VolumeX,
   Hash,
   Zap,
+  Rocket,
 
   ChevronDown,
   Folder,
@@ -106,6 +107,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       { href: '/alerts/response-time', label: 'Response Time', icon: Zap },
       { href: '/incidents', label: 'Incidents', icon: AlertOctagon },
       { href: '/incidents/insights', label: 'Incident Insights', icon: BarChart2 },
+      { href: '/deployments', label: 'Deployments', icon: Rocket },
       { href: '/maintenance', label: 'Maintenance', icon: CalendarClock },
       { href: '/maintenance/effectiveness', label: 'Window Effectiveness', icon: CalendarClock },
 

@@ -74,6 +74,9 @@ import { EscalationController } from './escalation/escalation.controller';
 import { EscalationService } from './escalation/escalation.service';
 import { SearchController } from './search/search.controller';
 import { SearchService } from './search/search.service';
+import { DeploymentsModule } from './deployments/deployments.module';
+import { DeploymentsController, PublicDeploymentsController } from './deployments/deployments.controller';
+import { DeploymentsService } from './deployments/deployments.service';
 
 @Module({
   imports: [
@@ -81,6 +84,7 @@ import { SearchService } from './search/search.service';
     JwtModule.register({}),
     ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
     RealtimeModule,
+    DeploymentsModule,
   ],
   controllers: [
     AppController,
@@ -120,6 +124,8 @@ import { SearchService } from './search/search.service';
     SearchController,
     AnnotationsController,
     ServiceGroupsController,
+    DeploymentsController,
+    PublicDeploymentsController,
   ],
   providers: [
     { provide: APP_GUARD, useClass: ThrottlerGuard },
@@ -157,6 +163,7 @@ import { SearchService } from './search/search.service';
     EscalationService,
     SearchService,
     ServiceGroupsService,
+    DeploymentsService,
   ],
 })
 export class AppModule implements NestModule {

@@ -264,7 +264,7 @@ export default function HealthScoresPage() {
                       <TableCell>
                         <div className="flex items-center gap-2">
                           {item.isFlapping && (
-                            <Zap className="w-3 h-3 text-amber-400 shrink-0" title="Flapping" />
+                            <Zap className="w-3 h-3 text-amber-400 shrink-0" aria-label="Flapping" />
                           )}
                           <div>
                             <Link

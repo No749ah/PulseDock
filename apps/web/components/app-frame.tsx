@@ -83,6 +83,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       { href: '/monitors/services', label: 'Service Groups', icon: Layers },
       { href: '/monitors/tag-analytics', label: 'Tag Analytics', icon: Hash },
       { href: '/monitors/health-scores', label: 'Health Scores', icon: Medal },
+      { href: '/monitors/latency-bench', label: 'Latency Benchmarks', icon: Gauge },
       { href: '/ssl', label: 'SSL Certificates', icon: ShieldCheck },
       { href: '/versions', label: 'Version Tracking', icon: GitBranch },
     ],

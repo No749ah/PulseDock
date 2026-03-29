@@ -4133,6 +4133,235 @@ export class MonitorsService {
     };
   }
 
+  // ─── Latency Benchmarking ─────────────────────────────────────────────────
+
+  /**
+   * Returns P50/P75/P95/P99 latency benchmarks for all HTTP and BROWSER monitors.
+   * Compares current 7-day period vs previous 7-day period to compute trend.
+   */
+  async latencyBenchmark(userId: string): Promise<{
+    monitors: Array<{
+      monitorId: string;
+      monitorName: string;
+      monitorType: string;
+      target: string;
+      current: {
+        p50: number | null;
+        p75: number | null;
+        p95: number | null;
+        p99: number | null;
+        avg: number | null;
+        min: number | null;
+        max: number | null;
+        samples: number;
+      };
+      previous: {
+        p50: number | null;
+        p95: number | null;
+        avg: number | null;
+        samples: number;
+      };
+      trend: 'improving' | 'stable' | 'degrading' | 'new';
+      trendPct: number | null;
+      latencyAlertMs: number | null;
+      budgetMs: number | null;
+      p95ExceedsBudget: boolean;
+      p95ExceedsAlert: boolean;
+      grade: 'A' | 'B' | 'C' | 'D' | 'F' | null;
+    }>;
+    summary: {
+      totalMonitors: number;
+      monitorsWithData: number;
+      fleetP50: number | null;
+      fleetP95: number | null;
+      gradeDistribution: { A: number; B: number; C: number; D: number; F: number };
+      exceedingBudget: number;
+      exceedingAlert: number;
+      improvingCount: number;
+      degradingCount: number;
+    };
+  }> {
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, type: { in: ['HTTP', 'BROWSER'] } },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        target: true,
+        latencyAlertMs: true,
+        latencyBudgetMs: true,
+      },
+    });
+
+    const now = new Date();
+    const since14d = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000);
+    const since7d = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    // Fetch all successful runs with latency data in the last 14 days
+    const runs = await this.prisma.monitorRun.findMany({
+      where: {
+        userId,
+        monitorId: { in: monitors.map((m) => m.id) },
+        ok: true,
+        latencyMs: { not: null },
+        checkedAt: { gte: since14d },
+      },
+      select: { monitorId: true, latencyMs: true, checkedAt: true },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    function computePercentile(sorted: number[], pct: number): number | null {
+      if (sorted.length === 0) return null;
+      const idx = Math.floor((pct / 100) * sorted.length);
+      return sorted[Math.min(idx, sorted.length - 1)];
+    }
+
+    function computeStats(values: number[]): {
+      p50: number | null; p75: number | null; p95: number | null; p99: number | null;
+      avg: number | null; min: number | null; max: number | null; samples: number;
+    } {
+      if (values.length === 0) {
+        return { p50: null, p75: null, p95: null, p99: null, avg: null, min: null, max: null, samples: 0 };
+      }
+      const sorted = [...values].sort((a, b) => a - b);
+      const avg = Math.round(values.reduce((s, v) => s + v, 0) / values.length);
+      return {
+        p50: computePercentile(sorted, 50),
+        p75: computePercentile(sorted, 75),
+        p95: computePercentile(sorted, 95),
+        p99: computePercentile(sorted, 99),
+        avg,
+        min: sorted[0],
+        max: sorted[sorted.length - 1],
+        samples: values.length,
+      };
+    }
+
+    function computePrevStats(values: number[]): {
+      p50: number | null; p95: number | null; avg: number | null; samples: number;
+    } {
+      if (values.length === 0) return { p50: null, p95: null, avg: null, samples: 0 };
+      const sorted = [...values].sort((a, b) => a - b);
+      const avg = Math.round(values.reduce((s, v) => s + v, 0) / values.length);
+      return {
+        p50: computePercentile(sorted, 50),
+        p95: computePercentile(sorted, 95),
+        avg,
+        samples: values.length,
+      };
+    }
+
+    function getGrade(p95: number | null): 'A' | 'B' | 'C' | 'D' | 'F' | null {
+      if (p95 === null) return null;
+      if (p95 < 200) return 'A';
+      if (p95 < 500) return 'B';
+      if (p95 < 1000) return 'C';
+      if (p95 < 2000) return 'D';
+      return 'F';
+    }
+
+    const gradeDistribution = { A: 0, B: 0, C: 0, D: 0, F: 0 };
+    let exceedingBudget = 0;
+    let exceedingAlert = 0;
+    let improvingCount = 0;
+    let degradingCount = 0;
+    let monitorsWithData = 0;
+    const allCurrentP50: number[] = [];
+    const allCurrentP95: number[] = [];
+
+    const result = monitors.map((m) => {
+      const monitorRuns = runs.filter((r) => r.monitorId === m.id);
+      const currentValues = monitorRuns
+        .filter((r) => r.checkedAt >= since7d)
+        .map((r) => r.latencyMs as number);
+      const previousValues = monitorRuns
+        .filter((r) => r.checkedAt < since7d)
+        .map((r) => r.latencyMs as number);
+
+      const current = computeStats(currentValues);
+      const previous = computePrevStats(previousValues);
+
+      // Trend based on p95
+      let trend: 'improving' | 'stable' | 'degrading' | 'new' = 'new';
+      let trendPct: number | null = null;
+
+      if (current.p95 !== null && previous.p95 !== null && previous.p95 > 0) {
+        trendPct = parseFloat((((current.p95 - previous.p95) / previous.p95) * 100).toFixed(1));
+        if (trendPct <= -5) trend = 'improving';
+        else if (trendPct >= 5) trend = 'degrading';
+        else trend = 'stable';
+      } else if (current.p95 !== null) {
+        trend = 'new';
+      }
+
+      const grade = getGrade(current.p95);
+      const latencyAlertMs = m.latencyAlertMs ?? null;
+      const budgetMs = m.latencyBudgetMs ?? null;
+      const p95ExceedsBudget = budgetMs !== null && current.p95 !== null && current.p95 > budgetMs;
+      const p95ExceedsAlert = latencyAlertMs !== null && current.p95 !== null && current.p95 > latencyAlertMs;
+
+      if (current.samples > 0) {
+        monitorsWithData += 1;
+        if (grade !== null) gradeDistribution[grade] += 1;
+        if (current.p50 !== null) allCurrentP50.push(current.p50);
+        if (current.p95 !== null) allCurrentP95.push(current.p95);
+      }
+      if (p95ExceedsBudget) exceedingBudget += 1;
+      if (p95ExceedsAlert) exceedingAlert += 1;
+      if (trend === 'improving') improvingCount += 1;
+      if (trend === 'degrading') degradingCount += 1;
+
+      return {
+        monitorId: m.id,
+        monitorName: m.name,
+        monitorType: m.type,
+        target: m.target,
+        current,
+        previous,
+        trend,
+        trendPct,
+        latencyAlertMs,
+        budgetMs,
+        p95ExceedsBudget,
+        p95ExceedsAlert,
+        grade,
+      };
+    });
+
+    // Sort by p95 descending (slowest first), nulls last
+    result.sort((a, b) => {
+      if (a.current.p95 === null && b.current.p95 === null) return 0;
+      if (a.current.p95 === null) return 1;
+      if (b.current.p95 === null) return -1;
+      return b.current.p95 - a.current.p95;
+    });
+
+    // Fleet-level medians
+    const sortedFleetP50 = [...allCurrentP50].sort((a, b) => a - b);
+    const sortedFleetP95 = [...allCurrentP95].sort((a, b) => a - b);
+    const fleetP50 = sortedFleetP50.length > 0
+      ? sortedFleetP50[Math.floor(sortedFleetP50.length / 2)]
+      : null;
+    const fleetP95 = sortedFleetP95.length > 0
+      ? sortedFleetP95[Math.floor(sortedFleetP95.length / 2)]
+      : null;
+
+    return {
+      monitors: result,
+      summary: {
+        totalMonitors: monitors.length,
+        monitorsWithData,
+        fleetP50,
+        fleetP95,
+        gradeDistribution,
+        exceedingBudget,
+        exceedingAlert,
+        improvingCount,
+        degradingCount,
+      },
+    };
+  }
+
   // ─── Uptime Heatmap ───────────────────────────────────────────────────────
 
   /**

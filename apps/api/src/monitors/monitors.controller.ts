@@ -516,6 +516,17 @@ export class MonitorsController {
     return this.monitorsService.allHealthScores(req.user.id);
   }
 
+  @Get('latency-bench')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Latency benchmarks',
+    description: 'Returns P50/P75/P95/P99 latency benchmarks for all HTTP and BROWSER monitors. Compares current 7-day period vs previous 7-day period.',
+  })
+  @ApiResponse({ status: 200, description: 'Latency benchmark data returned.' })
+  latencyBench(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.latencyBenchmark(req.user.id);
+  }
+
   @Get('health-scores/leaderboard')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({

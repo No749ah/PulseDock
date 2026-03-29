@@ -951,6 +951,19 @@ export default function MonitorDetailPage() {
                     Live
                   </span>
                 )}
+                {(monitor as typeof monitor & { priority?: number }).priority != null && (monitor as typeof monitor & { priority?: number }).priority! > 0 && (() => {
+                  const p = (monitor as typeof monitor & { priority?: number }).priority!;
+                  const label = ['', 'P1 — Critical', 'P2 — High', 'P3 — Medium', 'P4 — Low'][p] ?? '';
+                  const cls = p === 1 ? 'bg-danger/15 text-danger border-danger/30'
+                    : p === 2 ? 'bg-warning/15 text-warning border-warning/30'
+                    : p === 3 ? 'bg-accent/15 text-accent border-accent/30'
+                    : 'bg-surface-elevated text-text-secondary border-border';
+                  return (
+                    <span title={`Priority: ${label}`} className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold border ${cls}`}>
+                      {label}
+                    </span>
+                  );
+                })()}
                 {monitor.isFlapping && (
                   <span
                     title="This monitor is flapping — it is rapidly alternating between healthy and unhealthy states. Alerts are suppressed until it stabilizes."

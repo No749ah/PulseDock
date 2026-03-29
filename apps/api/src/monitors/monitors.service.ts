@@ -3,6 +3,7 @@ import * as https from 'https';
 import * as http from 'http';
 import { BadRequestException, ForbiddenException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+
 import { randomUUID } from 'node:crypto';
 import { CronExpressionParser } from 'cron-parser';
 import { PrismaService } from '../common/prisma.service';
@@ -7126,6 +7127,148 @@ export class MonitorsService {
       coverageGaps: { noAlertChannel, noSlaTarget, noDescription, totalGapScore },
       topPerformers,
       worstPerformers,
+    };
+  }
+
+  // ─── Generate Uptime Certificate (structured data) ────────────────────────
+
+  /**
+   * Generates structured uptime certificate data for a monitor.
+   * Computes SLA compliance, latency stats, incident count, and downtime.
+   *
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The monitor to certify
+   * @param options - periodDays (7/30/90/365) and optional title override
+   */
+  async generateUptimeCertificate(
+    userId: string,
+    monitorId: string,
+    options: { periodDays: number; title?: string },
+  ): Promise<{
+    certificateId: string;
+    monitorId: string;
+    monitorName: string;
+    monitorTarget: string;
+    monitorType: string;
+    issuedAt: string;
+    periodDays: number;
+    periodStart: string;
+    periodEnd: string;
+    uptimePct: number;
+    avgLatencyMs: number | null;
+    p95LatencyMs: number | null;
+    totalChecks: number;
+    successChecks: number;
+    failedChecks: number;
+    totalDowntimeMinutes: number;
+    longestOutageMinutes: number;
+    incidents: number;
+    slaTarget: number | null;
+    slaCompliant: boolean | null;
+    title: string;
+  }> {
+    const safeDays = ([7, 30, 90, 365] as const).includes(options.periodDays as 7 | 30 | 90 | 365)
+      ? options.periodDays
+      : 30;
+
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, userId },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        target: true,
+        slaTarget: true,
+      },
+    });
+
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const now = new Date();
+    const periodStart = new Date(now.getTime() - safeDays * 24 * 60 * 60 * 1000);
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId, checkedAt: { gte: periodStart, lte: now } },
+      orderBy: { checkedAt: 'asc' },
+      select: { ok: true, checkedAt: true, latencyMs: true },
+    });
+
+    const totalChecks = runs.length;
+    const successChecks = runs.filter((r) => r.ok).length;
+    const failedChecks = totalChecks - successChecks;
+    const uptimePct = totalChecks === 0 ? 100 : parseFloat(((successChecks / totalChecks) * 100).toFixed(4));
+
+    // Latency stats
+    const latencies = runs.map((r) => r.latencyMs).filter((l): l is number => l !== null && l !== undefined);
+    const avgLatencyMs =
+      latencies.length > 0
+        ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length)
+        : null;
+    const p95LatencyMs =
+      latencies.length > 0
+        ? (() => {
+            const sorted = [...latencies].sort((a, b) => a - b);
+            const idx = Math.floor(sorted.length * 0.95);
+            return sorted[Math.min(idx, sorted.length - 1)];
+          })()
+        : null;
+
+    // Incident + downtime computation (ok→fail transitions)
+    let incidents = 0;
+    let totalDowntimeMinutes = 0;
+    let longestOutageMinutes = 0;
+    let outageStart: Date | null = null;
+    let prevOk = true;
+
+    for (const run of runs) {
+      if (prevOk && !run.ok) {
+        // Start of an outage
+        incidents += 1;
+        outageStart = run.checkedAt;
+      } else if (!prevOk && run.ok) {
+        // End of an outage
+        if (outageStart !== null) {
+          const durationMin = (run.checkedAt.getTime() - outageStart.getTime()) / 60_000;
+          totalDowntimeMinutes += durationMin;
+          if (durationMin > longestOutageMinutes) longestOutageMinutes = durationMin;
+          outageStart = null;
+        }
+      }
+      prevOk = run.ok;
+    }
+
+    // If still in outage at end of period
+    if (outageStart !== null) {
+      const durationMin = (now.getTime() - outageStart.getTime()) / 60_000;
+      totalDowntimeMinutes += durationMin;
+      if (durationMin > longestOutageMinutes) longestOutageMinutes = durationMin;
+    }
+
+    const slaTarget = monitor.slaTarget !== null ? Number(monitor.slaTarget) : null;
+    const slaCompliant = slaTarget !== null ? uptimePct >= slaTarget : null;
+
+    return {
+      certificateId: `PD-${randomUUID().replace(/-/g, '').slice(0, 16).toUpperCase()}`,
+      monitorId: monitor.id,
+      monitorName: monitor.name,
+      monitorTarget: monitor.target ?? '',
+      monitorType: monitor.type,
+      issuedAt: now.toISOString(),
+      periodDays: safeDays,
+      periodStart: periodStart.toISOString(),
+      periodEnd: now.toISOString(),
+      uptimePct,
+      avgLatencyMs,
+      p95LatencyMs,
+      totalChecks,
+      successChecks,
+      failedChecks,
+      totalDowntimeMinutes: Math.round(totalDowntimeMinutes),
+      longestOutageMinutes: Math.round(longestOutageMinutes),
+      incidents,
+      slaTarget,
+      slaCompliant,
+      title: options.title ?? 'Uptime Certificate',
     };
   }
 

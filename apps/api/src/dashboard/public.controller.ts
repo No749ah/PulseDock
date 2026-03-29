@@ -861,4 +861,247 @@ export class PublicDashboardController {
       generatedAt: new Date().toISOString(),
     });
   }
+
+  // ---------------------------------------------------------------------------
+  // Public uptime certificate (HTML, share-token authenticated)
+  // ---------------------------------------------------------------------------
+
+  /**
+   * GET /v1/public/certificates/:monitorId?token=<shareToken>&periodDays=30
+   * Returns a self-contained print-ready HTML certificate.
+   * No auth required — uses monitor shareToken for access control.
+   */
+  @Get('certificates/:monitorId')
+  @Header('Access-Control-Allow-Origin', '*')
+  @ApiOperation({
+    summary: 'Public uptime certificate (HTML)',
+    description: 'Returns a print-ready HTML certificate for the given monitor. Authenticated via shareToken query param. No login required.',
+  })
+  @ApiParam({ name: 'monitorId', description: 'Monitor ID' })
+  @ApiQuery({ name: 'token', required: true, description: 'Monitor share token' })
+  @ApiQuery({ name: 'periodDays', required: false, enum: [7, 30, 90, 365], description: 'Period in days (default 30)' })
+  @ApiResponse({ status: 200, description: 'HTML certificate returned.' })
+  @ApiResponse({ status: 401, description: 'Share token required or invalid.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async publicCertificate(
+    @Param('monitorId') monitorId: string,
+    @Query('token') token: string | undefined,
+    @Query('periodDays') periodDaysStr: string | undefined,
+    @Res() res: Response,
+  ): Promise<void> {
+    if (!token) {
+      res.status(401).setHeader('Content-Type', 'text/plain').send('Share token required');
+      return;
+    }
+
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, shareToken: token },
+      select: { id: true, name: true, type: true, target: true, slaTarget: true },
+    });
+
+    if (!monitor) {
+      res.status(401).setHeader('Content-Type', 'text/plain').send('Invalid share token');
+      return;
+    }
+
+    const periodDays = (() => {
+      const d = parseInt(periodDaysStr ?? '30', 10);
+      return ([7, 30, 90, 365] as const).includes(d as 7 | 30 | 90 | 365) ? d : 30;
+    })();
+
+    const now = new Date();
+    const periodStart = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000);
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId, checkedAt: { gte: periodStart, lte: now } },
+      orderBy: { checkedAt: 'asc' },
+      select: { ok: true, checkedAt: true, latencyMs: true },
+    });
+
+    const totalChecks = runs.length;
+    const successChecks = runs.filter((r) => r.ok).length;
+    const failedChecks = totalChecks - successChecks;
+    const uptimePct = totalChecks === 0 ? 100 : (successChecks / totalChecks) * 100;
+
+    const latencies = runs.map((r) => r.latencyMs).filter((l): l is number => l !== null && l !== undefined);
+    const avgLatencyMs =
+      latencies.length > 0 ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length) : null;
+    const p95LatencyMs =
+      latencies.length > 0
+        ? (() => {
+            const sorted = [...latencies].sort((a, b) => a - b);
+            return sorted[Math.min(Math.floor(sorted.length * 0.95), sorted.length - 1)];
+          })()
+        : null;
+
+    let incidents = 0;
+    let totalDowntimeMinutes = 0;
+    let longestOutageMinutes = 0;
+    let outageStart: Date | null = null;
+    let prevOk = true;
+    for (const run of runs) {
+      if (prevOk && !run.ok) { incidents += 1; outageStart = run.checkedAt; }
+      else if (!prevOk && run.ok && outageStart !== null) {
+        const dur = (run.checkedAt.getTime() - outageStart.getTime()) / 60_000;
+        totalDowntimeMinutes += dur;
+        if (dur > longestOutageMinutes) longestOutageMinutes = dur;
+        outageStart = null;
+      }
+      prevOk = run.ok;
+    }
+    if (outageStart !== null) {
+      const dur = (now.getTime() - outageStart.getTime()) / 60_000;
+      totalDowntimeMinutes += dur;
+      if (dur > longestOutageMinutes) longestOutageMinutes = dur;
+    }
+
+    const slaTarget = monitor.slaTarget !== null ? Number(monitor.slaTarget) : null;
+    const slaCompliant = slaTarget !== null ? uptimePct >= slaTarget : null;
+
+    function esc(s: string): string {
+      return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
+    const complianceColor = slaCompliant === true ? '#22c55e' : slaCompliant === false ? '#ef4444' : '#6b7280';
+    const complianceLabel = slaCompliant === true ? 'SLA COMPLIANT ✓' : slaCompliant === false ? 'SLA BREACH ✗' : 'NO SLA TARGET';
+    const periodLabel = periodDays === 7 ? '7 Days' : periodDays === 30 ? '30 Days' : periodDays === 90 ? '90 Days' : '365 Days';
+    const uptimeFmt = uptimePct.toFixed(3) + '%';
+    const certId = `PD-${monitorId.slice(-8).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Uptime Certificate — ${esc(monitor.name)}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{font-family:'Inter',system-ui,sans-serif;background:#0f172a;color:#f1f5f9;-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  body{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem;background:#0f172a}
+  .page{width:210mm;max-width:100%;background:#ffffff;color:#0f172a;border-radius:16px;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,.5)}
+  .header{background:linear-gradient(135deg,#0f172a 0%,#1e293b 100%);padding:40px 48px;position:relative;overflow:hidden}
+  .header::before{content:'';position:absolute;top:-60px;right:-60px;width:200px;height:200px;background:radial-gradient(circle,rgba(99,102,241,.25) 0%,transparent 70%);border-radius:50%}
+  .header::after{content:'';position:absolute;bottom:-40px;left:100px;width:150px;height:150px;background:radial-gradient(circle,rgba(168,85,247,.15) 0%,transparent 70%);border-radius:50%}
+  .brand{display:flex;align-items:center;gap:10px;margin-bottom:24px}
+  .brand-dot{width:10px;height:10px;border-radius:50%;background:#6366f1;box-shadow:0 0 12px rgba(99,102,241,.6)}
+  .brand-name{font-size:13px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;color:#94a3b8}
+  .cert-title{font-size:28px;font-weight:800;color:#f1f5f9;letter-spacing:-.02em;line-height:1.2}
+  .cert-subtitle{font-size:14px;color:#94a3b8;margin-top:6px;font-weight:400}
+  .badge-row{margin-top:24px;display:flex;align-items:center;gap:12px}
+  .badge{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:8px;font-size:12px;font-weight:700;letter-spacing:.05em;text-transform:uppercase}
+  .compliance-badge{background:${complianceColor}1a;color:${complianceColor};border:1px solid ${complianceColor}40}
+  .period-badge{background:rgba(99,102,241,.1);color:#818cf8;border:1px solid rgba(99,102,241,.2)}
+  .body{padding:40px 48px}
+  .monitor-section{margin-bottom:32px;padding:24px;background:#f8fafc;border-radius:12px;border:1px solid #e2e8f0}
+  .monitor-name{font-size:20px;font-weight:700;color:#0f172a;margin-bottom:4px}
+  .monitor-target{font-size:13px;color:#64748b;font-weight:400;word-break:break-all}
+  .monitor-type{display:inline-block;padding:2px 8px;border-radius:4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;background:#e0e7ff;color:#4338ca;margin-top:8px}
+  .stats-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-bottom:32px}
+  .stat-card{padding:20px 24px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px}
+  .stat-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#94a3b8;margin-bottom:6px}
+  .stat-value{font-size:24px;font-weight:800;color:#0f172a;letter-spacing:-.02em}
+  .stat-value.uptime{color:${uptimePct >= 99 ? '#16a34a' : uptimePct >= 95 ? '#d97706' : '#dc2626'}}
+  .stat-sub{font-size:11px;color:#94a3b8;margin-top:2px}
+  .details-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:32px}
+  .detail-row{display:flex;justify-content:space-between;align-items:center;padding:10px 16px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px}
+  .detail-label{font-size:12px;color:#64748b;font-weight:500}
+  .detail-value{font-size:12px;font-weight:700;color:#0f172a}
+  .footer{padding:24px 48px;background:#f1f5f9;border-top:1px solid #e2e8f0;display:flex;align-items:center;justify-content:space-between}
+  .cert-id{font-size:10px;font-family:monospace;color:#94a3b8}
+  .issued-at{font-size:10px;color:#94a3b8}
+  .print-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 20px;background:#6366f1;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s}
+  .print-btn:hover{background:#4f46e5}
+  @media print{
+    body{background:#fff;padding:0}
+    .page{box-shadow:none;border-radius:0;width:100%}
+    .print-btn{display:none}
+    html{background:#fff}
+  }
+  @page{size:A4;margin:0}
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="header">
+    <div class="brand">
+      <div class="brand-dot"></div>
+      <span class="brand-name">PulseDock</span>
+    </div>
+    <div class="cert-title">Uptime Certificate</div>
+    <div class="cert-subtitle">Official performance record for the specified monitoring period</div>
+    <div class="badge-row">
+      <span class="badge compliance-badge">${esc(complianceLabel)}</span>
+      <span class="badge period-badge">Last ${esc(periodLabel)}</span>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="monitor-section">
+      <div class="monitor-name">${esc(monitor.name)}</div>
+      <div class="monitor-target">${esc(monitor.target ?? '')}</div>
+      <div class="monitor-type">${esc(monitor.type)}</div>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-label">Uptime</div>
+        <div class="stat-value uptime">${esc(uptimeFmt)}</div>
+        <div class="stat-sub">${esc(String(successChecks))} of ${esc(String(totalChecks))} checks passed</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Avg Latency</div>
+        <div class="stat-value">${avgLatencyMs !== null ? esc(String(avgLatencyMs)) + 'ms' : '—'}</div>
+        <div class="stat-sub">p95: ${p95LatencyMs !== null ? esc(String(p95LatencyMs)) + 'ms' : '—'}</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-label">Incidents</div>
+        <div class="stat-value">${esc(String(incidents))}</div>
+        <div class="stat-sub">outages during period</div>
+      </div>
+    </div>
+
+    <div class="details-grid">
+      <div class="detail-row">
+        <span class="detail-label">Period Start</span>
+        <span class="detail-value">${esc(periodStart.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }))}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Period End</span>
+        <span class="detail-value">${esc(now.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }))}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Total Downtime</span>
+        <span class="detail-value">${esc(String(Math.round(totalDowntimeMinutes)))} min</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Longest Outage</span>
+        <span class="detail-value">${esc(String(Math.round(longestOutageMinutes)))} min</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">Failed Checks</span>
+        <span class="detail-value">${esc(String(failedChecks))}</span>
+      </div>
+      <div class="detail-row">
+        <span class="detail-label">SLA Target</span>
+        <span class="detail-value">${slaTarget !== null ? esc(slaTarget.toFixed(1)) + '%' : 'Not set'}</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <div>
+      <div class="cert-id">Certificate ID: ${esc(certId)}</div>
+      <div class="issued-at">Issued: ${esc(now.toLocaleString('en-US', { dateStyle: 'long', timeStyle: 'short' }))} UTC</div>
+    </div>
+    <button class="print-btn" onclick="window.print()">🖨 Print / Save as PDF</button>
+  </div>
+</div>
+</body>
+</html>`;
+
+    res.setHeader('Content-Type', 'text/html; charset=utf-8');
+    res.setHeader('Cache-Control', 'public, max-age=300, s-maxage=300');
+    res.send(html);
+  }
 }

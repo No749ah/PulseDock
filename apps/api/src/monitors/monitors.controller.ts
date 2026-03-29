@@ -2010,6 +2010,32 @@ export class MonitorsController {
     res.send(html);
   }
 
+  // ─── Uptime Certificate (structured JSON) ────────────────────────────────
+
+  @Get(':id/uptime-certificate/data')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Generate uptime certificate data (JSON)',
+    description: 'Returns structured certificate data including SLA compliance, latency stats, incident count, and downtime. Accepts periodDays=7|30|90|365.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'periodDays', required: false, enum: [7, 30, 90, 365], description: 'Period in days (default 30)' })
+  @ApiQuery({ name: 'title', required: false, description: 'Custom certificate title' })
+  @ApiResponse({ status: 200, description: 'Certificate data returned.' })
+  @ApiResponse({ status: 404, description: 'Monitor not found.' })
+  async uptimeCertificateData(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('periodDays', new DefaultValuePipe('30')) periodDays: string,
+    @Query('title') title?: string,
+  ) {
+    const days = parseInt(periodDays, 10);
+    return this.monitorsService.generateUptimeCertificate(req.user.id, id, {
+      periodDays: ([7, 30, 90, 365] as const).includes(days as 7 | 30 | 90 | 365) ? days : 30,
+      title,
+    });
+  }
+
   // ─── Downtime Cost Report ──────────────────────────────────────────────────
 
   @Get('downtime-cost-report')

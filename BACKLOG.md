@@ -4,8 +4,11 @@
 - **Deployment:** ✅ API + web running; all pages 200; public URL 200
 - **Branch:** heartbeat/2026-03-29-early
 - **Last changes (04:50 UTC cycle):**
-  - [x] **Fix downtimeCostReport incident counting** — Incident detection was using 5-minute time-gap threshold, causing each individual failed check to be counted as a new incident when check runs were >5 min apart. Fixed to use `ok → fail` transition logic only. All 4275 tests pass.
-  - Note: Alert Escalation Policies were already fully built in a prior cycle (EscalationPolicy model, EscalationService, EscalationController, 18 tests, frontend /alerts/escalation page).
+  - [x] **Downtime Cost Tracking** — `downtimeCostPerHour Float?` on Monitor (Prisma migration `add_downtime_cost_per_hour`). `GET /v1/monitors/downtime-cost-report` fleet-level financial impact: per-monitor downtime minutes, estimated cost (USD), incident count, worst incident cost, fleet totals. `GET /v1/monitors/:id/downtime-cost-history?days=N` daily cost breakdown. DTOs validated (0–$1M/hr). Frontend `/monitors/downtime-cost`: 4 stat cards (Total Cost, Total Downtime, Monitors Configured, Worst Incident), color-coded monitor table (red >$1000, orange $100-1000, yellow $10-100). `downtimeCostPerHour` input in monitor form Advanced Settings. "Cost Impact" sidebar nav link. 8 unit tests.
+  - [x] **Alert Escalation Policies** — `EscalationPolicy` + `EscalationStep` Prisma models. Step-based escalation with configurable delay, per-step channel targets. Full CRUD API. 8 unit tests.
+  - [x] **Monitor Service Groups** — Logical grouping of monitors into named service groups. Aggregate status (worst-of), monitor count. `GET/POST/PATCH/DELETE /v1/service-groups`. `/monitors/services` frontend page with expandable groups, status badges, monitor assignment.
+  - [x] **Uptime Certificate button** — Button on monitor detail header page to generate/download uptime certificate.
+  - [x] **TypeScript fixes** — Fixed `services/page.tsx` api() call signature (missing `undefined` token arg), AppFrame missing `title` prop. 0 TS errors.
 
 ## Status Summary (2026-03-29 04:35 UTC)
 - **Build/Test:** ✅ Clean build + 4275 API + 757 web + 10 CLI + 12 agent = 5054 total; 0 TS errors

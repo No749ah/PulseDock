@@ -111,6 +111,7 @@ export class MonitorsService {
       pausedUntil: m.pausedUntil?.toISOString() ?? null,
       mutedUntil: m.mutedUntil?.toISOString() ?? null,
       latencyAlertMs: m.latencyAlertMs ?? null,
+      latencyBudgetMs: (m as typeof m & { latencyBudgetMs?: number | null }).latencyBudgetMs ?? null,
       anomalyDetection: m.anomalyDetection,
       anomalyMultiplier: m.anomalyMultiplier,
       cronExpression: m.cronExpression ?? null,
@@ -182,6 +183,7 @@ export class MonitorsService {
       pausedUntil: m.pausedUntil?.toISOString() ?? null,
       mutedUntil: m.mutedUntil?.toISOString() ?? null,
       latencyAlertMs: m.latencyAlertMs ?? null,
+      latencyBudgetMs: (m as typeof m & { latencyBudgetMs?: number | null }).latencyBudgetMs ?? null,
       isAcknowledged: m.acknowledgements.length > 0,
       activeAck: m.acknowledgements[0] ? {
         id: m.acknowledgements[0].id,
@@ -243,6 +245,7 @@ export class MonitorsService {
     flapWindow?: number;
     flapThreshold?: number;
     latencyAlertMs?: number | null;
+    latencyBudgetMs?: number | null;
     anomalyDetection?: boolean;
     anomalyMultiplier?: number;
     cronExpression?: string | null;
@@ -317,6 +320,7 @@ export class MonitorsService {
         flapWindow: body.flapWindow ?? 10,
         flapThreshold: body.flapThreshold ?? 0.5,
         latencyAlertMs: body.latencyAlertMs ?? null,
+        latencyBudgetMs: body.latencyBudgetMs ?? null,
         anomalyDetection: body.anomalyDetection ?? false,
         anomalyMultiplier: body.anomalyMultiplier ?? 2.0,
         cronExpression: body.cronExpression ?? null,
@@ -449,6 +453,7 @@ export class MonitorsService {
     flapWindow?: number;
     flapThreshold?: number;
     latencyAlertMs?: number | null;
+    latencyBudgetMs?: number | null;
     anomalyDetection?: boolean;
     anomalyMultiplier?: number;
     cronExpression?: string | null;
@@ -527,6 +532,7 @@ export class MonitorsService {
         ...(body.flapWindow !== undefined ? { flapWindow: body.flapWindow } : {}),
         ...(body.flapThreshold !== undefined ? { flapThreshold: body.flapThreshold } : {}),
         ...(body.latencyAlertMs !== undefined ? { latencyAlertMs: body.latencyAlertMs } : {}),
+        ...(body.latencyBudgetMs !== undefined ? { latencyBudgetMs: body.latencyBudgetMs } : {}),
         ...(body.anomalyDetection !== undefined ? { anomalyDetection: body.anomalyDetection } : {}),
         ...(body.anomalyMultiplier !== undefined ? { anomalyMultiplier: body.anomalyMultiplier } : {}),
         ...(body.cronExpression !== undefined ? { cronExpression: body.cronExpression } : {}),
@@ -579,6 +585,7 @@ export class MonitorsService {
       flapWindow: body.flapWindow !== undefined ? body.flapWindow : current.flapWindow,
       flapThreshold: body.flapThreshold !== undefined ? body.flapThreshold : current.flapThreshold,
       latencyAlertMs: body.latencyAlertMs !== undefined ? body.latencyAlertMs : current.latencyAlertMs,
+      latencyBudgetMs: body.latencyBudgetMs !== undefined ? body.latencyBudgetMs : (current as typeof current & { latencyBudgetMs?: number | null }).latencyBudgetMs,
       anomalyDetection: body.anomalyDetection !== undefined ? body.anomalyDetection : current.anomalyDetection,
       anomalyMultiplier: body.anomalyMultiplier !== undefined ? body.anomalyMultiplier : current.anomalyMultiplier,
       cronExpression: body.cronExpression !== undefined ? body.cronExpression : current.cronExpression,
@@ -1554,6 +1561,194 @@ export class MonitorsService {
     const safeName = monitor.name.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
     const dateStr = new Date().toISOString().slice(0, 10);
     return { csv, filename: `pulsedock-runs-${safeName}-${dateStr}.csv`, monitorName: monitor.name };
+  }
+
+  /**
+   * Returns the latency budget report for a monitor for the current calendar month.
+   * Budget is defined as the P95 latency target; tracks what % of checks exceeded it.
+   */
+  async getLatencyBudgetReport(
+    userId: string,
+    monitorId: string,
+  ): Promise<{
+    monitorId: string;
+    monitorName: string;
+    latencyBudgetMs: number | null;
+    periodStart: string;
+    periodEnd: string;
+    totalChecks: number;
+    checksAboveBudget: number;
+    budgetUsedPct: number;
+    avgLatencyMs: number | null;
+    p95LatencyMs: number | null;
+    status: 'no-budget' | 'healthy' | 'warning' | 'exceeded';
+  }> {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    const now = new Date();
+    const periodStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId, userId, checkedAt: { gte: periodStart } },
+      select: { latencyMs: true },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    const totalChecks = runs.length;
+    const latencyValues = runs.map((r) => r.latencyMs).filter((v): v is number => v !== null && v !== undefined);
+    const latencyBudgetMs = (monitor as typeof monitor & { latencyBudgetMs?: number | null }).latencyBudgetMs ?? null;
+
+    if (latencyBudgetMs === null) {
+      const avgLatencyMs = latencyValues.length > 0 ? Math.round(latencyValues.reduce((a, b) => a + b, 0) / latencyValues.length) : null;
+      const sortedAll = [...latencyValues].sort((a, b) => a - b);
+      const p95LatencyMs = sortedAll.length > 0 ? sortedAll[Math.floor(sortedAll.length * 0.95)] ?? null : null;
+      return {
+        monitorId,
+        monitorName: monitor.name,
+        latencyBudgetMs: null,
+        periodStart: periodStart.toISOString(),
+        periodEnd: now.toISOString(),
+        totalChecks,
+        checksAboveBudget: 0,
+        budgetUsedPct: 0,
+        avgLatencyMs,
+        p95LatencyMs,
+        status: 'no-budget',
+      };
+    }
+
+    const checksAboveBudget = latencyValues.filter((v) => v > latencyBudgetMs).length;
+    const budgetUsedPct = totalChecks === 0 ? 0 : Math.round((checksAboveBudget / totalChecks) * 10000) / 100;
+    const avgLatencyMs = latencyValues.length > 0 ? Math.round(latencyValues.reduce((a, b) => a + b, 0) / latencyValues.length) : null;
+    const sorted = [...latencyValues].sort((a, b) => a - b);
+    const p95LatencyMs = sorted.length > 0 ? sorted[Math.floor(sorted.length * 0.95)] ?? null : null;
+
+    let status: 'healthy' | 'warning' | 'exceeded';
+    if (budgetUsedPct < 10) {
+      status = 'healthy';
+    } else if (budgetUsedPct <= 25) {
+      status = 'warning';
+    } else {
+      status = 'exceeded';
+    }
+
+    return {
+      monitorId,
+      monitorName: monitor.name,
+      latencyBudgetMs,
+      periodStart: periodStart.toISOString(),
+      periodEnd: now.toISOString(),
+      totalChecks,
+      checksAboveBudget,
+      budgetUsedPct,
+      avgLatencyMs,
+      p95LatencyMs,
+      status,
+    };
+  }
+
+  /**
+   * Enhanced export for monitor check runs.
+   * Supports CSV and JSON output with optional HTTP timing columns and assertion failure details.
+   */
+  async exportMonitorRunsEnhanced(
+    userId: string,
+    monitorId: string,
+    opts: {
+      format: 'csv' | 'json';
+      days: number;
+      includeTimings: boolean;
+      includeAssertions: boolean;
+    },
+  ): Promise<{ data: string; filename: string; totalCount: number }> {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    const since = new Date(Date.now() - opts.days * 86_400_000);
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { userId, monitorId, checkedAt: { gte: since } },
+      orderBy: { checkedAt: 'desc' },
+      take: 10_000,
+    });
+
+    const totalCount = runs.length;
+    const safeName = monitor.name.replace(/[^a-zA-Z0-9_-]/g, '_').toLowerCase();
+    const dateStr = new Date().toISOString().slice(0, 10);
+
+    type TimingsShape = { dnsMs?: number | null; tcpMs?: number | null; tlsMs?: number | null; ttfbMs?: number | null; downloadMs?: number | null };
+
+    if (opts.format === 'json') {
+      const records = runs.map((r) => {
+        const timings = (r.timingsJson as TimingsShape | null);
+        const base: Record<string, unknown> = {
+          checkedAt: r.checkedAt.toISOString(),
+          level: r.level,
+          ok: r.ok,
+          latencyMs: r.latencyMs ?? null,
+          message: r.message,
+          statusCode: r.status ?? null,
+          responseSizeBytes: r.responseSizeBytes ?? null,
+          geoRegion: r.geoRegion ?? null,
+          redirectChainLength: r.redirectChain?.length ?? 0,
+          capturedMetricValue: r.capturedMetricValue ?? null,
+        };
+        if (opts.includeTimings) {
+          base['dnsMs'] = timings?.dnsMs ?? null;
+          base['tcpMs'] = timings?.tcpMs ?? null;
+          base['tlsMs'] = timings?.tlsMs ?? null;
+          base['ttfbMs'] = timings?.ttfbMs ?? null;
+          base['downloadMs'] = timings?.downloadMs ?? null;
+        }
+        if (opts.includeAssertions) {
+          base['headerAssertionsFailed'] = r.headerAssertionsFailed ?? null;
+        }
+        return base;
+      });
+      return { data: JSON.stringify(records, null, 2), filename: `pulsedock-runs-${safeName}-${dateStr}.json`, totalCount };
+    }
+
+    // CSV output
+    const baseHeaders = ['checkedAt', 'level', 'ok', 'latencyMs', 'message', 'statusCode', 'responseSizeBytes', 'geoRegion', 'redirectChainLength', 'capturedMetricValue'];
+    const timingHeaders = opts.includeTimings ? ['dnsMs', 'tcpMs', 'tlsMs', 'ttfbMs', 'downloadMs'] : [];
+    const assertionHeaders = opts.includeAssertions ? ['headerAssertionsFailed'] : [];
+    const allHeaders = [...baseHeaders, ...timingHeaders, ...assertionHeaders];
+
+    const escapeCell = (v: unknown): string => {
+      if (v === null || v === undefined) return '';
+      const s = typeof v === 'string' ? v : String(v);
+      if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+        return `"${s.replace(/"/g, '""')}"`;
+      }
+      return s;
+    };
+
+    const rows = runs.map((r) => {
+      const timings = (r.timingsJson as TimingsShape | null);
+      const baseValues: unknown[] = [
+        r.checkedAt.toISOString(),
+        r.level,
+        r.ok ? '1' : '0',
+        r.latencyMs ?? null,
+        r.message,
+        r.status ?? null,
+        r.responseSizeBytes ?? null,
+        r.geoRegion ?? null,
+        r.redirectChain?.length ?? 0,
+        r.capturedMetricValue ?? null,
+      ];
+      const timingValues: unknown[] = opts.includeTimings
+        ? [timings?.dnsMs ?? null, timings?.tcpMs ?? null, timings?.tlsMs ?? null, timings?.ttfbMs ?? null, timings?.downloadMs ?? null]
+        : [];
+      const assertionValues: unknown[] = opts.includeAssertions
+        ? [r.headerAssertionsFailed !== null && r.headerAssertionsFailed !== undefined ? JSON.stringify(r.headerAssertionsFailed) : null]
+        : [];
+      return [...baseValues, ...timingValues, ...assertionValues].map(escapeCell).join(',');
+    });
+
+    const csv = [allHeaders.join(','), ...rows].join('\n');
+    return { data: csv, filename: `pulsedock-runs-enhanced-${safeName}-${dateStr}.csv`, totalCount };
   }
 
   /**
@@ -3799,6 +3994,143 @@ export class MonitorsService {
       const score = Math.max(0, Math.min(100, uptimeScore + 30 + incidentScore - flappingPenalty));
       return { monitorId: m.id, score };
     });
+  }
+
+  // ─── Health Score Leaderboard ────────────────────────────────────────────
+
+  /**
+   * Returns enriched health score data for all monitors, suitable for a
+   * leaderboard / comparison page. Includes name, type, score, grade, uptime%,
+   * active incidents, and improvement hints.
+   */
+  async healthScoreLeaderboard(userId: string): Promise<{
+    items: Array<{
+      monitorId: string;
+      monitorName: string;
+      monitorType: string;
+      score: number | null;
+      grade: 'A' | 'B' | 'C' | 'D' | 'F' | null;
+      uptimePct24h: number | null;
+      totalChecks24h: number;
+      activeIncidents: number;
+      isFlapping: boolean;
+      slaTarget: number | null;
+      slaCompliant: boolean | null;
+      hints: string[];
+    }>;
+    summary: {
+      totalMonitors: number;
+      noDataCount: number;
+      gradeDistribution: Record<'A' | 'B' | 'C' | 'D' | 'F', number>;
+      avgScore: number | null;
+    };
+  }> {
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId },
+      select: { id: true, name: true, type: true, isFlapping: true, slaTarget: true },
+    });
+
+    const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const runStats = await this.prisma.monitorRun.groupBy({
+      by: ['monitorId'],
+      where: { userId, checkedAt: { gte: since24h } },
+      _count: { _all: true },
+    });
+
+    const okStats = await this.prisma.monitorRun.groupBy({
+      by: ['monitorId'],
+      where: { userId, checkedAt: { gte: since24h }, ok: true },
+      _count: { _all: true },
+    });
+
+    const activeIncidentsByMonitor = await this.prisma.incidentMonitor.groupBy({
+      by: ['monitorId'],
+      where: { incident: { userId, status: { not: 'RESOLVED' } } },
+      _count: { _all: true },
+    });
+
+    const gradeDistribution: Record<'A' | 'B' | 'C' | 'D' | 'F', number> = { A: 0, B: 0, C: 0, D: 0, F: 0 };
+    let scoredCount = 0;
+    let scoreSum = 0;
+
+    const items = monitors.map((m) => {
+      const total = runStats.find((r) => r.monitorId === m.id)?._count._all ?? 0;
+      if (total === 0) {
+        return {
+          monitorId: m.id,
+          monitorName: m.name,
+          monitorType: m.type,
+          score: null,
+          grade: null as null,
+          uptimePct24h: null,
+          totalChecks24h: 0,
+          activeIncidents: 0,
+          isFlapping: m.isFlapping ?? false,
+          slaTarget: m.slaTarget !== null ? Number(m.slaTarget) : null,
+          slaCompliant: null as null,
+          hints: ['No check data in the last 24h — verify the monitor is enabled and the target is reachable'],
+        };
+      }
+
+      const ok = okStats.find((r) => r.monitorId === m.id)?._count._all ?? 0;
+      const uptimePct = parseFloat(((ok / total) * 100).toFixed(2));
+      const incidentCount = activeIncidentsByMonitor.find((r) => r.monitorId === m.id)?._count._all ?? 0;
+      const uptimeScore = Math.round((ok / total) * 50);
+      const incidentScore = Math.max(0, 20 - incidentCount * 10);
+      const flappingPenalty = m.isFlapping ? 15 : 0;
+      const score = Math.max(0, Math.min(100, uptimeScore + 30 + incidentScore - flappingPenalty));
+      const grade: 'A' | 'B' | 'C' | 'D' | 'F' =
+        score >= 90 ? 'A' : score >= 75 ? 'B' : score >= 60 ? 'C' : score >= 40 ? 'D' : 'F';
+
+      gradeDistribution[grade] += 1;
+      scoredCount += 1;
+      scoreSum += score;
+
+      const slaTarget = m.slaTarget !== null ? Number(m.slaTarget) : null;
+      const slaCompliant = slaTarget !== null ? uptimePct >= slaTarget : null;
+
+      const hints: string[] = [];
+      if (uptimePct < 99) hints.push(`Uptime is ${uptimePct.toFixed(2)}% — review recent failures and check for infrastructure issues`);
+      if (incidentCount > 0) hints.push(`${incidentCount} active incident(s) — resolve to improve score`);
+      if (m.isFlapping) hints.push('Monitor is flapping — consider raising confirmations or adding retries to reduce noise');
+      if (slaCompliant === false) hints.push(`SLA breached (${uptimePct.toFixed(2)}% < target ${slaTarget}%) — investigate root cause`);
+      if (hints.length === 0 && score < 100) hints.push('Score is healthy — keep monitoring for regressions');
+      if (hints.length === 0) hints.push('Excellent — this monitor is performing optimally');
+
+      return {
+        monitorId: m.id,
+        monitorName: m.name,
+        monitorType: m.type,
+        score,
+        grade,
+        uptimePct24h: uptimePct,
+        totalChecks24h: total,
+        activeIncidents: incidentCount,
+        isFlapping: m.isFlapping ?? false,
+        slaTarget,
+        slaCompliant,
+        hints,
+      };
+    });
+
+    // Sort: no-data last, then by score desc
+    items.sort((a, b) => {
+      if (a.score === null && b.score === null) return 0;
+      if (a.score === null) return 1;
+      if (b.score === null) return -1;
+      return b.score - a.score;
+    });
+
+    return {
+      items,
+      summary: {
+        totalMonitors: monitors.length,
+        noDataCount: monitors.length - scoredCount,
+        gradeDistribution,
+        avgScore: scoredCount > 0 ? parseFloat((scoreSum / scoredCount).toFixed(1)) : null,
+      },
+    };
   }
 
   // ─── Uptime Heatmap ───────────────────────────────────────────────────────

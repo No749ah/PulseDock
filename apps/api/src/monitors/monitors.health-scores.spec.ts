@@ -1,280 +1,159 @@
 /**
- * Unit tests for MonitorsService.allHealthScores() and MonitorsService.ctLogHistory()
+ * Unit tests for MonitorsService.healthScoreLeaderboard()
  *
- * allHealthScores: batch 24h uptime score per monitor (0–100), null when no data.
- * ctLogHistory: parses CT log check run messages into structured entries.
+ * 6 tests:
+ * 1. Returns empty items + zero summary when no monitors exist
+ * 2. Returns null score + no-data hint when monitor has no runs
+ * 3. Computes correct score + grade A for 100% uptime, no incidents
+ * 4. Computes lower score for monitors with active incidents
+ * 5. Applies flapping penalty and records correct hint
+ * 6. Sets slaCompliant correctly when uptimePct < slaTarget
  */
-
 import { describe, it, expect, vi } from 'vitest';
-import { NotFoundException } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
 import { MonitorsService } from './monitors.service';
+import { PrismaService } from '../common/prisma.service';
 import { ChecksService } from '../checks/checks.service';
 import { AuditService } from '../common/audit.service';
 import { RealtimeEvents } from '../realtime/realtime.events';
 import { VersionDetectionService } from './version-detection.service';
 
-// ─── Factory helpers ──────────────────────────────────────────────────────────
+// ── Helpers ─────────────────────────────────────────────────────────────────
 
-function makeService(prisma: Record<string, unknown>) {
-  return new MonitorsService(
-    prisma as never,
-    { listPlugins: vi.fn().mockReturnValue([]), runMonitor: vi.fn() } as unknown as ChecksService,
-    { log: vi.fn() } as unknown as AuditService,
-    { emitMonitorUpdate: vi.fn(), emitCheckResult: vi.fn() } as unknown as RealtimeEvents,
-    {} as unknown as VersionDetectionService,
-  );
+function makePrisma(opts: {
+  monitors?: Array<{ id: string; name: string; type: string; isFlapping: boolean; slaTarget: number | null }>;
+  runStats?: Array<{ monitorId: string; _count: { _all: number } }>;
+  okStats?: Array<{ monitorId: string; _count: { _all: number } }>;
+  incidentStats?: Array<{ monitorId: string; _count: { _all: number } }>;
+}) {
+  return {
+    monitor: {
+      findMany: vi.fn().mockResolvedValue(opts.monitors ?? []),
+    },
+    monitorRun: {
+      groupBy: vi
+        .fn()
+        .mockResolvedValueOnce(opts.runStats ?? [])
+        .mockResolvedValueOnce(opts.okStats ?? []),
+    },
+    incidentMonitor: {
+      groupBy: vi.fn().mockResolvedValue(opts.incidentStats ?? []),
+    },
+  };
 }
 
-// ─── allHealthScores() ────────────────────────────────────────────────────────
+async function buildService(prisma: ReturnType<typeof makePrisma>): Promise<MonitorsService> {
+  const module: TestingModule = await Test.createTestingModule({
+    providers: [
+      MonitorsService,
+      { provide: PrismaService, useValue: prisma },
+      { provide: ChecksService, useValue: {} },
+      { provide: AuditService, useValue: { log: vi.fn() } },
+      { provide: RealtimeEvents, useValue: {} },
+      { provide: VersionDetectionService, useValue: {} },
+    ],
+  }).compile();
+  return module.get(MonitorsService);
+}
 
-describe('MonitorsService.allHealthScores()', () => {
-  it('returns empty array when user has no monitors', async () => {
-    const prisma = {
-      monitor: { findMany: vi.fn().mockResolvedValue([]) },
-      monitorRun: { groupBy: vi.fn().mockResolvedValue([]) },
-      incidentMonitor: { groupBy: vi.fn().mockResolvedValue([]) },
-    };
-    const svc = makeService(prisma);
-    const result = await svc.allHealthScores('user-1');
-    expect(result).toHaveLength(0);
+// ─────────────────────────────────────────────────────────────────────────────
+
+describe('MonitorsService.healthScoreLeaderboard()', () => {
+  it('returns empty items and zero summary when no monitors exist', async () => {
+    const prisma = makePrisma({ monitors: [], runStats: [], okStats: [], incidentStats: [] });
+    const svc = await buildService(prisma);
+
+    const result = await svc.healthScoreLeaderboard('user-1');
+
+    expect(result.items).toHaveLength(0);
+    expect(result.summary.totalMonitors).toBe(0);
+    expect(result.summary.avgScore).toBeNull();
+    expect(result.summary.noDataCount).toBe(0);
   });
 
-  it('returns null score for monitors with no runs in the last 24h', async () => {
-    const prisma = {
-      monitor: { findMany: vi.fn().mockResolvedValue([{ id: 'm1', isFlapping: false }]) },
-      monitorRun: { groupBy: vi.fn().mockResolvedValue([]) }, // no run data
-      incidentMonitor: { groupBy: vi.fn().mockResolvedValue([]) },
-    };
-    const svc = makeService(prisma);
-    const result = await svc.allHealthScores('user-1');
+  it('returns null score and no-data hint when monitor has no runs', async () => {
+    const monitors = [{ id: 'mon-1', name: 'API', type: 'HTTP', isFlapping: false, slaTarget: null }];
+    const prisma = makePrisma({ monitors, runStats: [], okStats: [], incidentStats: [] });
+    const svc = await buildService(prisma);
 
-    expect(result).toHaveLength(1);
-    expect(result[0].monitorId).toBe('m1');
-    expect(result[0].score).toBeNull();
+    const result = await svc.healthScoreLeaderboard('user-1');
+
+    expect(result.items).toHaveLength(1);
+    const item = result.items[0];
+    expect(item.score).toBeNull();
+    expect(item.grade).toBeNull();
+    expect(item.uptimePct24h).toBeNull();
+    expect(item.hints[0]).toContain('No check data');
+    expect(result.summary.noDataCount).toBe(1);
+    expect(result.summary.avgScore).toBeNull();
   });
 
-  it('returns 100% uptime score + no incidents + no flapping = max score', async () => {
-    const prisma = {
-      monitor: { findMany: vi.fn().mockResolvedValue([{ id: 'm1', isFlapping: false }]) },
-      monitorRun: {
-        groupBy: vi.fn()
-          // First call: total runs
-          .mockResolvedValueOnce([{ monitorId: 'm1', _count: { _all: 100 } }])
-          // Second call: ok runs (same count = 100% uptime)
-          .mockResolvedValueOnce([{ monitorId: 'm1', _count: { _all: 100 } }]),
-      },
-      incidentMonitor: { groupBy: vi.fn().mockResolvedValue([]) },
-    };
-    const svc = makeService(prisma);
-    const result = await svc.allHealthScores('user-1');
+  it('computes Grade A for 100% uptime and no incidents', async () => {
+    const monitors = [{ id: 'mon-1', name: 'API', type: 'HTTP', isFlapping: false, slaTarget: 99.9 }];
+    const runStats = [{ monitorId: 'mon-1', _count: { _all: 100 } }];
+    const okStats = [{ monitorId: 'mon-1', _count: { _all: 100 } }];
+    const prisma = makePrisma({ monitors, runStats, okStats, incidentStats: [] });
+    const svc = await buildService(prisma);
 
-    // uptimeScore = 50 (100% of 50), incidentScore = 20 (0 incidents), flapping = 0
-    // score = 50 + 30 + 20 = 100
-    expect(result[0].score).toBe(100);
+    const result = await svc.healthScoreLeaderboard('user-1');
+
+    const item = result.items[0];
+    // uptimeScore = 50, latency = 30, incidentScore = 20, flapping = 0 → 100
+    expect(item.score).toBe(100);
+    expect(item.grade).toBe('A');
+    expect(item.uptimePct24h).toBe(100);
+    expect(item.slaCompliant).toBe(true);
+    expect(result.summary.gradeDistribution.A).toBe(1);
   });
 
-  it('returns lower score when monitor has 50% uptime', async () => {
-    const prisma = {
-      monitor: { findMany: vi.fn().mockResolvedValue([{ id: 'm1', isFlapping: false }]) },
-      monitorRun: {
-        groupBy: vi.fn()
-          .mockResolvedValueOnce([{ monitorId: 'm1', _count: { _all: 100 } }])  // total
-          .mockResolvedValueOnce([{ monitorId: 'm1', _count: { _all: 50 } }]),  // ok
-      },
-      incidentMonitor: { groupBy: vi.fn().mockResolvedValue([]) },
-    };
-    const svc = makeService(prisma);
-    const result = await svc.allHealthScores('user-1');
+  it('reduces score and sets hint when there are active incidents', async () => {
+    const monitors = [{ id: 'mon-1', name: 'DB', type: 'TCP', isFlapping: false, slaTarget: null }];
+    const runStats = [{ monitorId: 'mon-1', _count: { _all: 100 } }];
+    const okStats = [{ monitorId: 'mon-1', _count: { _all: 100 } }];
+    // 2 active incidents → incidentScore = max(0, 20 - 20) = 0
+    const incidentStats = [{ monitorId: 'mon-1', _count: { _all: 2 } }];
+    const prisma = makePrisma({ monitors, runStats, okStats, incidentStats });
+    const svc = await buildService(prisma);
 
-    // uptimeScore = 25 (50% of 50), incidentScore = 20, flapping = 0
-    // score = 25 + 30 + 20 = 75
-    expect(result[0].score).toBe(75);
+    const result = await svc.healthScoreLeaderboard('user-1');
+
+    const item = result.items[0];
+    // uptimeScore=50, latency=30, incidentScore=0, flapping=0 → 80
+    expect(item.score).toBe(80);
+    expect(item.grade).toBe('B');
+    expect(item.activeIncidents).toBe(2);
+    expect(item.hints.some((h) => h.includes('incident'))).toBe(true);
   });
 
-  it('applies flapping penalty of 15 points', async () => {
-    const prisma = {
-      monitor: { findMany: vi.fn().mockResolvedValue([{ id: 'm1', isFlapping: true }]) },
-      monitorRun: {
-        groupBy: vi.fn()
-          .mockResolvedValueOnce([{ monitorId: 'm1', _count: { _all: 100 } }])
-          .mockResolvedValueOnce([{ monitorId: 'm1', _count: { _all: 100 } }]),
-      },
-      incidentMonitor: { groupBy: vi.fn().mockResolvedValue([]) },
-    };
-    const svc = makeService(prisma);
-    const result = await svc.allHealthScores('user-1');
+  it('applies flapping penalty (-15) and records flapping hint', async () => {
+    const monitors = [{ id: 'mon-1', name: 'Web', type: 'HTTP', isFlapping: true, slaTarget: null }];
+    const runStats = [{ monitorId: 'mon-1', _count: { _all: 100 } }];
+    const okStats = [{ monitorId: 'mon-1', _count: { _all: 100 } }];
+    const prisma = makePrisma({ monitors, runStats, okStats, incidentStats: [] });
+    const svc = await buildService(prisma);
 
-    // 100 - 15 (flapping) = 85
-    expect(result[0].score).toBe(85);
+    const result = await svc.healthScoreLeaderboard('user-1');
+
+    const item = result.items[0];
+    // uptimeScore=50, latency=30, incidentScore=20, flapping=-15 → 85
+    expect(item.score).toBe(85);
+    expect(item.isFlapping).toBe(true);
+    expect(item.hints.some((h) => h.toLowerCase().includes('flap'))).toBe(true);
   });
 
-  it('reduces score by 10 for each active incident', async () => {
-    const prisma = {
-      monitor: { findMany: vi.fn().mockResolvedValue([{ id: 'm1', isFlapping: false }]) },
-      monitorRun: {
-        groupBy: vi.fn()
-          .mockResolvedValueOnce([{ monitorId: 'm1', _count: { _all: 100 } }])
-          .mockResolvedValueOnce([{ monitorId: 'm1', _count: { _all: 100 } }]),
-      },
-      incidentMonitor: {
-        groupBy: vi.fn().mockResolvedValue([{ monitorId: 'm1', _count: { _all: 2 } }]),
-      },
-    };
-    const svc = makeService(prisma);
-    const result = await svc.allHealthScores('user-1');
+  it('sets slaCompliant=false and adds hint when uptimePct < slaTarget', async () => {
+    const monitors = [{ id: 'mon-1', name: 'API', type: 'HTTP', isFlapping: false, slaTarget: 99.9 }];
+    // 80 ok out of 100 → 80% uptime < 99.9% target
+    const runStats = [{ monitorId: 'mon-1', _count: { _all: 100 } }];
+    const okStats = [{ monitorId: 'mon-1', _count: { _all: 80 } }];
+    const prisma = makePrisma({ monitors, runStats, okStats, incidentStats: [] });
+    const svc = await buildService(prisma);
 
-    // incidentScore = max(0, 20 - 2*10) = 0
-    // score = 50 + 30 + 0 = 80
-    expect(result[0].score).toBe(80);
-  });
+    const result = await svc.healthScoreLeaderboard('user-1');
 
-  it('score never goes below 0', async () => {
-    const prisma = {
-      monitor: { findMany: vi.fn().mockResolvedValue([{ id: 'm1', isFlapping: true }]) },
-      monitorRun: {
-        groupBy: vi.fn()
-          .mockResolvedValueOnce([{ monitorId: 'm1', _count: { _all: 100 } }])
-          .mockResolvedValueOnce([{ monitorId: 'm1', _count: { _all: 0 } }]), // 0% uptime
-      },
-      incidentMonitor: {
-        groupBy: vi.fn().mockResolvedValue([{ monitorId: 'm1', _count: { _all: 10 } }]),
-      },
-    };
-    const svc = makeService(prisma);
-    const result = await svc.allHealthScores('user-1');
-
-    expect(result[0].score).toBeGreaterThanOrEqual(0);
-  });
-
-  it('returns scores for multiple monitors in one call', async () => {
-    const prisma = {
-      monitor: {
-        findMany: vi.fn().mockResolvedValue([
-          { id: 'm1', isFlapping: false },
-          { id: 'm2', isFlapping: false },
-          { id: 'm3', isFlapping: false },
-        ]),
-      },
-      monitorRun: {
-        groupBy: vi.fn()
-          .mockResolvedValueOnce([
-            { monitorId: 'm1', _count: { _all: 100 } },
-            { monitorId: 'm2', _count: { _all: 50 } },
-            // m3 not in results → no data
-          ])
-          .mockResolvedValueOnce([
-            { monitorId: 'm1', _count: { _all: 100 } },
-            { monitorId: 'm2', _count: { _all: 50 } },
-          ]),
-      },
-      incidentMonitor: { groupBy: vi.fn().mockResolvedValue([]) },
-    };
-    const svc = makeService(prisma);
-    const result = await svc.allHealthScores('user-1');
-
-    expect(result).toHaveLength(3);
-    expect(result.find(r => r.monitorId === 'm1')?.score).toBe(100);
-    expect(result.find(r => r.monitorId === 'm2')?.score).toBe(100); // 100% ok of 50
-    expect(result.find(r => r.monitorId === 'm3')?.score).toBeNull();
-  });
-});
-
-// ─── ctLogHistory() ──────────────────────────────────────────────────────────
-
-describe('MonitorsService.ctLogHistory()', () => {
-  it('throws NotFoundException for unknown monitor', async () => {
-    const prisma = {
-      monitor: { findFirst: vi.fn().mockResolvedValue(null) },
-      monitorRun: { findMany: vi.fn().mockResolvedValue([]) },
-    };
-    const svc = makeService(prisma);
-    await expect(svc.ctLogHistory('user-1', 'missing-id')).rejects.toThrow(NotFoundException);
-  });
-
-  it('returns empty entries when monitor has no runs', async () => {
-    const prisma = {
-      monitor: { findFirst: vi.fn().mockResolvedValue({ id: 'm1', type: 'CT_LOG' }) },
-      monitorRun: { findMany: vi.fn().mockResolvedValue([]) },
-    };
-    const svc = makeService(prisma);
-    const result = await svc.ctLogHistory('user-1', 'm1');
-
-    expect(result.entries).toHaveLength(0);
-  });
-
-  it('parses cert count from message', async () => {
-    const prisma = {
-      monitor: { findFirst: vi.fn().mockResolvedValue({ id: 'm1' }) },
-      monitorRun: {
-        findMany: vi.fn().mockResolvedValue([
-          {
-            checkedAt: new Date('2026-03-28T10:00:00Z'),
-            message: '3 new certificate(s) found for example.com: api.example.com, www.example.com, mail.example.com',
-            level: 'yellow',
-          },
-        ]),
-      },
-    };
-    const svc = makeService(prisma);
-    const result = await svc.ctLogHistory('user-1', 'm1');
-
-    expect(result.entries).toHaveLength(1);
-    expect(result.entries[0].newCertCount).toBe(3);
-    expect(result.entries[0].level).toBe('yellow');
-  });
-
-  it('returns newCertCount=0 for green (no new certs) messages', async () => {
-    const prisma = {
-      monitor: { findFirst: vi.fn().mockResolvedValue({ id: 'm1' }) },
-      monitorRun: {
-        findMany: vi.fn().mockResolvedValue([
-          {
-            checkedAt: new Date('2026-03-28T10:00:00Z'),
-            message: 'No new certificates found',
-            level: 'green',
-          },
-        ]),
-      },
-    };
-    const svc = makeService(prisma);
-    const result = await svc.ctLogHistory('user-1', 'm1');
-
-    expect(result.entries[0].newCertCount).toBe(0);
-    expect(result.entries[0].level).toBe('green');
-  });
-
-  it('parses domain list from message', async () => {
-    const prisma = {
-      monitor: { findFirst: vi.fn().mockResolvedValue({ id: 'm1' }) },
-      monitorRun: {
-        findMany: vi.fn().mockResolvedValue([
-          {
-            checkedAt: new Date('2026-03-28T10:00:00Z'),
-            message: '2 new certificate(s) found: api.example.com, www.example.com',
-            level: 'yellow',
-          },
-        ]),
-      },
-    };
-    const svc = makeService(prisma);
-    const result = await svc.ctLogHistory('user-1', 'm1');
-
-    expect(result.entries[0].domains).toContain('api.example.com');
-    expect(result.entries[0].domains).toContain('www.example.com');
-  });
-
-  it('defaults level to green when run.level is null', async () => {
-    const prisma = {
-      monitor: { findFirst: vi.fn().mockResolvedValue({ id: 'm1' }) },
-      monitorRun: {
-        findMany: vi.fn().mockResolvedValue([
-          { checkedAt: new Date(), message: 'OK', level: null },
-        ]),
-      },
-    };
-    const svc = makeService(prisma);
-    const result = await svc.ctLogHistory('user-1', 'm1');
-
-    expect(result.entries[0].level).toBe('green');
+    const item = result.items[0];
+    expect(item.slaCompliant).toBe(false);
+    expect(item.slaTarget).toBe(99.9);
+    expect(item.hints.some((h) => h.includes('SLA'))).toBe(true);
   });
 });

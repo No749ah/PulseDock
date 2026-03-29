@@ -2200,33 +2200,64 @@ export function MonitorFormModal({
 
         {/* Fixed Latency Alert Threshold */}
         {(formData.type === "HTTP" || formData.type === "TCP" || formData.type === "DNS") && (
-          <div className="border border-border rounded-lg p-4 space-y-3">
-            <div>
-              <label className="block text-sm font-semibold text-text-primary">Latency Alert Threshold</label>
-              <p className="mt-0.5 text-xs text-text-secondary">
-                Alert when a successful check takes longer than this threshold. Leave blank to disable.
-              </p>
+          <>
+            <div className="border border-border rounded-lg p-4 space-y-3">
+              <div>
+                <label className="block text-sm font-semibold text-text-primary">Latency Alert Threshold</label>
+                <p className="mt-0.5 text-xs text-text-secondary">
+                  Alert when a successful check takes longer than this threshold. Leave blank to disable.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  min="1"
+                  max="60000"
+                  step="100"
+                  placeholder="e.g. 2000"
+                  value={formData.latencyAlertMs ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value === "" ? null : parseInt(e.target.value, 10);
+                    onSetFormData({ ...formData, latencyAlertMs: val && val > 0 ? val : null });
+                  }}
+                  className="w-36 px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+                <span className="text-sm text-text-muted">ms</span>
+                {formData.latencyAlertMs && formData.latencyAlertMs > 0 && (
+                  <span className="text-xs text-warning">⚠ Alert if response &gt; {formData.latencyAlertMs}ms</span>
+                )}
+              </div>
             </div>
-            <div className="flex items-center gap-3">
-              <input
-                type="number"
-                min="1"
-                max="60000"
-                step="100"
-                placeholder="e.g. 2000"
-                value={formData.latencyAlertMs ?? ""}
-                onChange={(e) => {
-                  const val = e.target.value === "" ? null : parseInt(e.target.value, 10);
-                  onSetFormData({ ...formData, latencyAlertMs: val && val > 0 ? val : null });
-                }}
-                className="w-36 px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
-              />
-              <span className="text-sm text-text-muted">ms</span>
-              {formData.latencyAlertMs && formData.latencyAlertMs > 0 && (
-                <span className="text-xs text-warning">⚠ Alert if response &gt; {formData.latencyAlertMs}ms</span>
-              )}
+
+            {/* Latency Budget (P95 target) */}
+            <div className="border border-border rounded-lg p-4 space-y-3">
+              <div>
+                <label className="block text-sm font-semibold text-text-primary">Latency Budget (P95 target, ms)</label>
+                <p className="mt-0.5 text-xs text-text-secondary">
+                  Monthly P95 latency budget. Tracks the % of checks that exceed this target. Used for SLO budget consumption reporting.
+                </p>
+              </div>
+              <div className="flex items-center gap-3">
+                <input
+                  type="number"
+                  min="100"
+                  max="60000"
+                  step="100"
+                  placeholder="e.g. 500"
+                  value={formData.latencyBudgetMs ?? ""}
+                  onChange={(e) => {
+                    const val = e.target.value === "" ? null : parseInt(e.target.value, 10);
+                    onSetFormData({ ...formData, latencyBudgetMs: val && val >= 100 ? val : null });
+                  }}
+                  className="w-36 px-3 py-2 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+                <span className="text-sm text-text-muted">ms</span>
+                {formData.latencyBudgetMs && formData.latencyBudgetMs >= 100 && (
+                  <span className="text-xs text-accent">P95 budget: {formData.latencyBudgetMs}ms</span>
+                )}
+              </div>
             </div>
-          </div>
+          </>
         )}
 
         {/* Request Timeout Override */}

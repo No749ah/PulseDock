@@ -48,6 +48,7 @@ export interface MonitorItem {
   flapThreshold?: number;
   flapAlertedAt?: string | null;
   latencyAlertMs?: number | null;
+  latencyBudgetMs?: number | null;
   shareToken?: string | null;
   pinned?: boolean;
   pausedUntil?: string | null;
@@ -149,6 +150,7 @@ export type MonitorFormData = {
   flapWindow: number;
   flapThreshold: number;
   latencyAlertMs: number | null;
+  latencyBudgetMs: number | null;
   anomalyDetection: boolean;
   anomalyMultiplier: number;
   sliLatencyTarget: number | "";

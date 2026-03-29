@@ -358,6 +358,60 @@ export class MonitorsController {
     res.send(csv);
   }
 
+  @Get(':id/runs/export-enhanced')
+  @ApiOperation({
+    summary: 'Enhanced export of check run history',
+    description: 'Exports check run history for a monitor in CSV or JSON format. Supports optional HTTP timing columns and assertion failure details. Limit: 10,000 rows.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiQuery({ name: 'format', required: false, enum: ['csv', 'json'], description: 'Output format (default: csv)' })
+  @ApiQuery({ name: 'days', required: false, description: 'Number of days of history to export (default: 30)' })
+  @ApiQuery({ name: 'includeTimings', required: false, description: 'Include HTTP timing breakdown columns (default: false)' })
+  @ApiQuery({ name: 'includeAssertions', required: false, description: 'Include assertion failure details (default: false)' })
+  @ApiResponse({ status: 200, description: 'File download (CSV or JSON).' })
+  async exportMonitorRunsEnhanced(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Query('format') format: string = 'csv',
+    @Query('days', new DefaultValuePipe(30)) days: number,
+    @Query('includeTimings') includeTimingsRaw: string = 'false',
+    @Query('includeAssertions') includeAssertionsRaw: string = 'false',
+    @Res() res: Response,
+  ) {
+    const resolvedFormat = format === 'json' ? 'json' : 'csv';
+    const includeTimings = includeTimingsRaw === 'true' || includeTimingsRaw === '1';
+    const includeAssertions = includeAssertionsRaw === 'true' || includeAssertionsRaw === '1';
+    const daysNum = Math.max(1, Math.min(365, Number(days) || 30));
+
+    const { data, filename, totalCount } = await this.monitorsService.exportMonitorRunsEnhanced(req.user.id, id, {
+      format: resolvedFormat,
+      days: daysNum,
+      includeTimings,
+      includeAssertions,
+    });
+
+    const contentType = resolvedFormat === 'json' ? 'application/json; charset=utf-8' : 'text/csv; charset=utf-8';
+    res.setHeader('Content-Type', contentType);
+    res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('X-Total-Count', String(totalCount));
+    res.send(data);
+  }
+
+  @Get(':id/latency-budget')
+  @ApiOperation({
+    summary: 'Latency budget report',
+    description: 'Returns a latency budget consumption report for the current calendar month. Tracks what % of checks exceeded the configured P95 latency budget.',
+  })
+  @ApiParam({ name: 'id', description: 'Monitor ID' })
+  @ApiResponse({ status: 200, description: 'Latency budget report returned.' })
+  async getLatencyBudgetReport(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    return this.monitorsService.getLatencyBudgetReport(req.user.id, id);
+  }
+
   @Get(':id/error-budget')
   @ApiOperation({
     summary: 'SLO error budget',
@@ -460,6 +514,17 @@ export class MonitorsController {
   @ApiResponse({ status: 200, description: 'Batch health scores returned.' })
   healthScores(@Req() req: { user: { id: string } }) {
     return this.monitorsService.allHealthScores(req.user.id);
+  }
+
+  @Get('health-scores/leaderboard')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({
+    summary: 'Health score leaderboard',
+    description: 'Returns enriched health scores for all monitors with grade, uptime%, incident count, SLA compliance, and improvement hints. Sorted best→worst. No-data monitors appear last.',
+  })
+  @ApiResponse({ status: 200, description: 'Leaderboard returned.' })
+  healthScoreLeaderboard(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.healthScoreLeaderboard(req.user.id);
   }
 
   @Get('ssl-summary')

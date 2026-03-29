@@ -180,6 +180,13 @@ export class CreateMonitorDto {
   @Max(60000)
   latencyAlertMs?: number | null;
 
+  @ApiPropertyOptional({ description: 'P95 latency budget in ms (monthly). Tracks how many checks exceed this target as a percentage. Used for SLA/SLO budget consumption reporting.', minimum: 100, maximum: 60000, example: 500 })
+  @IsOptional()
+  @IsInt()
+  @Min(100)
+  @Max(60000)
+  latencyBudgetMs?: number;
+
   @ApiPropertyOptional({ description: 'Enable dynamic latency anomaly detection — fires a degraded alert when response time exceeds multiplier × P95 of last 7 days', example: false })
   @IsOptional()
   @IsBoolean()
@@ -480,6 +487,13 @@ export class UpdateMonitorDto {
   @Min(1)
   @Max(60000)
   latencyAlertMs?: number | null;
+
+  @ApiPropertyOptional({ description: 'P95 latency budget in ms (monthly). Tracks how many checks exceed this target as a percentage. Used for SLA/SLO budget consumption reporting.', minimum: 100, maximum: 60000, example: 500 })
+  @IsOptional()
+  @IsInt()
+  @Min(100)
+  @Max(60000)
+  latencyBudgetMs?: number;
 
   @IsOptional()
   @IsBoolean()

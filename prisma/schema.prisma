@@ -143,6 +143,7 @@ model Monitor {
   mutedUntil          DateTime?   // if set and in future, all alerts suppressed
   pausedUntil         DateTime?   // if set and in future, checks are skipped (temporary pause)
   latencyAlertMs      Int?        // if set, alert when latency exceeds this threshold (ms) even on success
+  latencyBudgetMs     Int?        // P95 latency budget in ms (monthly). Tracks budget consumption percentage.
   anomalyDetection    Boolean     @default(false) // enable dynamic latency anomaly detection
   anomalyMultiplier   Float       @default(2.0)   // alert when latency > multiplier × P95 baseline
   sliLatencyTarget    Int?        // target p95 latency in ms (e.g., 500 = p95 must be < 500ms)

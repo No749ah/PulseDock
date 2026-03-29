@@ -224,6 +224,21 @@ export default function MonitorDetailPage() {
   const [addingDepId, setAddingDepId] = useState("");
   const [depLoading, setDepLoading] = useState(false);
   const [errorBudget, setErrorBudget] = useState<ErrorBudget | null>(null);
+  const [latencyBudgetReport, setLatencyBudgetReport] = useState<{
+    monitorId: string;
+    monitorName: string;
+    latencyBudgetMs: number | null;
+    periodStart: string;
+    periodEnd: string;
+    totalChecks: number;
+    checksAboveBudget: number;
+    budgetUsedPct: number;
+    avgLatencyMs: number | null;
+    p95LatencyMs: number | null;
+    status: 'no-budget' | 'healthy' | 'warning' | 'exceeded';
+  } | null>(null);
+  const [latencyBudgetInput, setLatencyBudgetInput] = useState<string>("");
+  const [latencyBudgetSaving, setLatencyBudgetSaving] = useState(false);
   const [healthScore, setHealthScore] = useState<HealthScore | null>(null);
   const [activeMainTab, setActiveMainTab] = useState<"overview" | "slo" | "performance" | "certificate" | "domain" | "security" | "content" | "headers" | "diff" | "annotations" | "ctlog" | "geo" | "failures" | "simulate" | "metric" | "transaction" | "config-history">("overview");
 
@@ -435,6 +450,12 @@ export default function MonitorDetailPage() {
         if (found.slaTarget) {
           api<ErrorBudget>(`/v1/monitors/${id}/error-budget?period=30d`, user!.id)
             .then((eb) => setErrorBudget(eb))
+            .catch(() => null);
+        }
+        // Fetch latency budget report if latencyBudgetMs is set
+        if ((found as typeof found & { latencyBudgetMs?: number | null }).latencyBudgetMs) {
+          api<typeof latencyBudgetReport>(`/v1/monitors/${id}/latency-budget`, user!.id)
+            .then((r) => setLatencyBudgetReport(r))
             .catch(() => null);
         }
         // Fetch health score (non-fatal)
@@ -4962,6 +4983,122 @@ export default function MonitorDetailPage() {
             </div>
           </Card>
         )}
+
+        {/* Latency Budget — only shown when latencyBudgetMs is set or can be set */}
+        {monitor && (() => {
+          const budgetMs = (monitor as typeof monitor & { latencyBudgetMs?: number | null }).latencyBudgetMs;
+          const report = latencyBudgetReport;
+          return (
+            <Card className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h2 className="text-sm font-semibold text-text-secondary uppercase tracking-wider flex items-center gap-2">
+                  <Gauge className="w-4 h-4" />
+                  Latency Budget (P95)
+                </h2>
+                {report && report.status !== 'no-budget' && (
+                  <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${
+                    report.status === 'healthy' ? 'bg-green-500/15 text-green-400' :
+                    report.status === 'warning' ? 'bg-yellow-500/15 text-yellow-400' :
+                    'bg-red-500/15 text-red-400'
+                  }`}>
+                    {report.status === 'healthy' ? 'Healthy' : report.status === 'warning' ? 'Warning' : 'Exceeded'}
+                  </span>
+                )}
+              </div>
+
+              {budgetMs ? (
+                report ? (
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <span className="text-xs text-text-secondary block mb-0.5">Budget Target</span>
+                        <span className="font-mono text-text-primary">{report.latencyBudgetMs}ms</span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-text-secondary block mb-0.5">Current P95</span>
+                        <span className={`font-mono font-semibold ${
+                          report.p95LatencyMs === null ? 'text-text-muted' :
+                          report.latencyBudgetMs !== null && report.p95LatencyMs > report.latencyBudgetMs ? 'text-danger' : 'text-success'
+                        }`}>
+                          {report.p95LatencyMs !== null ? `${report.p95LatencyMs}ms` : '—'}
+                        </span>
+                      </div>
+                      <div>
+                        <span className="text-xs text-text-secondary block mb-0.5">Budget Used</span>
+                        <span className={`font-mono font-semibold ${
+                          report.budgetUsedPct > 25 ? 'text-danger' : report.budgetUsedPct > 10 ? 'text-warning' : 'text-success'
+                        }`}>
+                          {report.budgetUsedPct.toFixed(1)}%
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-xs text-text-muted">
+                      {report.checksAboveBudget} of {report.totalChecks} checks exceeded budget this month
+                    </div>
+                    <div>
+                      <div className="w-full h-2 bg-surface-elevated rounded-full overflow-hidden">
+                        <div
+                          className={`h-2 rounded-full transition-all ${
+                            report.budgetUsedPct > 25 ? 'bg-danger' :
+                            report.budgetUsedPct > 10 ? 'bg-warning' : 'bg-success'
+                          }`}
+                          style={{ width: `${Math.min(report.budgetUsedPct * 4, 100)}%` }}
+                        />
+                      </div>
+                      <div className="flex justify-between text-xs text-text-muted mt-1">
+                        <span>0%</span>
+                        <span>25% threshold</span>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-text-muted">Loading budget report…</p>
+                )
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-xs text-text-secondary">No latency budget configured. Set a P95 target to track monthly budget consumption.</p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="number"
+                      min="100"
+                      max="60000"
+                      step="100"
+                      placeholder="e.g. 500"
+                      value={latencyBudgetInput}
+                      onChange={(e) => setLatencyBudgetInput(e.target.value)}
+                      className="w-32 px-3 py-1.5 text-sm rounded-lg border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+                    />
+                    <span className="text-xs text-text-muted">ms</span>
+                    <button
+                      disabled={latencyBudgetSaving || !latencyBudgetInput || parseInt(latencyBudgetInput, 10) < 100}
+                      onClick={async () => {
+                        const val = parseInt(latencyBudgetInput, 10);
+                        if (!val || val < 100) return;
+                        const user = getUser();
+                        if (!user) return;
+                        setLatencyBudgetSaving(true);
+                        try {
+                          await api(`/v1/monitors/${monitor.id}`, user.id, { method: 'PATCH', body: JSON.stringify({ latencyBudgetMs: val }) });
+                          setMonitor((prev) => prev ? { ...prev, latencyBudgetMs: val } as typeof prev : prev);
+                          const r = await api<typeof latencyBudgetReport>(`/v1/monitors/${monitor.id}/latency-budget`, user.id);
+                          setLatencyBudgetReport(r);
+                          setLatencyBudgetInput("");
+                        } catch {
+                          // non-fatal
+                        } finally {
+                          setLatencyBudgetSaving(false);
+                        }
+                      }}
+                      className="px-3 py-1.5 text-xs rounded-lg bg-accent text-white font-medium hover:bg-accent/80 disabled:opacity-50 transition-colors"
+                    >
+                      {latencyBudgetSaving ? 'Saving…' : 'Set Budget'}
+                    </button>
+                  </div>
+                </div>
+              )}
+            </Card>
+          );
+        })()}
 
         {/* Linked Incidents */}
         {linkedIncidents !== null && linkedIncidents.length > 0 && (

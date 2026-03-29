@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { DeploymentsService } from './deployments.service';
+import { DeploymentStatus } from './deployments.dto';
 import { NotFoundException, UnauthorizedException } from '@nestjs/common';
 
 function buildService(overrides: Record<string, unknown> = {}) {
@@ -186,10 +187,10 @@ describe('DeploymentsService', () => {
       (prisma.deploymentEvent.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(event);
       (prisma.deploymentEvent.update as ReturnType<typeof vi.fn>).mockResolvedValue({ ...event, status: 'SUCCESS' });
 
-      const result = await svc.update('u1', 'ev1', { status: 'SUCCESS' });
+      const result = await svc.update('u1', 'ev1', { status: DeploymentStatus.SUCCESS });
       expect(result.status).toBe('SUCCESS');
       expect(prisma.deploymentEvent.update).toHaveBeenCalledWith(
-        expect.objectContaining({ where: { id: 'ev1' }, data: expect.objectContaining({ status: 'SUCCESS' }) }),
+        expect.objectContaining({ where: { id: 'ev1' }, data: expect.objectContaining({ status: DeploymentStatus.SUCCESS }) }),
       );
     });
 
@@ -209,7 +210,7 @@ describe('DeploymentsService', () => {
     it('throws NotFoundException if event not found', async () => {
       const { svc, prisma } = buildService();
       (prisma.deploymentEvent.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
-      await expect(svc.update('u1', 'missing', { status: 'SUCCESS' })).rejects.toThrow(NotFoundException);
+      await expect(svc.update('u1', 'missing', { status: DeploymentStatus.SUCCESS })).rejects.toThrow(NotFoundException);
     });
   });
 

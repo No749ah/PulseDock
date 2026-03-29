@@ -91,6 +91,13 @@ export class CreateMonitorDto {
   @Max(3)
   retryCount?: number;
 
+  @ApiPropertyOptional({ description: 'Monitor priority / criticality level: 1=P1 (critical), 2=P2 (high), 3=P3 (medium), 4=P4 (low), 0=unset', minimum: 0, maximum: 4, example: 1 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(4)
+  priority?: number;
+
   @ApiPropertyOptional({
     description: [
       'Monitor-type-specific configuration. For HTTP monitors: method, requestHeaders, requestBody, expectedStatus, bodyContains, responseTimeThresholdMs.',
@@ -855,6 +862,13 @@ export class BulkEditDto {
   @Min(0)
   @Max(3)
   retryCount?: number;
+
+  @ApiPropertyOptional({ description: 'Monitor priority / criticality level: 1=P1 (critical), 2=P2 (high), 3=P3 (medium), 4=P4 (low), 0=unset', minimum: 0, maximum: 4 })
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(4)
+  priority?: number;
 
   @ApiPropertyOptional({ description: 'Enable/disable flap detection' })
   @IsOptional()

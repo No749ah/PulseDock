@@ -206,6 +206,8 @@ model Monitor {
   acknowledgements AlertAcknowledgement[]
   annotations   MonitorAnnotation[]
   configChanges MonitorConfigChange[]
+  /// Monitor priority / criticality: 0=unset, 1=P1 (critical), 2=P2 (high), 3=P3 (medium), 4=P4 (low)
+  priority      Int     @default(0)
   playbookId    String?
   playbook      IncidentPlaybook? @relation("MonitorPlaybook", fields: [playbookId], references: [id], onDelete: SetNull)
 

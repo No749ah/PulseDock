@@ -61,7 +61,7 @@ interface ModalProps {
 }
 
 function PlaybookModal({ playbook, onClose, onSaved }: ModalProps) {
-  const { addToast } = useToast();
+  const { success, error: toastError } = useToast();
   const [name, setName] = useState(playbook?.name ?? '');
   const [description, setDescription] = useState(playbook?.description ?? '');
   const [steps, setSteps] = useState<PlaybookStep[]>(playbook?.steps?.length ? playbook.steps : [newStep()]);
@@ -81,20 +81,22 @@ function PlaybookModal({ playbook, onClose, onSaved }: ModalProps) {
   };
 
   const handleSave = async () => {
-    if (!name.trim()) { addToast({ title: 'Name required', type: 'error' }); return; }
-    if (steps.length === 0) { addToast({ title: 'Add at least one step', type: 'error' }); return; }
+    if (!name.trim()) { toastError('Name required'); return; }
+    if (steps.length === 0) { toastError('Add at least one step'); return; }
 
+    const payload = JSON.stringify({ name, description, steps, forSeverities });
+    const headers = { 'Content-Type': 'application/json' };
     setSaving(true);
     try {
       if (playbook) {
-        await api.patch(`/v1/playbooks/${playbook.id}`, { name, description, steps, forSeverities });
+        await api(`/v1/playbooks/${playbook.id}`, undefined, { method: 'PATCH', headers, body: payload });
       } else {
-        await api.post('/v1/playbooks', { name, description, steps, forSeverities });
+        await api('/v1/playbooks', undefined, { method: 'POST', headers, body: payload });
       }
-      addToast({ title: playbook ? 'Playbook updated' : 'Playbook created', type: 'success' });
+      success(playbook ? 'Playbook updated' : 'Playbook created');
       onSaved();
     } catch {
-      addToast({ title: 'Failed to save playbook', type: 'error' });
+      toastError('Failed to save playbook');
     } finally {
       setSaving(false);
     }
@@ -244,7 +246,7 @@ function PlaybookModal({ playbook, onClose, onSaved }: ModalProps) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function PlaybooksPage() {
-  const { addToast } = useToast();
+  const { success, error: toastError } = useToast();
   const [playbooks, setPlaybooks] = useState<Playbook[]>([]);
   const [loading, setLoading] = useState(true);
   const [modalOpen, setModalOpen] = useState(false);
@@ -253,25 +255,26 @@ export default function PlaybooksPage() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await api.get<Playbook[]>('/v1/playbooks');
+      const data = await api<Playbook[]>('/v1/playbooks');
       setPlaybooks(data);
     } catch {
-      addToast({ title: 'Failed to load playbooks', type: 'error' });
+      toastError('Failed to load playbooks');
     } finally {
       setLoading(false);
     }
-  }, [addToast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => { void load(); }, [load]);
 
   const handleDelete = async (id: string) => {
     if (!confirm('Delete this playbook? It will be detached from all monitors.')) return;
     try {
-      await api.delete(`/v1/playbooks/${id}`);
-      addToast({ title: 'Playbook deleted', type: 'success' });
+      await api(`/v1/playbooks/${id}`, undefined, { method: 'DELETE' });
+      success('Playbook deleted');
       void load();
     } catch {
-      addToast({ title: 'Failed to delete playbook', type: 'error' });
+      toastError('Failed to delete playbook');
     }
   };
 

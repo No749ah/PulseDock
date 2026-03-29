@@ -76,6 +76,8 @@ export interface MonitorItem {
   graphqlExpectedValue?: string | null;
   /** Estimated business cost per hour of downtime in USD */
   downtimeCostPerHour?: number | null;
+  /** Monitor priority / criticality: 0=unset, 1=P1 (critical), 2=P2 (high), 3=P3 (medium), 4=P4 (low) */
+  priority?: number;
 }
 
 export interface MonitorRun {
@@ -199,6 +201,8 @@ export type MonitorFormData = {
   graphqlExpectedValue?: string | null;
   /** Estimated business cost per hour of downtime (USD) for financial impact calculation */
   downtimeCostPerHour?: number | null;
+  /** Monitor priority / criticality: 0=unset, 1=P1 (critical), 2=P2 (high), 3=P3 (medium), 4=P4 (low) */
+  priority?: number;
 };
 
 export type MonitorFormDataExtended = MonitorFormData & {

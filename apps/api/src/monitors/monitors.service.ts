@@ -129,6 +129,7 @@ export class MonitorsService {
       headerAssertions: (m as typeof m & { headerAssertions?: unknown }).headerAssertions ?? null,
       isAcknowledged: (m as typeof m & { acknowledgements?: unknown[] }).acknowledgements?.length > 0,
       downtimeCostPerHour: (m as typeof m & { downtimeCostPerHour?: number | null }).downtimeCostPerHour ?? null,
+      priority: m.priority,
 
       createdAt: m.createdAt.toISOString(),
     }));
@@ -210,6 +211,7 @@ export class MonitorsService {
       adaptiveIntervalDegradedSec: (m as typeof m & { adaptiveIntervalDegradedSec?: number | null }).adaptiveIntervalDegradedSec ?? null,
       geoRegions: (m as typeof m & { geoRegions?: string[] }).geoRegions ?? [],
       downtimeCostPerHour: (m as typeof m & { downtimeCostPerHour?: number | null }).downtimeCostPerHour ?? null,
+      priority: m.priority,
       createdAt: m.createdAt.toISOString(),
     };
   }
@@ -276,6 +278,7 @@ export class MonitorsService {
     graphqlDataPath?: string | null;
     graphqlExpectedValue?: string | null;
     downtimeCostPerHour?: number | null;
+    priority?: number;
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -307,6 +310,7 @@ export class MonitorsService {
         timeoutMs: body.timeoutMs ?? 5000,
         confirmations: Math.max(1, Math.min(10, body.confirmations ?? 1)),
         retryCount: Math.max(0, Math.min(3, body.retryCount ?? 0)),
+        priority: Math.max(0, Math.min(4, body.priority ?? 0)),
         configJson: config as Prisma.InputJsonValue,
         enabled: body.enabled ?? true,
         folderId: body.folderId ?? null,
@@ -484,6 +488,7 @@ export class MonitorsService {
     graphqlDataPath?: string | null;
     graphqlExpectedValue?: string | null;
     downtimeCostPerHour?: number | null;
+    priority?: number;
   }) {
     // Validate cron expression if provided
     if (body.cronExpression) {
@@ -521,6 +526,7 @@ export class MonitorsService {
         timeoutMs: body.timeoutMs ?? current.timeoutMs,
         confirmations: body.confirmations !== undefined ? Math.max(1, Math.min(10, body.confirmations)) : current.confirmations,
         retryCount: body.retryCount !== undefined ? Math.max(0, Math.min(3, body.retryCount)) : current.retryCount,
+        priority: body.priority !== undefined ? Math.max(0, Math.min(4, body.priority)) : current.priority,
         configJson: mergedConfig as Prisma.InputJsonValue,
         folderId: body.folderId === undefined ? current.folderId : body.folderId,
         enabled: body.enabled ?? current.enabled,

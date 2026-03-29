@@ -1,3 +1,13 @@
+## Status Summary (2026-03-29 08:35 UTC)
+- **Build/Test:** ✅ API build clean, 0 TS errors, all pages 200; public URL 200
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-29-early
+- **Last changes (08:35 UTC cycle):**
+  - [x] **Fix: deployments page** — `SessionUser.token` doesn't exist; fixed to use `user.id` + corrected `api()` call signature (path, token?, init?). Fixed `DeploymentsModule` circular registration breaking API startup (removed module file, removed module import from AppModule — now uses flat registration pattern). Fixed `monitors.service.ts` TS error: `timingsJson: { not: null }` → `{ not: Prisma.JsonNull }`.
+  - [x] **Alert Channels Health Dashboard** — `GET /v1/alert-channels/channels/health`. Fleet aggregation: per-channel success rate, total/success/failed deliveries (7d window), last delivery/success timestamps, last error message, last 24h count, health status (healthy ≥95% / degraded 70-94% / failing <70% / untested). Frontend `/alerts/channels`: 4 status summary cards, channel table with success rate progress bars, relative timestamps, last error snippets, per-channel test button, "Test All" batch button. Nav link added. 6 unit tests.
+  - [x] **HTTP Timing Breakdown page** (committed by concurrent sub-agent) — `GET /v1/monitors/timing-breakdown?days=N`. Fleet-level DNS/TCP/TLS/TTFB/Download phase aggregation. Bottleneck detection. Frontend `/monitors/timing-breakdown`: waterfall bars, phase filter, per-monitor breakdown table. Nav link added. 6 unit tests.
+
 ## Status Summary (2026-03-29 08:16 UTC)
 - **Build/Test:** ✅ 187 test files, 4341+ tests passing (API); 0 TS errors; web + API build clean
 - **Security/Audit:** ✅ 0 vulnerabilities

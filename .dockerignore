@@ -1,0 +1,44 @@
+# Dependencies (installed in Docker)
+node_modules
+**/node_modules
+
+# Build output
+apps/api/dist
+apps/web/.next
+apps/web/out
+
+# Dev & test files
+*.spec.ts
+packages/e2e
+coverage
+.nyc_output
+
+# Git
+.git
+.gitignore
+
+# IDE
+.vscode
+.idea
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docs (not needed in runtime)
+docs/
+*.md
+!README.md
+
+# CI/CD
+.github
+
+# Artifacts
+artifacts/
+scripts/
+
+# Local env
+.env
+.env.*
+!.env.example

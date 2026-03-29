@@ -1,48 +1,56 @@
-# ── Stage 1: deps ────────────────────────────────────────────────────────────
-FROM node:22-alpine AS deps
+# ─── PulseDock Web Dockerfile ───
+# Multi-stage build for production deployment.
+# Build context must be the repository root:
+#   docker build -f apps/web/Dockerfile -t pulsedock-web .
+
+# ── Stage 1: Install + Build ──
+FROM node:22-alpine AS builder
 WORKDIR /app
 
-COPY package*.json ./
-COPY apps/web/package*.json ./apps/web/
+# Copy workspace root files
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
+COPY packages/agent/package.json packages/agent/
+COPY packages/cli/package.json packages/cli/
+COPY packages/e2e/package.json packages/e2e/
+COPY packages/extension/package.json packages/extension/
+COPY packages/tool-registry/package.json packages/tool-registry/
 
-RUN npm ci --workspace=@pulsedock/web --ignore-scripts
+# Install all dependencies
+RUN npm ci --ignore-scripts
 
-# ── Stage 2: build ───────────────────────────────────────────────────────────
-FROM node:22-alpine AS build
-WORKDIR /app
+# Copy web source and build
+COPY apps/web/ apps/web/
+COPY tsconfig.json ./
 
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/web/node_modules ./apps/web/node_modules
-
-COPY package*.json ./
-COPY apps/web/ ./apps/web/
-
-# Build Next.js with standalone output
 ENV NEXT_TELEMETRY_DISABLED=1
+ENV NODE_ENV=production
+
 RUN cd apps/web && npm run build
 
-# ── Stage 3: production ──────────────────────────────────────────────────────
-FROM node:22-alpine AS production
+# ── Stage 2: Production Runtime ──
+FROM node:22-alpine AS runner
 WORKDIR /app
 
-ENV NODE_ENV=production \
-    NEXT_TELEMETRY_DISABLED=1 \
-    PORT=1234 \
-    HOSTNAME=0.0.0.0
+RUN apk add --no-cache wget
 
-# Non-root user
-RUN addgroup -S pulsedock && adduser -S pulsedock -G pulsedock
+# Create non-root user
+RUN addgroup -g 1001 -S pulsedock && adduser -S pulsedock -u 1001
 
-# Copy Next.js standalone build
-COPY --from=build --chown=pulsedock:pulsedock /app/apps/web/.next/standalone ./
-COPY --from=build --chown=pulsedock:pulsedock /app/apps/web/.next/static ./apps/web/.next/static
-COPY --from=build --chown=pulsedock:pulsedock /app/apps/web/public ./apps/web/public
+# Copy built Next.js app and production deps
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/web/.next ./apps/web/.next
+COPY --from=builder /app/apps/web/public ./apps/web/public
+COPY --from=builder /app/apps/web/package.json ./apps/web/
+COPY --from=builder /app/apps/web/next.config.mjs ./apps/web/
+COPY --from=builder /app/package.json ./
+
+ENV NODE_ENV=production
+ENV WEB_PORT=1234
 
 USER pulsedock
-
 EXPOSE 1234
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=20s --retries=3 \
-  CMD wget -qO- http://localhost:1234/login || exit 1
-
-CMD ["node", "apps/web/server.js"]
+WORKDIR /app/apps/web
+CMD ["npx", "next", "start", "-H", "0.0.0.0", "-p", "1234"]

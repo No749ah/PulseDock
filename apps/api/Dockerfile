@@ -1,58 +1,61 @@
-# ── Stage 1: deps ────────────────────────────────────────────────────────────
-FROM node:22-alpine AS deps
+# ─── PulseDock API Dockerfile ───
+# Multi-stage build for production deployment.
+# Build context must be the repository root:
+#   docker build -f apps/api/Dockerfile -t pulsedock-api .
+
+# ── Stage 1: Install + Build ──
+FROM node:22-alpine AS builder
 WORKDIR /app
 
-# Install build tools for native modules
-RUN apk add --no-cache python3 make g++
+# Install OpenSSL for Prisma
+RUN apk add --no-cache openssl
 
-COPY package*.json ./
-COPY apps/api/package*.json ./apps/api/
-COPY prisma/ ./prisma/
+# Copy workspace root files
+COPY package.json package-lock.json ./
+COPY apps/api/package.json apps/api/
+COPY apps/web/package.json apps/web/
+COPY packages/agent/package.json packages/agent/
+COPY packages/cli/package.json packages/cli/
+COPY packages/e2e/package.json packages/e2e/
+COPY packages/extension/package.json packages/extension/
+COPY packages/tool-registry/package.json packages/tool-registry/
 
-RUN npm ci --workspace=@pulsedock/api --ignore-scripts
+# Install all dependencies (including dev for build)
+RUN npm ci --ignore-scripts
+# Generate Prisma client
+COPY prisma ./prisma/
+RUN npx prisma generate
 
-# ── Stage 2: build ───────────────────────────────────────────────────────────
-FROM node:22-alpine AS build
+# Copy API source and build
+COPY apps/api/ apps/api/
+COPY tsconfig.json ./
+RUN cd apps/api && npm run build
+
+# Copy tool registry (runtime dependency for API)
+COPY packages/tool-registry/ packages/tool-registry/
+
+# ── Stage 2: Production Runtime ──
+FROM node:22-alpine AS runner
 WORKDIR /app
 
-COPY --from=deps /app/node_modules ./node_modules
-COPY --from=deps /app/apps/api/node_modules ./apps/api/node_modules
+RUN apk add --no-cache openssl wget
 
-COPY package*.json ./
-COPY apps/api/ ./apps/api/
-COPY prisma/ ./prisma/
+# Create non-root user
+RUN addgroup -g 1001 -S pulsedock && adduser -S pulsedock -u 1001
 
-# Generate Prisma client then compile TypeScript
-RUN cd apps/api && \
-    DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy" \
-    npx prisma generate --schema=../../prisma/schema.prisma && \
-    npm run build
-
-# ── Stage 3: production ──────────────────────────────────────────────────────
-FROM node:22-alpine AS production
-WORKDIR /app
+# Copy built output
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/apps/api/dist ./apps/api/dist
+COPY --from=builder /app/apps/api/package.json ./apps/api/
+COPY --from=builder /app/prisma ./prisma
+COPY --from=builder /app/packages/tool-registry ./packages/tool-registry
+COPY --from=builder /app/package.json ./
 
 ENV NODE_ENV=production
+ENV API_PORT=4321
 
-# Only install production dependencies
-COPY package*.json ./
-COPY apps/api/package*.json ./apps/api/
-COPY prisma/ ./prisma/
-
-RUN npm ci --workspace=@pulsedock/api --omit=dev --ignore-scripts
-
-# Copy compiled output and Prisma client
-COPY --from=build /app/apps/api/dist ./apps/api/dist
-COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
-
-# Non-root user
-RUN addgroup -S pulsedock && adduser -S pulsedock -G pulsedock
 USER pulsedock
-
 EXPOSE 4321
 
-HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
-  CMD wget -qO- http://localhost:4321/health/live || exit 1
-
-CMD ["node", "apps/api/dist/main.js"]
+# Run migrations then start
+CMD ["sh", "-c", "npx prisma migrate deploy && node apps/api/dist/main.js"]

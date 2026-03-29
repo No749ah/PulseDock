@@ -31,10 +31,19 @@ const SHORTCUTS: ShortcutGroup[] = [
     ],
   },
   {
+    label: "Command Palette",
+    shortcuts: [
+      { keys: ["↑", "↓"], description: "Navigate results" },
+      { keys: ["Enter"], description: "Select item" },
+      { keys: ["Esc"], description: "Close palette" },
+    ],
+  },
+  {
     label: "Monitors",
     shortcuts: [
-      { keys: ["N"], description: "New monitor (coming soon)" },
-      { keys: ["↑", "↓"], description: "Navigate list (coming soon)" },
+      { keys: ["Ctrl", "C"], description: "Copy widget (editor)" },
+      { keys: ["Ctrl", "V"], description: "Paste widget (editor)" },
+      { keys: ["Shift", "Click"], description: "Multi-select monitors" },
     ],
   },
 ];

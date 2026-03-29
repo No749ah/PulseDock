@@ -90,6 +90,44 @@ export class DeploymentsController {
   generateToken(@Req() req: { user: { id: string } }) {
     return this.svc.generateDeployToken(req.user.id);
   }
+
+  @Get('summary')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Deployment activity summary (totals, success rate, top services)' })
+  @ApiQuery({ name: 'days', required: false, type: Number })
+  getSummary(
+    @Req() req: { user: { id: string } },
+    @Query('days') days?: string,
+  ) {
+    return this.svc.getSummary(req.user.id, days ? parseInt(days, 10) : 30);
+  }
+
+  @Get('by-monitor/:monitorId')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List deployment events that include a specific monitor' })
+  @ApiQuery({ name: 'days', required: false, type: Number })
+  listByMonitor(
+    @Req() req: { user: { id: string } },
+    @Param('monitorId') monitorId: string,
+    @Query('days') days?: string,
+  ) {
+    return this.svc.listByMonitor(req.user.id, monitorId, days ? parseInt(days, 10) : 30);
+  }
+
+  @Get(':id/monitor-impact/:monitorId')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get latency impact of a deployment on a specific monitor (±30 min window)' })
+  @ApiResponse({ status: 200, description: 'Before/after latency comparison' })
+  getMonitorImpact(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Param('monitorId') monitorId: string,
+  ) {
+    return this.svc.getMonitorImpact(req.user.id, monitorId, id);
+  }
 }
 
 @ApiTags('public')

@@ -146,6 +146,62 @@ export class DeploymentsService {
   }
 
   /**
+   * Lists deployments that have a specific monitor in their monitorIds array.
+   */
+  async listByMonitor(userId: string, monitorId: string, days = 30) {
+    const since = new Date(Date.now() - days * 86400000);
+    return this.prisma.deploymentEvent.findMany({
+      where: {
+        userId,
+        createdAt: { gte: since },
+        monitorIds: { has: monitorId },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+  }
+
+  /**
+   * Returns a summary of deployment activity for the user (last N days).
+   * Includes total count, per-status counts, active environments, and most-deployed services.
+   */
+  async getSummary(userId: string, days = 30) {
+    const since = new Date(Date.now() - days * 86400000);
+    const events = await this.prisma.deploymentEvent.findMany({
+      where: { userId, createdAt: { gte: since } },
+      select: { status: true, environment: true, service: true, createdAt: true },
+    });
+
+    const total = events.length;
+    const byStatus = { STARTED: 0, SUCCESS: 0, FAILED: 0, ROLLBACK: 0 };
+    const envCounts: Record<string, number> = {};
+    const serviceCounts: Record<string, number> = {};
+
+    for (const ev of events) {
+      byStatus[ev.status] = (byStatus[ev.status] ?? 0) + 1;
+      envCounts[ev.environment] = (envCounts[ev.environment] ?? 0) + 1;
+      serviceCounts[ev.service] = (serviceCounts[ev.service] ?? 0) + 1;
+    }
+
+    const topServices = Object.entries(serviceCounts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 5)
+      .map(([service, count]) => ({ service, count }));
+
+    const successRate = total > 0
+      ? Math.round(((byStatus.SUCCESS) / total) * 100)
+      : null;
+
+    return {
+      days,
+      total,
+      byStatus,
+      successRate,
+      environments: Object.keys(envCounts),
+      topServices,
+    };
+  }
+
+  /**
    * Compares avg latency 30 minutes before vs after a specific deployment.
    */
   async getMonitorImpact(userId: string, monitorId: string, deploymentId: string) {

@@ -491,6 +491,8 @@ model PublicStatusPage {
   discordWebhookUrl   String?  // Discord webhook URL for status change notifications
   lastNotifiedStatus  String?  // last status we notified about (operational/degraded/outage)
   customCss           String?  // Optional custom CSS injected into the public status page <head>
+  viewCount           Int      @default(0)
+  lastViewedAt        DateTime?
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 

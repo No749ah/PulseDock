@@ -80,6 +80,16 @@ export class StatusPagesController {
 
   @UseGuards(AuthGuard)
   @ApiBearerAuth()
+  @Get('status-pages/analytics')
+  @ApiOperation({ summary: 'Status page analytics', description: 'Returns view counts and analytics for all status pages.' })
+  @ApiResponse({ status: 200, description: 'Analytics returned.' })
+  @ApiResponse({ status: 401, description: 'Not authenticated.' })
+  getAnalytics(@Req() req: AuthRequest) {
+    return this.statusPagesService.getAnalytics(req.user.id);
+  }
+
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
   @Get('status-pages/:id')
   @ApiOperation({ summary: 'Get a status page by ID', description: 'Returns a single status page with its full layout. Ownership is enforced.' })
   @ApiParam({ name: 'id', description: 'Status page CUID' })

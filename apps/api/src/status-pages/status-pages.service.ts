@@ -537,6 +537,12 @@ export class StatusPagesService {
       if (!valid) throw new UnauthorizedException('Incorrect password');
     }
 
+    // Track view (fire-and-forget, non-fatal)
+    this.prisma.publicStatusPage.update({
+      where: { id: page.id },
+      data: { viewCount: { increment: 1 }, lastViewedAt: new Date() },
+    }).catch(() => {});
+
     // Fetch monitor overview data for the page owner
     const monitors = await this.prisma.monitor.findMany({
       where: { userId: page.userId, enabled: true },
@@ -872,5 +878,52 @@ ${items.join('\n')}
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;')
       .replace(/'/g, '&apos;');
+  }
+
+  /**
+   * Returns analytics for all status pages owned by the user.
+   */
+  async getAnalytics(userId: string): Promise<Array<{
+    id: string;
+    title: string;
+    slug: string;
+    isPublished: boolean;
+    viewCount: number;
+    lastViewedAt: Date | null;
+    widgetCount: number;
+    createdAt: Date;
+  }>> {
+    const pages = await this.prisma.publicStatusPage.findMany({
+      where: { userId },
+      select: {
+        id: true,
+        title: true,
+        slug: true,
+        isPublished: true,
+        viewCount: true,
+        lastViewedAt: true,
+        createdAt: true,
+        layout: true,
+      },
+      orderBy: { viewCount: 'desc' },
+    });
+
+    return pages.map(p => {
+      let widgetCount = 0;
+      try {
+        const layout = p.layout as { widgets?: unknown[] } | null;
+        widgetCount = layout?.widgets?.length ?? 0;
+      } catch {}
+      return {
+        id: p.id,
+        title: p.title,
+        slug: p.slug,
+        isPublished: p.isPublished,
+        viewCount: p.viewCount ?? 0,
+        lastViewedAt: p.lastViewedAt ?? null,
+        widgetCount,
+        createdAt: p.createdAt,
+      };
+    });
   }
 }

@@ -123,7 +123,7 @@ const mockPrisma = {
     findFirst: vi.fn().mockResolvedValue(null),
     findUnique: vi.fn().mockResolvedValue(null),
     create: vi.fn(),
-    update: vi.fn(),
+    update: vi.fn().mockResolvedValue({}),
     delete: vi.fn(),
     count: vi.fn().mockResolvedValue(0),
   },

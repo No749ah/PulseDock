@@ -9,6 +9,9 @@ const METRIC_DEFS: Record<string, { help: string; type: 'counter' | 'gauge' }> =
   alertsFailed: { help: 'Total alert notifications that failed to dispatch', type: 'counter' },
 };
 
+/** Histogram buckets for monitor check duration (in ms). Wider range than HTTP requests. */
+const CHECK_DURATION_BUCKETS = [50, 100, 250, 500, 1000, 2500, 5000, 10000, 30000, 60000];
+
 /** Default histogram buckets (in ms) for HTTP request duration. */
 const HTTP_DURATION_BUCKETS = [5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000];
 
@@ -49,6 +52,20 @@ export class MetricsService {
   private httpDurationCount = 0;
 
   /**
+   * Monitor check execution counters by type and result.
+   * Key format: `{type}:{result}` where result is 'ok' or 'fail'.
+   */
+  private readonly checkExecutionCounts = new Map<string, number>();
+
+  /** Monitor check duration histogram (keyed by monitor type). */
+  private readonly checkDurationBuckets = new Map<string, Map<number, number>>();
+  private readonly checkDurationSums = new Map<string, number>();
+  private readonly checkDurationCounts = new Map<string, number>();
+
+  /** Number of monitor checks currently in-flight. */
+  private checksInFlight = 0;
+
+  /**
    * Increments a named counter.
    *
    * @param key - Counter name (must be a key of the counters map)
@@ -56,6 +73,46 @@ export class MetricsService {
    */
   inc<K extends keyof typeof this.counters>(key: K, by = 1) {
     this.counters[key] += by;
+  }
+
+  /**
+   * Records a completed monitor check execution.
+   *
+   * @param type - Monitor type (HTTP, TCP, DNS, etc.)
+   * @param ok - Whether the check succeeded
+   * @param durationMs - Check duration in milliseconds
+   */
+  observeCheckExecution(type: string, ok: boolean, durationMs: number) {
+    const key = `${type}:${ok ? 'ok' : 'fail'}`;
+    this.checkExecutionCounts.set(key, (this.checkExecutionCounts.get(key) ?? 0) + 1);
+
+    // Update check duration histogram for this type
+    const normalizedType = type.toLowerCase();
+    if (!this.checkDurationBuckets.has(normalizedType)) {
+      this.checkDurationBuckets.set(normalizedType, new Map(CHECK_DURATION_BUCKETS.map((b) => [b, 0])));
+      this.checkDurationSums.set(normalizedType, 0);
+      this.checkDurationCounts.set(normalizedType, 0);
+    }
+    this.checkDurationSums.set(normalizedType, (this.checkDurationSums.get(normalizedType) ?? 0) + durationMs);
+    this.checkDurationCounts.set(normalizedType, (this.checkDurationCounts.get(normalizedType) ?? 0) + 1);
+    const buckets = this.checkDurationBuckets.get(normalizedType)!;
+    for (const bucket of CHECK_DURATION_BUCKETS) {
+      if (durationMs <= bucket) {
+        buckets.set(bucket, (buckets.get(bucket) ?? 0) + 1);
+        return;
+      }
+    }
+    // Exceeds all buckets — counted only in +Inf
+  }
+
+  /** Increment in-flight check counter. Call before starting a check. */
+  checkStarted() {
+    this.checksInFlight++;
+  }
+
+  /** Decrement in-flight check counter. Call after a check completes. */
+  checkFinished() {
+    this.checksInFlight = Math.max(0, this.checksInFlight - 1);
   }
 
   /**
@@ -117,6 +174,34 @@ export class MetricsService {
     lines.push(`pulsedock_http_request_duration_ms_count ${this.httpDurationCount}`);
 
     // Process metrics
+    // Monitor check execution counter
+    lines.push('# HELP pulsedock_checks_executed_total Total monitor checks executed');
+    lines.push('# TYPE pulsedock_checks_executed_total counter');
+    for (const [key, count] of this.checkExecutionCounts.entries()) {
+      const [type, result] = key.split(':');
+      lines.push(`pulsedock_checks_executed_total{type="${sanitizeLabel(type)}",result="${result}"} ${count}`);
+    }
+
+    // In-flight checks gauge
+    lines.push('# HELP pulsedock_checks_in_flight Number of monitor checks currently executing');
+    lines.push('# TYPE pulsedock_checks_in_flight gauge');
+    lines.push(`pulsedock_checks_in_flight ${this.checksInFlight}`);
+
+    // Check duration histogram (per type)
+    lines.push('# HELP pulsedock_check_duration_ms Monitor check duration in milliseconds');
+    lines.push('# TYPE pulsedock_check_duration_ms histogram');
+    for (const [type, buckets] of this.checkDurationBuckets.entries()) {
+      let cumulative = 0;
+      for (const bucket of CHECK_DURATION_BUCKETS) {
+        cumulative += buckets.get(bucket) ?? 0;
+        lines.push(`pulsedock_check_duration_ms_bucket{type="${sanitizeLabel(type)}",le="${bucket}"} ${cumulative}`);
+      }
+      const totalCount = this.checkDurationCounts.get(type) ?? 0;
+      lines.push(`pulsedock_check_duration_ms_bucket{type="${sanitizeLabel(type)}",le="+Inf"} ${totalCount}`);
+      lines.push(`pulsedock_check_duration_ms_sum{type="${sanitizeLabel(type)}"} ${this.checkDurationSums.get(type) ?? 0}`);
+      lines.push(`pulsedock_check_duration_ms_count{type="${sanitizeLabel(type)}"} ${totalCount}`);
+    }
+
     lines.push('# HELP pulsedock_process_uptime_seconds Process uptime in seconds');
     lines.push('# TYPE pulsedock_process_uptime_seconds gauge');
     lines.push(`pulsedock_process_uptime_seconds ${Math.floor(process.uptime())}`);

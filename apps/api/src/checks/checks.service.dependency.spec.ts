@@ -156,7 +156,7 @@ function makeService(opts: {
   const prisma = opts.prisma ?? makePrisma();
   const alerts = opts.alerts ?? makeAlerts();
   const realtime = makeRealtime();
-  return { service: new ChecksService(prisma as never, alerts as never, undefined, realtime as never), prisma, alerts };
+  return { service: new ChecksService(prisma as never, alerts as never, undefined, undefined, realtime as never), prisma, alerts };
 }
 
 function mockFetch(ok: boolean, status = ok ? 200 : 500) {

@@ -294,7 +294,7 @@ function makeService(opts: {
   const prisma = opts.prisma ?? makePrisma();
   const alerts = opts.alerts ?? makeAlerts();
   const realtime = opts.realtime ?? makeRealtime();
-  return new ChecksService(prisma as never, alerts as never, undefined, realtime as never);
+  return new ChecksService(prisma as never, alerts as never, undefined, undefined, realtime as never);
 }
 
 // ── tests ─────────────────────────────────────────────────────────────────────
@@ -4977,7 +4977,7 @@ describe('runMonitor() — status-page email subscriber notifications', () => {
       subscribers: [{ email: 'user@example.com' }],
     });
     const realtime = makeRealtime();
-    const service = new ChecksService(prisma as never, makeAlerts() as never, mailer as never, realtime as never);
+    const service = new ChecksService(prisma as never, makeAlerts() as never, undefined, mailer as never, realtime as never);
 
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, headers: { get: () => 'text/plain' }, json: () => Promise.resolve({}), text: () => '' });
 
@@ -4998,7 +4998,7 @@ describe('runMonitor() — status-page email subscriber notifications', () => {
       subscribers: [{ email: 'a@test.com' }, { email: 'b@test.com' }],
     });
     const realtime = makeRealtime();
-    const service = new ChecksService(prisma as never, makeAlerts() as never, mailer as never, realtime as never);
+    const service = new ChecksService(prisma as never, makeAlerts() as never, undefined, mailer as never, realtime as never);
 
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, headers: { get: () => 'text/plain' }, json: () => Promise.resolve({}), text: () => '' });
 
@@ -5021,7 +5021,7 @@ describe('runMonitor() — status-page email subscriber notifications', () => {
       { id: 'mon-1', name: 'API Monitor', runs: [{ level: 'green', ok: true }] },
     ]);
     const realtime = makeRealtime();
-    const service = new ChecksService(prisma as never, makeAlerts() as never, mailer as never, realtime as never);
+    const service = new ChecksService(prisma as never, makeAlerts() as never, undefined, mailer as never, realtime as never);
 
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, headers: { get: () => 'text/plain' }, json: () => Promise.resolve({}), text: () => '' });
 
@@ -5040,7 +5040,7 @@ describe('runMonitor() — status-page email subscriber notifications', () => {
       subscribers: [{ email: 'fail@test.com' }],
     });
     const realtime = makeRealtime();
-    const service = new ChecksService(prisma as never, makeAlerts() as never, mailer as never, realtime as never);
+    const service = new ChecksService(prisma as never, makeAlerts() as never, undefined, mailer as never, realtime as never);
 
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, headers: { get: () => 'text/plain' }, json: () => Promise.resolve({}), text: () => '' });
 
@@ -5057,7 +5057,7 @@ describe('runMonitor() — status-page email subscriber notifications', () => {
       subscribers: [],
     });
     const realtime = makeRealtime();
-    const service = new ChecksService(prisma as never, makeAlerts() as never, mailer as never, realtime as never);
+    const service = new ChecksService(prisma as never, makeAlerts() as never, undefined, mailer as never, realtime as never);
 
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, headers: { get: () => 'text/plain' }, json: () => Promise.resolve({}), text: () => '' });
 
@@ -5079,7 +5079,7 @@ describe('runMonitor() — status-page email subscriber notifications', () => {
       { id: 'mon-1', name: 'API Monitor', runs: [{ level: 'yellow', ok: false }] },
     ]);
     const realtime = makeRealtime();
-    const service = new ChecksService(prisma as never, makeAlerts() as never, mailer as never, realtime as never);
+    const service = new ChecksService(prisma as never, makeAlerts() as never, undefined, mailer as never, realtime as never);
 
     globalThis.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, headers: { get: () => 'text/plain' }, json: () => Promise.resolve({}), text: () => '' });
 

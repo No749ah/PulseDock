@@ -10,6 +10,8 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ## [1.6.0] — 2026-03-29
 
 ### Added
+- **Prometheus HTTP Request Duration Histogram** — `pulsedock_http_request_duration_ms` with 11 buckets (5ms–10s). Express middleware observes every request for Grafana p50/p95/p99 latency dashboards.
+- **Prometheus Process Memory Gauges** — `pulsedock_process_heap_used_bytes`, `pulsedock_process_heap_total_bytes`, `pulsedock_process_rss_bytes`, `pulsedock_process_external_bytes` for self-hosted instance monitoring.
 - **Monitor Comparison View** — `GET /v1/monitors/compare?ids=...&days=N` — Select 2–4 monitors for side-by-side performance analysis. Per-monitor uptime%, avg/P95 latency, failures, longest outage, daily breakdowns. Pearson correlation between uptime patterns. Frontend at `/monitors/compare` with color-coded chips, period pills, SVG overlay charts, correlation matrix.
 - **Monitor Failure Prediction** — `GET /v1/monitors/failure-prediction` — Linear regression on 7-day uptime% and latency trends. Risk score 0–100 composite. Predictions: stable/watch/at_risk/likely_failure. Estimated hours to failure. Frontend at `/monitors/predictions` with fleet risk score, sortable table, pulsing time-to-failure indicators.
 - **Incident Response Playbooks** — `IncidentPlaybook` Prisma model. CRUD at `/v1/playbooks`. Attach playbooks to monitors — auto-snapshot onto incidents when fired. Step completion tracking via `PATCH /v1/incidents/:id/playbook-step/:stepId`. Frontend at `/incidents/playbooks` with drag-step editor (check/escalate/runbook/command/notify types).

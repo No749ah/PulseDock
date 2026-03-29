@@ -3,6 +3,7 @@ import { Prisma } from '@prisma/client';
 
 import type { Monitor, MonitorRun } from '../types';
 import { PrismaService } from '../common/prisma.service';
+import { MetricsService } from '../common/metrics.service';
 import { AlertsService } from '../alerts/alerts.service';
 import { MailerService } from '../common/mailer.service';
 import { RealtimeEvents } from '../realtime/realtime.events';
@@ -39,6 +40,7 @@ export class ChecksService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly alerts: AlertsService,
+    @Optional() private readonly metrics?: MetricsService,
     @Optional() private readonly mailer?: MailerService,
     @Optional() realtime?: RealtimeEvents,
     @Optional() externalPluginLoader?: ExternalPluginLoader,
@@ -291,6 +293,23 @@ export class ChecksService {
    * @returns The persisted MonitorRun record with level, latency, and message
    */
   async runMonitor(monitor: Monitor): Promise<MonitorRun> {
+    this.metrics?.checkStarted();
+
+    let runResult: MonitorRun | undefined;
+    try {
+      runResult = await this._runMonitorInner(monitor);
+      return runResult;
+    } finally {
+      this.metrics?.checkFinished();
+      // Use the latency from the check result rather than wall-clock time
+      // to avoid interfering with Date.now mocks in tests.
+      const durationMs = runResult?.latencyMs ?? 0;
+      this.metrics?.observeCheckExecution(monitor.type, runResult?.ok ?? false, durationMs);
+    }
+  }
+
+  /** Inner implementation of runMonitor — separated for metrics wrapper. */
+  private async _runMonitorInner(monitor: Monitor): Promise<MonitorRun> {
     // Confirmations: fetch last N runs to check for consecutive failures.
     // Test mocks may only implement findFirst(), so gracefully fall back.
     const confirmations = Math.max(1, Math.min(10, monitor.confirmations ?? 1));

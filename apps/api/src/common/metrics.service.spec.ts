@@ -137,6 +137,51 @@ describe('MetricsService', () => {
     });
   });
 
+  describe('observeCheckExecution()', () => {
+    it('tracks check execution counts by type and result', () => {
+      service.observeCheckExecution('HTTP', true, 150);
+      service.observeCheckExecution('HTTP', true, 200);
+      service.observeCheckExecution('HTTP', false, 5000);
+      service.observeCheckExecution('TCP', true, 50);
+      const text = service.prometheusText();
+      expect(text).toContain('pulsedock_checks_executed_total{type="HTTP",result="ok"} 2');
+      expect(text).toContain('pulsedock_checks_executed_total{type="HTTP",result="fail"} 1');
+      expect(text).toContain('pulsedock_checks_executed_total{type="TCP",result="ok"} 1');
+    });
+
+    it('tracks check duration histogram per type', () => {
+      service.observeCheckExecution('HTTP', true, 75);   // <= 100ms bucket
+      service.observeCheckExecution('HTTP', true, 300);  // <= 500ms bucket
+      service.observeCheckExecution('HTTP', false, 8000); // <= 10000ms bucket
+      const text = service.prometheusText();
+      expect(text).toContain('pulsedock_check_duration_ms_bucket{type="http",le="100"} 1');
+      expect(text).toContain('pulsedock_check_duration_ms_bucket{type="http",le="500"} 2');
+      expect(text).toContain('pulsedock_check_duration_ms_bucket{type="http",le="10000"} 3');
+      expect(text).toContain('pulsedock_check_duration_ms_sum{type="http"} 8375');
+      expect(text).toContain('pulsedock_check_duration_ms_count{type="http"} 3');
+    });
+  });
+
+  describe('checkStarted() / checkFinished()', () => {
+    it('tracks in-flight checks gauge', () => {
+      service.checkStarted();
+      service.checkStarted();
+      let text = service.prometheusText();
+      expect(text).toContain('pulsedock_checks_in_flight 2');
+
+      service.checkFinished();
+      text = service.prometheusText();
+      expect(text).toContain('pulsedock_checks_in_flight 1');
+    });
+
+    it('does not go below zero', () => {
+      service.checkFinished();
+      service.checkFinished();
+      const text = service.prometheusText();
+      expect(text).toContain('pulsedock_checks_in_flight 0');
+    });
+  });
+
   describe('prometheusFullText()', () => {
     function makePrisma(opts: {
       monitors?: object[];

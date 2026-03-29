@@ -1,3 +1,12 @@
+## Status Summary (2026-03-29 00:17 UTC)
+- **Build/Test:** ✅ Clean build + 4163 API + 757 web + 10 CLI + 12 agent = 4942 total (+6 sla-forecast tests); 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-29-early (new branch post 00:00 UTC merge)
+- **Last changes (00:17 UTC cycle):**
+  - [x] **SLA Error Budget Forecast** — `GET /v1/monitors/:id/sla-forecast`. Uses current month's observed uptime rate to project forward linearly: predicted month-end uptime%, whether SLA will breach, when error budget will be exhausted (analytic solution), and full daily breakdown (actual + projected days). Confidence scoring: high (≥10 checks), medium (≥3), low (<3). Budget exhaustion detection: solved analytically for the time when failed_rate exceeds the SLA tolerance. Frontend `/monitors/sla` page: new "SLA Budget Forecast" section with monitor selector, 4 summary cards (current uptime, projected uptime, budget used with progress bar, breach prediction with exhaustion date), and a daily budget burn chart (color-coded bars: green/yellow/red for actual, faded for projected days, 100%/50% guide lines). 6 new unit tests.
+  - [x] **Branch management** — Merged heartbeat/2026-03-28-late → dev, deleted all old heartbeat branches, created heartbeat/2026-03-29-early.
+
 ## Status Summary (2026-03-28 23:17 UTC)
 - **Build/Test:** ✅ Clean build + 4163 API + 757 web + 10 CLI + 12 agent = 4942 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

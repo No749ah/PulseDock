@@ -7,6 +7,31 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ---
 
+## [1.6.0] — 2026-03-29
+
+### Added
+- **Monitor Comparison View** — `GET /v1/monitors/compare?ids=...&days=N` — Select 2–4 monitors for side-by-side performance analysis. Per-monitor uptime%, avg/P95 latency, failures, longest outage, daily breakdowns. Pearson correlation between uptime patterns. Frontend at `/monitors/compare` with color-coded chips, period pills, SVG overlay charts, correlation matrix.
+- **Monitor Failure Prediction** — `GET /v1/monitors/failure-prediction` — Linear regression on 7-day uptime% and latency trends. Risk score 0–100 composite. Predictions: stable/watch/at_risk/likely_failure. Estimated hours to failure. Frontend at `/monitors/predictions` with fleet risk score, sortable table, pulsing time-to-failure indicators.
+- **Incident Response Playbooks** — `IncidentPlaybook` Prisma model. CRUD at `/v1/playbooks`. Attach playbooks to monitors — auto-snapshot onto incidents when fired. Step completion tracking via `PATCH /v1/incidents/:id/playbook-step/:stepId`. Frontend at `/incidents/playbooks` with drag-step editor (check/escalate/runbook/command/notify types).
+- **Monitor Dependencies & Impact Analysis** — `MonitorDependency` model. `POST /v1/monitors/:id/dependencies` to set/replace deps. `GET /v1/monitors/:id/impact` for BFS downstream + upstream root-cause analysis. Frontend at `/monitors/dependencies` with two-panel config UX.
+- **Alert Escalation Policies** — Multi-step escalation with configurable delays per channel. `checkAllEscalations()` scheduler integration. Muted/healthy monitors skipped. Recovery resets.
+- **Monitor Service Groups** — Logical grouping with aggregate status (worst-of). `GET /v1/service-groups/:id/status` returns operational/degraded/outage.
+- **Production Dockerfiles** — Multi-stage Dockerfiles for API (Node 22 Alpine, Prisma migrate on start) + Web. GitHub Actions workflow for GHCR publishing.
+- **Collapsible Sidebar Navigation** — 51 nav items restructured into 6 groups with primary/secondary items. "N more" toggles. Auto-expand on navigation. Persisted in localStorage.
+
+### Changed
+- **Zero `any` Types** — All production code is strictly typed with no `any` casts.
+- **Sidebar Groups** — Monitoring, Alerting, Operations, Insights, Administration sections for better organization.
+
+### Tests
+- **5308 tests passing** (4551 API + 757 web) — up from 4683 in v1.5.0
+- Added 60 service-level specs for EscalationService, DependenciesService, PlaybooksService, ServiceGroupsService
+- Added 23 controller specs for escalation, playbooks, dependencies, service-groups controllers
+- Added 34 coverage tests for deployments, playbooks, dependencies modules
+- Code quality: 8/8 checks passing (0 TS errors, 0 `any`, 0 TODOs, 0 console.log, 0 empty catches)
+
+---
+
 ## [1.5.0] — 2026-03-28
 
 ### Added

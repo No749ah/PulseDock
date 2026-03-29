@@ -1,3 +1,12 @@
+## Status Summary (2026-03-29 08:16 UTC)
+- **Build/Test:** ✅ 187 test files, 4341+ tests passing (API); 0 TS errors; web + API build clean
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-29-early
+- **Last changes (08:16 UTC cycle):**
+  - [x] **Fix AlertDeliveryLog schema mismatch** — `deliveryResponseTime()` was referencing non-existent fields (`userId`, `sentAt`, `channel`) on `AlertDeliveryLog`. Fixed: filter by `alertChannel.userId`, replaced `sentAt - createdAt` latency with `durationMs`, renamed relation from `channel` to `alertChannel`. Unblocked API build. Also committed previously pending alert response-time + version drift pages.
+  - [x] **Maintenance Window Effectiveness** — `GET /v1/maintenance/effectiveness?days=N`. For each past one-shot window: failure rate during window vs equal-duration baseline period, suppressed alert count, post-maintenance recovery time (first ok check within 30min after window), status classification (effective/over-active/no-data). Fleet summary: noise reduction %, avg duration, total suppressed alerts. Frontend `/maintenance/effectiveness`: period selector, expandable window cards with failure rate comparison bars, recovery stats, smart recommendations. Nav link added. 6 unit tests.
+
 ## Status Summary (2026-03-29 07:52 UTC)
 - **Build/Test:** ✅ 228 test files, 5095 tests passing; 0 TS errors; web + API build clean
 - **Security/Audit:** ✅ 0 vulnerabilities

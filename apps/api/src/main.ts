@@ -129,6 +129,7 @@ async function bootstrap() {
     res.on('finish', () => {
       const ms = Date.now() - startedAt;
       metrics.inc('requestsTotal');
+      metrics.observeHttpDuration(ms);
       if (res.statusCode >= 400) metrics.inc('errorsTotal');
       if (ms >= 5000) {
         logger.error('slow_request', { requestId, method: req.method, path: req.url, status: res.statusCode, durationMs: ms });

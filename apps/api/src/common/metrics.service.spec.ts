@@ -93,6 +93,40 @@ describe('MetricsService', () => {
     });
   });
 
+  describe('observeHttpDuration()', () => {
+    it('records observations into histogram buckets', () => {
+      service.observeHttpDuration(3);   // <= 5ms bucket
+      service.observeHttpDuration(15);  // <= 25ms bucket
+      service.observeHttpDuration(200); // <= 250ms bucket
+      const text = service.prometheusText();
+      // 3ms falls into le="5" bucket → cumulative 1
+      expect(text).toContain('pulsedock_http_request_duration_ms_bucket{le="5"} 1');
+      // 15ms falls into le="25" bucket → cumulative 2 (5 + 25)
+      expect(text).toContain('pulsedock_http_request_duration_ms_bucket{le="25"} 2');
+      // 200ms falls into le="250" → cumulative 3
+      expect(text).toContain('pulsedock_http_request_duration_ms_bucket{le="250"} 3');
+      // +Inf always equals count
+      expect(text).toContain('pulsedock_http_request_duration_ms_bucket{le="+Inf"} 3');
+      expect(text).toContain('pulsedock_http_request_duration_ms_sum 218');
+      expect(text).toContain('pulsedock_http_request_duration_ms_count 3');
+    });
+
+    it('handles requests exceeding all buckets', () => {
+      service.observeHttpDuration(15000); // > 10000ms (max bucket)
+      const text = service.prometheusText();
+      // All bucket cumulative counts should be 0 (since 15000 > every bucket)
+      expect(text).toContain('pulsedock_http_request_duration_ms_bucket{le="10000"} 0');
+      expect(text).toContain('pulsedock_http_request_duration_ms_bucket{le="+Inf"} 1');
+      expect(text).toContain('pulsedock_http_request_duration_ms_sum 15000');
+    });
+
+    it('includes histogram header comments', () => {
+      const text = service.prometheusText();
+      expect(text).toContain('# HELP pulsedock_http_request_duration_ms');
+      expect(text).toContain('# TYPE pulsedock_http_request_duration_ms histogram');
+    });
+  });
+
   describe('prometheusFullText()', () => {
     function makePrisma(opts: {
       monitors?: object[];

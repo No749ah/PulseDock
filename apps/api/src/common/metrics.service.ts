@@ -9,6 +9,9 @@ const METRIC_DEFS: Record<string, { help: string; type: 'counter' | 'gauge' }> =
   alertsFailed: { help: 'Total alert notifications that failed to dispatch', type: 'counter' },
 };
 
+/** Default histogram buckets (in ms) for HTTP request duration. */
+const HTTP_DURATION_BUCKETS = [5, 10, 25, 50, 100, 250, 500, 1000, 2500, 5000, 10000];
+
 /** Sanitize a Prometheus label value by escaping backslash, double-quote, and newline. */
 function sanitizeLabel(value: string): string {
   return value
@@ -38,6 +41,13 @@ export class MetricsService {
     alertsFailed: 0,
   };
 
+  /** HTTP request duration histogram buckets: bucket → count of requests ≤ bucket ms. */
+  private readonly httpDurationBuckets: Map<number, number> = new Map(
+    HTTP_DURATION_BUCKETS.map((b) => [b, 0]),
+  );
+  private httpDurationSum = 0;
+  private httpDurationCount = 0;
+
   /**
    * Increments a named counter.
    *
@@ -46,6 +56,25 @@ export class MetricsService {
    */
   inc<K extends keyof typeof this.counters>(key: K, by = 1) {
     this.counters[key] += by;
+  }
+
+  /**
+   * Records an HTTP request duration observation (in milliseconds).
+   * Updates the histogram buckets, sum, and count for Prometheus exposition.
+   *
+   * @param durationMs - Request duration in milliseconds
+   */
+  observeHttpDuration(durationMs: number) {
+    this.httpDurationCount++;
+    this.httpDurationSum += durationMs;
+    // Increment only the smallest matching bucket; cumulation is done at output time.
+    for (const bucket of HTTP_DURATION_BUCKETS) {
+      if (durationMs <= bucket) {
+        this.httpDurationBuckets.set(bucket, (this.httpDurationBuckets.get(bucket) ?? 0) + 1);
+        return;
+      }
+    }
+    // If durationMs > all buckets, it's only counted in +Inf (via httpDurationCount)
   }
 
   /**
@@ -74,6 +103,18 @@ export class MetricsService {
       lines.push(`# TYPE ${name} ${def.type}`);
       lines.push(`${name} ${value}`);
     }
+
+    // HTTP request duration histogram
+    lines.push('# HELP pulsedock_http_request_duration_ms HTTP request duration in milliseconds');
+    lines.push('# TYPE pulsedock_http_request_duration_ms histogram');
+    let cumulative = 0;
+    for (const bucket of HTTP_DURATION_BUCKETS) {
+      cumulative += this.httpDurationBuckets.get(bucket) ?? 0;
+      lines.push(`pulsedock_http_request_duration_ms_bucket{le="${bucket}"} ${cumulative}`);
+    }
+    lines.push(`pulsedock_http_request_duration_ms_bucket{le="+Inf"} ${this.httpDurationCount}`);
+    lines.push(`pulsedock_http_request_duration_ms_sum ${this.httpDurationSum}`);
+    lines.push(`pulsedock_http_request_duration_ms_count ${this.httpDurationCount}`);
 
     // Add process uptime as a gauge
     lines.push('# HELP pulsedock_process_uptime_seconds Process uptime in seconds');

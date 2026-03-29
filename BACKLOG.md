@@ -14,6 +14,13 @@
 - **Last changes (12:24 UTC cycle):**
   - [x] **Incident Response Playbooks** — `IncidentPlaybook` Prisma model + migration. CRUD `/v1/playbooks`. Attach/detach playbook to monitors. On incident fire, playbook auto-snapshotted onto incident (`playbookSteps` JSON). Step completion tracking (`PATCH /v1/incidents/:id/playbook-step/:stepId`). Frontend `/incidents/playbooks`: cards grid with step counts + severity badges, create/edit modal with drag-step UX (type select: check/escalate/runbook/command/notify), empty state. Nav link added under Incidents. 8 unit tests.
 
+## Status Summary (2026-03-29 14:45 UTC)
+- **Build/Test:** ✅ All tests passing; 0 TS errors; web + API build clean
+- **Deployment:** ✅ API + web running; public URL 200
+- **Branch:** heartbeat/2026-03-29-afternoon
+- **Last changes (14:45 UTC cycle):**
+  - [x] **Monitor Failure Prediction** — `GET /v1/monitors/failure-prediction`. Linear regression trend analysis on 7-day uptime% and latency. Risk score 0-100 composite (uptime slope, latency trend, recent failure bursts). Predictions: stable/watch/at_risk/likely_failure. Estimated hours to failure for degrading monitors. Exported `linearRegression()` helper. Frontend `/monitors/predictions`: summary cards (filterable by prediction level), fleet risk score, sortable predictions table with risk progress bars, trend arrows, pulsing time-to-failure. Sidebar nav entry under Monitoring. 10 unit tests.
+
 ## Status Summary (2026-03-29 14:40 UTC)
 - **Build/Test:** ✅ 237 test files, 5183 tests passing; 0 TS errors; web + API build clean
 - **Security/Audit:** ✅ 0 vulnerabilities

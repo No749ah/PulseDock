@@ -8,6 +8,7 @@ const cookieParser = require('cookie-parser') as (opts?: unknown) => (req: unkno
 import { AppModule } from './app.module';
 import { validateEnv } from './common/env';
 import { GlobalHttpExceptionFilter } from './common/http-exception.filter';
+import { RequestTimingInterceptor } from './common/request-timing.interceptor';
 import { randomUUID } from 'node:crypto';
 import { MetricsService } from './common/metrics.service';
 import { createLogger } from './common/logger';
@@ -128,6 +129,7 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
   app.useGlobalFilters(new GlobalHttpExceptionFilter());
+  app.useGlobalInterceptors(new RequestTimingInterceptor());
 
   const swaggerConfig = new DocumentBuilder()
     .setTitle('PulseDock API')

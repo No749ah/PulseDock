@@ -1,3 +1,14 @@
+## Status Summary (2026-03-29 03:40 UTC)
+- **Build/Test:** ✅ Clean build + 4246 API + 757 web + 10 CLI + 12 agent = 5025 total; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200; public URL 200
+- **Branch:** heartbeat/2026-03-29-early
+- **Last changes (03:40 UTC cycle):**
+  - [x] **TypeScript spec fixes** — Resolved 156 TS errors in spec files: missing vitest imports (vi, describe, it, expect, beforeEach, afterEach), duplicate `alertDeliveryLog` identifier in alerts.noise.spec.ts, `MaintenanceRecurrence` import fix, `(svc as never)['prisma']` → proper typed cast in monitors.dependency-graph.spec.ts, `monitors.import-openapi.spec.ts` refactored spy to avoid "too complex union" error, search.controller.spec.ts updated for SearchResultDto schema changes (added query/total fields, SearchItem.title vs name). API prod TS now at 0 errors.
+  - [x] **Fix `monitors/live-feed` Prisma typo** — `url` field on Monitor doesn't exist (it's `target`). Fixed both the Prisma select and the mapper in `liveFeed()` service method.
+  - [x] **CopyButton.spec.ts** — Fixed non-awaited assertion warning (added `await` to `expect().resolves`).
+  - [x] **SLA by Tag** — `GET /v1/monitors/sla-by-tag` endpoint. Groups monitors by tag, computes weighted uptime% per tag, compliance counts (compliant/atRisk/breached/noData), expandable monitor breakdown per tag. Tags sorted alphabetically, Untagged bucket last. 12 unit tests. Frontend: "By Tag" toggle on SLA dashboard — expandable tag cards with color dots, uptime%, compliance badges, per-monitor breakdown rows.
+
 ## Status Summary (2026-03-29 01:21 UTC)
 - **Build/Test:** ✅ Clean build + 4204 API + 757 web + 10 CLI + 12 agent = 4983 total; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities

@@ -591,6 +591,14 @@ export class MonitorsController {
     return this.monitorsService.getSecurityHeadersSummary(req.user.id);
   }
 
+  @Get('interval-optimizer')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'Check interval optimizer', description: 'Analyzes each monitor\'s check interval vs incident history and recommends optimal check frequency.' })
+  @ApiResponse({ status: 200, description: 'Interval recommendations returned.' })
+  intervalOptimizer(@Req() req: { user: { id: string } }) {
+    return this.monitorsService.intervalOptimizer(req.user.id);
+  }
+
   @Get('timing-breakdown')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({ summary: 'HTTP timing breakdown', description: 'Fleet-level DNS/TCP/TLS/TTFB/Download timing analysis. HTTP and Browser monitors only.' })

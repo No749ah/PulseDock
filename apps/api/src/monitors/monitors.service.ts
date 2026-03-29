@@ -8711,6 +8711,144 @@ export class MonitorsService {
     };
   }
 
+  /**
+   * Analyzes each monitor's check interval vs incident history.
+   * Returns per-monitor recommendations for optimal check frequency.
+   */
+  async intervalOptimizer(userId: string): Promise<{
+    monitors: Array<{
+      id: string;
+      name: string;
+      type: string;
+      currentIntervalSec: number | null;
+      cronExpression: string | null;
+      incidents90d: number;
+      avgDetectionMinutes: number | null;
+      checksPerDay: number;
+      recommendation: 'increase' | 'decrease' | 'optimal' | 'new';
+      suggestedIntervalSec: number | null;
+      reason: string;
+    }>;
+    summary: {
+      optimal: number;
+      tooFrequent: number;
+      tooInfrequent: number;
+      totalMonitors: number;
+    };
+  }> {
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, enabled: true },
+      select: {
+        id: true, name: true, type: true,
+        intervalSec: true, cronExpression: true,
+        createdAt: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    const since90 = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
+    const monitorIds = monitors.map(m => m.id);
+
+    const incidents = await this.prisma.incident.findMany({
+      where: {
+        userId,
+        createdAt: { gte: since90 },
+        monitors: { some: { monitorId: { in: monitorIds } } },
+      },
+      select: {
+        id: true,
+        createdAt: true,
+        monitors: { select: { monitorId: true } },
+      },
+    });
+
+    // Get first-failure runs that preceded each incident (within 30 min before incident)
+    const monitorIncidentMap = new Map<string, Date[]>();
+    for (const inc of incidents) {
+      for (const m of inc.monitors) {
+        if (!monitorIncidentMap.has(m.monitorId)) monitorIncidentMap.set(m.monitorId, []);
+        monitorIncidentMap.get(m.monitorId)!.push(inc.createdAt);
+      }
+    }
+
+    // For detection time: find first failing run before each incident
+    const failingRuns = await this.prisma.monitorRun.findMany({
+      where: {
+        userId,
+        monitorId: { in: monitorIds },
+        ok: false,
+        checkedAt: { gte: since90 },
+      },
+      select: { monitorId: true, checkedAt: true },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    // Group failing runs by monitor
+    const failMap = new Map<string, Date[]>();
+    for (const r of failingRuns) {
+      if (!failMap.has(r.monitorId)) failMap.set(r.monitorId, []);
+      failMap.get(r.monitorId)!.push(r.checkedAt);
+    }
+
+    const resultMonitors = monitors.map(m => {
+      const incidentDates = monitorIncidentMap.get(m.id) ?? [];
+      const incidents90d = incidentDates.length;
+      const fails = failMap.get(m.id) ?? [];
+
+      // Compute avg detection time: for each incident, find nearest fail run before it
+      const detectionMinutes: number[] = [];
+      for (const incDate of incidentDates) {
+        const priorFail = fails.filter(f => f < incDate && (incDate.getTime() - f.getTime()) < 30 * 60 * 1000);
+        if (priorFail.length > 0) {
+          const firstFail = priorFail[0];
+          detectionMinutes.push(Math.round((incDate.getTime() - firstFail.getTime()) / 60000));
+        }
+      }
+
+      const avgDetectionMinutes = detectionMinutes.length > 0
+        ? Math.round(detectionMinutes.reduce((a, b) => a + b, 0) / detectionMinutes.length)
+        : null;
+
+      const currentIntervalSec = m.intervalSec;
+      const checksPerDay = currentIntervalSec ? Math.round(86400 / currentIntervalSec) : 0;
+
+      // Age check: if monitor is < 7 days old, it's "new"
+      const ageMs = Date.now() - m.createdAt.getTime();
+      if (ageMs < 7 * 24 * 60 * 60 * 1000) {
+        return { id: m.id, name: m.name, type: m.type, currentIntervalSec, cronExpression: m.cronExpression, incidents90d, avgDetectionMinutes, checksPerDay, recommendation: 'new' as const, suggestedIntervalSec: null, reason: 'Monitor is new — collect more data before optimizing.' };
+      }
+
+      if (!currentIntervalSec) {
+        return { id: m.id, name: m.name, type: m.type, currentIntervalSec, cronExpression: m.cronExpression, incidents90d, avgDetectionMinutes, checksPerDay, recommendation: 'optimal' as const, suggestedIntervalSec: null, reason: 'Uses cron expression — manual tuning recommended.' };
+      }
+
+      // Too frequent: 0 incidents in 90d AND checking more than every 3 min
+      if (incidents90d === 0 && currentIntervalSec < 300) {
+        return { id: m.id, name: m.name, type: m.type, currentIntervalSec, cronExpression: m.cronExpression, incidents90d, avgDetectionMinutes, checksPerDay, recommendation: 'decrease' as const, suggestedIntervalSec: 300, reason: 'No incidents in 90 days — reduce frequency to save resources.' };
+      }
+
+      // Too infrequent: detection > 10min AND interval > 60s
+      if (avgDetectionMinutes !== null && avgDetectionMinutes > 10 && currentIntervalSec > 60) {
+        const suggested = Math.max(30, Math.min(60, Math.round(currentIntervalSec / 2)));
+        return { id: m.id, name: m.name, type: m.type, currentIntervalSec, cronExpression: m.cronExpression, incidents90d, avgDetectionMinutes, checksPerDay, recommendation: 'increase' as const, suggestedIntervalSec: suggested, reason: `Avg detection time ${avgDetectionMinutes}m — increase check frequency.` };
+      }
+
+      return { id: m.id, name: m.name, type: m.type, currentIntervalSec, cronExpression: m.cronExpression, incidents90d, avgDetectionMinutes, checksPerDay, recommendation: 'optimal' as const, suggestedIntervalSec: null, reason: 'Check interval is well-calibrated for this monitor.' };
+    });
+
+    const optimal = resultMonitors.filter(m => m.recommendation === 'optimal' || m.recommendation === 'new').length;
+    const tooFrequent = resultMonitors.filter(m => m.recommendation === 'decrease').length;
+    const tooInfrequent = resultMonitors.filter(m => m.recommendation === 'increase').length;
+
+    return {
+      monitors: resultMonitors.sort((a, b) => {
+        const order = { increase: 0, decrease: 1, new: 2, optimal: 3 };
+        return order[a.recommendation] - order[b.recommendation];
+      }),
+      summary: { optimal, tooFrequent, tooInfrequent, totalMonitors: monitors.length },
+    };
+  }
+
 }
 
 export interface SuggestedMonitor {

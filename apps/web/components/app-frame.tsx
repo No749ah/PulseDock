@@ -91,6 +91,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
       { href: '/monitors/latency-heatmap', label: 'Latency Heatmap', icon: BarChart3 },
       { href: '/monitors/reliability', label: 'Reliability Trends', icon: Sparkles },
       { href: '/monitors/timing-breakdown', label: 'Timing Breakdown', icon: Zap },
+      { href: '/monitors/interval-optimizer', label: 'Interval Optimizer', icon: Settings },
       { href: '/ssl', label: 'SSL Certificates', icon: ShieldCheck },
       { href: '/versions', label: 'Version Tracking', icon: GitBranch },
       { href: '/versions/drift', label: 'Drift Report', icon: GitBranch },
@@ -115,6 +116,7 @@ const navGroups: Array<{ label: string; items: NavItem[] }> = [
 
       { href: '/projects', label: 'Projects', icon: Folder },
       { href: '/status-pages', label: 'Status Pages', icon: Globe },
+      { href: '/status/analytics', label: 'Page Analytics', icon: BarChart2 },
     ],
   },
   {

@@ -109,13 +109,18 @@ model Session {
 model Folder {
   id        String   @id @default(cuid())
   userId    String
+  parentId  String?
   name      String
+  position  Int      @default(0)
   createdAt DateTime @default(now())
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent   Folder?   @relation("FolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children Folder[]  @relation("FolderTree")
   monitors Monitor[]
 
   @@index([userId])
+  @@index([parentId])
 }
 
 model Monitor {

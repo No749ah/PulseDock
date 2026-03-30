@@ -42,7 +42,32 @@ type FolderStats = {
   overallStatus: 'operational' | 'degraded' | 'outage' | 'empty';
 };
 
-type Folder = { id: string; name: string; createdAt: string; stats?: FolderStats };
+type FolderNode = {
+  id: string;
+  parentId: string | null;
+  name: string;
+  position: number;
+  createdAt: string;
+  depth: number;
+  path: string[];
+  stats?: FolderStats;
+  children: FolderNode[];
+};
+
+/** Flatten tree to list with depth for table/grid rendering */
+function flattenTree(nodes: FolderNode[]): FolderNode[] {
+  const result: FolderNode[] = [];
+  const walk = (items: FolderNode[]) => {
+    for (const n of items) {
+      result.push(n);
+      walk(n.children);
+    }
+  };
+  walk(nodes);
+  return result;
+}
+
+type Folder = FolderNode;
 
 const inputClass =
   'w-full px-4 py-3 bg-surface border border-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent';
@@ -82,6 +107,7 @@ export default function FoldersPage() {
   const [folders, setFolders] = useState<Folder[]>([]);
   const [loading, setLoading] = useState(true);
   const [name, setName] = useState('');
+  const [createParentId, setCreateParentId] = useState<string | null>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [createStep, setCreateStep] = useState(0);
   const [page, setPage] = useState(1);
@@ -107,8 +133,8 @@ export default function FoldersPage() {
   async function load() {
     setLoading(true);
     try {
-      const foldersData = await api<Folder[]>('/v1/folders');
-      setFolders(foldersData);
+      const tree = await api<FolderNode[]>('/v1/folders');
+      setFolders(flattenTree(tree));
     } catch {
       router.push('/login');
     } finally {
@@ -125,13 +151,14 @@ export default function FoldersPage() {
 
   function resetCreateForm() {
     setName('');
+    setCreateParentId(null);
     setCreateStep(0);
   }
 
   async function createFolder() {
     setSaving(true);
     try {
-      await api('/v1/folders', undefined, { method: 'POST', body: JSON.stringify({ name }) });
+      await api('/v1/folders', undefined, { method: 'POST', body: JSON.stringify({ name, parentId: createParentId }) });
       success(`Project "${name}" created`);
       resetCreateForm();
       setCreateOpen(false);
@@ -267,16 +294,35 @@ export default function FoldersPage() {
             }
           >
             {createStep === 0 && (
-              <div>
-                <label className="block text-sm font-medium text-text-secondary mb-1.5">Project name</label>
-                <input
-                  className={inputClass}
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="e.g. Production, Staging, Customer A"
-                  autoFocus
-                  onKeyDown={(e) => { if (e.key === 'Enter' && name.trim()) setCreateStep(1); }}
-                />
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-text-secondary mb-1.5">Project name</label>
+                  <input
+                    className={inputClass}
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    placeholder="e.g. Production, Staging, Customer A"
+                    autoFocus
+                    onKeyDown={(e) => { if (e.key === 'Enter' && name.trim()) setCreateStep(1); }}
+                  />
+                </div>
+                {folders.length > 0 && (
+                  <div>
+                    <label className="block text-sm font-medium text-text-secondary mb-1.5">Parent project (optional)</label>
+                    <select
+                      className={inputClass}
+                      value={createParentId ?? ''}
+                      onChange={(e) => setCreateParentId(e.target.value || null)}
+                    >
+                      <option value="">None (root level)</option>
+                      {folders.filter((f) => (f.depth ?? 0) < 4).map((f) => (
+                        <option key={f.id} value={f.id}>
+                          {'  '.repeat(f.depth ?? 0)}{'└ '.repeat(Math.min(1, f.depth ?? 0))}{f.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
               </div>
             )}
             {createStep === 1 && (
@@ -473,7 +519,12 @@ export default function FoldersPage() {
                           <div className="p-2 rounded-xl bg-accent/10 shrink-0">
                             <Folder className="w-4 h-4 text-accent" />
                           </div>
-                          <h3 className="font-semibold text-text-primary text-sm truncate">{f.name}</h3>
+                          <div className="min-w-0">
+                            <h3 className="font-semibold text-text-primary text-sm truncate">{f.name}</h3>
+                            {f.path && f.path.length > 1 && (
+                              <p className="text-[10px] text-text-muted truncate">{f.path.slice(0, -1).join(' / ')}</p>
+                            )}
+                          </div>
                         </div>
                         <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity">
                           <button
@@ -593,9 +644,17 @@ export default function FoldersPage() {
                       return (
                         <TableRow key={f.id}>
                           <TableCell>
-                            <div className="flex items-center gap-2">
+                            <div className="flex items-center gap-2" style={{ paddingLeft: `${(f.depth ?? 0) * 20}px` }}>
+                              {(f.depth ?? 0) > 0 && (
+                                <span className="text-text-muted text-xs mr-0.5">└</span>
+                              )}
                               <Folder className="w-4 h-4 text-accent shrink-0" />
                               <span className="font-medium text-text-primary">{f.name}</span>
+                              {f.path && f.path.length > 1 && (
+                                <span className="text-xs text-text-muted hidden sm:inline">
+                                  {f.path.slice(0, -1).join(' / ')}
+                                </span>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell>

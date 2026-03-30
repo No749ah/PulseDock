@@ -1,11 +1,12 @@
-## Status Summary (2026-03-30 04:10 UTC)
-- **Build/Test:** ✅ All tests passing (22/22); web + API build clean
+## Status Summary (2026-03-30 04:43 UTC)
+- **Build/Test:** ✅ All tests passing (4571 unit + 57 integration + 12 agent = 4640 total); web + API build clean
 - **Security/Audit:** ✅ 0 vulnerabilities
-- **Deployment:** ✅ API v1.6.0 + web running; public URL 200; all 56 pages HTTP 200
+- **Deployment:** ✅ API v1.6.0 + web running; public URL 200; all pages HTTP 200
 - **Branch:** heartbeat/2026-03-30-midnight
-- **Last changes (04:10 UTC):**
-  - [x] Heartbeat health check — all green
-  - [x] Updated stale backlog items (controllers + alerts already refactored)
+- **Last changes (04:43 UTC):**
+  - [x] Added integration tests: alerts (12), incidents (14), check execution (6) — 57 total integration tests
+  - [x] Fixed incidents controller bug: req.user.sub → req.user.id (auth guard mismatch)
+  - [x] All services restarted and verified
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
@@ -37,7 +38,13 @@
   - `alerts-routing.service.ts` (683 lines) — routing rules, escalation
   - `alerts.service.ts` (219 lines) — thin facade
 
-- [ ] **API integration tests with real database** — Current tests mock Prisma. Add integration tests that run against a real PostgreSQL instance for critical flows: monitor CRUD → check execution → alert firing → incident creation.
+- [x] **API integration tests with real database** — ✅ Done (2026-03-30). 57 integration tests across 5 files running against real PostgreSQL:
+  - `auth.integration.spec.ts` (9 tests) — registration, login, lockout, token validation
+  - `monitors-crud.integration.spec.ts` (12 tests) — full CRUD, types, auth isolation
+  - `alerts-channels.integration.spec.ts` (12 tests) — channel CRUD, ownership isolation
+  - `incidents.integration.spec.ts` (14 tests) — lifecycle, timeline, insights
+  - `check-execution.integration.spec.ts` (6 tests) — check persistence, auto-incidents
+  - Also fixed production bug: incidents controller used `req.user.sub` instead of `req.user.id`
 
 - [ ] **Database query optimization audit** — Run `EXPLAIN ANALYZE` on hot paths: monitors list, check history, dashboard stats, fleet report. Add missing indexes. Profile N+1 queries in Prisma includes.
 

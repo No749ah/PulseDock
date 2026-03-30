@@ -13,6 +13,10 @@ import { MonitorsSlaController } from './monitors/monitors-sla.controller';
 import { MonitorsDiagnosticsController } from './monitors/monitors-diagnostics.controller';
 import { MonitorsExportController } from './monitors/monitors-export.controller';
 import { MonitorsComparisonController } from './monitors/monitors-comparison.controller';
+import { MonitorsRunsController } from './monitors/monitors-runs.controller';
+import { MonitorsAlertsController } from './monitors/monitors-alerts.controller';
+import { MonitorsDetailsController } from './monitors/monitors-details.controller';
+import { MonitorsStateController } from './monitors/monitors-state.controller';
 import { AnnotationsController } from './monitors/annotations.controller';
 import { ServiceGroupsController } from './monitors/service-groups.controller';
 import { ServiceGroupsService } from './monitors/service-groups.service';
@@ -110,6 +114,10 @@ import { DependenciesService } from './dependencies/dependencies.service';
     MonitorsDiagnosticsController,
     MonitorsExportController,
     MonitorsComparisonController,
+    MonitorsRunsController,
+    MonitorsAlertsController,
+    MonitorsDetailsController,
+    MonitorsStateController,
     AlertsController,
     AlertRoutingController,
     HeartbeatController,

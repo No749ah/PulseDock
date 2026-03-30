@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MonitorsController } from './monitors.controller';
+import { MonitorsStateController } from './monitors-state.controller';
 import { NotFoundException } from '@nestjs/common';
 
 function makeReq(userId = 'user-1') {
@@ -23,28 +23,18 @@ function makeBaseMockPrisma(monitor: Record<string, unknown> | null = { id: 'm-1
   };
 }
 
-function makeService() {
+function makeCrudService() {
   return {
-    list: vi.fn(), create: vi.fn(), update: vi.fn(), remove: vi.fn(),
-    runNow: vi.fn(), bulkAction: vi.fn(), testVersionConnection: vi.fn(),
-    discoverCurrentVersion: vi.fn(), listPlugins: vi.fn(), getRecentRuns: vi.fn(),
-    monitorRuns: vi.fn(), exportMonitorRuns: vi.fn(), monitorUptime: vi.fn(),
-    monitorChart: vi.fn(), versionSummary: vi.fn(), exportMonitors: vi.fn(),
-    importMonitors: vi.fn(), importExternal: vi.fn(), listMonitorAlerts: vi.fn(),
-    addMonitorAlert: vi.fn(), updateMonitorAlertNotifyOn: vi.fn(), removeMonitorAlert: vi.fn(),
-    listEvents: vi.fn(), createEvent: vi.fn(), deleteEvent: vi.fn(), snooze: vi.fn(),
-    listDependencies: vi.fn(), addDependency: vi.fn(), removeDependency: vi.fn(),
-    getHealthScore: vi.fn(), getHealthSummary: vi.fn(), getErrorBudget: vi.fn(),
+    snooze: vi.fn(),
+    togglePin: vi.fn(),
   };
 }
 
+function makeCtrl(mockPrisma: ReturnType<typeof makeBaseMockPrisma>) {
+  return new MonitorsStateController(makeCrudService() as never, mockPrisma as never);
+}
+
 describe('Monitor Mute & Acknowledge', () => {
-  let service: ReturnType<typeof makeService>;
-
-  beforeEach(() => {
-    service = makeService();
-  });
-
   // ─── Mute ──────────────────────────────────────────────────────────────────
 
   it('muteMonitor() sets mutedUntil correctly', async () => {
@@ -53,7 +43,7 @@ describe('Monitor Mute & Acknowledge', () => {
     const mutedUntilDate = new Date(now + 30 * 60_000);
     mockPrisma.monitor.update.mockResolvedValue({ id: 'm-1', userId: 'user-1', mutedUntil: mutedUntilDate });
 
-    const ctrl = new MonitorsController(service as never, { checkLimit: vi.fn() } as never, mockPrisma as never);
+    const ctrl = makeCtrl(mockPrisma);
     const result = await ctrl.muteMonitor(makeReq(), 'm-1', { minutes: 30 }) as { mutedUntil: string };
 
     expect(mockPrisma.monitor.findFirst).toHaveBeenCalledWith({ where: { id: 'm-1', userId: 'user-1' } });
@@ -61,7 +51,6 @@ describe('Monitor Mute & Acknowledge', () => {
       expect.objectContaining({ where: { id: 'm-1' } }),
     );
     expect(result.mutedUntil).toBeDefined();
-    // Should be ~30 min from now
     const mutedUntil = new Date(result.mutedUntil);
     expect(mutedUntil.getTime()).toBeGreaterThan(now + 29 * 60_000);
     expect(mutedUntil.getTime()).toBeLessThan(now + 31 * 60_000);
@@ -69,7 +58,7 @@ describe('Monitor Mute & Acknowledge', () => {
 
   it('muteMonitor() throws NotFoundException when monitor not found', async () => {
     const mockPrisma = makeBaseMockPrisma(null);
-    const ctrl = new MonitorsController(service as never, { checkLimit: vi.fn() } as never, mockPrisma as never);
+    const ctrl = makeCtrl(mockPrisma);
     await expect(ctrl.muteMonitor(makeReq(), 'no-such', { minutes: 30 })).rejects.toThrow(NotFoundException);
   });
 
@@ -77,7 +66,7 @@ describe('Monitor Mute & Acknowledge', () => {
     const mockPrisma = makeBaseMockPrisma();
     mockPrisma.monitor.update.mockResolvedValue({ id: 'm-1', userId: 'user-1', mutedUntil: null });
 
-    const ctrl = new MonitorsController(service as never, { checkLimit: vi.fn() } as never, mockPrisma as never);
+    const ctrl = makeCtrl(mockPrisma);
     const result = await ctrl.unmuteMonitor(makeReq(), 'm-1') as { mutedUntil: null };
 
     expect(mockPrisma.monitor.update).toHaveBeenCalledWith({ where: { id: 'm-1' }, data: { mutedUntil: null } });
@@ -86,7 +75,7 @@ describe('Monitor Mute & Acknowledge', () => {
 
   it('unmuteMonitor() throws NotFoundException when monitor not found', async () => {
     const mockPrisma = makeBaseMockPrisma(null);
-    const ctrl = new MonitorsController(service as never, { checkLimit: vi.fn() } as never, mockPrisma as never);
+    const ctrl = makeCtrl(mockPrisma);
     await expect(ctrl.unmuteMonitor(makeReq(), 'no-such')).rejects.toThrow(NotFoundException);
   });
 
@@ -100,7 +89,7 @@ describe('Monitor Mute & Acknowledge', () => {
     const mockPrisma = makeBaseMockPrisma();
     mockPrisma.alertAcknowledgement.create.mockResolvedValue(createdAck);
 
-    const ctrl = new MonitorsController(service as never, { checkLimit: vi.fn() } as never, mockPrisma as never);
+    const ctrl = makeCtrl(mockPrisma);
     const result = await ctrl.acknowledgeMonitor(makeReq(), 'm-1', { note: 'Investigating' }) as Record<string, unknown>;
 
     expect(mockPrisma.alertAcknowledgement.create).toHaveBeenCalledWith({
@@ -112,7 +101,7 @@ describe('Monitor Mute & Acknowledge', () => {
 
   it('acknowledgeMonitor() throws NotFoundException when monitor not found', async () => {
     const mockPrisma = makeBaseMockPrisma(null);
-    const ctrl = new MonitorsController(service as never, { checkLimit: vi.fn() } as never, mockPrisma as never);
+    const ctrl = makeCtrl(mockPrisma);
     await expect(ctrl.acknowledgeMonitor(makeReq(), 'no-such', {})).rejects.toThrow(NotFoundException);
   });
 
@@ -127,7 +116,7 @@ describe('Monitor Mute & Acknowledge', () => {
     mockPrisma.alertAcknowledgement.findFirst.mockResolvedValue(activeAck);
     mockPrisma.alertAcknowledgement.update.mockResolvedValue(updatedAck);
 
-    const ctrl = new MonitorsController(service as never, { checkLimit: vi.fn() } as never, mockPrisma as never);
+    const ctrl = makeCtrl(mockPrisma);
     const result = await ctrl.clearAcknowledgement(makeReq(), 'm-1') as Record<string, unknown>;
 
     expect(mockPrisma.alertAcknowledgement.findFirst).toHaveBeenCalledWith({
@@ -146,7 +135,7 @@ describe('Monitor Mute & Acknowledge', () => {
     const mockPrisma = makeBaseMockPrisma();
     mockPrisma.alertAcknowledgement.findFirst.mockResolvedValue(null);
 
-    const ctrl = new MonitorsController(service as never, { checkLimit: vi.fn() } as never, mockPrisma as never);
+    const ctrl = makeCtrl(mockPrisma);
     await expect(ctrl.clearAcknowledgement(makeReq(), 'm-1')).rejects.toThrow(NotFoundException);
   });
 
@@ -154,7 +143,7 @@ describe('Monitor Mute & Acknowledge', () => {
 
   it('muteMonitor() with minutes=1440 (max) succeeds', async () => {
     const mockPrisma = makeBaseMockPrisma();
-    const ctrl = new MonitorsController(service as never, { checkLimit: vi.fn() } as never, mockPrisma as never);
+    const ctrl = makeCtrl(mockPrisma);
     const result = await ctrl.muteMonitor(makeReq(), 'm-1', { minutes: 1440 }) as { mutedUntil: string };
     const mutedUntil = new Date(result.mutedUntil);
     const expected = Date.now() + 1440 * 60_000;
@@ -170,7 +159,7 @@ describe('Monitor Mute & Acknowledge', () => {
     const mockPrisma = makeBaseMockPrisma();
     mockPrisma.alertAcknowledgement.create.mockResolvedValue(createdAck);
 
-    const ctrl = new MonitorsController(service as never, { checkLimit: vi.fn() } as never, mockPrisma as never);
+    const ctrl = makeCtrl(mockPrisma);
     const result = await ctrl.acknowledgeMonitor(makeReq(), 'm-1', {}) as Record<string, unknown>;
 
     expect(mockPrisma.alertAcknowledgement.create).toHaveBeenCalledWith({

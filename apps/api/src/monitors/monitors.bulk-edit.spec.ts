@@ -45,7 +45,7 @@ function buildPrismaMock(ownedMonitorIds: string[]) {
   };
 }
 
-async function buildService(prisma: object): Promise<MonitorsService> {
+async function buildService(prisma: object): Promise<MonitorsCrudService> {
   const module: TestingModule = await Test.createTestingModule({
     providers: [
       MonitorsCrudService,

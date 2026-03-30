@@ -32,7 +32,7 @@ function closeServer(server: http.Server): Promise<void> {
 
 // ─── Service factory ──────────────────────────────────────────────────────────
 
-async function buildService(): Promise<MonitorsService> {
+async function buildService(): Promise<MonitorsCrudService> {
   const module: TestingModule = await Test.createTestingModule({
     providers: [
       MonitorsCrudService,

@@ -29,6 +29,9 @@ import { MonitorsExportService } from './monitors/monitors-export.service';
 import { MonitorsComparisonService } from './monitors/monitors-comparison.service';
 import { VersionDetectionService } from './monitors/version-detection.service';
 import { AlertsService } from './alerts/alerts.service';
+import { AlertsDeliveryService } from './alerts/alerts-delivery.service';
+import { AlertsRoutingService } from './alerts/alerts-routing.service';
+import { AlertsAnalysisService } from './alerts/alerts-analysis.service';
 import { AlertsController } from './alerts/alerts.controller';
 import { AlertRoutingController } from './alerts/alert-routing.controller';
 import { ChecksService } from './checks/checks.service';
@@ -101,7 +104,10 @@ import { DependenciesService } from './dependencies/dependencies.service';
   imports: [
     ScheduleModule.forRoot(),
     JwtModule.register({}),
-    ThrottlerModule.forRoot([{ ttl: 60_000, limit: 120 }]),
+    ThrottlerModule.forRoot([{
+      ttl: 60_000,
+      limit: process.env.NODE_ENV === 'test' ? 100_000 : 120,
+    }]),
     RealtimeModule,
     PlaybooksModule,
   ],
@@ -174,6 +180,9 @@ import { DependenciesService } from './dependencies/dependencies.service';
     MonitorsComparisonService,
     VersionDetectionService,
     AlertsService,
+    AlertsDeliveryService,
+    AlertsRoutingService,
+    AlertsAnalysisService,
     ChecksService,
     ChecksScheduler,
     RolesGuard,

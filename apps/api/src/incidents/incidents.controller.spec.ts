@@ -30,7 +30,7 @@ describe('IncidentsController', () => {
   let controller: IncidentsController;
   let service: Partial<IncidentsService> & Record<string, ReturnType<typeof vi.fn>>;
 
-  const req = { user: { sub: 'user-1', role: 'user' } };
+  const req = { user: { id: 'user-1', sub: 'user-1', role: 'user' } };
 
   beforeEach(async () => {
     const mockService = {

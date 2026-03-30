@@ -76,7 +76,7 @@ function buildPrisma(opts: {
   };
 }
 
-async function buildService(prisma: object): Promise<MonitorsService> {
+async function buildService(prisma: object): Promise<MonitorsSlaService> {
   const module: TestingModule = await Test.createTestingModule({
     providers: [
       MonitorsSlaService,

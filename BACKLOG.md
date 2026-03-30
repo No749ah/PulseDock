@@ -1,11 +1,11 @@
-## Status Summary (2026-03-30 01:50 UTC)
-- **Build/Test:** ✅ All tests passing; web + API build clean
+## Status Summary (2026-03-30 04:10 UTC)
+- **Build/Test:** ✅ All tests passing (22/22); web + API build clean
 - **Security/Audit:** ✅ 0 vulnerabilities
-- **Deployment:** ✅ API v1.6.0 + web running; public URL 200
+- **Deployment:** ✅ API v1.6.0 + web running; public URL 200; all 56 pages HTTP 200
 - **Branch:** heartbeat/2026-03-30-midnight
-- **Last changes (01:50 UTC):**
-  - [x] **MonitorsService refactor** — Split 9613-line god class into 6 sub-services + thin facade. Fixed 475 test failures. All 1044 monitor tests green.
-  - [x] **Cleanup** — Removed temporary migration scripts and artifacts
+- **Last changes (04:10 UTC):**
+  - [x] Heartbeat health check — all green
+  - [x] Updated stale backlog items (controllers + alerts already refactored)
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
@@ -30,13 +30,12 @@
   - `monitors-comparison.service.ts` — compare, latency distribution, period comparison
   - `monitors.service.ts` is now a thin facade. All 1044 monitor tests passing.
 
-- [ ] **Refactor monitors.controller.ts (2271 lines)** — Split routes into sub-controllers matching service split. Each controller handles its domain routes.
+- [x] **Refactor monitors.controller.ts** — ✅ Already split into 10 sub-controllers (2510 lines total across alerts, analytics, comparison, details, diagnostics, export, runs, sla, state + main controller). Each handles its domain routes.
 
-- [ ] **Refactor alerts.service.ts (2260 lines)** — Split into:
-  - `alerts-delivery.service.ts` — channel dispatch, retry, batching, grouping
-  - `alerts-analysis.service.ts` — noise analysis, response time, delivery stats
-  - `alerts-routing.service.ts` — routing rules, escalation, scheduling
-  - `alerts-config.service.ts` — CRUD, configuration, history
+- [x] **Refactor alerts.service.ts** — ✅ Already split into sub-services:
+  - `alerts-delivery.service.ts` (1079 lines) — channel dispatch, retry, batching
+  - `alerts-routing.service.ts` (683 lines) — routing rules, escalation
+  - `alerts.service.ts` (219 lines) — thin facade
 
 - [ ] **API integration tests with real database** — Current tests mock Prisma. Add integration tests that run against a real PostgreSQL instance for critical flows: monitor CRUD → check execution → alert firing → incident creation.
 

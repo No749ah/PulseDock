@@ -65,7 +65,7 @@ class AddUpdateBody implements AddUpdateDto {
 }
 
 interface AuthenticatedRequest extends Request {
-  user: { sub: string; role: string };
+  user: { id: string; sub: string; role: string };
 }
 
 @ApiTags('Incidents')
@@ -84,7 +84,7 @@ export class IncidentsController {
     @Query('days') days?: string,
   ) {
     const d = parseInt(days ?? '90', 10);
-    return this.incidents.incidentInsights(req.user.sub, Number.isFinite(d) ? d : 90);
+    return this.incidents.incidentInsights(req.user.id, Number.isFinite(d) ? d : 90);
   }
 
   @Get()
@@ -92,7 +92,7 @@ export class IncidentsController {
   @ApiResponse({ status: 200, description: 'List of incidents ordered by createdAt descending.' })
   @ApiResponse({ status: 401, description: 'Not authenticated — Bearer token missing or expired.' })
   findAll(@Req() req: AuthenticatedRequest) {
-    return this.incidents.findAll(req.user.sub);
+    return this.incidents.findAll(req.user.id);
   }
 
   @Get('mttr-report')
@@ -104,7 +104,7 @@ export class IncidentsController {
     @Query('periodDays') periodDays?: string,
   ) {
     const days = periodDays ? parseInt(periodDays, 10) : 30;
-    return this.incidents.mttrReport(req.user.sub, isNaN(days) ? 30 : days);
+    return this.incidents.mttrReport(req.user.id, isNaN(days) ? 30 : days);
   }
 
   @Get(':id')
@@ -115,7 +115,7 @@ export class IncidentsController {
   @ApiResponse({ status: 403, description: 'Access denied — incident belongs to another user.' })
   @ApiResponse({ status: 404, description: 'Incident not found.' })
   findOne(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
-    return this.incidents.findOne(req.user.sub, id);
+    return this.incidents.findOne(req.user.id, id);
   }
 
   @Post()
@@ -124,7 +124,7 @@ export class IncidentsController {
   @ApiResponse({ status: 400, description: 'Validation error — title is required and must be 1–255 characters.' })
   @ApiResponse({ status: 401, description: 'Not authenticated.' })
   create(@Req() req: AuthenticatedRequest, @Body() body: CreateIncidentBody) {
-    return this.incidents.create(req.user.sub, body);
+    return this.incidents.create(req.user.id, body);
   }
 
   @Patch(':id')
@@ -140,7 +140,7 @@ export class IncidentsController {
     @Param('id') id: string,
     @Body() body: UpdateIncidentBody,
   ) {
-    return this.incidents.update(req.user.sub, id, body);
+    return this.incidents.update(req.user.id, id, body);
   }
 
   @Post(':id/updates')
@@ -156,7 +156,7 @@ export class IncidentsController {
     @Param('id') id: string,
     @Body() body: AddUpdateBody,
   ) {
-    return this.incidents.addUpdate(req.user.sub, id, body);
+    return this.incidents.addUpdate(req.user.id, id, body);
   }
 
   @Patch(':id/postmortem')
@@ -169,7 +169,7 @@ export class IncidentsController {
     @Param('id') id: string,
     @Body() body: { rootCause?: string | null; postmortemNotes?: string | null },
   ) {
-    return this.incidents.update(req.user.sub, id, {
+    return this.incidents.update(req.user.id, id, {
       rootCause: body.rootCause,
       postmortemNotes: body.postmortemNotes,
     });
@@ -188,7 +188,7 @@ export class IncidentsController {
     @Req() req: AuthenticatedRequest,
     @Param('id') id: string,
   ) {
-    return this.incidents.generatePostmortem(req.user.sub, id);
+    return this.incidents.generatePostmortem(req.user.id, id);
   }
 
   @Delete(':id')
@@ -200,6 +200,6 @@ export class IncidentsController {
   @ApiResponse({ status: 403, description: 'Access denied.' })
   @ApiResponse({ status: 404, description: 'Incident not found.' })
   async delete(@Req() req: AuthenticatedRequest, @Param('id') id: string) {
-    await this.incidents.delete(req.user.sub, id);
+    await this.incidents.delete(req.user.id, id);
   }
 }

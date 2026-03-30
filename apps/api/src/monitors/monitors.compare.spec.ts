@@ -38,7 +38,7 @@ function makePrisma(
 }
 
 function makeService(prisma: ReturnType<typeof makePrisma>) {
-  return new (MonitorsComparisonService as unknown as new (...args: unknown[]) => MonitorsComparisonService)(prisma) as MonitorsService;
+  return new (MonitorsComparisonService as unknown as new (...args: unknown[]) => MonitorsComparisonService)(prisma) as MonitorsComparisonService;
 }
 
 // ── tests ─────────────────────────────────────────────────────────────────

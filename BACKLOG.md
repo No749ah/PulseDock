@@ -1,4 +1,4 @@
-## Status Summary (2026-03-30 00:02 UTC)
+## Status Summary (2026-03-30 00:20 UTC)
 - **Build/Test:** ✅ 249 test files, 5350 total tests passing (4571 API + 757 web + 12 agent + 10 CLI); 0 TS errors; web + API build clean; code quality 8/8
 - **Security/Audit:** ✅ 0 vulnerabilities
 - **Deployment:** ✅ API v1.6.0 + web running; all pages 200; public URL 200
@@ -6,7 +6,12 @@
 - **Code Quality:** 0 `any` types, 0 `console.log`, 0 TODO/FIXME, 0 empty catches
 - **Performance:** API p95 <15ms, Web TTFB <130ms, 71 compiled pages, 1.6MB gzip bundle, DB 1ms
 - **Dependencies:** All at wanted versions. Breaking majors deferred (Prisma 7, React 19, TS 6, lucide-react 1.0)
-- **Last changes:** Branch management, health check, BACKLOG cleanup
+- **Last changes (00:20 UTC):**
+  - [x] **Branch management** — Merged heartbeat/2026-03-30-early → dev, deleted old branch, created heartbeat/2026-03-30-midnight
+  - [x] **BACKLOG cleanup** — Pruned 1800→193 lines (removed 40+ redundant status summaries), added P0 architecture tasks
+  - [x] **CHANGELOG consolidation** — Merged 3 stale "Unreleased" sections into v1.1.0, added proper version links for all 18 releases
+  - [x] **Webhook docs** — New `docs/WEBHOOKS.md` with payload format, HMAC-SHA256 signature verification examples (Node.js, Python, Go, PHP)
+  - [x] **Upgrade guide** — New `docs/UPGRADING.md` documenting all 5 pending major upgrades with risk assessment and strategy
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
@@ -59,7 +64,7 @@
 
 - [ ] **GraphQL monitor improvements** — Current implementation is basic. Add: variable substitution, introspection validation, response time tracking, schema change detection.
 
-- [ ] **Webhook signature verification docs** — Users need clear documentation on how to verify PulseDock webhook signatures (HMAC-SHA256). Add examples in multiple languages (Node.js, Python, Go, PHP).
+- [x] **Webhook signature verification docs** — `docs/WEBHOOKS.md` with payload format, HMAC-SHA256 examples in Node.js, Python, Go, PHP. *(2026-03-30)*
 
 - [ ] **Status page custom CSS** — Allow page-level custom CSS injection for users who want to fully customize their status page beyond theme options.
 
@@ -73,9 +78,9 @@
 
 - [ ] **Consolidate duplicate API endpoints** — Some features have both v1 and v2 endpoints. Audit for overlap and deprecate where appropriate.
 
-- [ ] **Upgrade path documentation** — Document the upgrade process for breaking major deps (Prisma 6→7, React 18→19, TS 5→6). When each is safe to upgrade.
+- [x] **Upgrade path documentation** — `docs/UPGRADING.md` covers all 5 pending major upgrades with risk assessment, breaking changes, and strategy. *(2026-03-30)*
 
-- [ ] **CHANGELOG cleanup** — Multiple "Unreleased" sections from early development. Consolidate into proper versioned releases.
+- [x] **CHANGELOG cleanup** — Merged 3 stale "Unreleased" sections into v1.1.0. All 18 releases properly versioned with comparison links. *(2026-03-30)*
 
 ---
 

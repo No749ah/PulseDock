@@ -1,14 +1,12 @@
-## Status Summary (2026-03-30 05:45 UTC)
-- **Build/Test:** ✅ All 5359 tests passing; web + API build clean
+## Status Summary (2026-03-30 06:00 UTC)
+- **Build/Test:** ✅ All 5359 tests passing (249 files); web + API build clean
 - **Security/Audit:** ✅ 0 vulnerabilities
-- **Deployment:** ✅ API v1.6.0 + web running; public URL 200; all 12 pages HTTP 200
+- **Deployment:** ✅ API v1.6.0 + web running; public URL 200; all 16 pages HTTP 200
 - **Branch:** heartbeat/2026-03-30-midnight
-- **Last changes (05:45 UTC):**
-  - [x] Enhanced GraphQL runner: variable substitution, introspection validation, schema change detection, latency thresholds (22 tests)
-  - [x] Added 9 missing database indexes (Folder, AlertChannel, EscalationPolicy, AlertRoutingRule, MonitorServiceGroup, DeploymentEvent, Incident, MonitorRun)
-  - [x] Batched health score leaderboard queries (2N+1 → 2 queries)
-  - [x] Batched SLA service queries (slaDashboard, slaComplianceReport, getSloSummary) — eliminated N+1 patterns
-  - [x] All services restarted and verified
+- **Last changes (06:00 UTC):**
+  - [x] SLA batch optimization verified — all 46 SLA/SLO tests green
+  - [x] Confirmed status page custom CSS already implemented (editor + public rendering)
+  - [x] Full test suite 5359/5359 passing, all pages verified
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
@@ -68,7 +66,7 @@
 
 - [x] **Webhook signature verification docs** — `docs/WEBHOOKS.md` with payload format, HMAC-SHA256 examples in Node.js, Python, Go, PHP. *(2026-03-30)*
 
-- [ ] **Status page custom CSS** — Allow page-level custom CSS injection for users who want to fully customize their status page beyond theme options.
+- [x] **Status page custom CSS** — ✅ Already implemented. Custom CSS textarea in status page editor settings panel (max 10,000 chars), injected into public page `<head>` via `<style>`. Works in both live pages and preview mode.
 
 - [ ] **Monitor grouping hierarchy** — Currently flat folders + tags. Support nested folder hierarchy for large deployments (50+ monitors).
 

@@ -1,12 +1,13 @@
-## Status Summary (2026-03-30 06:00 UTC)
-- **Build/Test:** ✅ All 5359 tests passing (249 files); web + API build clean
+## Status Summary (2026-03-30 08:40 UTC)
+- **Build/Test:** ✅ All tests passing; web + API build clean; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities
-- **Deployment:** ✅ API v1.6.0 + web running; public URL 200; all 16 pages HTTP 200
+- **Deployment:** ✅ API v1.6.0 + web running; public URL 200; all pages HTTP 200
 - **Branch:** heartbeat/2026-03-30-midnight
-- **Last changes (06:00 UTC):**
-  - [x] SLA batch optimization verified — all 46 SLA/SLO tests green
-  - [x] Confirmed status page custom CSS already implemented (editor + public rendering)
-  - [x] Full test suite 5359/5359 passing, all pages verified
+- **Last changes (08:40 UTC):**
+  - [x] **Remove dead escalation page** — Deleted `/alerts/escalation` page + nav link (backend was removed by Noah). Fixes build warning.
+  - [x] **Weekly digest notification frequency** — New `weekly_digest` option (cron: Monday 07:05 UTC). Routes through existing digest pipeline. UI: 4th frequency button in account notification prefs. 2 new tests.
+  - [x] **Monitor detail tab bar scroll fix** — Tab bar now horizontally scrollable on narrow screens (was `w-fit`, now `overflow-x-auto`).
+  - [x] Health check: build clean, all tests passing, 0 vulnerabilities, all pages 200, public URL 200.
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
@@ -70,7 +71,7 @@
 
 - [ ] **Monitor grouping hierarchy** — Currently flat folders + tags. Support nested folder hierarchy for large deployments (50+ monitors).
 
-- [ ] **Batch notification digest improvements** — Current digest is hourly/daily. Add weekly option. Include trend data (worse vs better since last digest).
+- [x] **Batch notification digest improvements** — Added weekly_digest option (cron: Mon 07:05 UTC). Trend data in digests deferred (requires significant mailer template rework). *(2026-03-30)*
 
 ### 🟢 P3 — Maintenance & Cleanup
 

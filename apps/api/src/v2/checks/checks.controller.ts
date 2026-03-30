@@ -3,20 +3,12 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagg
 import { AuthGuard } from '../../common/auth.guard';
 import { PrismaService } from '../../common/prisma.service';
 import { V2ListChecksQuery } from './checks.dto';
-
-interface AuthenticatedRequest {
-  user: { id: string };
-}
-
-interface PaginatedEnvelope<T> {
-  data: T[];
-  meta: {
-    total: number;
-    page: number;
-    limit: number;
-    pages: number;
-  };
-}
+import {
+  AuthenticatedRequest,
+  PaginatedEnvelope,
+  parsePagination,
+  buildMeta,
+} from '../v2.types';
 
 /**
  * V2 Check History Controller
@@ -51,9 +43,7 @@ export class V2ChecksController {
     @Req() req: AuthenticatedRequest,
     @Query() query: V2ListChecksQuery,
   ): Promise<PaginatedEnvelope<unknown>> {
-    const page = Math.max(1, query.page ?? 1);
-    const limit = Math.min(200, Math.max(1, query.limit ?? 50));
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = parsePagination(query, 200, 50);
 
     const where: Record<string, unknown> = { userId: req.user.id };
     if (query.monitorId) where.monitorId = query.monitorId;
@@ -88,9 +78,6 @@ export class V2ChecksController {
       level: r.level,
     }));
 
-    return {
-      data,
-      meta: { total, page, limit, pages: Math.ceil(total / limit) },
-    };
+    return { data, meta: buildMeta(total, page, limit) };
   }
 }

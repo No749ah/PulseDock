@@ -64,9 +64,7 @@ class AddUpdateBody implements AddUpdateDto {
   status!: IncidentStatus;
 }
 
-interface AuthenticatedRequest extends Request {
-  user: { id: string; sub: string; role: string };
-}
+import { AuthenticatedRequest } from '../common/auth.types';
 
 @ApiTags('Incidents')
 @ApiBearerAuth()

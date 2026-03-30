@@ -22,9 +22,7 @@ import { AuthGuard } from '../common/auth.guard';
 import { CreateMaintenanceWindowDto, UpdateMaintenanceWindowDto } from './maintenance.dto';
 import { MaintenanceService } from './maintenance.service';
 
-interface AuthenticatedRequest {
-  user: { id: string };
-}
+import { AuthenticatedRequest } from '../common/auth.types';
 
 @ApiTags('Maintenance Windows')
 @ApiBearerAuth()

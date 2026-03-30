@@ -3,21 +3,12 @@ import { ApiBearerAuth, ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagg
 import { AuthGuard } from '../../common/auth.guard';
 import { PrismaService } from '../../common/prisma.service';
 import { V2ListMonitorsQuery } from './monitors.dto';
-
-interface AuthenticatedRequest {
-  user: { id: string };
-}
-
-/** Envelope for paginated list responses in v2 */
-interface PaginatedEnvelope<T> {
-  data: T[];
-  meta: {
-    total: number;
-    page: number;
-    limit: number;
-    pages: number;
-  };
-}
+import {
+  AuthenticatedRequest,
+  PaginatedEnvelope,
+  parsePagination,
+  buildMeta,
+} from '../v2.types';
 
 @ApiTags('Monitors v2')
 @ApiBearerAuth()
@@ -47,9 +38,7 @@ export class V2MonitorsController {
     @Req() req: AuthenticatedRequest,
     @Query() query: V2ListMonitorsQuery,
   ): Promise<PaginatedEnvelope<unknown>> {
-    const page = Math.max(1, query.page ?? 1);
-    const limit = Math.min(100, Math.max(1, query.limit ?? 20));
-    const skip = (page - 1) * limit;
+    const { page, limit, skip } = parsePagination(query);
     const sortBy = query.sortBy ?? 'createdAt';
     const sortDir = query.sortDir ?? 'desc';
 
@@ -101,14 +90,6 @@ export class V2MonitorsController {
       };
     });
 
-    return {
-      data,
-      meta: {
-        total,
-        page,
-        limit,
-        pages: Math.ceil(total / limit),
-      },
-    };
+    return { data, meta: buildMeta(total, page, limit) };
   }
 }

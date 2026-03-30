@@ -4,9 +4,7 @@ import { AuthGuard } from '../common/auth.guard';
 import { AgentService } from './agent.service';
 import type { AgentReportBody } from './agent.dto';
 
-interface AuthenticatedRequest {
-  user: { id: string; email: string; role: string };
-}
+import { AuthenticatedRequest } from '../common/auth.types';
 
 @ApiTags('Agent')
 @ApiBearerAuth()

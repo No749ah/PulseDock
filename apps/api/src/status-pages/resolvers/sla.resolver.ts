@@ -64,20 +64,25 @@ export async function resolveSlaWidget(
         return { _noConfig: true };
       }
 
-      const rows = await Promise.all(
-        monitors.map(async (m) => {
-          const runs = await prisma.monitorRun.findMany({
-            where: { monitorId: m.id, checkedAt: { gte: since } },
-            select: { level: true },
-          });
-          const total = runs.length;
-          const up = runs.filter((r) => r.level === 'green').length;
-          const actual = total > 0 ? Math.round((up / total) * 10000) / 100 : 100;
-          const target = defaultTarget;
-          const pass = actual >= target;
-          return { monitorId: m.id, name: m.name, target, actual, pass };
-        }),
-      );
+      // Batch fetch all runs for all monitors in one query
+      const allRuns = await prisma.monitorRun.findMany({
+        where: { monitorId: { in: monitors.map((m) => m.id) }, checkedAt: { gte: since } },
+        select: { monitorId: true, level: true },
+      });
+      const runsByMonitor = new Map<string, { level: string }[]>();
+      for (const r of allRuns) {
+        if (!runsByMonitor.has(r.monitorId)) runsByMonitor.set(r.monitorId, []);
+        runsByMonitor.get(r.monitorId)!.push(r);
+      }
+      const rows = monitors.map((m) => {
+        const runs = runsByMonitor.get(m.id) ?? [];
+        const total = runs.length;
+        const up = runs.filter((r) => r.level === 'green').length;
+        const actual = total > 0 ? Math.round((up / total) * 10000) / 100 : 100;
+        const target = defaultTarget;
+        const pass = actual >= target;
+        return { monitorId: m.id, name: m.name, target, actual, pass };
+      });
 
       rows.sort((a, b) => {
         if (a.pass !== b.pass) return a.pass ? 1 : -1;

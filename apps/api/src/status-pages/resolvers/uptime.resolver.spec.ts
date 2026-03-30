@@ -306,9 +306,10 @@ describe('uptime resolver — uptime-comparison-chart', () => {
         ]),
       },
       monitorRun: {
-        findMany: vi.fn()
-          .mockResolvedValueOnce([{ level: 'green' }, { level: 'red' }]) // m1: 50%
-          .mockResolvedValueOnce([{ level: 'green' }, { level: 'green' }]), // m2: 100%
+        findMany: vi.fn().mockResolvedValue([
+          { monitorId: 'm1', level: 'green' }, { monitorId: 'm1', level: 'red' }, // m1: 50%
+          { monitorId: 'm2', level: 'green' }, { monitorId: 'm2', level: 'green' }, // m2: 100%
+        ]),
       },
     });
     const result = await resolveUptimeWidget(

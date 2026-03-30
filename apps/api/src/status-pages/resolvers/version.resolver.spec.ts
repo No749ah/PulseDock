@@ -35,26 +35,23 @@ describe('version resolver — version-status-grid', () => {
   });
 
   it('filters monitors that have current version in message', async () => {
+    const now = new Date();
     const monitors = [
-      { id: 'm1', name: 'Docker', type: 'DOCKER_IMAGE',
-        run: { level: 'green', message: 'current v1.0.0, latest v1.1.0', checkedAt: new Date(), latencyMs: null } },
-      { id: 'm2', name: 'HTTP Check', type: 'HTTP',
-        run: { level: 'green', message: 'OK', checkedAt: new Date(), latencyMs: 50 } }, // no 'current' → filtered out
+      { id: 'm1', name: 'Docker', type: 'DOCKER_IMAGE' },
+      { id: 'm2', name: 'HTTP Check', type: 'HTTP' },
     ];
 
-    const monitorFindMany = vi.fn().mockResolvedValue(
-      monitors.map((m) => ({ id: m.id, name: m.name, type: m.type })),
-    );
+    const monitorFindMany = vi.fn().mockResolvedValue(monitors);
 
-    let callCount = 0;
-    const runFindFirst = vi.fn().mockImplementation(() => {
-      const m = monitors[callCount++];
-      return Promise.resolve(m.run);
-    });
+    // Batched findMany returns all runs for all monitors in one call
+    const runFindMany = vi.fn().mockResolvedValue([
+      { monitorId: 'm1', level: 'green', message: 'current v1.0.0, latest v1.1.0', checkedAt: now, latencyMs: null },
+      { monitorId: 'm2', level: 'green', message: 'OK', checkedAt: now, latencyMs: 50 },
+    ]);
 
     const prisma = {
       monitor: { findMany: monitorFindMany },
-      monitorRun: { findFirst: runFindFirst },
+      monitorRun: { findMany: runFindMany },
     } as unknown as any;
 
     const result = await resolveVersionWidget(prisma, noopCache, userId, makeWidget('version-status-grid'), undefined);
@@ -65,8 +62,8 @@ describe('version resolver — version-status-grid', () => {
 
   it('returns monitor with null run as level=green', async () => {
     const monitorFindMany = vi.fn().mockResolvedValue([{ id: 'm1', name: 'No Run', type: 'GIT_RELEASE' }]);
-    const runFindFirst = vi.fn().mockResolvedValue(null);
-    const prisma = { monitor: { findMany: monitorFindMany }, monitorRun: { findFirst: runFindFirst } } as unknown as any;
+    const runFindMany = vi.fn().mockResolvedValue([]); // no runs at all
+    const prisma = { monitor: { findMany: monitorFindMany }, monitorRun: { findMany: runFindMany } } as unknown as any;
 
     const result = await resolveVersionWidget(prisma, noopCache, userId, makeWidget('version-status-grid'), undefined);
     // No run → message is null → doesn't match 'current' regex → filtered
@@ -229,15 +226,14 @@ describe('version resolver — version-timeline', () => {
   it('detects version changes between consecutive runs', async () => {
     const monitorData = [{ id: 'm1', name: 'Nginx' }];
     const runs = [
-      { message: 'v1.25.0', checkedAt: new Date('2026-03-25T12:00:00Z'), ok: true },
-      { message: 'v1.24.0', checkedAt: new Date('2026-03-24T12:00:00Z'), ok: true },
+      { monitorId: 'm1', message: 'v1.25.0', checkedAt: new Date('2026-03-25T12:00:00Z'), ok: true },
+      { monitorId: 'm1', message: 'v1.24.0', checkedAt: new Date('2026-03-24T12:00:00Z'), ok: true },
     ];
 
-    const findMany = vi.fn()
-      .mockResolvedValueOnce(monitorData)  // monitor.findMany
-      .mockResolvedValueOnce(runs);         // monitorRun.findMany for m1
+    const monitorFindMany = vi.fn().mockResolvedValue(monitorData);
+    const runFindMany = vi.fn().mockResolvedValue(runs);
 
-    const prisma = { monitor: { findMany }, monitorRun: { findMany } } as unknown as any;
+    const prisma = { monitor: { findMany: monitorFindMany }, monitorRun: { findMany: runFindMany } } as unknown as any;
     const result = await resolveVersionWidget(prisma, noopCache, userId, makeWidget('version-timeline'), undefined);
     expect(result.count).toBe(1);
     const event = (result.events as any[])[0];
@@ -249,16 +245,15 @@ describe('version resolver — version-timeline', () => {
   it('returns no events when all runs have same version', async () => {
     const monitorData = [{ id: 'm1', name: 'Redis' }];
     const runs = [
-      { message: 'v7.0.11', checkedAt: new Date('2026-03-25T12:00:00Z'), ok: true },
-      { message: 'v7.0.11', checkedAt: new Date('2026-03-24T12:00:00Z'), ok: true },
-      { message: 'v7.0.11', checkedAt: new Date('2026-03-23T12:00:00Z'), ok: true },
+      { monitorId: 'm1', message: 'v7.0.11', checkedAt: new Date('2026-03-25T12:00:00Z'), ok: true },
+      { monitorId: 'm1', message: 'v7.0.11', checkedAt: new Date('2026-03-24T12:00:00Z'), ok: true },
+      { monitorId: 'm1', message: 'v7.0.11', checkedAt: new Date('2026-03-23T12:00:00Z'), ok: true },
     ];
 
-    const findMany = vi.fn()
-      .mockResolvedValueOnce(monitorData)
-      .mockResolvedValueOnce(runs);
+    const monitorFindMany = vi.fn().mockResolvedValue(monitorData);
+    const runFindMany = vi.fn().mockResolvedValue(runs);
 
-    const prisma = { monitor: { findMany }, monitorRun: { findMany } } as unknown as any;
+    const prisma = { monitor: { findMany: monitorFindMany }, monitorRun: { findMany: runFindMany } } as unknown as any;
     const result = await resolveVersionWidget(prisma, noopCache, userId, makeWidget('version-timeline'), undefined);
     expect(result.count).toBe(0);
     expect(result.events).toHaveLength(0);
@@ -267,16 +262,15 @@ describe('version resolver — version-timeline', () => {
   it('sorts events by detectedAt descending', async () => {
     const monitorData = [{ id: 'm1', name: 'Docker' }];
     const runs = [
-      { message: 'v3.0.0', checkedAt: new Date('2026-03-25T12:00:00Z'), ok: true },
-      { message: 'v2.0.0', checkedAt: new Date('2026-03-20T12:00:00Z'), ok: true },
-      { message: 'v1.0.0', checkedAt: new Date('2026-03-15T12:00:00Z'), ok: true },
+      { monitorId: 'm1', message: 'v3.0.0', checkedAt: new Date('2026-03-25T12:00:00Z'), ok: true },
+      { monitorId: 'm1', message: 'v2.0.0', checkedAt: new Date('2026-03-20T12:00:00Z'), ok: true },
+      { monitorId: 'm1', message: 'v1.0.0', checkedAt: new Date('2026-03-15T12:00:00Z'), ok: true },
     ];
 
-    const findMany = vi.fn()
-      .mockResolvedValueOnce(monitorData)
-      .mockResolvedValueOnce(runs);
+    const monitorFindMany = vi.fn().mockResolvedValue(monitorData);
+    const runFindMany = vi.fn().mockResolvedValue(runs);
 
-    const prisma = { monitor: { findMany }, monitorRun: { findMany } } as unknown as any;
+    const prisma = { monitor: { findMany: monitorFindMany }, monitorRun: { findMany: runFindMany } } as unknown as any;
     const result = await resolveVersionWidget(prisma, noopCache, userId, makeWidget('version-timeline'), undefined);
     const events = result.events as any[];
     expect(events[0].detectedAt.getTime()).toBeGreaterThan(events[1].detectedAt.getTime());

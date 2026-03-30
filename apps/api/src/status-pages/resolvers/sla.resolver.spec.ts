@@ -126,14 +126,17 @@ describe('sla resolver — sla-compliance-table', () => {
       { id: 'm1', name: 'API' },
       { id: 'm2', name: 'DB' },
     ];
-    const findMany = vi.fn()
-      .mockResolvedValueOnce(monitors) // monitor.findMany
-      .mockResolvedValueOnce(Array(100).fill({ level: 'green' })) // m1 runs
-      .mockResolvedValueOnce([...Array(90).fill({ level: 'green' }), ...Array(10).fill({ level: 'red' })]); // m2 runs
+    const monitorFindMany = vi.fn().mockResolvedValue(monitors);
+    // Batched: all runs for all monitors in one array
+    const runFindMany = vi.fn().mockResolvedValue([
+      ...Array(100).fill({ monitorId: 'm1', level: 'green' }), // m1: 100%
+      ...Array(90).fill({ monitorId: 'm2', level: 'green' }),
+      ...Array(10).fill({ monitorId: 'm2', level: 'red' }), // m2: 90%
+    ]);
 
     const prisma = {
-      monitor: { findMany },
-      monitorRun: { findMany },
+      monitor: { findMany: monitorFindMany },
+      monitorRun: { findMany: runFindMany },
     } as unknown as any;
 
     const result = await resolveSlaWidget(prisma, noopCache, userId, makeWidget('sla-compliance-table'), undefined);
@@ -177,13 +180,16 @@ describe('sla resolver — sla-compliance-table', () => {
       { id: 'm2', name: 'Worse' },
       { id: 'm3', name: 'Bad' },
     ];
-    const findMany = vi.fn()
-      .mockResolvedValueOnce(monitors)
-      .mockResolvedValueOnce(Array(100).fill({ level: 'green' })) // m1: 100% - passes
-      .mockResolvedValueOnce([...Array(80).fill({ level: 'green' }), ...Array(20).fill({ level: 'red' })]) // m2: 80% - fails
-      .mockResolvedValueOnce([...Array(70).fill({ level: 'green' }), ...Array(30).fill({ level: 'red' })]); // m3: 70% - fails worse
+    const monitorFindMany = vi.fn().mockResolvedValue(monitors);
+    const runFindMany = vi.fn().mockResolvedValue([
+      ...Array(100).fill({ monitorId: 'm1', level: 'green' }), // m1: 100% - passes
+      ...Array(80).fill({ monitorId: 'm2', level: 'green' }),
+      ...Array(20).fill({ monitorId: 'm2', level: 'red' }), // m2: 80% - fails
+      ...Array(70).fill({ monitorId: 'm3', level: 'green' }),
+      ...Array(30).fill({ monitorId: 'm3', level: 'red' }), // m3: 70% - fails worse
+    ]);
 
-    const prisma = { monitor: { findMany }, monitorRun: { findMany } } as unknown as any;
+    const prisma = { monitor: { findMany: monitorFindMany }, monitorRun: { findMany: runFindMany } } as unknown as any;
     const result = await resolveSlaWidget(prisma, noopCache, userId, makeWidget('sla-compliance-table'), undefined);
     const rows = result.rows as any[];
     // Failing rows first, sorted by actual uptime ascending

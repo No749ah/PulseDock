@@ -86,13 +86,20 @@ export class AlertsRoutingService {
       select: { dependsOnId: true, dependsOn: { select: { name: true } } },
     });
     if (deps.length > 0) {
+      const depIds = deps.map((d) => d.dependsOnId);
+      const depRuns = await this.prisma.monitorRun.findMany({
+        where: { monitorId: { in: depIds } },
+        orderBy: { checkedAt: 'desc' },
+        select: { monitorId: true, ok: true },
+      });
+      // Pick the latest run per dependency monitor
+      const latestByDep = new Map<string, boolean>();
+      for (const r of depRuns) {
+        if (!latestByDep.has(r.monitorId)) latestByDep.set(r.monitorId, r.ok);
+      }
       for (const dep of deps) {
-        const lastRun = await this.prisma.monitorRun.findFirst({
-          where: { monitorId: dep.dependsOnId },
-          orderBy: { checkedAt: 'desc' },
-          select: { ok: true },
-        });
-        if (lastRun && !lastRun.ok) {
+        const ok = latestByDep.get(dep.dependsOnId);
+        if (ok === false) {
           this.logger.log(
             `Suppressing alert for monitor "${monitor.name}" (id=${monitor.id}): dependency "${dep.dependsOn.name}" is currently down`,
           );

@@ -343,13 +343,19 @@ export async function resolveStatusWidget(
       const monitorStats: MonitorStats[] = [];
       const allLatencies: number[] = [];
 
-      for (const m of httpMonitors) {
-        const runs = await prisma.monitorRun.findMany({
-          where: { monitorId: m.id, checkedAt: { gte: since }, latencyMs: { not: null } },
-          select: { latencyMs: true, checkedAt: true },
-          orderBy: { checkedAt: 'asc' },
-        });
+      const allRuns = await prisma.monitorRun.findMany({
+        where: { monitorId: { in: httpMonitors.map((m) => m.id) }, checkedAt: { gte: since }, latencyMs: { not: null } },
+        select: { monitorId: true, latencyMs: true, checkedAt: true },
+        orderBy: { checkedAt: 'asc' },
+      });
+      const runsByMonitor = new Map<string, { latencyMs: number | null; checkedAt: Date }[]>();
+      for (const r of allRuns) {
+        if (!runsByMonitor.has(r.monitorId)) runsByMonitor.set(r.monitorId, []);
+        runsByMonitor.get(r.monitorId)!.push(r);
+      }
 
+      for (const m of httpMonitors) {
+        const runs = runsByMonitor.get(m.id) ?? [];
         const latencies = runs.map((r) => r.latencyMs as number);
         allLatencies.push(...latencies);
 

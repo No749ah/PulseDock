@@ -82,19 +82,21 @@ export async function resolveUptimeWidget(
         { label: '30d', days: 30 },
         { label: '90d', days: 90 },
       ];
-      const cards = await Promise.all(
-        periods.map(async ({ label, days }) => {
-          const since = new Date(Date.now() - days * 86_400_000);
-          const runs = await prisma.monitorRun.findMany({
-            where: { monitorId, checkedAt: { gte: since } },
-            select: { level: true },
-          });
-          const total = runs.length;
-          const up = runs.filter((r) => r.level === 'green').length;
-          const uptimePct = total > 0 ? Math.round((up / total) * 10000) / 100 : 100;
-          return { label, days, uptimePct, total };
-        }),
-      );
+      const maxDays = Math.max(...periods.map((p) => p.days));
+      const earliestSince = new Date(Date.now() - maxDays * 86_400_000);
+      const allRuns = await prisma.monitorRun.findMany({
+        where: { monitorId, checkedAt: { gte: earliestSince } },
+        select: { level: true, checkedAt: true },
+      });
+      const now = Date.now();
+      const cards = periods.map(({ label, days }) => {
+        const cutoff = now - days * 86_400_000;
+        const runs = allRuns.filter((r) => (r.checkedAt as Date).getTime() >= cutoff);
+        const total = runs.length;
+        const up = runs.filter((r) => r.level === 'green').length;
+        const uptimePct = total > 0 ? Math.round((up / total) * 10000) / 100 : 100;
+        return { label, days, uptimePct, total };
+      });
       return { monitorId, cards , fetchedAt: new Date().toISOString()};
     }
 
@@ -246,18 +248,22 @@ export async function resolveUptimeWidget(
         select: { id: true, name: true },
       });
 
-      const monitorDataList = await Promise.all(
-        monitorsDb.map(async (m) => {
-          const runs = await prisma.monitorRun.findMany({
-            where: { monitorId: m.id, checkedAt: { gte: since } },
-            select: { level: true },
-          });
-          const total = runs.length;
-          const up = runs.filter((r) => r.level === 'green').length;
-          const uptimePct = total > 0 ? Math.round((up / total) * 10000) / 100 : 100;
-          return { id: m.id, name: m.name, uptimePct };
-        }),
-      );
+      const allRuns = await prisma.monitorRun.findMany({
+        where: { monitorId: { in: monitorsDb.map((m) => m.id) }, checkedAt: { gte: since } },
+        select: { monitorId: true, level: true },
+      });
+      const runsByMonitor = new Map<string, { level: string }[]>();
+      for (const r of allRuns) {
+        if (!runsByMonitor.has(r.monitorId)) runsByMonitor.set(r.monitorId, []);
+        runsByMonitor.get(r.monitorId)!.push(r);
+      }
+      const monitorDataList = monitorsDb.map((m) => {
+        const runs = runsByMonitor.get(m.id) ?? [];
+        const total = runs.length;
+        const up = runs.filter((r) => r.level === 'green').length;
+        const uptimePct = total > 0 ? Math.round((up / total) * 10000) / 100 : 100;
+        return { id: m.id, name: m.name, uptimePct };
+      });
 
       monitorDataList.sort((a, b) => b.uptimePct - a.uptimePct);
       return { monitors: monitorDataList, periodDays , fetchedAt: new Date().toISOString()};

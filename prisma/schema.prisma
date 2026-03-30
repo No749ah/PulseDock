@@ -338,6 +338,7 @@ model MonitorRun {
 
   @@index([monitorId, checkedAt])
   @@index([monitorId, checkedAt, level]) // covering index for uptime% calculation queries
+  @@index([monitorId, ok]) // for uptime calculation queries that filter by ok status
   @@index([userId, checkedAt])
   @@index([checkedAt])
 }

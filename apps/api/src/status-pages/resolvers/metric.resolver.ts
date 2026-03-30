@@ -414,25 +414,35 @@ export async function resolveMetricWidget(
         return { _noConfig: true };
       }
 
-      const monitors = await Promise.all(
-        scopeMonitors.map(async (m) => {
-          const latencyRuns = await prisma.monitorRun.findMany({
-            where: { monitorId: m.id, latencyMs: { not: null } },
-            orderBy: { checkedAt: 'desc' },
-            take: 24,
-            select: { latencyMs: true },
-          });
-          latencyRuns.reverse();
-          const dataPoints = latencyRuns.map((r) => r.latencyMs ?? 0);
-          const avgMs = dataPoints.length > 0
-            ? Math.round(dataPoints.reduce((s, v) => s + v, 0) / dataPoints.length)
-            : 0;
-          const level = m.runs[0]?.level ?? 'green';
-          const status: 'up' | 'down' | 'degraded' =
-            level === 'red' ? 'down' : level === 'yellow' ? 'degraded' : 'up';
-          return { id: m.id, name: m.name, dataPoints, avgMs, status };
-        }),
-      );
+      // Batch fetch latest 24 latency runs for all monitors
+      // We need the latest 24 per monitor — fetch a reasonable batch and group
+      const allLatencyRuns = await prisma.monitorRun.findMany({
+        where: { monitorId: { in: scopeMonitors.map((m) => m.id) }, latencyMs: { not: null } },
+        orderBy: { checkedAt: 'desc' },
+        select: { monitorId: true, latencyMs: true, checkedAt: true },
+        // 6 monitors * 24 runs each = 144 max
+        take: scopeMonitors.length * 24,
+      });
+      const latencyByMonitor = new Map<string, number[]>();
+      const countByMonitor = new Map<string, number>();
+      for (const r of allLatencyRuns) {
+        const count = countByMonitor.get(r.monitorId) ?? 0;
+        if (count >= 24) continue;
+        countByMonitor.set(r.monitorId, count + 1);
+        if (!latencyByMonitor.has(r.monitorId)) latencyByMonitor.set(r.monitorId, []);
+        latencyByMonitor.get(r.monitorId)!.push(r.latencyMs ?? 0);
+      }
+
+      const monitors = scopeMonitors.map((m) => {
+        const dataPoints = (latencyByMonitor.get(m.id) ?? []).reverse();
+        const avgMs = dataPoints.length > 0
+          ? Math.round(dataPoints.reduce((s, v) => s + v, 0) / dataPoints.length)
+          : 0;
+        const level = m.runs[0]?.level ?? 'green';
+        const status: 'up' | 'down' | 'degraded' =
+          level === 'red' ? 'down' : level === 'yellow' ? 'degraded' : 'up';
+        return { id: m.id, name: m.name, dataPoints, avgMs, status };
+      });
 
       return { monitors , fetchedAt: new Date().toISOString()};
     }

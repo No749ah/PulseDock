@@ -18,16 +18,20 @@ export async function resolveVersionWidget(
         where: { userId, enabled: true },
         select: { id: true, name: true, type: true },
       });
-      const latestRuns = await Promise.all(
-        monitors.map(async (m) => {
-          const run = await prisma.monitorRun.findFirst({
-            where: { monitorId: m.id },
+      // Batch: fetch latest run per monitor in one query instead of N+1
+      const monitorIds = monitors.map((m) => m.id);
+      const allRuns = monitorIds.length > 0
+        ? await prisma.monitorRun.findMany({
+            where: { monitorId: { in: monitorIds } },
             orderBy: { checkedAt: 'desc' },
-            select: { level: true, message: true, checkedAt: true, latencyMs: true },
-          });
-          return { ...m, run };
-        }),
-      );
+            select: { monitorId: true, level: true, message: true, checkedAt: true, latencyMs: true },
+          })
+        : [];
+      const latestRunMap = new Map<string, (typeof allRuns)[0]>();
+      for (const r of allRuns) {
+        if (!latestRunMap.has(r.monitorId)) latestRunMap.set(r.monitorId, r);
+      }
+      const latestRuns = monitors.map((m) => ({ ...m, run: latestRunMap.get(m.id) ?? null }));
       const versionMonitors = latestRuns.filter(
         (m) => m.run?.message && /current/i.test(m.run.message),
       );
@@ -141,14 +145,26 @@ export async function resolveVersionWidget(
 
       const allEvents: VersionEvent[] = [];
 
-      for (const monitor of versionMonitors) {
-        const runs = await prisma.monitorRun.findMany({
-          where: { monitorId: monitor.id, ok: true },
-          select: { message: true, checkedAt: true },
-          orderBy: { checkedAt: 'desc' },
-          take: 200,
-        });
+      // Batch: fetch runs for all monitors in one query instead of N+1
+      const vtMonitorIds = versionMonitors.map((m) => m.id);
+      const allVersionRuns = vtMonitorIds.length > 0
+        ? await prisma.monitorRun.findMany({
+            where: { monitorId: { in: vtMonitorIds }, ok: true },
+            select: { monitorId: true, message: true, checkedAt: true },
+            orderBy: { checkedAt: 'desc' },
+          })
+        : [];
 
+      // Group runs by monitorId (already sorted by checkedAt desc)
+      const runsByMonitor = new Map<string, typeof allVersionRuns>();
+      for (const r of allVersionRuns) {
+        if (!runsByMonitor.has(r.monitorId)) runsByMonitor.set(r.monitorId, []);
+        const arr = runsByMonitor.get(r.monitorId)!;
+        if (arr.length < 200) arr.push(r); // cap at 200 per monitor as before
+      }
+
+      for (const monitor of versionMonitors) {
+        const runs = runsByMonitor.get(monitor.id) ?? [];
         for (let i = 0; i < runs.length - 1; i++) {
           const current = runs[i];
           const previous = runs[i + 1];

@@ -686,7 +686,7 @@ describe('AlertsService', () => {
       prisma.monitorDependency.findMany = vi.fn().mockResolvedValue([
         { dependsOnId: 'dep-monitor-1', dependsOn: { name: 'DB Monitor' } },
       ]);
-      prisma.monitorRun.findFirst = vi.fn().mockResolvedValue({ ok: false });
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([{ monitorId: 'dep-monitor-1', ok: false }]);
       const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
 
       await service.notifyMonitorFailure(monitor, run);
@@ -704,7 +704,7 @@ describe('AlertsService', () => {
       prisma.monitorDependency.findMany = vi.fn().mockResolvedValue([
         { dependsOnId: 'dep-monitor-1', dependsOn: { name: 'DB Monitor' } },
       ]);
-      prisma.monitorRun.findFirst = vi.fn().mockResolvedValue({ ok: true });
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([{ monitorId: 'dep-monitor-1', ok: true }]);
       const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
 
       await service.notifyMonitorFailure(monitor, run);

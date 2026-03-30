@@ -1225,7 +1225,7 @@ describe('StatusPagesService', () => {
 
   describe('getWidgetData — rolling-uptime-cards', () => {
     it('returns 4 cards (24h, 7d, 30d, 90d) with 100% uptime when all green', async () => {
-      const runs = Array.from({ length: 10 }, () => ({ level: 'green' }));
+      const runs = Array.from({ length: 10 }, () => ({ level: 'green', checkedAt: new Date() }));
       const layout = {
         widgets: [{ id: 'ruc1', type: 'rolling-uptime-cards', config: { monitorId: 'mon-1' }, x: 0, y: 0, w: 12, h: 2 }],
       };
@@ -1557,9 +1557,13 @@ describe('StatusPagesService', () => {
         { id: 'mon-b', name: 'Monitor B' },
       ]);
       // mon-a: 100% uptime (pass), mon-b: 50% uptime (fail)
-      prisma.monitorRun.findMany = vi.fn()
-        .mockResolvedValueOnce([{ level: 'green' }, { level: 'green' }])   // mon-a
-        .mockResolvedValueOnce([{ level: 'green' }, { level: 'red' }]);    // mon-b
+      // Batch query returns all runs with monitorId field
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([
+        { monitorId: 'mon-a', level: 'green' },
+        { monitorId: 'mon-a', level: 'green' },
+        { monitorId: 'mon-b', level: 'green' },
+        { monitorId: 'mon-b', level: 'red' },
+      ]);
       service = makeService(prisma);
       const result = await service.getWidgetData('my-status-page', 'sct2');
       const rows = result.rows as Array<{ monitorId: string; pass: boolean; actual: number }>;
@@ -1961,9 +1965,15 @@ describe('StatusPagesService', () => {
         { id: 'mon-2', name: 'Web' },
       ]);
       // mon-1: 3/3 green = 100%, mon-2: 2/3 green = 66.67%
-      prisma.monitorRun.findMany = vi.fn()
-        .mockResolvedValueOnce([{ level: 'green' }, { level: 'green' }, { level: 'green' }])
-        .mockResolvedValueOnce([{ level: 'green' }, { level: 'green' }, { level: 'red' }]);
+      // Batch query returns all runs with monitorId field
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([
+        { monitorId: 'mon-1', level: 'green' },
+        { monitorId: 'mon-1', level: 'green' },
+        { monitorId: 'mon-1', level: 'green' },
+        { monitorId: 'mon-2', level: 'green' },
+        { monitorId: 'mon-2', level: 'green' },
+        { monitorId: 'mon-2', level: 'red' },
+      ]);
       service = makeService(prisma);
       const result = await service.getWidgetData('my-status-page', 'ucc2');
       const mons = result.monitors as { id: string; uptimePct: number }[];
@@ -2073,11 +2083,11 @@ describe('StatusPagesService', () => {
       prisma.monitor.findMany = vi.fn().mockResolvedValue([
         { id: 'mon-1', name: 'MyApp' },
       ]);
-      // Runs ordered desc: latest first (v2.0.0 → v1.9.0)
+      // Runs ordered desc: latest first (v2.0.0 → v1.9.0) — batch query with monitorId
       prisma.monitorRun.findMany = vi.fn().mockResolvedValue([
-        { message: 'v2.0.0', checkedAt: new Date('2026-01-03T10:00:00Z') },
-        { message: 'v1.9.0', checkedAt: new Date('2026-01-02T10:00:00Z') },
-        { message: 'v1.9.0', checkedAt: new Date('2026-01-01T10:00:00Z') },
+        { monitorId: 'mon-1', message: 'v2.0.0', checkedAt: new Date('2026-01-03T10:00:00Z') },
+        { monitorId: 'mon-1', message: 'v1.9.0', checkedAt: new Date('2026-01-02T10:00:00Z') },
+        { monitorId: 'mon-1', message: 'v1.9.0', checkedAt: new Date('2026-01-01T10:00:00Z') },
       ]);
       service = makeService(prisma);
       const result = await service.getWidgetData('my-status-page', 'vt2');
@@ -2179,9 +2189,9 @@ describe('StatusPagesService', () => {
         { id: 'mon-1', name: 'API' },
       ]);
       prisma.monitorRun.findMany = vi.fn().mockResolvedValue([
-        { latencyMs: 100, checkedAt: new Date('2026-03-01T00:00:00Z') },
-        { latencyMs: 200, checkedAt: new Date('2026-03-01T01:00:00Z') },
-        { latencyMs: 300, checkedAt: new Date('2026-03-01T02:00:00Z') },
+        { monitorId: 'mon-1', latencyMs: 100, checkedAt: new Date('2026-03-01T00:00:00Z') },
+        { monitorId: 'mon-1', latencyMs: 200, checkedAt: new Date('2026-03-01T01:00:00Z') },
+        { monitorId: 'mon-1', latencyMs: 300, checkedAt: new Date('2026-03-01T02:00:00Z') },
       ]);
       service = makeService(prisma);
       const result = await service.getWidgetData('my-status-page', 'dns2');
@@ -3557,9 +3567,10 @@ describe('StatusPagesService', () => {
       prisma.monitor.findMany = vi.fn().mockResolvedValue([
         { id: 'mon-1', name: 'Grafana', type: 'GIT_RELEASE' },
       ]);
-      prisma.monitorRun.findFirst = vi.fn().mockResolvedValue({
-        level: 'green', message: 'current v10.0.0, latest v10.0.0', checkedAt: new Date(), latencyMs: 50,
-      });
+      // Batch query: single findMany returning latest runs with monitorId
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([
+        { monitorId: 'mon-1', level: 'green', message: 'current v10.0.0, latest v10.0.0', checkedAt: new Date(), latencyMs: 50 },
+      ]);
       service = makeService(prisma);
       const result = await service.getWidgetData('my-status-page', 'vsg1');
       expect(result.monitors).toBeDefined();
@@ -3572,9 +3583,11 @@ describe('StatusPagesService', () => {
         { id: 'mon-1', name: 'Has Version', type: 'GIT_RELEASE' },
         { id: 'mon-2', name: 'No Version', type: 'HTTP' },
       ]);
-      prisma.monitorRun.findFirst = vi.fn()
-        .mockResolvedValueOnce({ level: 'green', message: 'current v1.0.0, latest v1.0.0', checkedAt: new Date(), latencyMs: 50 })
-        .mockResolvedValueOnce({ level: 'green', message: 'OK', checkedAt: new Date(), latencyMs: 50 });
+      // Batch query: single findMany returning all latest runs with monitorId
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([
+        { monitorId: 'mon-1', level: 'green', message: 'current v1.0.0, latest v1.0.0', checkedAt: new Date(), latencyMs: 50 },
+        { monitorId: 'mon-2', level: 'green', message: 'OK', checkedAt: new Date(), latencyMs: 50 },
+      ]);
       service = makeService(prisma);
       const result = await service.getWidgetData('my-status-page', 'vsg2');
       expect((result.monitors as unknown[]).length).toBe(1);
@@ -5023,12 +5036,12 @@ describe('StatusPagesService', () => {
         { id: 'mon-1', name: 'Good' },
         { id: 'mon-2', name: 'Bad' },
       ]);
-      let callCount = 0;
-      prisma.monitorRun.findMany = vi.fn().mockImplementation(() => {
-        callCount++;
-        if (callCount === 1) return Promise.resolve(Array.from({ length: 100 }, () => ({ level: 'green' })));
-        return Promise.resolve([...Array.from({ length: 90 }, () => ({ level: 'green' })), ...Array.from({ length: 10 }, () => ({ level: 'red' }))]);
-      });
+      // Batch query: mon-1 = 100% green (pass), mon-2 = 90% green (fail at 99.9 target)
+      prisma.monitorRun.findMany = vi.fn().mockResolvedValue([
+        ...Array.from({ length: 100 }, () => ({ monitorId: 'mon-1', level: 'green' })),
+        ...Array.from({ length: 90 }, () => ({ monitorId: 'mon-2', level: 'green' })),
+        ...Array.from({ length: 10 }, () => ({ monitorId: 'mon-2', level: 'red' })),
+      ]);
       service = makeService(prisma);
       const result = await service.getWidgetData('my-status-page', 'sct1');
       const rows = result.rows as Array<{ name: string; pass: boolean }>;
@@ -5120,9 +5133,9 @@ describe('StatusPagesService', () => {
       prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
       prisma.monitor.findMany = vi.fn().mockResolvedValue([{ id: 'mon-1', name: 'App' }]);
       prisma.monitorRun.findMany = vi.fn().mockResolvedValue([
-        { message: 'v2.0.0', checkedAt: new Date('2026-01-03') },
-        { message: 'v1.5.0', checkedAt: new Date('2026-01-02') },
-        { message: 'v1.5.0', checkedAt: new Date('2026-01-01') },
+        { monitorId: 'mon-1', message: 'v2.0.0', checkedAt: new Date('2026-01-03') },
+        { monitorId: 'mon-1', message: 'v1.5.0', checkedAt: new Date('2026-01-02') },
+        { monitorId: 'mon-1', message: 'v1.5.0', checkedAt: new Date('2026-01-01') },
       ]);
       service = makeService(prisma);
       const result = await service.getWidgetData('my-status-page', 'vt1');
@@ -5148,6 +5161,7 @@ describe('StatusPagesService', () => {
       prisma = makePrisma({ page: makePage({ isPublished: true, layout }) });
       prisma.monitor.findMany = vi.fn().mockResolvedValue([{ id: 'mon-1', name: 'API' }]);
       const runs = Array.from({ length: 20 }, (_, i) => ({
+        monitorId: 'mon-1',
         latencyMs: 50 + i * 2,
         checkedAt: new Date(Date.now() - (20 - i) * 3600000),
       }));

@@ -1,1 +1,0 @@
-export function linearRegression(points: { x: number; y: number }[]): { slope: number; intercept: number } {

@@ -15,6 +15,7 @@ function makeNotificationsService(): NotificationsService {
     getDigestQueue: vi.fn().mockResolvedValue({ pending: [], sent: [] }),
     sendHourlyDigests: vi.fn().mockResolvedValue(undefined),
     sendDailyDigests: vi.fn().mockResolvedValue(undefined),
+    sendWeeklyDigests: vi.fn().mockResolvedValue(undefined),
   } as unknown as NotificationsService;
 }
 
@@ -59,6 +60,18 @@ describe('NotificationsController – extended coverage', () => {
       expect(service.sendDailyDigests).toHaveBeenCalledOnce();
       expect(service.sendHourlyDigests).not.toHaveBeenCalled();
       expect(result).toEqual({ triggered: true, frequency: 'daily_digest' });
+    });
+
+    it('triggers weekly digest when frequency is weekly_digest', async () => {
+      vi.mocked(service.getPreference).mockResolvedValue({ frequency: 'weekly_digest' } as never);
+      const req = { user: { id: 'user-4' } };
+
+      const result = await controller.triggerDigest(req);
+
+      expect(service.sendWeeklyDigests).toHaveBeenCalledOnce();
+      expect(service.sendHourlyDigests).not.toHaveBeenCalled();
+      expect(service.sendDailyDigests).not.toHaveBeenCalled();
+      expect(result).toEqual({ triggered: true, frequency: 'weekly_digest' });
     });
 
     it('triggers no digest when frequency is instant', async () => {

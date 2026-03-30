@@ -74,6 +74,13 @@ describe('NotificationsService', () => {
       expect(result.frequency).toBe('hourly_digest');
     });
 
+    it('can update frequency to weekly_digest', async () => {
+      const updated = makePref({ frequency: 'weekly_digest' });
+      prisma.notificationPreference.upsert.mockResolvedValue(updated);
+      const result = await service.updatePreference('user-1', { frequency: 'weekly_digest' });
+      expect(result.frequency).toBe('weekly_digest');
+    });
+
     it('can enable quiet hours', async () => {
       const updated = makePref({ quietHoursEnabled: true, quietHoursStart: 23, quietHoursEnd: 7 });
       prisma.notificationPreference.upsert.mockResolvedValue(updated);

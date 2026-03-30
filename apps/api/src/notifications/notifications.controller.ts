@@ -45,7 +45,7 @@ export class NotificationsController {
     summary: 'Get digest queue (pending + recently sent)',
     description:
       'Returns pending (unsent) and recently sent digest notifications for the current user. ' +
-      'Only relevant when frequency is set to hourly_digest or daily_digest.',
+      'Only relevant when frequency is set to hourly_digest, daily_digest, or weekly_digest.',
   })
   @ApiResponse({ status: 200, description: 'Digest queue with pending and sent items' })
   async getDigestQueue(@Req() req: AuthRequest) {
@@ -64,6 +64,8 @@ export class NotificationsController {
       await this.notificationsService.sendHourlyDigests();
     } else if (pref.frequency === 'daily_digest') {
       await this.notificationsService.sendDailyDigests();
+    } else if (pref.frequency === 'weekly_digest') {
+      await this.notificationsService.sendWeeklyDigests();
     }
     return { triggered: true, frequency: pref.frequency };
   }

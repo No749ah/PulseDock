@@ -257,6 +257,16 @@ export class NotificationsService {
   }
 
   /**
+   * Weekly digest cron: runs every Monday at 07:05 UTC.
+   * Collects all unsent notifications for users with weekly_digest preference
+   * and delivers them as a single batched email with trend data.
+   */
+  @Cron('5 7 * * 1')
+  async sendWeeklyDigests(): Promise<void> {
+    await this.sendDigests('weekly_digest');
+  }
+
+  /**
    * Prune old sent queue items older than 30 days (nightly cleanup at 04:00 UTC).
    */
   @Cron('0 4 * * *')
@@ -280,9 +290,9 @@ export class NotificationsService {
    * In production, this would send an email via the email service; for now it
    * logs and marks items as sent (email service is SMTP-optional and may be unconfigured).
    *
-   * @param frequency - 'hourly_digest' | 'daily_digest'
+   * @param frequency - 'hourly_digest' | 'daily_digest' | 'weekly_digest'
    */
-  private async sendDigests(frequency: 'hourly_digest' | 'daily_digest'): Promise<void> {
+  private async sendDigests(frequency: 'hourly_digest' | 'daily_digest' | 'weekly_digest'): Promise<void> {
     try {
       // Find users with this frequency preference who have unsent queue items
       const usersWithPending = await this.prisma.notificationQueueItem.groupBy({

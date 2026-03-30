@@ -119,7 +119,7 @@ export class AlertsRoutingService {
         select: { frequency: true },
       }).catch(() => null);
 
-      if (pref?.frequency === 'hourly_digest' || pref?.frequency === 'daily_digest') {
+      if (pref?.frequency === 'hourly_digest' || pref?.frequency === 'daily_digest' || pref?.frequency === 'weekly_digest') {
         const digestEventType = eventType === 'down' ? 'down' : eventType === 'recovery' ? 'recovery' : 'degraded';
         const levelEmoji = run.level === 'green' ? '✅' : run.level === 'yellow' ? '⚠️' : '🚨';
         const message = `${levelEmoji} ${monitor.name}: ${run.message ?? run.level}${run.latencyMs != null ? ` (${run.latencyMs}ms)` : ''}`;

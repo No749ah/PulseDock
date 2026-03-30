@@ -554,7 +554,7 @@ export class MailerService {
    */
   async sendDigestEmail(
     to: string,
-    frequency: 'hourly_digest' | 'daily_digest',
+    frequency: 'hourly_digest' | 'daily_digest' | 'weekly_digest',
     items: Array<{
       eventType: 'down' | 'recovery' | 'degraded' | 'flapping';
       monitorName: string | null;
@@ -562,7 +562,7 @@ export class MailerService {
       createdAt: Date;
     }>,
   ) {
-    const label = frequency === 'hourly_digest' ? 'Hourly' : 'Daily';
+    const label = frequency === 'hourly_digest' ? 'Hourly' : frequency === 'weekly_digest' ? 'Weekly' : 'Daily';
     const subject = `${APP_NAME} ${label} Alert Digest — ${items.length} event${items.length !== 1 ? 's' : ''}`;
 
     const eventTypeLabel = (type: string): string => {

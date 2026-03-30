@@ -116,7 +116,7 @@ export function DigestQueueCard({ userId, frequency }: Props) {
           <p className="text-sm text-text-secondary mt-0.5">
             Notifications queued for your{" "}
             <span className="text-text-primary font-medium">
-              {frequency === "hourly_digest" ? "hourly" : "daily"}
+              {frequency === "hourly_digest" ? "hourly" : frequency === "weekly_digest" ? "weekly" : "daily"}
             </span>{" "}
             digest email
           </p>
@@ -208,7 +208,7 @@ export function DigestQueueCard({ userId, frequency }: Props) {
       {tab === "pending" && pendingCount > 0 && (
         <p className="mt-4 text-xs text-text-muted text-center">
           These will be emailed in the next{" "}
-          {frequency === "hourly_digest" ? "hourly" : "daily"} digest.
+          {frequency === "hourly_digest" ? "hourly" : frequency === "weekly_digest" ? "weekly" : "daily"} digest.
           Switch to <span className="text-text-secondary font-medium">Instant</span> in preferences above to receive alerts immediately.
         </p>
       )}

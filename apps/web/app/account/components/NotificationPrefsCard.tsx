@@ -98,11 +98,12 @@ export function NotificationPrefsCard({ notifPrefs, userId, onPrefsChange, toast
           {/* Frequency */}
           <div>
             <p className="text-sm font-medium text-text-secondary mb-3 uppercase tracking-wide">Delivery Frequency</p>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
               {[
                 { value: "instant", label: "Instant", desc: "Send immediately when triggered" },
                 { value: "hourly_digest", label: "Hourly Digest", desc: "Batch into hourly summaries" },
                 { value: "daily_digest", label: "Daily Digest", desc: "One summary email per day" },
+                { value: "weekly_digest", label: "Weekly Digest", desc: "One summary email per week (Mon)" },
               ].map(({ value, label, desc }) => (
                 <button
                   key={value}

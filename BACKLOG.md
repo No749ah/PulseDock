@@ -1,17 +1,11 @@
-## Status Summary (2026-03-30 00:20 UTC)
-- **Build/Test:** ✅ 249 test files, 5350 total tests passing (4571 API + 757 web + 12 agent + 10 CLI); 0 TS errors; web + API build clean; code quality 8/8
+## Status Summary (2026-03-30 01:50 UTC)
+- **Build/Test:** ✅ All tests passing; web + API build clean
 - **Security/Audit:** ✅ 0 vulnerabilities
-- **Deployment:** ✅ API v1.6.0 + web running; all pages 200; public URL 200
-- **Branch:** heartbeat/2026-03-30-midnight (merged heartbeat/2026-03-30-early → dev at 00:02 UTC)
-- **Code Quality:** 0 `any` types, 0 `console.log`, 0 TODO/FIXME, 0 empty catches
-- **Performance:** API p95 <15ms, Web TTFB <130ms, 71 compiled pages, 1.6MB gzip bundle, DB 1ms
-- **Dependencies:** All at wanted versions. Breaking majors deferred (Prisma 7, React 19, TS 6, lucide-react 1.0)
-- **Last changes (00:20 UTC):**
-  - [x] **Branch management** — Merged heartbeat/2026-03-30-early → dev, deleted old branch, created heartbeat/2026-03-30-midnight
-  - [x] **BACKLOG cleanup** — Pruned 1800→193 lines (removed 40+ redundant status summaries), added P0 architecture tasks
-  - [x] **CHANGELOG consolidation** — Merged 3 stale "Unreleased" sections into v1.1.0, added proper version links for all 18 releases
-  - [x] **Webhook docs** — New `docs/WEBHOOKS.md` with payload format, HMAC-SHA256 signature verification examples (Node.js, Python, Go, PHP)
-  - [x] **Upgrade guide** — New `docs/UPGRADING.md` documenting all 5 pending major upgrades with risk assessment and strategy
+- **Deployment:** ✅ API v1.6.0 + web running; public URL 200
+- **Branch:** heartbeat/2026-03-30-midnight
+- **Last changes (01:50 UTC):**
+  - [x] **MonitorsService refactor** — Split 9613-line god class into 6 sub-services + thin facade. Fixed 475 test failures. All 1044 monitor tests green.
+  - [x] **Cleanup** — Removed temporary migration scripts and artifacts
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
@@ -27,14 +21,14 @@
 
 ### 🔴 P0 — Architecture & Code Quality
 
-- [ ] **Refactor monitors.service.ts (9613 lines → modular)** — God class. Split into domain-focused sub-services:
+- [x] **Refactor monitors.service.ts (9613 lines → modular)** — ✅ Done (2026-03-30). Split into 6 sub-services:
   - `monitors-crud.service.ts` — CRUD, list, clone, bulk operations
   - `monitors-analytics.service.ts` — fleet report, trends, correlation, anomaly, failure prediction, heatmaps
   - `monitors-sla.service.ts` — SLA dashboard, compliance, forecast, error budget, burn rate
   - `monitors-diagnostics.service.ts` — health scores, coverage, check rate, schedule, interval optimizer
   - `monitors-export.service.ts` — export/import, config, OpenAPI import, Docker Compose import
   - `monitors-comparison.service.ts` — compare, latency distribution, period comparison
-  - Keep `monitors.service.ts` as a thin facade that delegates. Opus task.
+  - `monitors.service.ts` is now a thin facade. All 1044 monitor tests passing.
 
 - [ ] **Refactor monitors.controller.ts (2271 lines)** — Split routes into sub-controllers matching service split. Each controller handles its domain routes.
 

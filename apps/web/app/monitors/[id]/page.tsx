@@ -29,7 +29,13 @@ import type {
   MonitorEvent,
   ChartPoint,
 } from "./components/types";
-import { SloTab } from "./components/SloTab";
+import nextDynamic from "next/dynamic";
+
+// Lazy-load heavy tab components — only rendered when their tab is active
+const SloTab = nextDynamic(() => import("./components/SloTab").then(m => ({ default: m.SloTab })), { ssr: false });
+const UptimeHeatmapChart = nextDynamic(() => import("./components/UptimeHeatmapChart").then(m => ({ default: m.UptimeHeatmapChart })), { ssr: false });
+const ResponseBodyViewer = nextDynamic(() => import("./components/ResponseBodyViewer").then(m => ({ default: m.ResponseBodyViewer })), { ssr: false });
+const CertificateModal = nextDynamic(() => import("./components/CertificateModal").then(m => ({ default: m.CertificateModal })), { ssr: false });
 
 interface AlertDelivery {
   id: string;
@@ -50,9 +56,6 @@ interface DeliveryHistory {
   deliveries: AlertDelivery[];
 }
 import { PERIOD_LABELS, formatDuration } from "./components/types";
-import { UptimeHeatmapChart } from "./components/UptimeHeatmapChart";
-import { ResponseBodyViewer } from "./components/ResponseBodyViewer";
-import { CertificateModal } from "./components/CertificateModal";
 
 // ── Latency Distribution Types ───────────────────────────────────────────────
 

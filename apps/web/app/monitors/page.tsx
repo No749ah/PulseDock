@@ -23,11 +23,18 @@ import type { MonitorTag, TagItem, AlertChannelSummary, MonitorItem, MonitorRun,
 import { CHANNEL_TYPE_COLORS, NOTIFY_ON_LABELS } from "./constants";
 import { buildEditFormData, buildFormDataFromTemplate } from "./utils";
 import { AlertPanel } from "./components/AlertPanel";
-import { ExternalImportModal } from "./components/ExternalImportModal";
-import { BadgeModal } from "./components/BadgeModal";
-import { MonitorFormModal } from "./components/MonitorFormModal";
 import { MonitorGridView, MonitorGroupedView } from "./components/MonitorGridView";
 import { AdvancedFiltersPanel } from "./components/AdvancedFiltersPanel";
+import nextDynamic from "next/dynamic";
+
+// Lazy-load heavy modal components — only rendered when opened
+const ExternalImportModal = nextDynamic(() => import("./components/ExternalImportModal").then(m => ({ default: m.ExternalImportModal })), { ssr: false });
+const BadgeModal = nextDynamic(() => import("./components/BadgeModal").then(m => ({ default: m.BadgeModal })), { ssr: false });
+const MonitorFormModal = nextDynamic(() => import("./components/MonitorFormModal").then(m => ({ default: m.MonitorFormModal })), { ssr: false });
+const QuickAddModal = nextDynamic(() => import("./components/QuickAddModal").then(m => ({ default: m.QuickAddModal })), { ssr: false });
+const ImportFromComposeModal = nextDynamic(() => import("./components/ImportFromComposeModal").then(m => ({ default: m.ImportFromComposeModal })), { ssr: false });
+const OpenApiImportModal = nextDynamic(() => import("./components/OpenApiImportModal").then(m => ({ default: m.OpenApiImportModal })), { ssr: false });
+const PlaygroundModal = nextDynamic(() => import("./components/PlaygroundModal").then(m => ({ default: m.PlaygroundModal })), { ssr: false });
 
 // Transaction monitor step type (mirrors backend TransactionStep)
 export interface TransactionStepAssertion {
@@ -46,10 +53,6 @@ export interface TransactionStep {
   assertions?: TransactionStepAssertion[];
   timeoutMs?: number;
 }
-import { QuickAddModal } from "./components/QuickAddModal";
-import { ImportFromComposeModal } from "./components/ImportFromComposeModal";
-import { OpenApiImportModal } from "./components/OpenApiImportModal";
-import { PlaygroundModal } from "./components/PlaygroundModal";
 
 function MonitorsPageInner() {
   const router = useRouter();

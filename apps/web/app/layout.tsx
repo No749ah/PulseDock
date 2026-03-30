@@ -11,11 +11,9 @@ import { brand } from "../lib/brand";
 import { ThemeProvider } from "../components/theme-provider";
 import { ToastProvider } from "../components/ui/toast";
 import { SWRegister } from "../components/sw-register";
-import { PWAInstallBanner } from "../components/pwa-install-banner";
 import { I18nProvider } from "../components/i18n-provider";
-import { KeyboardShortcuts } from "../components/keyboard-shortcuts";
-import { CommandPalette } from "../components/command-palette";
 import { PageTransition } from "../components/page-transition";
+import { ClientOverlays } from "../components/client-overlays";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -159,9 +157,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
               <PageTransition>
               {children}
               </PageTransition>
-              <CommandPalette />
-              <KeyboardShortcuts />
-              <PWAInstallBanner />
+              <ClientOverlays />
               <SWRegister />
             </ToastProvider>
           </ThemeProvider>

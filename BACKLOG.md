@@ -1,10 +1,11 @@
-## Status Summary (2026-03-30 08:55 UTC)
-- **Build/Test:** ✅ 5361 tests passing; web + API build clean; 0 TS errors
+## Status Summary (2026-03-30 09:35 UTC)
+- **Build/Test:** ✅ All tests passing; web + API build clean; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities
-- **Deployment:** ✅ API v1.6.0 + web running; public URL 200; all pages HTTP 200; TTFB <21ms
+- **Deployment:** ✅ API v1.6.0 + web running; public URL 200; all 16 pages HTTP 200
 - **Branch:** heartbeat/2026-03-30-midnight
-- **Last changes (08:55 UTC):**
-  - [x] **Loading performance audit** — Dashboard JS: 1314KB → 1001KB (24% reduction). Eliminated Chart.js from dashboard critical path. Lazy-loaded LineSparkline. Deleted unused BarChartCJS. Added optimizePackageImports.
+- **Last changes (09:35 UTC):**
+  - [x] **Sidebar navigation UX** — Reorganized 51 nav items: added categorized sub-sections (Real-time, Performance, Intelligence, Infrastructure, Versions) within expanded groups. Moved SSL + Version Tracking to secondary. NavGroup.secondary now uses labeled NavSubSection[] for scanability.
+  - [x] **Monitor detail page UX** — Replaced flat 17-tab scrollbar with primary tabs (Overview, SLO/SLI, Performance, Failures) + "More" dropdown for 13 secondary tabs. Extracted reusable MonitorTabBar component. Net code reduction.
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
@@ -54,9 +55,9 @@
 
 - [x] **Loading performance audit** — ✅ Done (2026-03-30). Dashboard JS reduced 24% (1314KB → 1001KB). Chart.js removed from critical path (lazy-loaded only on monitor detail). Deleted unused BarChartCJS. TTFB <21ms on all pages. Gzipped dashboard JS ~300KB via reverse proxy.
 
-- [ ] **Monitor detail page UX** — The detail page has many tabs (Overview, Performance, Geo, Diff, Content, Config History, Simulate, etc.). Audit: are all tabs loading data correctly? Are empty states proper? Is the tab order logical?
+- [x] **Monitor detail page UX** — ✅ Done (2026-03-30). Replaced flat 17-tab scrollbar with primary tabs + "More" dropdown. Extracted MonitorTabBar component. 4 primary tabs always visible, 13 secondary in dropdown.
 
-- [ ] **Sidebar navigation UX** — 51 nav items in 6 groups with collapsible sections. Test: does it feel overwhelming? Can a new user find what they need? Consider better grouping or progressive disclosure.
+- [x] **Sidebar navigation UX** — ✅ Done (2026-03-30). Reorganized into categorized sub-sections with labels. Monitoring group: 3 primary + 5 sub-sections (Real-time, Performance, Intelligence, Infrastructure, Versions). Progressive disclosure preserved.
 
 ### 🟡 P2 — Features & Enhancements
 

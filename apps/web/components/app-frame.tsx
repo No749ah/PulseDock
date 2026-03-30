@@ -62,16 +62,20 @@ type NavItem = {
 
 /**
  * Navigation structure: each group has primary items (always visible) and
- * secondary items (shown when the group is expanded). Groups auto-expand
- * when the active page is within them. Collapsed state is persisted in
- * localStorage so the sidebar remembers user preferences.
+ * secondary sub-sections (shown when expanded). Sub-sections have a label
+ * header for scanability. Collapsed state is persisted in localStorage.
  */
+type NavSubSection = {
+  label: string;
+  items: NavItem[];
+};
+
 type NavGroup = {
   label: string;
   /** Always-visible items */
   primary: NavItem[];
-  /** Items shown only when this group is expanded */
-  secondary?: NavItem[];
+  /** Categorized items shown only when this group is expanded */
+  secondary?: NavSubSection[];
 };
 
 const navGroups: NavGroup[] = [
@@ -88,32 +92,57 @@ const navGroups: NavGroup[] = [
       { href: '/monitors', label: 'Uptime Checks', icon: Activity },
       { href: '/monitors/fleet', label: 'Fleet Health', icon: Shield },
       { href: '/monitors/sla', label: 'SLA Dashboard', icon: Target },
-      { href: '/ssl', label: 'SSL Certificates', icon: ShieldCheck },
-      { href: '/versions', label: 'Version Tracking', icon: GitBranch },
     ],
     secondary: [
-      { href: '/monitors/live', label: 'Live Feed', icon: Activity },
-      { href: '/monitors/compare', label: 'Compare', icon: GitCompareArrows },
-      { href: '/monitors/heatmap', label: 'Uptime Heatmap', icon: Layers },
-      { href: '/monitors/trends', label: 'Trends', icon: TrendingUp },
-      { href: '/monitors/timeline', label: 'Status Timeline', icon: Layers },
-      { href: '/monitors/coverage', label: 'Coverage', icon: ShieldCheck },
-      { href: '/monitors/schedule', label: 'Check Schedule', icon: Clock },
-      { href: '/monitors/downtime-cost', label: 'Cost Impact', icon: Target },
-      { href: '/monitors/anomaly', label: 'Anomaly Report', icon: AlertTriangle },
-      { href: '/monitors/predictions', label: 'Failure Predictions', icon: Brain },
-      { href: '/monitors/dependencies', label: 'Dependencies', icon: GitBranch },
-      { href: '/monitors/correlation', label: 'Correlation', icon: GitMerge },
-      { href: '/monitors/security', label: 'Security Headers', icon: Shield },
-      { href: '/monitors/services', label: 'Service Groups', icon: Layers },
-      { href: '/monitors/tag-analytics', label: 'Tag Analytics', icon: Hash },
-      { href: '/monitors/health-scores', label: 'Health Scores', icon: Medal },
-      { href: '/monitors/latency-bench', label: 'Latency Benchmarks', icon: Gauge },
-      { href: '/monitors/latency-heatmap', label: 'Latency Heatmap', icon: BarChart3 },
-      { href: '/monitors/reliability', label: 'Reliability Trends', icon: Sparkles },
-      { href: '/monitors/timing-breakdown', label: 'Timing Breakdown', icon: Zap },
-      { href: '/monitors/interval-optimizer', label: 'Interval Optimizer', icon: Settings },
-      { href: '/versions/drift', label: 'Drift Report', icon: GitBranch },
+      {
+        label: 'Real-time',
+        items: [
+          { href: '/monitors/live', label: 'Live Feed', icon: Activity },
+          { href: '/monitors/timeline', label: 'Status Timeline', icon: Layers },
+          { href: '/monitors/heatmap', label: 'Uptime Heatmap', icon: Layers },
+        ],
+      },
+      {
+        label: 'Performance',
+        items: [
+          { href: '/monitors/trends', label: 'Trends', icon: TrendingUp },
+          { href: '/monitors/compare', label: 'Compare', icon: GitCompareArrows },
+          { href: '/monitors/latency-bench', label: 'Latency Benchmarks', icon: Gauge },
+          { href: '/monitors/latency-heatmap', label: 'Latency Heatmap', icon: BarChart3 },
+          { href: '/monitors/timing-breakdown', label: 'Timing Breakdown', icon: Zap },
+          { href: '/monitors/reliability', label: 'Reliability Trends', icon: Sparkles },
+        ],
+      },
+      {
+        label: 'Intelligence',
+        items: [
+          { href: '/monitors/anomaly', label: 'Anomaly Report', icon: AlertTriangle },
+          { href: '/monitors/predictions', label: 'Failure Predictions', icon: Brain },
+          { href: '/monitors/correlation', label: 'Correlation', icon: GitMerge },
+          { href: '/monitors/dependencies', label: 'Dependencies', icon: GitBranch },
+        ],
+      },
+      {
+        label: 'Infrastructure',
+        items: [
+          { href: '/monitors/coverage', label: 'Coverage', icon: ShieldCheck },
+          { href: '/monitors/schedule', label: 'Check Schedule', icon: Clock },
+          { href: '/monitors/interval-optimizer', label: 'Interval Optimizer', icon: Settings },
+          { href: '/monitors/downtime-cost', label: 'Cost Impact', icon: Target },
+          { href: '/monitors/security', label: 'Security Headers', icon: Shield },
+          { href: '/monitors/services', label: 'Service Groups', icon: Layers },
+          { href: '/monitors/tag-analytics', label: 'Tag Analytics', icon: Hash },
+          { href: '/monitors/health-scores', label: 'Health Scores', icon: Medal },
+          { href: '/ssl', label: 'SSL Certificates', icon: ShieldCheck },
+        ],
+      },
+      {
+        label: 'Versions',
+        items: [
+          { href: '/versions', label: 'Version Tracking', icon: GitBranch },
+          { href: '/versions/drift', label: 'Drift Report', icon: GitBranch },
+        ],
+      },
     ],
   },
   {
@@ -124,26 +153,41 @@ const navGroups: NavGroup[] = [
       { href: '/incidents', label: 'Incidents', icon: AlertOctagon },
     ],
     secondary: [
-      { href: '/alerts/analytics', label: 'Alert Analytics', icon: BarChart2 },
-      { href: '/alerts/noise', label: 'Noise Analysis', icon: VolumeX },
-      { href: '/alerts/history', label: 'Delivery History', icon: ClipboardList },
-      { href: '/alerts/response-time', label: 'Response Time', icon: Zap },
-      { href: '/alerts/channels', label: 'Channel Health', icon: Activity },
-      { href: '/incidents/insights', label: 'Incident Insights', icon: BarChart2 },
-      { href: '/incidents/playbooks', label: 'Playbooks', icon: BookOpen },
+      {
+        label: 'Analytics',
+        items: [
+          { href: '/alerts/analytics', label: 'Alert Analytics', icon: BarChart2 },
+          { href: '/alerts/noise', label: 'Noise Analysis', icon: VolumeX },
+          { href: '/alerts/response-time', label: 'Response Time', icon: Zap },
+          { href: '/alerts/channels', label: 'Channel Health', icon: Activity },
+          { href: '/alerts/history', label: 'Delivery History', icon: ClipboardList },
+        ],
+      },
+      {
+        label: 'Incident Management',
+        items: [
+          { href: '/incidents/insights', label: 'Incident Insights', icon: BarChart2 },
+          { href: '/incidents/playbooks', label: 'Playbooks', icon: BookOpen },
+        ],
+      },
     ],
   },
   {
     label: 'Operations',
     primary: [
+      { href: '/status-pages', label: 'Status Pages', icon: Globe },
       { href: '/deployments', label: 'Deployments', icon: Rocket },
       { href: '/maintenance', label: 'Maintenance', icon: CalendarClock },
-      { href: '/status-pages', label: 'Status Pages', icon: Globe },
       { href: '/projects', label: 'Projects', icon: Folder },
     ],
     secondary: [
-      { href: '/maintenance/effectiveness', label: 'Window Effectiveness', icon: CalendarClock },
-      { href: '/status/analytics', label: 'Page Analytics', icon: BarChart2 },
+      {
+        label: 'Analytics',
+        items: [
+          { href: '/maintenance/effectiveness', label: 'Window Effectiveness', icon: CalendarClock },
+          { href: '/status/analytics', label: 'Page Analytics', icon: BarChart2 },
+        ],
+      },
     ],
   },
   {
@@ -154,7 +198,12 @@ const navGroups: NavGroup[] = [
       { href: '/reports', label: 'Reports', icon: BarChart2 },
     ],
     secondary: [
-      { href: '/reports/digest', label: 'Digest', icon: BookOpen },
+      {
+        label: 'Scheduled',
+        items: [
+          { href: '/reports/digest', label: 'Digest', icon: BookOpen },
+        ],
+      },
     ],
   },
   {
@@ -168,7 +217,12 @@ const navGroups: NavGroup[] = [
 
 const NAV_COLLAPSED_KEY = 'pulsedock-nav-collapsed';
 
-/** Collapsible sidebar navigation. Secondary items hide behind a "Show more" toggle per group. */
+/** Helper to get all secondary items from a group (flattened from sub-sections). */
+function getSecondaryItems(group: NavGroup): NavItem[] {
+  return (group.secondary ?? []).flatMap((s) => s.items);
+}
+
+/** Collapsible sidebar navigation with categorized sub-sections for large groups. */
 function NavSidebar({
   navGroups,
   pathname,
@@ -200,7 +254,8 @@ function NavSidebar({
   // Auto-expand group if the current page is in its secondary items
   useEffect(() => {
     for (const group of navGroups) {
-      if (group.secondary?.some((item) => pathname === item.href || pathname.startsWith(item.href + '/'))) {
+      const allSecondary = getSecondaryItems(group);
+      if (allSecondary.some((item) => pathname === item.href || pathname.startsWith(item.href + '/'))) {
         setCollapsed((prev) => {
           if (prev[group.label]) {
             const next = { ...prev, [group.label]: false };
@@ -246,12 +301,15 @@ function NavSidebar({
     <nav aria-label="Main navigation" className="flex-1 overflow-y-auto py-4 px-3 space-y-4">
       {navGroups.map((group) => {
         const primaryItems = group.primary.filter((item) => !item.adminOnly || isAdmin);
-        const secondaryItems = (group.secondary ?? []).filter((item) => !item.adminOnly || isAdmin);
-        const allItems = [...primaryItems, ...secondaryItems];
-        if (!allItems.length) return null;
+        const secondarySections = (group.secondary ?? []).map((section) => ({
+          ...section,
+          items: section.items.filter((item) => !item.adminOnly || isAdmin),
+        })).filter((section) => section.items.length > 0);
+        const totalSecondary = secondarySections.reduce((n, s) => n + s.items.length, 0);
+        if (!primaryItems.length && !totalSecondary) return null;
 
-        const isGroupCollapsed = collapsed[group.label] !== false && secondaryItems.length > 0;
-        const hasSecondary = secondaryItems.length > 0;
+        const isGroupCollapsed = collapsed[group.label] !== false && totalSecondary > 0;
+        const hasSecondary = totalSecondary > 0;
 
         return (
           <div key={group.label}>
@@ -260,8 +318,21 @@ function NavSidebar({
             </p>
             <ul className="space-y-0.5">
               {primaryItems.map(renderItem)}
-              {hasSecondary && !isGroupCollapsed && secondaryItems.map(renderItem)}
             </ul>
+            {hasSecondary && !isGroupCollapsed && (
+              <div className="mt-2 space-y-3">
+                {secondarySections.map((section) => (
+                  <div key={section.label}>
+                    <p className="px-3 mb-1 text-[9px] font-semibold uppercase tracking-wider text-text-secondary/40">
+                      {section.label}
+                    </p>
+                    <ul className="space-y-0.5">
+                      {section.items.map(renderItem)}
+                    </ul>
+                  </div>
+                ))}
+              </div>
+            )}
             {hasSecondary && (
               <button
                 onClick={() => toggleGroup(group.label)}
@@ -274,7 +345,7 @@ function NavSidebar({
                   ].join(' ')}
                 />
                 {isGroupCollapsed
-                  ? `${secondaryItems.length} more`
+                  ? `${totalSecondary} more`
                   : 'Show less'}
               </button>
             )}

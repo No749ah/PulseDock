@@ -114,6 +114,8 @@ model Folder {
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   monitors Monitor[]
+
+  @@index([userId])
 }
 
 model Monitor {
@@ -340,6 +342,7 @@ model MonitorRun {
   @@index([monitorId, checkedAt, level]) // covering index for uptime% calculation queries
   @@index([monitorId, ok]) // for uptime calculation queries that filter by ok status
   @@index([userId, checkedAt])
+  @@index([userId, checkedAt, level]) // covering index for activity feed queries filtered by level
   @@index([checkedAt])
 }
 
@@ -365,6 +368,8 @@ model AlertChannel {
   monitorAlerts MonitorAlert[]
   deliveryLogs  AlertDeliveryLog[]
   alertGroups   AlertGroup[]
+
+  @@index([userId])
 }
 
 model MonitorAlert {
@@ -401,6 +406,8 @@ model EscalationPolicy {
 
   user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
   monitorAlerts MonitorAlert[]
+
+  @@index([userId])
 }
 
 model AlertRoutingRule {
@@ -426,6 +433,8 @@ model AlertRoutingRule {
   updatedAt DateTime @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model InviteToken {
@@ -643,6 +652,7 @@ model Incident {
   @@index([userId])
   @@index([status])
   @@index([userId, status])
+  @@index([userId, createdAt])
 }
 
 model IncidentUpdate {
@@ -973,6 +983,8 @@ model MonitorServiceGroup {
   updatedAt   DateTime @updatedAt
 
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 enum DeploymentStatus {
@@ -1003,6 +1015,9 @@ model DeploymentEvent {
   updatedAt      DateTime         @updatedAt
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, service])
 }
 
 /// Queued notification for digest delivery (hourly_digest / daily_digest frequency)

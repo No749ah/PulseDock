@@ -1165,7 +1165,7 @@ export default function MonitorDetailPage() {
         )}
 
         {/* Main Tab Navigation */}
-        <div className="flex gap-1 p-1 bg-white/3 border border-white/8 rounded-xl w-fit">
+        <div className="flex gap-1 p-1 bg-white/3 border border-white/8 rounded-xl overflow-x-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent max-w-full">
           <button
             onClick={() => setActiveMainTab("overview")}
             className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${

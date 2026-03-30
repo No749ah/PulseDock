@@ -10,7 +10,7 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
-import { MonitorsService } from './monitors.service';
+import { MonitorsSlaService } from './monitors-sla.service';
 import { VersionDetectionService } from './version-detection.service';
 import { PrismaService } from '../common/prisma.service';
 import { ChecksService } from '../checks/checks.service';
@@ -79,7 +79,7 @@ function buildPrisma(opts: {
 async function buildService(prisma: object): Promise<MonitorsService> {
   const module: TestingModule = await Test.createTestingModule({
     providers: [
-      MonitorsService,
+      MonitorsSlaService,
       { provide: PrismaService, useValue: prisma },
       {
         provide: ChecksService,
@@ -90,7 +90,7 @@ async function buildService(prisma: object): Promise<MonitorsService> {
       { provide: VersionDetectionService, useValue: {} },
     ],
   }).compile();
-  return module.get<MonitorsService>(MonitorsService);
+  return module.get<MonitorsSlaService>(MonitorsSlaService);
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────

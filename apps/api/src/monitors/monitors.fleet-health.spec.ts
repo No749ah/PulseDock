@@ -6,7 +6,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { MonitorsService } from './monitors.service';
+import { MonitorsAnalyticsService } from './monitors-analytics.service';
 import { ChecksService } from '../checks/checks.service';
 import { AuditService } from '../common/audit.service';
 import { RealtimeEvents } from '../realtime/realtime.events';
@@ -63,13 +63,7 @@ function makePrisma(
 }
 
 function makeService(prisma: ReturnType<typeof makePrisma>) {
-  return new MonitorsService(
-    prisma as never,
-    { listPlugins: vi.fn().mockReturnValue([]), runMonitor: vi.fn() } as unknown as ChecksService,
-    { log: vi.fn() } as unknown as AuditService,
-    { emitMonitorUpdate: vi.fn(), emitCheckResult: vi.fn() } as unknown as RealtimeEvents,
-    {} as unknown as VersionDetectionService,
-  );
+  return new (MonitorsAnalyticsService as unknown as new (...args: unknown[]) => MonitorsAnalyticsService)(prisma as never);
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────

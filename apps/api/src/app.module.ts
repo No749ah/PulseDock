@@ -12,6 +12,12 @@ import { AnnotationsController } from './monitors/annotations.controller';
 import { ServiceGroupsController } from './monitors/service-groups.controller';
 import { ServiceGroupsService } from './monitors/service-groups.service';
 import { MonitorsService } from './monitors/monitors.service';
+import { MonitorsCrudService } from './monitors/monitors-crud.service';
+import { MonitorsAnalyticsService } from './monitors/monitors-analytics.service';
+import { MonitorsSlaService } from './monitors/monitors-sla.service';
+import { MonitorsDiagnosticsService } from './monitors/monitors-diagnostics.service';
+import { MonitorsExportService } from './monitors/monitors-export.service';
+import { MonitorsComparisonService } from './monitors/monitors-comparison.service';
 import { VersionDetectionService } from './monitors/version-detection.service';
 import { AlertsService } from './alerts/alerts.service';
 import { AlertsController } from './alerts/alerts.controller';
@@ -142,6 +148,12 @@ import { DependenciesService } from './dependencies/dependencies.service';
     BootstrapService,
     AuthService,
     MonitorsService,
+    MonitorsCrudService,
+    MonitorsAnalyticsService,
+    MonitorsSlaService,
+    MonitorsDiagnosticsService,
+    MonitorsExportService,
+    MonitorsComparisonService,
     VersionDetectionService,
     AlertsService,
     ChecksService,

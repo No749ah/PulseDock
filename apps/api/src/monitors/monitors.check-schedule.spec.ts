@@ -15,7 +15,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { MonitorsService } from './monitors.service';
+import { MonitorsDiagnosticsService } from './monitors-diagnostics.service';
 
 function makePrisma() {
   return {
@@ -34,14 +34,14 @@ function makePrisma() {
   };
 }
 
-function makeService(prismaOverrides?: Partial<ReturnType<typeof makePrisma>>): MonitorsService {
+function makeService(prismaOverrides?: Partial<ReturnType<typeof makePrisma>>): MonitorsDiagnosticsService {
   const prisma = { ...makePrisma(), ...prismaOverrides };
-  return new MonitorsService(prisma as never, {} as never, {} as never, {} as never, {} as never);
+  return new (MonitorsDiagnosticsService as unknown as new (...args: unknown[]) => MonitorsDiagnosticsService)(prisma as never);
 }
 
 describe('MonitorsService.checkSchedule()', () => {
   let prisma: ReturnType<typeof makePrisma>;
-  let service: MonitorsService;
+  let service: MonitorsDiagnosticsService;
 
   beforeEach(() => {
     prisma = makePrisma();

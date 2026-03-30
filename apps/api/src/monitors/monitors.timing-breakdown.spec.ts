@@ -1,15 +1,15 @@
 import { describe, it, expect, vi } from 'vitest';
-import { MonitorsService } from './monitors.service';
+import { MonitorsAnalyticsService } from './monitors-analytics.service';
 
 type MockMonitor = { id: string; name: string; type: string; pinned: boolean; createdAt: Date; folder: null };
 type MockRun = { monitorId: string; timingsJson: Record<string, unknown> | null };
 
-function buildService(monitors: MockMonitor[], runs: MockRun[]): MonitorsService {
+function buildService(monitors: MockMonitor[], runs: MockRun[]): MonitorsAnalyticsService {
   const prisma = {
     monitor: { findMany: vi.fn().mockResolvedValue(monitors) },
     monitorRun: { findMany: vi.fn().mockResolvedValue(runs) },
   };
-  return new MonitorsService(prisma as never, {} as never, {} as never, {} as never, {} as never);
+  return new (MonitorsAnalyticsService as unknown as new (...args: unknown[]) => MonitorsAnalyticsService)(prisma as never);
 }
 
 describe('MonitorsService.timingBreakdown', () => {

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MonitorsService } from './monitors.service';
+import { MonitorsAnalyticsService } from './monitors-analytics.service';
 
 function makeRun(ok: boolean, latencyMs: number | null, offsetMs: number, fromNow = true) {
   const now = Date.now();
@@ -23,13 +23,7 @@ function makeService(prismaOverrides: Record<string, unknown> = {}) {
     },
     ...prismaOverrides,
   };
-  const service = new MonitorsService(
-    prisma as never,
-    {} as never,
-    {} as never,
-    {} as never,
-    {} as never,
-  );
+  const service = new (MonitorsAnalyticsService as unknown as new (...args: unknown[]) => MonitorsAnalyticsService)(prisma as never);
   return { service, prisma };
 }
 

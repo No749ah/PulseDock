@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { MonitorsService } from './monitors.service';
+import { MonitorsCrudService } from './monitors-crud.service';
 
 function makePrisma() {
   return {
@@ -50,12 +50,12 @@ function makeRun(overrides: Partial<{
 // ─── tests ──────────────────────────────────────────────────────────────────
 
 describe('MonitorsService.liveFeed()', () => {
-  let service: MonitorsService;
+  let service: MonitorsCrudService;
   let prisma: ReturnType<typeof makePrisma>;
 
   beforeEach(() => {
     prisma = makePrisma();
-    service = new MonitorsService(
+    service = new (MonitorsCrudService as unknown as new (...args: unknown[]) => MonitorsCrudService)(
       prisma as never,
       {} as never,
       {} as never,

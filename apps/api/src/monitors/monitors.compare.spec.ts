@@ -8,7 +8,7 @@
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { BadRequestException } from '@nestjs/common';
-import { MonitorsService } from './monitors.service';
+import { MonitorsComparisonService } from './monitors-comparison.service';
 import { pearsonCorrelation } from './monitors.service';
 
 // ── helpers ──────────────────────────────────────────────────────────────
@@ -38,13 +38,7 @@ function makePrisma(
 }
 
 function makeService(prisma: ReturnType<typeof makePrisma>) {
-  return new (MonitorsService as any)(
-    prisma,
-    {} as any, // checksService
-    {} as any, // audit
-    {} as any, // realtime
-    {} as any, // versionDetection
-  ) as MonitorsService;
+  return new (MonitorsComparisonService as unknown as new (...args: unknown[]) => MonitorsComparisonService)(prisma) as MonitorsService;
 }
 
 // ── tests ─────────────────────────────────────────────────────────────────

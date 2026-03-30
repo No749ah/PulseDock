@@ -5,7 +5,7 @@
 
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
-import { MonitorsService } from './monitors.service';
+import { MonitorsCrudService } from './monitors-crud.service';
 import { PrismaService } from '../common/prisma.service';
 import { ChecksService } from '../checks/checks.service';
 import { AuditService } from '../common/audit.service';
@@ -35,7 +35,7 @@ function closeServer(server: http.Server): Promise<void> {
 async function buildService(): Promise<MonitorsService> {
   const module: TestingModule = await Test.createTestingModule({
     providers: [
-      MonitorsService,
+      MonitorsCrudService,
       { provide: PrismaService, useValue: {} },
       { provide: ChecksService, useValue: { listPlugins: vi.fn().mockReturnValue([]), runMonitor: vi.fn() } },
       { provide: AuditService, useValue: { log: vi.fn() } },
@@ -43,13 +43,13 @@ async function buildService(): Promise<MonitorsService> {
       { provide: VersionDetectionService, useValue: {} },
     ],
   }).compile();
-  return module.get<MonitorsService>(MonitorsService);
+  return module.get<MonitorsCrudService>(MonitorsCrudService);
 }
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe('MonitorsService.runPlayground', () => {
-  let service: MonitorsService;
+  let service: MonitorsCrudService;
   let server: http.Server;
   let port: number;
 

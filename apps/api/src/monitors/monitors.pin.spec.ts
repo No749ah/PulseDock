@@ -6,7 +6,7 @@
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
-import { MonitorsService } from './monitors.service';
+import { MonitorsCrudService } from './monitors-crud.service';
 
 // ── Minimal monitor factory ───────────────────────────────────────────────────
 
@@ -75,12 +75,12 @@ function makePrisma(monitor: ReturnType<typeof makeMonitor> | null = makeMonitor
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('MonitorsService — togglePin()', () => {
-  let service: MonitorsService;
+  let service: MonitorsCrudService;
   let prisma: ReturnType<typeof makePrisma>;
 
   beforeEach(() => {
     prisma = makePrisma();
-    service = new MonitorsService(
+    service = new (MonitorsCrudService as unknown as new (...args: unknown[]) => MonitorsCrudService)(
       prisma as never,
       {} as never, // ChecksService (not needed for pin tests)
       {} as never, // AuditService (not needed for pin tests)

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { MonitorsService } from './monitors.service';
+import { MonitorsDiagnosticsService } from './monitors-diagnostics.service';
 
 function makeService(findManyResult: unknown[]) {
   const prisma = {
@@ -10,13 +10,7 @@ function makeService(findManyResult: unknown[]) {
       findMany: vi.fn().mockResolvedValue([]),
     },
   };
-  const service = new MonitorsService(
-    prisma as never,
-    {} as never,
-    {} as never,
-    {} as never,
-    {} as never,
-  );
+  const service = new (MonitorsDiagnosticsService as unknown as new (...args: unknown[]) => MonitorsDiagnosticsService)(prisma as never);
   return { service, prisma };
 }
 

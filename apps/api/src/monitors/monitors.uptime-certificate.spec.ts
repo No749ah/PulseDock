@@ -11,12 +11,13 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
-import { MonitorsService } from './monitors.service';
+import { MonitorsSlaService } from './monitors-sla.service';
 import { VersionDetectionService } from './version-detection.service';
 import { PrismaService } from '../common/prisma.service';
 import { ChecksService } from '../checks/checks.service';
 import { AuditService } from '../common/audit.service';
 import { RealtimeEvents } from '../realtime/realtime.events';
+import { MonitorsService } from './monitors.service';
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -48,7 +49,7 @@ function buildPrisma(opts: {
 function buildModule(prisma: ReturnType<typeof buildPrisma>) {
   return Test.createTestingModule({
     providers: [
-      MonitorsService,
+      MonitorsSlaService,
       { provide: PrismaService, useValue: prisma },
       { provide: ChecksService, useValue: {} },
       { provide: AuditService, useValue: { log: vi.fn() } },
@@ -85,7 +86,7 @@ describe('MonitorsService.uptimeCertificate()', () => {
     const runs = makeRuns(100, true);
     const prisma = buildPrisma({ monitor: baseMonitor, runs });
     const module: TestingModule = await buildModule(prisma);
-    const svc = module.get(MonitorsService);
+    const svc = module.get(MonitorsSlaService);
 
     const html = await svc.uptimeCertificate('user-1', 'mon-cert-1', 1);
 
@@ -102,7 +103,7 @@ describe('MonitorsService.uptimeCertificate()', () => {
   it('shows "Insufficient Data" when there are no check runs', async () => {
     const prisma = buildPrisma({ monitor: baseMonitor, runs: [] });
     const module: TestingModule = await buildModule(prisma);
-    const svc = module.get(MonitorsService);
+    const svc = module.get(MonitorsSlaService);
 
     const html = await svc.uptimeCertificate('user-1', 'mon-cert-1', 1);
 
@@ -118,7 +119,7 @@ describe('MonitorsService.uptimeCertificate()', () => {
     ];
     const prisma = buildPrisma({ monitor: baseMonitor, runs });
     const module: TestingModule = await buildModule(prisma);
-    const svc = module.get(MonitorsService);
+    const svc = module.get(MonitorsSlaService);
 
     const html = await svc.uptimeCertificate('user-1', 'mon-cert-1', 1);
 
@@ -131,7 +132,7 @@ describe('MonitorsService.uptimeCertificate()', () => {
     const runs = makeRuns(50, true);
     const prisma = buildPrisma({ monitor: monitorNoTarget, runs });
     const module: TestingModule = await buildModule(prisma);
-    const svc = module.get(MonitorsService);
+    const svc = module.get(MonitorsSlaService);
 
     const html = await svc.uptimeCertificate('user-1', 'mon-cert-1', 1);
 
@@ -142,7 +143,7 @@ describe('MonitorsService.uptimeCertificate()', () => {
   it('throws when monitor is not found', async () => {
     const prisma = buildPrisma({ monitor: null, runs: [] });
     const module: TestingModule = await buildModule(prisma);
-    const svc = module.get(MonitorsService);
+    const svc = module.get(MonitorsSlaService);
 
     await expect(svc.uptimeCertificate('user-1', 'nonexistent', 1)).rejects.toThrow('Monitor not found');
   });
@@ -151,7 +152,7 @@ describe('MonitorsService.uptimeCertificate()', () => {
     const runs = makeRuns(60, true);
     const prisma = buildPrisma({ monitor: baseMonitor, runs });
     const module: TestingModule = await buildModule(prisma);
-    const svc = module.get(MonitorsService);
+    const svc = module.get(MonitorsSlaService);
 
     // months=7 is not in [1,3,6,12] → clamped to 1
     const html = await svc.uptimeCertificate('user-1', 'mon-cert-1', 7);
@@ -164,7 +165,7 @@ describe('MonitorsService.uptimeCertificate()', () => {
     const runs = makeRuns(90, true);
     const prisma = buildPrisma({ monitor: baseMonitor, runs });
     const module: TestingModule = await buildModule(prisma);
-    const svc = module.get(MonitorsService);
+    const svc = module.get(MonitorsSlaService);
 
     const html = await svc.uptimeCertificate('user-1', 'mon-cert-1', 3);
 
@@ -181,7 +182,7 @@ describe('MonitorsService.uptimeCertificate()', () => {
     const runs = makeRuns(10, true);
     const prisma = buildPrisma({ monitor: xssMonitor, runs });
     const module: TestingModule = await buildModule(prisma);
-    const svc = module.get(MonitorsService);
+    const svc = module.get(MonitorsSlaService);
 
     const html = await svc.uptimeCertificate('user-1', 'mon-cert-1', 1);
 

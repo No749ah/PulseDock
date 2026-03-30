@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
-import { MonitorsService } from './monitors.service';
+import { MonitorsAnalyticsService } from './monitors-analytics.service';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -12,7 +12,7 @@ function makeRun(latencyMs: number | null, ok: boolean, daysAgo: number) {
 function makeService(overrides: {
   monitorFindFirst?: () => unknown;
   monitorRunFindMany?: () => unknown;
-}): MonitorsService {
+}): MonitorsAnalyticsService {
   const prisma = {
     monitor: {
       findFirst: overrides.monitorFindFirst ?? (() => ({ id: 'mon1', userId: 'user1' })),
@@ -21,13 +21,7 @@ function makeService(overrides: {
       findMany: overrides.monitorRunFindMany ?? (() => []),
     },
   };
-  return new MonitorsService(
-    prisma as never,
-    null as never,
-    null as never,
-    null as never,
-    null as never,
-  );
+  return new (MonitorsAnalyticsService as unknown as new (...args: unknown[]) => MonitorsAnalyticsService)(prisma as never);
 }
 
 // ─── Tests ────────────────────────────────────────────────────────────────────

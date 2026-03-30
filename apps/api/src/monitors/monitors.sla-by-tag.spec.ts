@@ -14,7 +14,7 @@
  */
 
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { MonitorsService } from './monitors.service';
+import { MonitorsSlaService } from './monitors-sla.service';
 
 function makePrisma() {
   return {
@@ -33,9 +33,9 @@ function makePrisma() {
   };
 }
 
-function makeService(prismaOverrides?: Partial<ReturnType<typeof makePrisma>>): MonitorsService {
+function makeService(prismaOverrides?: Partial<ReturnType<typeof makePrisma>>): MonitorsSlaService {
   const prisma = { ...makePrisma(), ...prismaOverrides };
-  return new MonitorsService(prisma as never, {} as never, {} as never, {} as never, {} as never);
+  return new (MonitorsSlaService as unknown as new (...args: unknown[]) => MonitorsSlaService)(prisma as never);
 }
 
 const TAG_DB = { id: 'tag-db', name: 'Database', color: '#3b82f6' };
@@ -57,7 +57,7 @@ function makeRun(monitorId: string, ok: boolean) {
 
 describe('MonitorsService.slaByTag()', () => {
   let prisma: ReturnType<typeof makePrisma>;
-  let service: MonitorsService;
+  let service: MonitorsSlaService;
 
   beforeEach(() => {
     prisma = makePrisma();

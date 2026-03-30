@@ -1,0 +1,1395 @@
+import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import { PrismaService } from '../common/prisma.service';
+
+@Injectable()
+export class MonitorsSlaService {
+  constructor(
+    private readonly prisma: PrismaService,
+  ) {}
+
+  /**
+   * SLA compliance dashboard for all enabled monitors.
+   * Returns current-month uptime, error budget usage, and 3-month history.
+   */
+  async slaDashboard(userId: string) {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, enabled: true },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        folderId: true,
+        slaTarget: true,
+      },
+    });
+
+    // Helper: compute uptime % for a monitor in a given period
+    const computeUptime = async (
+      monitorId: string,
+      from: Date,
+      to: Date,
+    ): Promise<{ totalRuns: number; failedRuns: number; uptimePct: number }> => {
+      const runs = await this.prisma.monitorRun.findMany({
+        where: { monitorId, checkedAt: { gte: from, lt: to } },
+        select: { ok: true },
+      });
+      const totalRuns = runs.length;
+      const failedRuns = runs.filter((r) => !r.ok).length;
+      const uptimePct = totalRuns === 0 ? 100 : ((totalRuns - failedRuns) / totalRuns) * 100;
+      return { totalRuns, failedRuns, uptimePct: Math.round(uptimePct * 10000) / 10000 };
+    };
+
+    // Build 3-month history labels
+    const historyMonths: Array<{ label: string; start: Date; end: Date }> = [];
+    for (let i = 2; i >= 0; i--) {
+      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const end = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+      const label = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+      historyMonths.push({ label, start: d, end });
+    }
+
+    const monitorsData = await Promise.all(
+      monitors.map(async (m) => {
+        const slaTarget = m.slaTarget != null ? Number(m.slaTarget) : null;
+
+        // Current month stats
+        const { totalRuns, failedRuns, uptimePct } = await computeUptime(m.id, monthStart, now);
+
+        // Compliance
+        let compliant: boolean | null = null;
+        let errorBudgetUsedPct: number | null = null;
+        let budgetRemainingPct: number | null = null;
+
+        if (slaTarget != null) {
+          compliant = uptimePct >= slaTarget;
+          const allowedDown = 100 - slaTarget;
+          if (allowedDown <= 0) {
+            errorBudgetUsedPct = uptimePct < 100 ? 100 : 0;
+          } else {
+            errorBudgetUsedPct = Math.min(100, Math.max(0, ((100 - uptimePct) / allowedDown) * 100));
+            errorBudgetUsedPct = Math.round(errorBudgetUsedPct * 100) / 100;
+          }
+          budgetRemainingPct = Math.round((100 - errorBudgetUsedPct) * 100) / 100;
+        }
+
+        // Monthly history (last 3 months)
+        const monthlyHistory = await Promise.all(
+          historyMonths.map(async (hm) => {
+            const { uptimePct: hUptime } = await computeUptime(m.id, hm.start, hm.end);
+            const hCompliant = slaTarget != null ? hUptime >= slaTarget : null;
+            return {
+              month: hm.label,
+              uptimePct: Math.round(hUptime * 10000) / 10000,
+              compliant: hCompliant,
+            };
+          }),
+        );
+
+        return {
+          id: m.id,
+          name: m.name,
+          type: m.type,
+          folder: m.folderId,
+          slaTarget,
+          uptimePct,
+          compliant,
+          errorBudgetUsedPct,
+          budgetRemainingPct,
+          totalRuns,
+          failedRuns,
+          monthlyHistory,
+        };
+      }),
+    );
+
+    // Summary
+    const compliantCount = monitorsData.filter((m) => m.compliant === true && (m.slaTarget == null || m.uptimePct - (m.slaTarget ?? 0) >= 0.1)).length;
+    const atRiskCount = monitorsData.filter(
+      (m) => m.slaTarget != null && m.compliant === true && m.uptimePct - (m.slaTarget ?? 0) < 0.1,
+    ).length;
+    const breachedCount = monitorsData.filter((m) => m.compliant === false).length;
+    const noTargetCount = monitorsData.filter((m) => m.slaTarget == null).length;
+
+    const currentMonthLabel = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+
+    return {
+      generatedAt: now.toISOString(),
+      period: {
+        start: monthStart.toISOString(),
+        end: now.toISOString(),
+      },
+      summary: {
+        totalMonitors: monitors.length,
+        compliant: compliantCount,
+        atRisk: atRiskCount,
+        breached: breachedCount,
+        noTarget: noTargetCount,
+        currentMonth: currentMonthLabel,
+      },
+      monitors: monitorsData,
+    };
+  }
+
+  // ─── SLA Compliance Report ─────────────────────────────────────────────────
+
+  /**
+   * Generates a structured SLA compliance report for all monitors with an SLA target.
+   * Covers up to `months` calendar months (1–12, default 3) including the current partial month.
+   *
+   * @param userId - The user to generate the report for
+   * @param months - Number of months to include (1–12)
+   * @returns Compliance report with per-monitor monthly breakdown, incident stats, and summary
+   */
+  async slaComplianceReport(userId: string, months: number) {
+    const safeMonths = Math.max(1, Math.min(12, months));
+    const now = new Date();
+
+    // Build month buckets from oldest to newest (ending with current partial month)
+    const monthBuckets: Array<{ label: string; start: Date; end: Date }> = [];
+    for (let i = safeMonths - 1; i >= 0; i--) {
+      const start = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const end = i === 0 ? now : new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      const label = `${start.getFullYear()}-${String(start.getMonth() + 1).padStart(2, '0')}`;
+      monthBuckets.push({ label, start, end });
+    }
+
+    const periodStart = monthBuckets[0].start;
+
+    // Load all monitors with SLA targets
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, enabled: true, slaTarget: { not: null } },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        folderId: true,
+        slaTarget: true,
+        description: true,
+        target: true,
+      },
+      orderBy: { name: 'asc' },
+    });
+
+    // Compute uptime per monitor per month
+    const computeUptime = async (monitorId: string, from: Date, to: Date) => {
+      const runs = await this.prisma.monitorRun.findMany({
+        where: { monitorId, checkedAt: { gte: from, lt: to } },
+        select: { ok: true },
+      });
+      const total = runs.length;
+      const failed = runs.filter((r) => !r.ok).length;
+      const uptimePct = total === 0 ? null : Math.round(((total - failed) / total) * 1000000) / 10000;
+      return { total, failed, uptimePct };
+    };
+
+    // Compute incident count for a monitor in a period
+    const computeIncidents = async (monitorId: string, from: Date, to: Date) => {
+      return this.prisma.incident.count({
+        where: {
+          monitors: { some: { monitorId } },
+          createdAt: { gte: from, lt: to },
+        },
+      });
+    };
+
+    // Approximate downtime minutes from failed checks × interval
+    const computeDowntimeRuns = async (monitorId: string, from: Date, to: Date) => {
+      const mon = await this.prisma.monitor.findUnique({
+        where: { id: monitorId },
+        select: { intervalSec: true },
+      });
+      const intervalSec = mon?.intervalSec ?? 60;
+      const failed = await this.prisma.monitorRun.count({
+        where: { monitorId, ok: false, checkedAt: { gte: from, lt: to } },
+      });
+      return Math.round((failed * intervalSec) / 60);
+    };
+
+    const monitorsData = await Promise.all(
+      monitors.map(async (m) => {
+        const slaTarget = Number(m.slaTarget);
+
+        // Per-month breakdown
+        const monthlyBreakdown = await Promise.all(
+          monthBuckets.map(async (bucket) => {
+            const { total, failed, uptimePct } = await computeUptime(m.id, bucket.start, bucket.end);
+            const incidents = await computeIncidents(m.id, bucket.start, bucket.end);
+            const downtimeMinutes = await computeDowntimeRuns(m.id, bucket.start, bucket.end);
+            const compliant = uptimePct !== null ? uptimePct >= slaTarget : null;
+            const errorBudgetUsedPct =
+              uptimePct !== null
+                ? Math.min(100, Math.max(0, Math.round(((100 - uptimePct) / Math.max(0.0001, 100 - slaTarget)) * 10000) / 100))
+                : null;
+
+            return {
+              month: bucket.label,
+              totalChecks: total,
+              failedChecks: failed,
+              uptimePct,
+              downtimeMinutes,
+              incidents,
+              compliant,
+              errorBudgetUsedPct,
+            };
+          }),
+        );
+
+        // Overall period stats
+        const { total: periodTotal, failed: periodFailed, uptimePct: periodUptime } = await computeUptime(m.id, periodStart, now);
+        const periodIncidents = await computeIncidents(m.id, periodStart, now);
+        const periodDowntime = await computeDowntimeRuns(m.id, periodStart, now);
+        const periodCompliant = periodUptime !== null ? periodUptime >= slaTarget : null;
+        const allowedDown = 100 - slaTarget;
+        const errorBudgetUsedPct =
+          periodUptime !== null && allowedDown > 0
+            ? Math.min(100, Math.max(0, Math.round(((100 - periodUptime) / allowedDown) * 10000) / 100))
+            : null;
+
+        return {
+          id: m.id,
+          name: m.name,
+          type: m.type,
+          target: m.target,
+          description: m.description ?? null,
+          slaTarget,
+          period: {
+            totalChecks: periodTotal,
+            failedChecks: periodFailed,
+            uptimePct: periodUptime,
+            downtimeMinutes: periodDowntime,
+            incidents: periodIncidents,
+            compliant: periodCompliant,
+            errorBudgetUsedPct,
+          },
+          monthlyBreakdown,
+        };
+      }),
+    );
+
+    const compliantCount = monitorsData.filter((m) => m.period.compliant === true).length;
+    const breachedCount = monitorsData.filter((m) => m.period.compliant === false).length;
+    const noDataCount = monitorsData.filter((m) => m.period.compliant === null).length;
+
+    const totalChecks = monitorsData.reduce((s, m) => s + m.period.totalChecks, 0);
+    const totalFailed = monitorsData.reduce((s, m) => s + m.period.failedChecks, 0);
+    const fleetUptimePct =
+      totalChecks > 0 ? Math.round(((totalChecks - totalFailed) / totalChecks) * 1000000) / 10000 : null;
+
+    return {
+      generatedAt: now.toISOString(),
+      reportPeriod: {
+        start: periodStart.toISOString(),
+        end: now.toISOString(),
+        months: safeMonths,
+        monthLabels: monthBuckets.map((b) => b.label),
+      },
+      summary: {
+        totalMonitors: monitors.length,
+        compliant: compliantCount,
+        breached: breachedCount,
+        noData: noDataCount,
+        fleetUptimePct,
+        complianceRate:
+          monitors.length > 0 ? Math.round((compliantCount / monitors.length) * 10000) / 100 : null,
+      },
+      monitors: monitorsData,
+    };
+  }
+
+  // ─── SLA by Tag ──────────────────────────────────────────────────────────
+
+  /**
+   * Compute SLA compliance aggregated by tag for the current calendar month.
+   * For each tag, returns weighted uptime%, compliance status, monitor count,
+   * and a breakdown of all member monitors.
+   *
+   * @param userId - Authenticated user
+   * @returns Array of tag SLA summaries sorted by tag name, plus an "Untagged" bucket
+   */
+  async slaByTag(userId: string): Promise<Array<{
+    tagId: string | null;
+    tagName: string;
+    tagColor: string | null;
+    monitorCount: number;
+    withSlaTarget: number;
+    uptimePct: number | null;
+    compliantCount: number;
+    atRiskCount: number;
+    breachedCount: number;
+    noDataCount: number;
+    monitors: Array<{
+      id: string;
+      name: string;
+      type: string;
+      slaTarget: number | null;
+      uptimePct: number | null;
+      compliant: boolean | null;
+    }>;
+  }>> {
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    // Load all enabled monitors with their tags and current month runs
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, enabled: true },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        slaTarget: true,
+        monitorTags: {
+          include: { tag: { select: { id: true, name: true, color: true } } },
+        },
+      },
+    });
+
+    if (monitors.length === 0) return [];
+
+    // Fetch run aggregations for all monitors in one batch
+    const monitorIds = monitors.map((m) => m.id);
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { userId, monitorId: { in: monitorIds }, checkedAt: { gte: monthStart } },
+      select: { monitorId: true, ok: true },
+    });
+
+    // Build per-monitor uptime map
+    const runsByMonitor = new Map<string, { total: number; ok: number }>();
+    for (const r of runs) {
+      const agg = runsByMonitor.get(r.monitorId) ?? { total: 0, ok: 0 };
+      agg.total++;
+      if (r.ok) agg.ok++;
+      runsByMonitor.set(r.monitorId, agg);
+    }
+
+    const computeMonitorStats = (monitor: typeof monitors[0]) => {
+      const agg = runsByMonitor.get(monitor.id);
+      const uptimePct = agg && agg.total > 0 ? (agg.ok / agg.total) * 100 : null;
+      const slaTarget = monitor.slaTarget != null ? Number(monitor.slaTarget) : null;
+      let compliant: boolean | null = null;
+      if (slaTarget != null && uptimePct != null) {
+        compliant = uptimePct >= slaTarget;
+      }
+      return {
+        id: monitor.id,
+        name: monitor.name,
+        type: monitor.type,
+        slaTarget,
+        uptimePct: uptimePct != null ? Math.round(uptimePct * 10000) / 10000 : null,
+        compliant,
+      };
+    };
+
+    // Group monitors by tag
+    const tagMap = new Map<string, {
+      id: string;
+      name: string;
+      color: string | null;
+      monitors: typeof monitors;
+    }>();
+
+    const untaggedMonitors: typeof monitors = [];
+
+    for (const m of monitors) {
+      if (!m.monitorTags || m.monitorTags.length === 0) {
+        untaggedMonitors.push(m);
+        continue;
+      }
+      for (const mt of m.monitorTags) {
+        const tag = mt.tag;
+        if (!tag) continue;
+        const existing = tagMap.get(tag.id);
+        if (existing) {
+          existing.monitors.push(m);
+        } else {
+          tagMap.set(tag.id, { id: tag.id, name: tag.name, color: tag.color ?? null, monitors: [m] });
+        }
+      }
+    }
+
+    const buildTagResult = (tagId: string | null, tagName: string, tagColor: string | null, tagMonitors: typeof monitors) => {
+      const monitorStats = tagMonitors.map(computeMonitorStats);
+      const withSlaTarget = monitorStats.filter((m) => m.slaTarget != null).length;
+      const compliantCount = monitorStats.filter((m) => m.compliant === true).length;
+      const atRiskCount = monitorStats.filter((m) => {
+        if (m.compliant !== true || m.slaTarget == null || m.uptimePct == null) return false;
+        const margin = m.uptimePct - m.slaTarget;
+        return margin < 0.5; // within 0.5% of SLA target = at risk
+      }).length;
+      const breachedCount = monitorStats.filter((m) => m.compliant === false).length;
+      const noDataCount = monitorStats.filter((m) => m.uptimePct === null).length;
+
+      // Weighted uptime: sum of all (uptime * totalRuns) / totalRuns across all monitors
+      let totalRuns = 0;
+      let totalOkRuns = 0;
+      for (const tm of tagMonitors) {
+        const agg = runsByMonitor.get(tm.id);
+        if (agg) { totalRuns += agg.total; totalOkRuns += agg.ok; }
+      }
+      const weightedUptimePct = totalRuns > 0
+        ? Math.round((totalOkRuns / totalRuns) * 1_000_000) / 10000
+        : null;
+
+      return {
+        tagId,
+        tagName,
+        tagColor,
+        monitorCount: tagMonitors.length,
+        withSlaTarget,
+        uptimePct: weightedUptimePct,
+        compliantCount,
+        atRiskCount,
+        breachedCount,
+        noDataCount,
+        monitors: monitorStats,
+      };
+    };
+
+    const results = Array.from(tagMap.values())
+      .sort((a, b) => a.name.localeCompare(b.name))
+      .map((t) => buildTagResult(t.id, t.name, t.color, t.monitors));
+
+    if (untaggedMonitors.length > 0) {
+      results.push(buildTagResult(null, 'Untagged', null, untaggedMonitors));
+    }
+
+    return results;
+  }
+
+  // ─── SLA Budget Forecast ──────────────────────────────────────────────────
+
+  /**
+   * Forecast whether a monitor's SLA error budget will be exhausted before month end.
+   * Uses the current month's observed uptime rate to project forward linearly.
+   *
+   * @param userId  - Owner of the monitor
+   * @param monitorId - Monitor to forecast
+   * @returns Forecast object with projectedUptimePct, budgetExhaustionDate, willBreach, dailyBreakdown
+   */
+  async slaBudgetForecast(userId: string, monitorId: string) {
+    const monitor = await this.prisma.monitor.findUnique({
+      where: { id: monitorId },
+      select: {
+        id: true,
+        name: true,
+        userId: true,
+        slaTarget: true,
+        intervalSec: true,
+      },
+    });
+
+    if (!monitor) throw new NotFoundException(`Monitor ${monitorId} not found`);
+    if (monitor.userId !== userId) throw new ForbiddenException();
+
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999);
+    const totalMonthMs = monthEnd.getTime() - monthStart.getTime();
+    const elapsedMs = now.getTime() - monthStart.getTime();
+    const remainingMs = monthEnd.getTime() - now.getTime();
+    const dayOfMonth = now.getDate();
+    const daysInMonth = monthEnd.getDate();
+
+    // Fetch all runs this month
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId, checkedAt: { gte: monthStart, lte: now } },
+      select: { ok: true, checkedAt: true },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    const totalChecks = runs.length;
+    const failedChecks = runs.filter((r) => !r.ok).length;
+    const currentUptimePct = totalChecks === 0 ? 100 : ((totalChecks - failedChecks) / totalChecks) * 100;
+
+    const slaTarget = monitor.slaTarget != null ? Number(monitor.slaTarget) : null;
+    const allowedDownPct = slaTarget != null ? 100 - slaTarget : null;
+
+    // Current error budget consumption
+    const errorBudgetUsedPct =
+      slaTarget != null && allowedDownPct != null && allowedDownPct > 0
+        ? Math.min(100, Math.max(0, ((100 - currentUptimePct) / allowedDownPct) * 100))
+        : null;
+
+    // Projected uptime at month end (linear extrapolation):
+    // Assumes failures happen at the same rate as observed so far
+    const failureRatePerMs = elapsedMs > 0 ? failedChecks / elapsedMs : 0;
+    const estimatedAdditionalFailed = failureRatePerMs * remainingMs;
+    const checksPerMs = elapsedMs > 0 ? totalChecks / elapsedMs : 0;
+    const estimatedAdditionalChecks = checksPerMs * remainingMs;
+
+    const projectedTotalChecks = totalChecks + estimatedAdditionalChecks;
+    const projectedFailedChecks = failedChecks + estimatedAdditionalFailed;
+    const projectedUptimePct =
+      projectedTotalChecks > 0 ? ((projectedTotalChecks - projectedFailedChecks) / projectedTotalChecks) * 100 : 100;
+
+    // Will it breach?
+    const willBreach = slaTarget != null ? projectedUptimePct < slaTarget : null;
+
+    // When will error budget be exhausted?
+    // Budget exhausted when failed / total == (100 - slaTarget) / 100
+    // At current failure rate: solve for t where failedChecks + failRate*t = (allowedDownPct/100) * (totalChecks + checksPerMs*t)
+    // => failedChecks + failRate*t = (allowedDownPct/100) * totalChecks + (allowedDownPct/100)*checksPerMs*t
+    // => t*(failRate - (allowedDownPct/100)*checksPerMs) = (allowedDownPct/100)*totalChecks - failedChecks
+    // => t = ((allowedDownPct/100)*totalChecks - failedChecks) / (failRate - (allowedDownPct/100)*checksPerMs)
+    let budgetExhaustionDate: string | null = null;
+    let budgetExhaustedAlready = false;
+
+    if (slaTarget != null && allowedDownPct != null && allowedDownPct > 0) {
+      const allowedFrac = allowedDownPct / 100;
+      const denom = failureRatePerMs - allowedFrac * checksPerMs;
+
+      if (denom > 0) {
+        // Budget is being consumed — find when it runs out
+        const numerator = allowedFrac * totalChecks - failedChecks;
+        if (numerator <= 0) {
+          budgetExhaustedAlready = true;
+          budgetExhaustionDate = now.toISOString();
+        } else {
+          const msUntilExhaustion = numerator / denom;
+          const exhaustionTime = new Date(now.getTime() + msUntilExhaustion);
+          if (exhaustionTime <= monthEnd) {
+            budgetExhaustionDate = exhaustionTime.toISOString();
+          }
+          // else: budget won't exhaust this month at this rate
+        }
+      }
+      // denom <= 0: uptime is better than needed, budget is safe
+    }
+
+    // Daily breakdown: actual (past days) + projected (future days)
+    // Group past runs into UTC day buckets
+    const dailyActual = new Map<string, { total: number; failed: number }>();
+    for (const run of runs) {
+      const d = run.checkedAt.toISOString().split('T')[0];
+      const entry = dailyActual.get(d) ?? { total: 0, failed: 0 };
+      entry.total++;
+      if (!run.ok) entry.failed++;
+      dailyActual.set(d, entry);
+    }
+
+    const dailyBreakdown: Array<{
+      date: string;
+      type: 'actual' | 'projected';
+      uptimePct: number | null;
+      totalChecks: number;
+      failedChecks: number;
+      errorBudgetUsedPct: number | null;
+    }> = [];
+
+    const dailyCheckCount = checksPerMs > 0 ? checksPerMs * 86400000 : (24 * 3600) / (monitor.intervalSec || 60);
+
+    let runningTotal = 0;
+    let runningFailed = 0;
+
+    for (let d = 1; d <= daysInMonth; d++) {
+      const dateStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(d).padStart(2, '0')}`;
+      const isPast = d < dayOfMonth;
+      const isToday = d === dayOfMonth;
+
+      if (isPast || isToday) {
+        const actual = dailyActual.get(dateStr) ?? { total: 0, failed: 0 };
+        runningTotal += actual.total;
+        runningFailed += actual.failed;
+        const dayUptimePct = actual.total === 0 ? null : ((actual.total - actual.failed) / actual.total) * 100;
+        const cumulativeBudgetUsed =
+          slaTarget != null && allowedDownPct != null && allowedDownPct > 0 && runningTotal > 0
+            ? Math.min(100, ((100 - (((runningTotal - runningFailed) / runningTotal) * 100)) / allowedDownPct) * 100)
+            : null;
+        dailyBreakdown.push({
+          date: dateStr,
+          type: isToday ? 'actual' : 'actual',
+          uptimePct: dayUptimePct !== null ? Math.round(dayUptimePct * 10000) / 10000 : null,
+          totalChecks: actual.total,
+          failedChecks: actual.failed,
+          errorBudgetUsedPct: cumulativeBudgetUsed !== null ? Math.round(cumulativeBudgetUsed * 100) / 100 : null,
+        });
+      } else {
+        // Projected day
+        const projDayChecks = dailyCheckCount;
+        const projDayFailed = failureRatePerMs > 0 ? failureRatePerMs * 86400000 : 0;
+        runningTotal += projDayChecks;
+        runningFailed += projDayFailed;
+        const projDayUptimePct =
+          projDayChecks > 0 ? ((projDayChecks - projDayFailed) / projDayChecks) * 100 : 100;
+        const cumulativeBudgetUsed =
+          slaTarget != null && allowedDownPct != null && allowedDownPct > 0 && runningTotal > 0
+            ? Math.min(100, ((100 - (((runningTotal - runningFailed) / runningTotal) * 100)) / allowedDownPct) * 100)
+            : null;
+        dailyBreakdown.push({
+          date: dateStr,
+          type: 'projected',
+          uptimePct: Math.round(projDayUptimePct * 10000) / 10000,
+          totalChecks: Math.round(projDayChecks),
+          failedChecks: Math.round(projDayFailed),
+          errorBudgetUsedPct: cumulativeBudgetUsed !== null ? Math.round(cumulativeBudgetUsed * 100) / 100 : null,
+        });
+      }
+    }
+
+    return {
+      generatedAt: now.toISOString(),
+      monitorId: monitor.id,
+      monitorName: monitor.name,
+      slaTarget,
+      period: {
+        monthStart: monthStart.toISOString(),
+        monthEnd: monthEnd.toISOString(),
+        dayOfMonth,
+        daysInMonth,
+        elapsedDaysFraction: Math.round((elapsedMs / totalMonthMs) * 10000) / 10000,
+      },
+      currentStats: {
+        totalChecks,
+        failedChecks,
+        uptimePct: Math.round(currentUptimePct * 10000) / 10000,
+        errorBudgetUsedPct: errorBudgetUsedPct !== null ? Math.round(errorBudgetUsedPct * 100) / 100 : null,
+      },
+      forecast: {
+        projectedUptimePct: Math.round(projectedUptimePct * 10000) / 10000,
+        projectedErrorBudgetUsedPct:
+          slaTarget != null && allowedDownPct != null && allowedDownPct > 0
+            ? Math.min(100, Math.round(((100 - projectedUptimePct) / allowedDownPct) * 10000) / 100)
+            : null,
+        willBreach,
+        budgetExhaustedAlready,
+        budgetExhaustionDate,
+        confidence: totalChecks >= 10 ? 'high' : totalChecks >= 3 ? 'medium' : 'low',
+      },
+      dailyBreakdown,
+    };
+  }
+
+  /**
+   * Calculates SLO error budget consumption for a monitor.
+   * Shows how much of the allowed downtime budget has been used, burn rates, and projected exhaustion.
+   * @param monitorId - The monitor to calculate error budget for
+   * @param userId - The authenticated user's ID
+   * @param opts - { slaTarget: number (0–100), period: string (e.g. '30d') }
+   * @returns Error budget stats including consumed %, burn rates, and projected exhaustion date
+   * @throws NotFoundException if monitor not found or not owned by user
+   */
+  async getErrorBudget(
+    monitorId: string,
+    userId: string,
+    opts: { slaTarget: number; period: string },
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    // Parse period string (e.g. '30d' → 30 days)
+    const periodMatch = opts.period.match(/^(\d+)d$/);
+    const periodDays = periodMatch ? parseInt(periodMatch[1], 10) : 30;
+    const totalMinutes = periodDays * 24 * 60;
+
+    const slaTarget = Math.min(100, Math.max(0, opts.slaTarget));
+    const allowedDownPct = (100 - slaTarget) / 100; // e.g. 0.001 for 99.9%
+    const allowedDownMinutes = totalMinutes * allowedDownPct;
+
+    const now = new Date();
+    const periodStart = new Date(now.getTime() - periodDays * 86_400_000);
+
+    // Query runs for full period (same pattern as monitorUptime)
+    const periodRuns = await this.prisma.monitorRun.findMany({
+      where: { monitorId, userId, checkedAt: { gte: periodStart } },
+      select: { ok: true },
+    });
+
+    const totalChecks = periodRuns.length;
+    const failedChecks = periodRuns.filter((r) => !r.ok).length;
+
+    // Proportion-based downtime (consistent with monitorUptime uptimePct calculation)
+    const actualDownMinutes =
+      totalChecks === 0 ? 0 : (failedChecks / totalChecks) * totalMinutes;
+    const remainingDownMinutes = Math.max(0, allowedDownMinutes - actualDownMinutes);
+    const budgetConsumedPct =
+      allowedDownMinutes > 0 ? (actualDownMinutes / allowedDownMinutes) * 100 : 0;
+    const budgetRemainingPct = Math.max(0, 100 - budgetConsumedPct);
+    const actualUptimePct =
+      totalChecks === 0
+        ? 100
+        : ((totalChecks - failedChecks) / totalChecks) * 100;
+
+    // Burn rate: actual failure fraction / expected failure fraction
+    // 1.0 = on track; >1 = burning faster than expected
+    const calcBurnRate = (windowRuns: Array<{ ok: boolean }>): number => {
+      if (windowRuns.length === 0) return 0;
+      const failFrac = windowRuns.filter((r) => !r.ok).length / windowRuns.length;
+      if (allowedDownPct === 0) return failFrac === 0 ? 0 : 999;
+      return failFrac / allowedDownPct;
+    };
+
+    // Query windowed burn rates in parallel
+    const [runs1h, runs6h, runs24h] = await Promise.all([
+      this.prisma.monitorRun.findMany({
+        where: { monitorId, userId, checkedAt: { gte: new Date(now.getTime() - 3_600_000) } },
+        select: { ok: true },
+      }),
+      this.prisma.monitorRun.findMany({
+        where: { monitorId, userId, checkedAt: { gte: new Date(now.getTime() - 6 * 3_600_000) } },
+        select: { ok: true },
+      }),
+      this.prisma.monitorRun.findMany({
+        where: { monitorId, userId, checkedAt: { gte: new Date(now.getTime() - 24 * 3_600_000) } },
+        select: { ok: true },
+      }),
+    ]);
+
+    const burnRate = calcBurnRate(periodRuns);
+    const burnRate1h = calcBurnRate(runs1h);
+    const burnRate6h = calcBurnRate(runs6h);
+    const burnRate24h = calcBurnRate(runs24h);
+
+    // Status thresholds
+    let status: 'healthy' | 'warning' | 'critical' | 'exhausted';
+    if (budgetConsumedPct >= 100) status = 'exhausted';
+    else if (budgetConsumedPct > 80) status = 'critical';
+    else if (budgetConsumedPct >= 50) status = 'warning';
+    else status = 'healthy';
+
+    // Projected exhaustion date (uses 24h burn rate as the most recent signal)
+    let projectedExhaustionDate: string | null = null;
+    const activeBurnRate = burnRate24h > 0 ? burnRate24h : burnRate;
+    if (budgetConsumedPct < 100 && activeBurnRate > 1 && allowedDownMinutes > 0) {
+      const remainingBudgetFraction = budgetRemainingPct / 100;
+      const minutesToExhaust = (remainingBudgetFraction * totalMinutes) / activeBurnRate;
+      projectedExhaustionDate = new Date(
+        now.getTime() + minutesToExhaust * 60_000,
+      ).toISOString();
+    }
+
+    const round2 = (n: number) => Math.round(n * 100) / 100;
+    const round3 = (n: number) => Math.round(n * 1000) / 1000;
+
+    return {
+      monitorId,
+      period: opts.period,
+      slaTarget,
+      totalMinutes,
+      allowedDownMinutes: round2(allowedDownMinutes),
+      actualDownMinutes: round2(actualDownMinutes),
+      remainingDownMinutes: round2(remainingDownMinutes),
+      budgetConsumedPct: round2(budgetConsumedPct),
+      budgetRemainingPct: round2(budgetRemainingPct),
+      actualUptimePct: round3(actualUptimePct),
+      burnRate: round2(burnRate),
+      burnRate1h: round2(burnRate1h),
+      burnRate6h: round2(burnRate6h),
+      burnRate24h: round2(burnRate24h),
+      status,
+      projectedExhaustionDate,
+    };
+  }
+
+  /**
+   * Returns the SLO/SLI report for a given monitor.
+   * Includes uptime SLO, latency SLI (if configured), and error budget overview.
+   */
+  async getSloReport(userId: string, monitorId: string) {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
+    if (!monitor) throw new NotFoundException('monitor not found');
+
+    const periodDays = monitor.slaPeriodDays ?? 30;
+    const slaTarget = monitor.slaTarget ?? 99.9;
+    const now = new Date();
+    const from = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000);
+
+    // --- Uptime SLO ---
+    const uptimeRuns = await this.prisma.monitorRun.findMany({
+      where: { monitorId, checkedAt: { gte: from } },
+      select: { ok: true, checkedAt: true },
+    });
+
+    const totalChecks = uptimeRuns.length;
+    const okChecks = uptimeRuns.filter((r) => r.ok).length;
+    const failedChecks = totalChecks - okChecks;
+    const actualUptime = totalChecks === 0 ? 100 : (okChecks / totalChecks) * 100;
+
+    const periodMinutes = periodDays * 24 * 60;
+    const uptimeBudgetMinutes = ((100 - slaTarget) / 100) * periodMinutes;
+    const uptimeBurnedMinutes = totalChecks === 0 ? 0 : (failedChecks / totalChecks) * periodMinutes;
+    const uptimeRemainingMinutes = uptimeBudgetMinutes - uptimeBurnedMinutes;
+    const uptimeBurnRate = uptimeBudgetMinutes === 0 ? 0 : uptimeBurnedMinutes / uptimeBudgetMinutes;
+
+    let uptimeStatus: 'ok' | 'warning' | 'breached';
+    if (actualUptime < slaTarget) {
+      uptimeStatus = 'breached';
+    } else if (uptimeRemainingMinutes < uptimeBudgetMinutes * 0.1) {
+      uptimeStatus = 'warning';
+    } else {
+      uptimeStatus = 'ok';
+    }
+
+    // --- Latency SLI ---
+    let latencyResult: {
+      target: number;
+      p50: number;
+      p95: number;
+      p99: number;
+      status: 'ok' | 'warning' | 'breached';
+      window: number;
+      totalChecks: number;
+      exceedingChecks: number;
+    } | null = null;
+
+    let latencyBudgetPct = 5.0;
+    let latencyBurnedPct = 0;
+    let latencyBurnRate = 0;
+
+    if (monitor.sliLatencyTarget) {
+      const latencyWindow = monitor.sliLatencyWindow ?? 7;
+      const latencyFrom = new Date(now.getTime() - latencyWindow * 24 * 60 * 60 * 1000);
+
+      const latencyRuns = await this.prisma.monitorRun.findMany({
+        where: { monitorId, checkedAt: { gte: latencyFrom }, latencyMs: { not: null } },
+        select: { latencyMs: true },
+        orderBy: { latencyMs: 'asc' },
+      });
+
+      const latencies = latencyRuns.map((r) => r.latencyMs as number).sort((a, b) => a - b);
+      const latTotal = latencies.length;
+
+      const getPercentile = (arr: number[], pct: number): number => {
+        if (arr.length === 0) return 0;
+        const idx = Math.ceil((pct / 100) * arr.length) - 1;
+        return arr[Math.max(0, Math.min(idx, arr.length - 1))];
+      };
+
+      const p50 = getPercentile(latencies, 50);
+      const p95 = getPercentile(latencies, 95);
+      const p99 = getPercentile(latencies, 99);
+      const exceedingChecks = latencies.filter((l) => l >= monitor.sliLatencyTarget!).length;
+
+      let latencyStatus: 'ok' | 'warning' | 'breached';
+      if (p95 >= monitor.sliLatencyTarget) {
+        latencyStatus = 'breached';
+      } else if (p95 >= monitor.sliLatencyTarget * 0.85) {
+        latencyStatus = 'warning';
+      } else {
+        latencyStatus = 'ok';
+      }
+
+      latencyBudgetPct = 5.0;
+      latencyBurnedPct = latTotal === 0 ? 0 : (exceedingChecks / latTotal) * 100;
+      latencyBurnRate = latencyBudgetPct === 0 ? 0 : latencyBurnedPct / latencyBudgetPct;
+
+      latencyResult = {
+        target: monitor.sliLatencyTarget,
+        p50,
+        p95,
+        p99,
+        status: latencyStatus,
+        window: latencyWindow,
+        totalChecks: latTotal,
+        exceedingChecks,
+      };
+    }
+
+    // --- Overall Health ---
+    let overallHealth: 'ok' | 'warning' | 'breached';
+    if (uptimeStatus === 'breached' || (latencyResult && latencyResult.status === 'breached')) {
+      overallHealth = 'breached';
+    } else if (uptimeStatus === 'warning' || (latencyResult && latencyResult.status === 'warning')) {
+      overallHealth = 'warning';
+    } else {
+      overallHealth = 'ok';
+    }
+
+    return {
+      monitorId,
+      period: {
+        days: periodDays,
+        from: from.toISOString(),
+        to: now.toISOString(),
+      },
+      uptime: {
+        target: slaTarget,
+        actual: Math.round(actualUptime * 10000) / 10000,
+        status: uptimeStatus,
+        totalChecks,
+        failedChecks,
+        remainingBudgetMinutes: Math.round(uptimeRemainingMinutes * 100) / 100,
+      },
+      ...(latencyResult ? { latency: latencyResult } : {}),
+      errorBudget: {
+        uptimeBudgetMinutes: Math.round(uptimeBudgetMinutes * 100) / 100,
+        uptimeBurnedMinutes: Math.round(uptimeBurnedMinutes * 100) / 100,
+        uptimeBurnRate: Math.round(uptimeBurnRate * 100) / 100,
+        latencyBudgetPct: Math.round(latencyBudgetPct * 100) / 100,
+        latencyBurnedPct: Math.round(latencyBurnedPct * 100) / 100,
+        latencyBurnRate: Math.round(latencyBurnRate * 100) / 100,
+        overallHealth,
+      },
+    };
+  }
+
+  /**
+   * Returns a lightweight SLO summary for all monitors with an SLA target set.
+   * Used on the dashboard to show overall SLO health at a glance.
+   */
+  async getSloSummary(userId: string) {
+    const monitors = await this.prisma.monitor.findMany({
+      where: { userId, slaTarget: { not: null } },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        slaTarget: true,
+        slaPeriodDays: true,
+        sliLatencyTarget: true,
+        sliLatencyWindow: true,
+      },
+    });
+
+    if (monitors.length === 0) {
+      return { monitors: [], summary: { total: 0, ok: 0, warning: 0, breached: 0 } };
+    }
+
+    const now = new Date();
+    const results = await Promise.all(
+      monitors.map(async (m) => {
+        try {
+          const periodDays = m.slaPeriodDays ?? 30;
+          const slaTarget = m.slaTarget ?? 99.9;
+          const from = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000);
+
+          const runs = await this.prisma.monitorRun.findMany({
+            where: { monitorId: m.id, checkedAt: { gte: from } },
+            select: { ok: true },
+          });
+
+          const totalChecks = runs.length;
+          const okChecks = runs.filter((r) => r.ok).length;
+          const actualUptime = totalChecks === 0 ? 100 : (okChecks / totalChecks) * 100;
+
+          const periodMinutes = periodDays * 24 * 60;
+          const budgetMinutes = ((100 - slaTarget) / 100) * periodMinutes;
+          const burnedMinutes = totalChecks === 0 ? 0 : ((totalChecks - okChecks) / totalChecks) * periodMinutes;
+          const budgetRemainingPct = budgetMinutes === 0 ? 100 : Math.max(0, ((budgetMinutes - burnedMinutes) / budgetMinutes) * 100);
+
+          let status: 'ok' | 'warning' | 'breached';
+          if (actualUptime < slaTarget) {
+            status = 'breached';
+          } else if (budgetRemainingPct < 10) {
+            status = 'warning';
+          } else {
+            status = 'ok';
+          }
+
+          return {
+            monitorId: m.id,
+            name: m.name,
+            type: m.type,
+            slaTarget,
+            periodDays,
+            actualUptime: Math.round(actualUptime * 10000) / 10000,
+            totalChecks,
+            status,
+            budgetRemainingPct: Math.round(budgetRemainingPct * 10) / 10,
+            hasLatencySli: m.sliLatencyTarget != null,
+          };
+        } catch {
+          return null;
+        }
+      }),
+    );
+
+    const valid = results.filter((r): r is NonNullable<typeof r> => r !== null);
+    const summary = {
+      total: valid.length,
+      ok: valid.filter((r) => r.status === 'ok').length,
+      warning: valid.filter((r) => r.status === 'warning').length,
+      breached: valid.filter((r) => r.status === 'breached').length,
+    };
+
+    return { monitors: valid, summary };
+  }
+
+  /**
+   * Generate a printable HTML uptime certificate for a monitor.
+   * Shows: monitor name, period, actual uptime %, SLA target, compliance status.
+   *
+   * @param userId - Owner of the monitor
+   * @param monitorId - Monitor to certify
+   * @param months - Period in months (1, 3, 6, or 12)
+   * @returns HTML string ready to render or print
+   */
+  async uptimeCertificate(userId: string, monitorId: string, months: number): Promise<string> {
+    const safeMonths = ([1, 3, 6, 12] as const).includes(months as 1 | 3 | 6 | 12) ? months : 1;
+    const now = new Date();
+    const periodStart = new Date(now.getFullYear(), now.getMonth() - (safeMonths - 1), 1);
+
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, userId },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        target: true,
+        slaTarget: true,
+        description: true,
+        enabled: true,
+      },
+    });
+
+    if (!monitor) throw new Error('Monitor not found');
+
+    // Count checks in the period
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId, checkedAt: { gte: periodStart, lt: now } },
+      select: { ok: true, checkedAt: true },
+    });
+
+    const totalChecks = runs.length;
+    const failedChecks = runs.filter((r) => !r.ok).length;
+    const successChecks = totalChecks - failedChecks;
+    const uptimePct = totalChecks === 0 ? null : (successChecks / totalChecks) * 100;
+    const slaTarget = monitor.slaTarget ? Number(monitor.slaTarget) : null;
+    const compliant = uptimePct !== null && slaTarget !== null ? uptimePct >= slaTarget : null;
+
+    // Build monthly breakdown
+    const monthlyBreakdown: Array<{ label: string; uptime: number | null; checks: number; passed: boolean | null }> = [];
+    for (let i = safeMonths - 1; i >= 0; i--) {
+      const mStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const mEnd = i === 0 ? now : new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+      const mLabel = mStart.toLocaleString('en-US', { month: 'long', year: 'numeric' });
+      const mRuns = runs.filter((r) => r.checkedAt >= mStart && r.checkedAt < mEnd);
+      const mTotal = mRuns.length;
+      const mFailed = mRuns.filter((r) => !r.ok).length;
+      const mUptime = mTotal === 0 ? null : ((mTotal - mFailed) / mTotal) * 100;
+      monthlyBreakdown.push({
+        label: mLabel,
+        uptime: mUptime,
+        checks: mTotal,
+        passed: mUptime !== null && slaTarget !== null ? mUptime >= slaTarget : null,
+      });
+    }
+
+    // Generate unique certificate ID
+    const certId = `PD-CERT-${monitorId.slice(-8).toUpperCase()}-${Date.now().toString(36).toUpperCase()}`;
+
+    const periodLabel =
+      safeMonths === 1
+        ? 'Last Month'
+        : safeMonths === 3
+          ? 'Last 3 Months'
+          : safeMonths === 6
+            ? 'Last 6 Months'
+            : 'Last 12 Months';
+
+    const periodFull = `${periodStart.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })} – ${now.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}`;
+
+    const uptimeFormatted =
+      uptimePct !== null ? `${uptimePct.toFixed(4)}%` : 'Insufficient Data';
+
+    const complianceColor =
+      compliant === true ? '#22c55e' : compliant === false ? '#ef4444' : '#a3a3a3';
+    const complianceLabel =
+      compliant === true ? 'SLA COMPLIANT' : compliant === false ? 'SLA BREACH' : 'NO TARGET';
+    const complianceIcon = compliant === true ? '✓' : compliant === false ? '✗' : '—';
+
+    const monthRows = monthlyBreakdown
+      .map((m) => {
+        const color = m.passed === true ? '#22c55e' : m.passed === false ? '#ef4444' : '#a3a3a3';
+        const icon = m.passed === true ? '✓' : m.passed === false ? '✗' : '—';
+        const uptime = m.uptime !== null ? `${m.uptime.toFixed(3)}%` : 'No data';
+        return `
+        <tr>
+          <td style="padding:10px 16px;border-bottom:1px solid #2a2a3a;color:#c9c9d0">${m.label}</td>
+          <td style="padding:10px 16px;border-bottom:1px solid #2a2a3a;color:#c9c9d0;text-align:center">${m.checks.toLocaleString()}</td>
+          <td style="padding:10px 16px;border-bottom:1px solid #2a2a3a;font-family:monospace;font-weight:600;color:${color};text-align:center">${uptime}</td>
+          <td style="padding:10px 16px;border-bottom:1px solid #2a2a3a;text-align:center"><span style="color:${color};font-weight:700;font-size:18px">${icon}</span></td>
+        </tr>`;
+      })
+      .join('');
+
+    const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Uptime Certificate – ${this._certEscapeHtml(monitor.name)}</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    background: #0a0a12;
+    color: #e1e1e8;
+    min-height: 100vh;
+    padding: 32px 16px;
+  }
+  .page { max-width: 820px; margin: 0 auto; }
+  @media print {
+    body { background: #ffffff; color: #0a0a12; padding: 0; }
+    .certificate { background: #ffffff !important; border: 2px solid #ddd !important; box-shadow: none !important; }
+    .cert-header { background: #1a1a2e !important; }
+    .no-print { display: none !important; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<!-- Print button -->
+<div class="no-print" style="text-align:right;margin-bottom:20px">
+  <button onclick="window.print()" style="background:#6366f1;color:#fff;border:none;padding:10px 24px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer">🖨 Print / Save PDF</button>
+</div>
+
+<!-- Certificate -->
+<div class="certificate" style="background:#12121e;border:1px solid #2a2a3a;border-radius:16px;overflow:hidden;box-shadow:0 25px 60px rgba(0,0,0,0.5)">
+
+  <!-- Header -->
+  <div class="cert-header" style="background:linear-gradient(135deg,#1a1a2e 0%,#16213e 50%,#0f3460 100%);padding:48px 40px;text-align:center;border-bottom:1px solid #2a2a3a">
+    <div style="font-size:13px;font-weight:600;letter-spacing:3px;text-transform:uppercase;color:#6366f1;margin-bottom:16px">PulseDock Monitoring</div>
+    <div style="font-size:36px;font-weight:800;color:#fff;letter-spacing:-0.5px;line-height:1.1;margin-bottom:8px">Uptime Performance<br>Certificate</div>
+    <div style="width:60px;height:3px;background:linear-gradient(90deg,#6366f1,#a78bfa);margin:20px auto;border-radius:2px"></div>
+    <div style="font-size:14px;color:#8b8b9e;margin-top:12px">${periodFull}</div>
+  </div>
+
+  <!-- Body -->
+  <div style="padding:40px">
+
+    <!-- Monitor info -->
+    <div style="margin-bottom:36px">
+      <div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#6366f1;margin-bottom:8px">Monitor</div>
+      <div style="font-size:28px;font-weight:700;color:#fff;margin-bottom:6px">${this._certEscapeHtml(monitor.name)}</div>
+      ${monitor.target ? `<div style="font-size:14px;color:#8b8b9e;font-family:monospace">${this._certEscapeHtml(monitor.target)}</div>` : ''}
+      ${monitor.description ? `<div style="font-size:14px;color:#a3a3b0;margin-top:6px">${this._certEscapeHtml(monitor.description)}</div>` : ''}
+    </div>
+
+    <!-- Key stats -->
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:16px;margin-bottom:36px">
+
+      <div style="background:#1a1a2e;border:1px solid #2a2a3a;border-radius:12px;padding:20px;text-align:center">
+        <div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#8b8b9e;margin-bottom:8px">Achieved Uptime</div>
+        <div style="font-size:32px;font-weight:800;color:#c084fc;font-family:monospace">${uptimeFormatted}</div>
+        <div style="font-size:12px;color:#8b8b9e;margin-top:4px">${periodLabel}</div>
+      </div>
+
+      <div style="background:#1a1a2e;border:1px solid #2a2a3a;border-radius:12px;padding:20px;text-align:center">
+        <div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#8b8b9e;margin-bottom:8px">SLA Target</div>
+        <div style="font-size:32px;font-weight:800;color:#e1e1e8;font-family:monospace">${slaTarget !== null ? `${slaTarget}%` : '—'}</div>
+        <div style="font-size:12px;color:#8b8b9e;margin-top:4px">${slaTarget !== null ? 'Configured target' : 'No target set'}</div>
+      </div>
+
+      <div style="background:#1a1a2e;border:1px solid #2a2a3a;border-radius:12px;padding:20px;text-align:center">
+        <div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#8b8b9e;margin-bottom:8px">Total Checks</div>
+        <div style="font-size:32px;font-weight:800;color:#e1e1e8">${totalChecks.toLocaleString()}</div>
+        <div style="font-size:12px;color:#8b8b9e;margin-top:4px">${failedChecks.toLocaleString()} failed</div>
+      </div>
+
+      <div style="background:${complianceColor}18;border:2px solid ${complianceColor}40;border-radius:12px;padding:20px;text-align:center">
+        <div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:${complianceColor};opacity:0.8;margin-bottom:8px">Status</div>
+        <div style="font-size:40px;font-weight:800;color:${complianceColor}">${complianceIcon}</div>
+        <div style="font-size:13px;font-weight:700;color:${complianceColor};margin-top:4px">${complianceLabel}</div>
+      </div>
+
+    </div>
+
+    <!-- Monthly breakdown -->
+    ${
+      safeMonths > 1
+        ? `<div style="margin-bottom:36px">
+      <div style="font-size:13px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#8b8b9e;margin-bottom:12px">Monthly Breakdown</div>
+      <div style="background:#1a1a2e;border:1px solid #2a2a3a;border-radius:12px;overflow:hidden">
+        <table style="width:100%;border-collapse:collapse">
+          <thead>
+            <tr style="background:#12121e">
+              <th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#6366f1;border-bottom:1px solid #2a2a3a">Month</th>
+              <th style="padding:10px 16px;text-align:center;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#6366f1;border-bottom:1px solid #2a2a3a">Checks</th>
+              <th style="padding:10px 16px;text-align:center;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#6366f1;border-bottom:1px solid #2a2a3a">Uptime</th>
+              <th style="padding:10px 16px;text-align:center;font-size:11px;font-weight:600;letter-spacing:1px;text-transform:uppercase;color:#6366f1;border-bottom:1px solid #2a2a3a">SLA</th>
+            </tr>
+          </thead>
+          <tbody>${monthRows}</tbody>
+        </table>
+      </div>
+    </div>`
+        : ''
+    }
+
+    <!-- Divider -->
+    <div style="border-top:1px solid #2a2a3a;margin:32px 0"></div>
+
+    <!-- Certificate footer -->
+    <div style="display:flex;justify-content:space-between;align-items:flex-end;flex-wrap:wrap;gap:16px">
+      <div>
+        <div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#6366f1;margin-bottom:4px">Certificate ID</div>
+        <div style="font-family:monospace;font-size:13px;color:#8b8b9e">${certId}</div>
+        <div style="font-size:12px;color:#8b8b9e;margin-top:6px">Issued by PulseDock on ${now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</div>
+        <div style="font-size:11px;color:#555568;margin-top:2px">This certificate reflects historical check data and is for informational purposes only.</div>
+      </div>
+      <div style="text-align:right">
+        <div style="font-size:11px;font-weight:600;letter-spacing:2px;text-transform:uppercase;color:#6366f1;margin-bottom:6px">Monitor Type</div>
+        <div style="font-size:13px;color:#8b8b9e">${monitor.type}</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+</div>
+</body>
+</html>`;
+
+    return html;
+  }
+
+  // ─── Generate Uptime Certificate (structured data) ────────────────────────
+
+  /**
+   * Generates structured uptime certificate data for a monitor.
+   * Computes SLA compliance, latency stats, incident count, and downtime.
+   *
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The monitor to certify
+   * @param options - periodDays (7/30/90/365) and optional title override
+   */
+  async generateUptimeCertificate(
+    userId: string,
+    monitorId: string,
+    options: { periodDays: number; title?: string },
+  ): Promise<{
+    certificateId: string;
+    monitorId: string;
+    monitorName: string;
+    monitorTarget: string;
+    monitorType: string;
+    issuedAt: string;
+    periodDays: number;
+    periodStart: string;
+    periodEnd: string;
+    uptimePct: number;
+    avgLatencyMs: number | null;
+    p95LatencyMs: number | null;
+    totalChecks: number;
+    successChecks: number;
+    failedChecks: number;
+    totalDowntimeMinutes: number;
+    longestOutageMinutes: number;
+    incidents: number;
+    slaTarget: number | null;
+    slaCompliant: boolean | null;
+    title: string;
+  }> {
+    const safeDays = ([7, 30, 90, 365] as const).includes(options.periodDays as 7 | 30 | 90 | 365)
+      ? options.periodDays
+      : 30;
+
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, userId },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        target: true,
+        slaTarget: true,
+      },
+    });
+
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const now = new Date();
+    const periodStart = new Date(now.getTime() - safeDays * 24 * 60 * 60 * 1000);
+
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId, checkedAt: { gte: periodStart, lte: now } },
+      orderBy: { checkedAt: 'asc' },
+      select: { ok: true, checkedAt: true, latencyMs: true },
+    });
+
+    const totalChecks = runs.length;
+    const successChecks = runs.filter((r) => r.ok).length;
+    const failedChecks = totalChecks - successChecks;
+    const uptimePct = totalChecks === 0 ? 100 : parseFloat(((successChecks / totalChecks) * 100).toFixed(4));
+
+    // Latency stats
+    const latencies = runs.map((r) => r.latencyMs).filter((l): l is number => l !== null && l !== undefined);
+    const avgLatencyMs =
+      latencies.length > 0
+        ? Math.round(latencies.reduce((a, b) => a + b, 0) / latencies.length)
+        : null;
+    const p95LatencyMs =
+      latencies.length > 0
+        ? (() => {
+            const sorted = [...latencies].sort((a, b) => a - b);
+            const idx = Math.floor(sorted.length * 0.95);
+            return sorted[Math.min(idx, sorted.length - 1)];
+          })()
+        : null;
+
+    // Incident + downtime computation (ok→fail transitions)
+    let incidents = 0;
+    let totalDowntimeMinutes = 0;
+    let longestOutageMinutes = 0;
+    let outageStart: Date | null = null;
+    let prevOk = true;
+
+    for (const run of runs) {
+      if (prevOk && !run.ok) {
+        // Start of an outage
+        incidents += 1;
+        outageStart = run.checkedAt;
+      } else if (!prevOk && run.ok) {
+        // End of an outage
+        if (outageStart !== null) {
+          const durationMin = (run.checkedAt.getTime() - outageStart.getTime()) / 60_000;
+          totalDowntimeMinutes += durationMin;
+          if (durationMin > longestOutageMinutes) longestOutageMinutes = durationMin;
+          outageStart = null;
+        }
+      }
+      prevOk = run.ok;
+    }
+
+    // If still in outage at end of period
+    if (outageStart !== null) {
+      const durationMin = (now.getTime() - outageStart.getTime()) / 60_000;
+      totalDowntimeMinutes += durationMin;
+      if (durationMin > longestOutageMinutes) longestOutageMinutes = durationMin;
+    }
+
+    const slaTarget = monitor.slaTarget !== null ? Number(monitor.slaTarget) : null;
+    const slaCompliant = slaTarget !== null ? uptimePct >= slaTarget : null;
+
+    return {
+      certificateId: `PD-${randomUUID().replace(/-/g, '').slice(0, 16).toUpperCase()}`,
+      monitorId: monitor.id,
+      monitorName: monitor.name,
+      monitorTarget: monitor.target ?? '',
+      monitorType: monitor.type,
+      issuedAt: now.toISOString(),
+      periodDays: safeDays,
+      periodStart: periodStart.toISOString(),
+      periodEnd: now.toISOString(),
+      uptimePct,
+      avgLatencyMs,
+      p95LatencyMs,
+      totalChecks,
+      successChecks,
+      failedChecks,
+      totalDowntimeMinutes: Math.round(totalDowntimeMinutes),
+      longestOutageMinutes: Math.round(longestOutageMinutes),
+      incidents,
+      slaTarget,
+      slaCompliant,
+      title: options.title ?? 'Uptime Certificate',
+    };
+  }
+
+  // ─── Uptime Certificate ───────────────────────────────────────────────────
+
+  // HTML escape helper for certificate generation
+  private _certEscapeHtml(str: string): string {
+    return str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+}
+

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MonitorsService } from './monitors.service';
+import { MonitorsAnalyticsService } from './monitors-analytics.service';
 
 // Minimal mock for PrismaService
 function makePrisma(overrides: Record<string, unknown> = {}) {
@@ -33,15 +33,9 @@ function makePrisma(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function makeService(prismaOverrides: Record<string, unknown> = {}): MonitorsService {
+function makeService(prismaOverrides: Record<string, unknown> = {}): MonitorsAnalyticsService {
   const prisma = makePrisma(prismaOverrides);
-  return new MonitorsService(
-    prisma as never,
-    {} as never,
-    {} as never,
-    {} as never,
-    {} as never,
-  );
+  return new (MonitorsAnalyticsService as unknown as new (...args: unknown[]) => MonitorsAnalyticsService)(prisma as never);
 }
 
 describe('MonitorsService.dependencyGraph', () => {

@@ -4,7 +4,7 @@
  * Covers: create (default), update (clamping), bulk edit, list/get mapping.
  */
 import { describe, it, expect, vi } from 'vitest';
-import { MonitorsService } from './monitors.service';
+import { MonitorsCrudService } from './monitors-crud.service';
 import type { ChecksService } from '../checks/checks.service';
 import type { AuditService } from '../common/audit.service';
 import type { RealtimeEvents } from '../realtime/realtime.events';
@@ -128,7 +128,7 @@ function buildPrisma(monitorOverrides: Record<string, unknown> = {}) {
 }
 
 function makeService(prisma: object) {
-  return new MonitorsService(
+  return new (MonitorsCrudService as unknown as new (...args: unknown[]) => MonitorsCrudService)(
     prisma as never,
     { listPlugins: vi.fn().mockReturnValue([]), runMonitor: vi.fn() } as unknown as ChecksService,
     { log: vi.fn() } as unknown as AuditService,

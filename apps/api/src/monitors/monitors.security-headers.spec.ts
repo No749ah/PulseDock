@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi } from 'vitest';
-import { MonitorsService } from './monitors.service';
+import { MonitorsDiagnosticsService } from './monitors-diagnostics.service';
 import { ChecksService } from '../checks/checks.service';
 import { AuditService } from '../common/audit.service';
 import { RealtimeEvents } from '../realtime/realtime.events';
@@ -46,13 +46,7 @@ function makePrisma(monitors: ReturnType<typeof makeMonitorRow>[]) {
 }
 
 function makeService(prisma: ReturnType<typeof makePrisma>) {
-  return new MonitorsService(
-    prisma as never,
-    { listPlugins: vi.fn().mockReturnValue([]), runMonitor: vi.fn() } as unknown as ChecksService,
-    { log: vi.fn() } as unknown as AuditService,
-    { emitMonitorUpdate: vi.fn(), emitCheckResult: vi.fn() } as unknown as RealtimeEvents,
-    {} as unknown as VersionDetectionService,
-  );
+  return new (MonitorsDiagnosticsService as unknown as new (...args: unknown[]) => MonitorsDiagnosticsService)(prisma as never);
 }
 
 // ─── Standard header set used in tests ────────────────────────────────────────

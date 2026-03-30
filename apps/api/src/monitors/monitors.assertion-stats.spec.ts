@@ -10,7 +10,7 @@
  */
 import { NotFoundException } from '@nestjs/common';
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { MonitorsService } from './monitors.service';
+import { MonitorsAnalyticsService } from './monitors-analytics.service';
 
 function makePrisma() {
   return {
@@ -44,9 +44,9 @@ function makePrisma() {
   };
 }
 
-function makeService(prismaOverrides?: Partial<ReturnType<typeof makePrisma>>): MonitorsService {
+function makeService(prismaOverrides?: Partial<ReturnType<typeof makePrisma>>): MonitorsAnalyticsService {
   const prisma = { ...makePrisma(), ...prismaOverrides };
-  return new MonitorsService(prisma as never, {} as never, {} as never, {} as never, {} as never);
+  return new (MonitorsAnalyticsService as unknown as new (...args: unknown[]) => MonitorsAnalyticsService)(prisma as never);
 }
 
 function makeRun(overrides: {
@@ -67,7 +67,7 @@ function makeRun(overrides: {
 
 describe('MonitorsService.getAssertionStats()', () => {
   let prisma: ReturnType<typeof makePrisma>;
-  let service: MonitorsService;
+  let service: MonitorsAnalyticsService;
 
   beforeEach(() => {
     prisma = makePrisma();

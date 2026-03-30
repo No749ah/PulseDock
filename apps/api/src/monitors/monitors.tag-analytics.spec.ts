@@ -9,7 +9,7 @@
  * 6. health classification correct (>99%=healthy, 95-99%=degraded, <95%=critical)
  */
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import { MonitorsService } from './monitors.service';
+import { MonitorsAnalyticsService } from './monitors-analytics.service';
 
 function makePrisma() {
   return {
@@ -43,9 +43,9 @@ function makePrisma() {
   };
 }
 
-function makeService(prismaOverrides?: Partial<ReturnType<typeof makePrisma>>): MonitorsService {
+function makeService(prismaOverrides?: Partial<ReturnType<typeof makePrisma>>): MonitorsAnalyticsService {
   const prisma = { ...makePrisma(), ...prismaOverrides };
-  return new MonitorsService(prisma as never, {} as never, {} as never, {} as never, {} as never);
+  return new (MonitorsAnalyticsService as unknown as new (...args: unknown[]) => MonitorsAnalyticsService)(prisma as never);
 }
 
 const TAG_API = { id: 'tag-api', name: 'API', color: '#10b981' };
@@ -64,7 +64,7 @@ function makeRun(monitorId: string, ok: boolean, latencyMs = 100) {
 
 describe('MonitorsService.getTagAnalytics()', () => {
   let prisma: ReturnType<typeof makePrisma>;
-  let service: MonitorsService;
+  let service: MonitorsAnalyticsService;
 
   beforeEach(() => {
     prisma = makePrisma();

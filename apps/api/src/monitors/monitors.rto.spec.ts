@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
-import { MonitorsService } from './monitors.service';
+import { MonitorsCrudService } from './monitors-crud.service';
 
 function makeMonitor(overrides: Record<string, unknown> = {}) {
   return {
@@ -101,7 +101,7 @@ function makePrisma(monitor: ReturnType<typeof makeMonitor> | null = makeMonitor
 }
 
 function makeService(prisma: ReturnType<typeof makePrisma>) {
-  return new MonitorsService(
+  return new (MonitorsCrudService as unknown as new (...args: unknown[]) => MonitorsCrudService)(
     prisma as any,
     { run: vi.fn(), runMonitor: vi.fn(), listPlugins: vi.fn().mockReturnValue([]) } as any,
     { log: vi.fn() } as any,
@@ -112,7 +112,7 @@ function makeService(prisma: ReturnType<typeof makePrisma>) {
 
 describe('MonitorsService - monitorUptime() RTO fields', () => {
   let prisma: ReturnType<typeof makePrisma>;
-  let service: MonitorsService;
+  let service: MonitorsCrudService;
 
   beforeEach(() => {
     prisma = makePrisma();

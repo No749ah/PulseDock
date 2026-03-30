@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
-import { MonitorsService } from './monitors.service';
+import { MonitorsAnalyticsService } from './monitors-analytics.service';
 
 // Minimal mock of PrismaService for geo-stats tests
 function makeService(overrides: {
   monitorFindFirst?: (args: unknown) => unknown;
   monitorRunFindMany?: (args: unknown) => unknown;
-}): MonitorsService {
+}): MonitorsAnalyticsService {
   const prismaMock = {
     monitor: {
       findFirst: overrides.monitorFindFirst ?? ((_args: unknown) => ({ id: 'mon1', userId: 'user1' })),
@@ -16,13 +16,7 @@ function makeService(overrides: {
     },
   };
   // Build a minimal service with only what geoStats uses
-  const svc = new MonitorsService(
-    prismaMock as never,
-    null as never,
-    null as never,
-    null as never,
-    null as never,
-  );
+  const svc = new (MonitorsAnalyticsService as unknown as new (...args: unknown[]) => MonitorsAnalyticsService)(prismaMock as never);
   return svc;
 }
 

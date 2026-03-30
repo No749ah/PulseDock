@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { MonitorsService } from './monitors.service';
+import { MonitorsDiagnosticsService } from './monitors-diagnostics.service';
 
 type MockMonitor = {
   id: string; name: string; type: string; intervalSec: number | null; cronExpression: string | null;
@@ -8,13 +8,13 @@ type MockMonitor = {
 type MockRun = { monitorId: string; ok: boolean; checkedAt: Date };
 type MockIncident = { id: string; createdAt: Date; monitors: Array<{ monitorId: string }> };
 
-function buildService(monitors: MockMonitor[], runs: MockRun[] = [], incidents: MockIncident[] = []): MonitorsService {
+function buildService(monitors: MockMonitor[], runs: MockRun[] = [], incidents: MockIncident[] = []): MonitorsDiagnosticsService {
   const prisma = {
     monitor: { findMany: vi.fn().mockResolvedValue(monitors) },
     monitorRun: { findMany: vi.fn().mockResolvedValue(runs) },
     incident: { findMany: vi.fn().mockResolvedValue(incidents) },
   };
-  return new MonitorsService(prisma as never, {} as never, {} as never, {} as never, {} as never);
+  return new (MonitorsDiagnosticsService as unknown as new (...args: unknown[]) => MonitorsDiagnosticsService)(prisma as never);
 }
 
 function makeDate(daysAgo: number, minutesAgo = 0): Date {

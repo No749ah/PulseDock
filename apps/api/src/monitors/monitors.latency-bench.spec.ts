@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { MonitorsService } from './monitors.service';
+import { MonitorsAnalyticsService } from './monitors-analytics.service';
 
 type MockMonitor = { id: string; name: string; type: string; target: string; latencyAlertMs: number | null; latencyBudgetMs: number | null };
 type MockRun = { monitorId: string; latencyMs: number | null; checkedAt: Date };
@@ -8,12 +8,12 @@ function makeDate(daysAgo: number): Date {
   return new Date(Date.now() - daysAgo * 24 * 60 * 60 * 1000);
 }
 
-function buildService(monitors: MockMonitor[], runs: MockRun[]): MonitorsService {
+function buildService(monitors: MockMonitor[], runs: MockRun[]): MonitorsAnalyticsService {
   const prisma = {
     monitor: { findMany: vi.fn().mockResolvedValue(monitors) },
     monitorRun: { findMany: vi.fn().mockResolvedValue(runs) },
   };
-  return new MonitorsService(prisma as never, {} as never, {} as never, {} as never, {} as never);
+  return new (MonitorsAnalyticsService as unknown as new (...args: unknown[]) => MonitorsAnalyticsService)(prisma as never);
 }
 
 describe('MonitorsService.latencyBenchmark', () => {

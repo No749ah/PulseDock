@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MonitorsService } from './monitors.service';
+import { MonitorsSlaService } from './monitors-sla.service';
 
 function makeMonitor(overrides: Record<string, unknown> = {}) {
   return {
@@ -90,18 +90,12 @@ function makePrisma(monitors: ReturnType<typeof makeMonitor>[] = [makeMonitor()]
 }
 
 function makeService(prisma: ReturnType<typeof makePrisma>) {
-  return new MonitorsService(
-    prisma as any,
-    { run: vi.fn(), runMonitor: vi.fn(), listPlugins: vi.fn().mockReturnValue([]) } as any,
-    { fire: vi.fn() } as any,
-    { monitorCreated: vi.fn(), monitorUpdated: vi.fn(), monitorDeleted: vi.fn() } as any,
-    { log: vi.fn() } as any,
-  );
+  return new (MonitorsSlaService as unknown as new (...args: unknown[]) => MonitorsSlaService)(prisma as any);
 }
 
 describe('MonitorsService - slaDashboard', () => {
   let prisma: ReturnType<typeof makePrisma>;
-  let service: MonitorsService;
+  let service: MonitorsSlaService;
 
   beforeEach(() => {
     prisma = makePrisma();

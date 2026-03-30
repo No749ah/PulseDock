@@ -7,7 +7,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MonitorsService } from './monitors.service';
+import { MonitorsAnalyticsService } from './monitors-analytics.service';
 
 // ── helpers ──────────────────────────────────────────────────────────────
 
@@ -34,13 +34,7 @@ function makePrisma(monitors: { id: string; name: string; type: string }[], runs
 }
 
 function makeService(prisma: ReturnType<typeof makePrisma>) {
-  return new (MonitorsService as any)(
-    prisma,
-    {} as any, // checksService
-    {} as any, // audit
-    {} as any, // realtime
-    {} as any, // versionDetection
-  ) as MonitorsService;
+  return new (MonitorsAnalyticsService as unknown as new (...args: unknown[]) => MonitorsAnalyticsService)(prisma) as MonitorsService;
 }
 
 // ── tests ─────────────────────────────────────────────────────────────────

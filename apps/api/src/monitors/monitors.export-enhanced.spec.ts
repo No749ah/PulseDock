@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
-import { MonitorsService } from './monitors.service';
+import { MonitorsCrudService } from './monitors-crud.service';
 
 type PrismaMonitor = { id: string; userId: string; name: string };
 type PrismaRun = {
@@ -40,7 +40,7 @@ function makeRun(overrides: Partial<PrismaRun> = {}): PrismaRun {
   };
 }
 
-function buildService(monitor: PrismaMonitor | null, runs: PrismaRun[]): MonitorsService {
+function buildService(monitor: PrismaMonitor | null, runs: PrismaRun[]): MonitorsCrudService {
   const prisma = {
     monitor: {
       findFirst: vi.fn().mockResolvedValue(monitor),
@@ -49,7 +49,7 @@ function buildService(monitor: PrismaMonitor | null, runs: PrismaRun[]): Monitor
       findMany: vi.fn().mockResolvedValue(runs),
     },
   };
-  return new MonitorsService(prisma as never, {} as never, {} as never, {} as never, {} as never);
+  return new (MonitorsCrudService as unknown as new (...args: unknown[]) => MonitorsCrudService)(prisma as never, {} as never, {} as never, {} as never, {} as never);
 }
 
 describe('MonitorsService.exportMonitorRunsEnhanced', () => {

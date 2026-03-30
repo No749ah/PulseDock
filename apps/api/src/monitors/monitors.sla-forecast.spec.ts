@@ -8,12 +8,13 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { MonitorsService } from './monitors.service';
+import { MonitorsSlaService } from './monitors-sla.service';
 import { PrismaService } from '../common/prisma.service';
 import { ChecksService } from '../checks/checks.service';
 import { AuditService } from '../common/audit.service';
 import { RealtimeEvents } from '../realtime/realtime.events';
 import { VersionDetectionService } from './version-detection.service';
+import { MonitorsService } from './monitors.service';
 
 // ── Helper: build a minimal Prisma mock ───────────────────────────────────────
 
@@ -41,10 +42,10 @@ function buildPrismaMock(opts: {
   };
 }
 
-async function buildService(prisma: object): Promise<MonitorsService> {
+async function buildService(prisma: object): Promise<MonitorsSlaService> {
   const module: TestingModule = await Test.createTestingModule({
     providers: [
-      MonitorsService,
+      MonitorsSlaService,
       { provide: PrismaService, useValue: prisma },
       { provide: ChecksService, useValue: {} },
       { provide: AuditService, useValue: { log: vi.fn() } },
@@ -52,7 +53,7 @@ async function buildService(prisma: object): Promise<MonitorsService> {
       { provide: VersionDetectionService, useValue: {} },
     ],
   }).compile();
-  return module.get(MonitorsService);
+  return module.get(MonitorsSlaService);
 }
 
 const USER_ID = 'user-1';

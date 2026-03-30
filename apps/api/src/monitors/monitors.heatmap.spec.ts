@@ -1,14 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MonitorsService } from './monitors.service';
+import { MonitorsAnalyticsService } from './monitors-analytics.service';
 
 function makeService(prismaMock: Record<string, unknown>) {
-  return new (MonitorsService as unknown as new (...args: unknown[]) => MonitorsService)(
-    prismaMock,
-    {} as never,
-    {} as never,
-    {} as never,
-    {} as never,
-  );
+  return new (MonitorsAnalyticsService as unknown as new (...args: unknown[]) => MonitorsAnalyticsService)(prismaMock);
 }
 
 const today = new Date();

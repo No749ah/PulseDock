@@ -6,7 +6,7 @@
 import { describe, it, expect, vi } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import { MonitorsService } from './monitors.service';
+import { MonitorsAnalyticsService } from './monitors-analytics.service';
 import { VersionDetectionService } from './version-detection.service';
 import { PrismaService } from '../common/prisma.service';
 import { ChecksService } from '../checks/checks.service';
@@ -39,7 +39,7 @@ function buildPrismaMock(opts: {
 async function buildService(prisma: object): Promise<MonitorsService> {
   const module: TestingModule = await Test.createTestingModule({
     providers: [
-      MonitorsService,
+      MonitorsAnalyticsService,
       { provide: PrismaService, useValue: prisma },
       {
         provide: ChecksService,
@@ -50,7 +50,7 @@ async function buildService(prisma: object): Promise<MonitorsService> {
       { provide: VersionDetectionService, useValue: {} },
     ],
   }).compile();
-  return module.get<MonitorsService>(MonitorsService);
+  return module.get<MonitorsAnalyticsService>(MonitorsAnalyticsService);
 }
 
 describe('MonitorsService – metricHistory', () => {

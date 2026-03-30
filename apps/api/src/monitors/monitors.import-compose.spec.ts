@@ -1,20 +1,14 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { BadRequestException } from '@nestjs/common';
-import { MonitorsService } from './monitors.service';
+import { MonitorsExportService } from './monitors-export.service';
 
 // Minimal stub for MonitorsService — importFromCompose has no Prisma dependency
-function makeService(): MonitorsService {
-  return new MonitorsService(
-    null as never,
-    null as never,
-    null as never,
-    null as never,
-    null as never,
-  );
+function makeService(): MonitorsExportService {
+  return new (MonitorsExportService as unknown as new (...args: unknown[]) => MonitorsExportService)(null as never, null as never, {} as never);
 }
 
 describe('MonitorsService.importFromCompose', () => {
-  let service: MonitorsService;
+  let service: MonitorsExportService;
 
   beforeEach(() => {
     service = makeService();

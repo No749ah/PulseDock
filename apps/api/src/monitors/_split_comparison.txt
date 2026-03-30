@@ -1,0 +1,502 @@
+
+  // ─── Monitor Comparison ─────────────────────────────────────────────────
+
+  async compareMonitors(userId: string, monitorIds: string[], days: number) {
+    // Validate inputs
+    if (monitorIds.length < 2) {
+      throw new BadRequestException('At least 2 monitor IDs are required for comparison');
+    }
+    if (monitorIds.length > 4) {
+      throw new BadRequestException('At most 4 monitor IDs can be compared at once');
+    }
+    const clampedDays = Math.max(1, Math.min(90, days));
+
+    // Fetch monitors belonging to the user
+    const monitors = await this.prisma.monitor.findMany({
+      where: { id: { in: monitorIds }, userId },
+      select: { id: true, name: true, type: true, target: true },
+    });
+
+    if (monitors.length !== monitorIds.length) {
+      const found = new Set(monitors.map((m) => m.id));
+      const missing = monitorIds.filter((id) => !found.has(id));
+      throw new BadRequestException(`Monitors not found or not owned by you: ${missing.join(', ')}`);
+    }
+
+    const now = new Date();
+    const from = new Date(now.getTime() - clampedDays * 86_400_000);
+
+    // Fetch runs for all monitors in one query
+    const runs = await this.prisma.monitorRun.findMany({
+      where: {
+        monitorId: { in: monitorIds },
+        checkedAt: { gte: from },
+      },
+      select: { monitorId: true, ok: true, latencyMs: true, checkedAt: true },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    // Group runs by monitor
+    const runsByMonitor = new Map<string, typeof runs>();
+    for (const r of runs) {
+      let arr = runsByMonitor.get(r.monitorId);
+      if (!arr) { arr = []; runsByMonitor.set(r.monitorId, arr); }
+      arr.push(r);
+    }
+
+    // Helper: group runs by date string
+    const groupByDate = (monitorRuns: typeof runs) => {
+      const map = new Map<string, typeof runs>();
+      for (const r of monitorRuns) {
+        const dateStr = r.checkedAt.toISOString().slice(0, 10);
+        let arr = map.get(dateStr);
+        if (!arr) { arr = []; map.set(dateStr, arr); }
+        arr.push(r);
+      }
+      return map;
+    };
+
+    // Helper: compute p95
+    const p95 = (values: number[]) => {
+      if (values.length === 0) return null;
+      const sorted = [...values].sort((a, b) => a - b);
+      const idx = Math.ceil(sorted.length * 0.95) - 1;
+      return sorted[Math.max(0, idx)];
+    };
+
+    // Helper: longest consecutive failure streak in minutes
+    const longestOutage = (monitorRuns: typeof runs) => {
+      if (monitorRuns.length === 0) return 0;
+      let maxMin = 0;
+      let streakStart: Date | null = null;
+      let streakEnd: Date | null = null;
+      for (const r of monitorRuns) {
+        if (!r.ok) {
+          if (!streakStart) streakStart = r.checkedAt;
+          streakEnd = r.checkedAt;
+        } else {
+          if (streakStart && streakEnd) {
+            const min = (streakEnd.getTime() - streakStart.getTime()) / 60_000;
+            if (min > maxMin) maxMin = min;
+          }
+          streakStart = null;
+          streakEnd = null;
+        }
+      }
+      // Check final streak
+      if (streakStart && streakEnd) {
+        const min = (streakEnd.getTime() - streakStart.getTime()) / 60_000;
+        if (min > maxMin) maxMin = min;
+      }
+      return Math.round(maxMin);
+    };
+
+    // Build per-monitor stats
+    const monitorResults = monitors.map((m) => {
+      const mRuns = runsByMonitor.get(m.id) ?? [];
+      const totalChecks = mRuns.length;
+      const totalFailures = mRuns.filter((r) => !r.ok).length;
+      const uptimePct = totalChecks === 0 ? 100 : Math.round(((totalChecks - totalFailures) / totalChecks) * 10000) / 100;
+
+      const isHttp = ['HTTP', 'BROWSER'].includes(m.type);
+      const latencies = mRuns.map((r) => r.latencyMs).filter((v): v is number => v !== null);
+      const avgLatencyMs = isHttp && latencies.length > 0
+        ? Math.round(latencies.reduce((s, v) => s + v, 0) / latencies.length)
+        : null;
+      const p95LatencyMs = isHttp ? p95(latencies) : null;
+      const longestOutageMin = longestOutage(mRuns);
+
+      // Daily breakdown
+      const dailyMap = groupByDate(mRuns);
+
+      // Generate all dates in range
+      const allDates: string[] = [];
+      for (let d = new Date(from); d <= now; d = new Date(d.getTime() + 86_400_000)) {
+        allDates.push(d.toISOString().slice(0, 10));
+      }
+
+      const dailyUptime = allDates.map((date) => {
+        const dayRuns = dailyMap.get(date) ?? [];
+        const total = dayRuns.length;
+        const fails = dayRuns.filter((r) => !r.ok).length;
+        const dayLatencies = dayRuns.map((r) => r.latencyMs).filter((v): v is number => v !== null);
+        return {
+          date,
+          uptimePct: total === 0 ? 100 : Math.round(((total - fails) / total) * 10000) / 100,
+          avgLatencyMs: isHttp && dayLatencies.length > 0
+            ? Math.round(dayLatencies.reduce((s, v) => s + v, 0) / dayLatencies.length)
+            : null,
+        };
+      });
+
+      const dailyLatency = allDates.map((date) => {
+        const dayRuns = dailyMap.get(date) ?? [];
+        const dayLatencies = dayRuns.map((r) => r.latencyMs).filter((v): v is number => v !== null);
+        return {
+          date,
+          avgMs: isHttp && dayLatencies.length > 0
+            ? Math.round(dayLatencies.reduce((s, v) => s + v, 0) / dayLatencies.length)
+            : null,
+          p95Ms: isHttp ? p95(dayLatencies) : null,
+        };
+      });
+
+      return {
+        id: m.id,
+        name: m.name,
+        type: m.type,
+        target: m.target,
+        uptimePct,
+        avgLatencyMs,
+        p95LatencyMs,
+        totalChecks,
+        totalFailures,
+        longestOutageMin,
+        dailyUptime,
+        dailyLatency,
+      };
+    });
+
+    // Comparison metrics
+    const bestUptimeMonitor = monitorResults.reduce((best, m) => m.uptimePct > best.uptimePct ? m : best);
+    const httpMonitors = monitorResults.filter((m) => m.avgLatencyMs !== null);
+    const bestLatency = httpMonitors.length > 0
+      ? (() => {
+          const best = httpMonitors.reduce((b, m) => (m.avgLatencyMs! < b.avgLatencyMs! ? m : b));
+          return { monitorId: best.id, value: best.avgLatencyMs! };
+        })()
+      : null;
+    const mostReliable = monitorResults.reduce((best, m) =>
+      m.longestOutageMin < best.longestOutageMin ? m : best,
+    );
+
+    // Pearson correlations between all pairs
+    const correlations: Array<{
+      monitorA: string;
+      monitorB: string;
+      coefficient: number;
+      interpretation: 'strong_positive' | 'moderate_positive' | 'weak' | 'moderate_negative' | 'strong_negative';
+    }> = [];
+
+    for (let i = 0; i < monitorResults.length; i++) {
+      for (let j = i + 1; j < monitorResults.length; j++) {
+        const a = monitorResults[i];
+        const b = monitorResults[j];
+        const xs = a.dailyUptime.map((d) => d.uptimePct);
+        const ys = b.dailyUptime.map((d) => d.uptimePct);
+        const coeff = pearsonCorrelation(xs, ys);
+        let interpretation: typeof correlations[0]['interpretation'];
+        if (coeff >= 0.7) interpretation = 'strong_positive';
+        else if (coeff >= 0.3) interpretation = 'moderate_positive';
+        else if (coeff >= -0.3) interpretation = 'weak';
+        else if (coeff >= -0.7) interpretation = 'moderate_negative';
+        else interpretation = 'strong_negative';
+        correlations.push({ monitorA: a.id, monitorB: b.id, coefficient: Math.round(coeff * 1000) / 1000, interpretation });
+      }
+    }
+
+    return {
+      monitors: monitorResults,
+      comparison: {
+        bestUptime: { monitorId: bestUptimeMonitor.id, value: bestUptimeMonitor.uptimePct },
+        bestLatency,
+        mostReliable: { monitorId: mostReliable.id, longestOutageMin: mostReliable.longestOutageMin },
+        correlations,
+      },
+      period: {
+        days: clampedDays,
+        from: from.toISOString(),
+        to: now.toISOString(),
+      },
+    };
+  }
+
+}
+
+// ─── Pearson Correlation Helper ───────────────────────────────────────────────
+
+/**
+ * Compute Pearson correlation coefficient between two arrays.
+ * Returns a value between -1 and 1. Returns 0 for degenerate cases.
+ */
+export function pearsonCorrelation(xs: number[], ys: number[]): number {
+  const n = Math.min(xs.length, ys.length);
+
+
+  // ─── Latency Distribution ────────────────────────────────────────────────
+
+  async getLatencyDistribution(
+    userId: string,
+    monitorId: string,
+    period: '24h' | '7d' | '30d' = '7d',
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, userId },
+      select: { id: true },
+    });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const periodMs: Record<string, number> = {
+      '24h': 24 * 60 * 60 * 1000,
+      '7d': 7 * 24 * 60 * 60 * 1000,
+      '30d': 30 * 24 * 60 * 60 * 1000,
+    };
+    const rangeMs = periodMs[period] ?? periodMs['7d'];
+    const since = new Date(Date.now() - rangeMs);
+
+    const allRuns = await this.prisma.monitorRun.findMany({
+      where: { monitorId, userId, checkedAt: { gte: since } },
+      select: { ok: true, latencyMs: true, checkedAt: true },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    const totalChecks = allRuns.length;
+    const successRuns = allRuns.filter((r) => r.ok && r.latencyMs !== null);
+    const successChecks = successRuns.length;
+
+    const latencies = successRuns.map((r) => r.latencyMs as number);
+    latencies.sort((a, b) => a - b);
+
+    // Buckets
+    const bucketDefs: Array<{ rangeLabel: string; from: number; to: number }> = [
+      { rangeLabel: '0-50ms', from: 0, to: 50 },
+      { rangeLabel: '50-100ms', from: 50, to: 100 },
+      { rangeLabel: '100-200ms', from: 100, to: 200 },
+      { rangeLabel: '200-500ms', from: 200, to: 500 },
+      { rangeLabel: '500-1s', from: 500, to: 1000 },
+      { rangeLabel: '1-2s', from: 1000, to: 2000 },
+      { rangeLabel: '2-5s', from: 2000, to: 5000 },
+      { rangeLabel: '5s+', from: 5000, to: Infinity },
+    ];
+
+    const buckets = bucketDefs.map((b) => {
+      const count = latencies.filter((l) => l >= b.from && l < b.to).length;
+      const pct = successChecks === 0 ? 0 : Math.round((count / successChecks) * 1000) / 10;
+      return { rangeLabel: b.rangeLabel, from: b.from, to: b.to === Infinity ? -1 : b.to, count, pct };
+    });
+
+    // Percentiles
+    function percentile(sorted: number[], p: number): number | null {
+      if (sorted.length === 0) return null;
+      const idx = Math.max(0, Math.ceil((p / 100) * sorted.length) - 1);
+      return sorted[idx];
+    }
+
+    const percentiles = {
+      p50: percentile(latencies, 50),
+      p75: percentile(latencies, 75),
+      p90: percentile(latencies, 90),
+      p95: percentile(latencies, 95),
+      p99: percentile(latencies, 99),
+    };
+
+    // Hourly avg (0-23 UTC)
+    const hourlyBuckets: Array<number[]> = Array.from({ length: 24 }, () => []);
+    for (const run of successRuns) {
+      const hour = (run.checkedAt as Date).getUTCHours();
+      hourlyBuckets[hour].push(run.latencyMs as number);
+    }
+
+    const hourlyAvg = hourlyBuckets.map((vals, hour) => {
+      if (vals.length === 0) return { hour, avgMs: null, p95Ms: null, count: 0 };
+      const sorted = [...vals].sort((a, b) => a - b);
+      const avg = Math.round(vals.reduce((s, v) => s + v, 0) / vals.length);
+      const p95Idx = Math.max(0, Math.ceil(0.95 * sorted.length) - 1);
+      return { hour, avgMs: avg, p95Ms: sorted[p95Idx], count: vals.length };
+    });
+
+    const checkedRangeMap: Record<string, string> = {
+      '24h': 'Last 24 hours',
+      '7d': 'Last 7 days',
+      '30d': 'Last 30 days',
+    };
+
+    return {
+      buckets,
+      percentiles,
+      hourlyAvg,
+      totalChecks,
+      successChecks,
+      checkedRange: checkedRangeMap[period] ?? 'Last 7 days',
+    };
+  }
+
+
+  /**
+   * Returns a period-over-period comparison for a monitor's latency and uptime.
+   * Compares the current period (last N days) against the prior period (same length before that).
+   * @param userId - The authenticated user's ID
+   * @param monitorId - The monitor to compare
+   * @param period - Comparison window: '24h' | '7d' | '30d'
+   */
+  async getPeriodComparison(userId: string, monitorId: string, period: '24h' | '7d' | '30d' = '7d') {
+    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId }, select: { id: true } });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const periodMs: Record<string, number> = {
+      '24h': 24 * 60 * 60 * 1000,
+      '7d': 7 * 24 * 60 * 60 * 1000,
+      '30d': 30 * 24 * 60 * 60 * 1000,
+    };
+    const rangeMs = periodMs[period] ?? periodMs['7d'];
+    const now = Date.now();
+    const currentFrom = new Date(now - rangeMs);
+    const priorTo = new Date(now - rangeMs);
+    const priorFrom = new Date(now - 2 * rangeMs);
+
+    function computePeriodStats(runs: Array<{ ok: boolean; latencyMs: number | null }>) {
+      const total = runs.length;
+      const successes = runs.filter((r) => r.ok);
+      const uptime = total === 0 ? null : Math.round((successes.length / total) * 10000) / 100;
+      const latencies = successes.filter((r) => r.latencyMs !== null).map((r) => r.latencyMs as number).sort((a, b) => a - b);
+      const avg = latencies.length === 0 ? null : Math.round(latencies.reduce((s, v) => s + v, 0) / latencies.length);
+      const p95 = latencies.length === 0 ? null : latencies[Math.max(0, Math.ceil(0.95 * latencies.length) - 1)];
+      const p50 = latencies.length === 0 ? null : latencies[Math.max(0, Math.ceil(0.5 * latencies.length) - 1)];
+      return { total, successCount: successes.length, uptime, avgMs: avg, p50Ms: p50, p95Ms: p95 };
+    }
+
+    const [currentRuns, priorRuns] = await Promise.all([
+      this.prisma.monitorRun.findMany({ where: { monitorId, userId, checkedAt: { gte: currentFrom } }, select: { ok: true, latencyMs: true } }),
+      this.prisma.monitorRun.findMany({ where: { monitorId, userId, checkedAt: { gte: priorFrom, lt: priorTo } }, select: { ok: true, latencyMs: true } }),
+    ]);
+
+    const current = computePeriodStats(currentRuns);
+    const prior = computePeriodStats(priorRuns);
+
+    function pctChange(curr: number | null, prev: number | null): number | null {
+      if (curr === null || prev === null || prev === 0) return null;
+      return Math.round(((curr - prev) / prev) * 1000) / 10;
+    }
+
+    return {
+      period,
+      current,
+      prior,
+      delta: {
+        uptimePct: pctChange(current.uptime, prior.uptime),
+        avgMsPct: pctChange(current.avgMs, prior.avgMs),
+        p95MsPct: pctChange(current.p95Ms, prior.p95Ms),
+      },
+    };
+  }
+
+
+  // ─── Status Transitions ───────────────────────────────────────────────────
+
+  /**
+   * Returns a list of status transition events for a monitor over a given period.
+   * Each transition represents a change in health level (e.g. green → red, red → green).
+   * Useful for post-mortem analysis and incident root-cause investigation.
+   *
+   * @param userId    - Authenticated user ID (ownership check)
+   * @param monitorId - Monitor ID
+   * @param period    - Lookback window: 24h | 7d | 30d (default 7d)
+   * @returns List of transitions + summary stats (total outages, total downtime, MTTR, MTBF)
+   */
+  async getStatusTransitions(
+    userId: string,
+    monitorId: string,
+    period: '24h' | '7d' | '30d' = '7d',
+  ) {
+    const monitor = await this.prisma.monitor.findFirst({
+      where: { id: monitorId, userId },
+      select: { id: true, name: true },
+    });
+    if (!monitor) throw new NotFoundException('Monitor not found');
+
+    const periodMs: Record<string, number> = {
+      '24h': 24 * 60 * 60 * 1000,
+      '7d': 7 * 24 * 60 * 60 * 1000,
+      '30d': 30 * 24 * 60 * 60 * 1000,
+    };
+    const rangeMs = periodMs[period] ?? periodMs['7d'];
+    const since = new Date(Date.now() - rangeMs);
+
+    // Load all runs in period, ordered oldest→newest
+    const runs = await this.prisma.monitorRun.findMany({
+      where: { monitorId, userId, checkedAt: { gte: since } },
+      select: { ok: true, level: true, message: true, latencyMs: true, checkedAt: true },
+      orderBy: { checkedAt: 'asc' },
+    });
+
+    if (runs.length === 0) {
+      return {
+        transitions: [],
+        summary: { totalOutages: 0, totalDowntimeSec: 0, avgRecoveryTimeSec: null, mtbfSec: null },
+        period,
+        totalRuns: 0,
+      };
+    }
+
+    // Walk the run list and detect level changes
+    type Transition = {
+      from: string;
+      to: string;
+      at: string;
+      message: string | null;
+      latencyMs: number | null;
+      durationSec: number | null; // duration in previous state
+    };
+
+    const transitions: Transition[] = [];
+    let prevLevel = runs[0].level ?? (runs[0].ok ? 'green' : 'red');
+    let prevAt = new Date(runs[0].checkedAt).getTime();
+
+    for (let i = 1; i < runs.length; i++) {
+      const run = runs[i];
+      const currentLevel = run.level ?? (run.ok ? 'green' : 'red');
+      const currentAt = new Date(run.checkedAt).getTime();
+
+      if (currentLevel !== prevLevel) {
+        transitions.push({
+          from: prevLevel,
+          to: currentLevel,
+          at: new Date(currentAt).toISOString(),
+          message: run.message ?? null,
+          latencyMs: run.latencyMs ?? null,
+          durationSec: Math.round((currentAt - prevAt) / 1000),
+        });
+        prevLevel = currentLevel;
+        prevAt = currentAt;
+      }
+    }
+
+    // Summary stats
+    const outageTransitions = transitions.filter((t) => t.from === 'green' && t.to !== 'green');
+    const recoveryTransitions = transitions.filter((t) => t.from !== 'green' && t.to === 'green');
+
+    const totalOutages = outageTransitions.length;
+
+    // Total downtime: sum of durations of non-green → green transitions
+    const totalDowntimeSec = recoveryTransitions.reduce((sum, t) => sum + (t.durationSec ?? 0), 0);
+
+    const avgRecoveryTimeSec = recoveryTransitions.length > 0
+      ? Math.round(totalDowntimeSec / recoveryTransitions.length)
+      : null;
+
+    // MTBF: time between outage starts
+    let mtbfSec: number | null = null;
+    if (outageTransitions.length >= 2) {
+      const outageTimestamps = outageTransitions.map((t) => new Date(t.at).getTime());
+      let intervalSum = 0;
+      for (let i = 1; i < outageTimestamps.length; i++) {
+        intervalSum += outageTimestamps[i] - outageTimestamps[i - 1];
+      }
+      mtbfSec = Math.round(intervalSum / (outageTimestamps.length - 1) / 1000);
+    }
+
+    const checkedRangeMap: Record<string, string> = {
+      '24h': 'Last 24 hours',
+      '7d': 'Last 7 days',
+      '30d': 'Last 30 days',
+    };
+
+    return {
+      transitions,
+      summary: { totalOutages, totalDowntimeSec, avgRecoveryTimeSec, mtbfSec },
+      period,
+      checkedRange: checkedRangeMap[period] ?? 'Last 7 days',
+      totalRuns: runs.length,
+      currentStatus: prevLevel,
+    };
+  }

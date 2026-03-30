@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import { NotFoundException } from '@nestjs/common';
-import { MonitorsService } from './monitors.service';
+import { MonitorsDiagnosticsService } from './monitors-diagnostics.service';
 
 function makeMonitor(overrides: Record<string, unknown> = {}) {
   return { id: 'monitor-1', userId: 'user-1', name: 'Test Monitor', ...overrides };
@@ -25,13 +25,7 @@ function makePrisma(
 }
 
 function makeService(prisma: ReturnType<typeof makePrisma>) {
-  return new MonitorsService(
-    prisma as unknown as ConstructorParameters<typeof MonitorsService>[0],
-    null as unknown as ConstructorParameters<typeof MonitorsService>[1],
-    null as unknown as ConstructorParameters<typeof MonitorsService>[2],
-    null as unknown as ConstructorParameters<typeof MonitorsService>[3],
-    null as unknown as ConstructorParameters<typeof MonitorsService>[4],
-  );
+  return new (MonitorsDiagnosticsService as unknown as new (...args: unknown[]) => MonitorsDiagnosticsService)(prisma as unknown as ConstructorParameters<typeof MonitorsDiagnosticsService>[0]);
 }
 
 describe('MonitorsService.redirectChainStats', () => {

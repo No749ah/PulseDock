@@ -8,7 +8,7 @@
 
 import { describe, it, expect, vi } from 'vitest';
 import { BadRequestException, NotFoundException } from '@nestjs/common';
-import { MonitorsService } from './monitors.service';
+import { MonitorsCrudService } from './monitors-crud.service';
 import { ChecksService } from '../checks/checks.service';
 import { AuditService } from '../common/audit.service';
 import { RealtimeEvents } from '../realtime/realtime.events';
@@ -21,7 +21,7 @@ function makeAudit() {
 }
 
 function makeService(prisma: Record<string, unknown>, audit = makeAudit()) {
-  return new MonitorsService(
+  return new (MonitorsCrudService as unknown as new (...args: unknown[]) => MonitorsCrudService)(
     prisma as never,
     { listPlugins: vi.fn().mockReturnValue([]), runMonitor: vi.fn() } as unknown as ChecksService,
     audit,

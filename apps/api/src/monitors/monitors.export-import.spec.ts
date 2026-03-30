@@ -1,16 +1,11 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { BadRequestException } from '@nestjs/common';
-import { MonitorsService } from './monitors.service';
+import { MonitorsExportService } from './monitors-export.service';
 
 // Minimal mock setup for the service
 function makeService(prismaMock: Record<string, unknown>) {
-  return new (MonitorsService as unknown as new (...args: unknown[]) => MonitorsService)(
-    prismaMock,
-    {} as never, // checksService
-    {} as never, // audit
-    {} as never, // realtime
-    {} as never, // versionDetection
-  );
+  return new (MonitorsExportService as unknown as new (...args: unknown[]) => MonitorsExportService)(prismaMock, // checksService
+    {} as never, {} as never);
 }
 
 const mockMonitor = {

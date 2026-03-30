@@ -5,7 +5,7 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
-import { MonitorsService } from './monitors.service';
+import { MonitorsCrudService } from './monitors-crud.service';
 import { VersionDetectionService } from './version-detection.service';
 import { PrismaService } from '../common/prisma.service';
 import { ChecksService } from '../checks/checks.service';
@@ -48,7 +48,7 @@ function buildPrismaMock(ownedMonitorIds: string[]) {
 async function buildService(prisma: object): Promise<MonitorsService> {
   const module: TestingModule = await Test.createTestingModule({
     providers: [
-      MonitorsService,
+      MonitorsCrudService,
       { provide: PrismaService, useValue: prisma },
       {
         provide: ChecksService,
@@ -59,7 +59,7 @@ async function buildService(prisma: object): Promise<MonitorsService> {
       { provide: VersionDetectionService, useValue: {} },
     ],
   }).compile();
-  return module.get<MonitorsService>(MonitorsService);
+  return module.get<MonitorsCrudService>(MonitorsCrudService);
 }
 
 describe('MonitorsService – bulkEdit', () => {

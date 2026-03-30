@@ -2,13 +2,14 @@
  * Unit tests for downtimeCostReport and downtimeCostHistory service methods.
  */
 import { Test, TestingModule } from '@nestjs/testing';
-import { MonitorsService } from './monitors.service';
+import { MonitorsAnalyticsService } from './monitors-analytics.service';
 import { PrismaService } from '../common/prisma.service';
 import { ChecksService } from '../checks/checks.service';
 import { AuditService } from '../common/audit.service';
 import { RealtimeEvents } from '../realtime/realtime.events';
 import { VersionDetectionService } from './version-detection.service';
 import { vi, describe, it, expect, beforeEach } from 'vitest';
+import { MonitorsService } from './monitors.service';
 
 const NOW = new Date('2026-03-29T10:00:00Z');
 
@@ -28,10 +29,10 @@ function buildPrisma(monitorFindMany: object[], runFindMany?: object[], monitorF
   };
 }
 
-async function buildService(prismaMock: object): Promise<MonitorsService> {
+async function buildService(prismaMock: object): Promise<MonitorsAnalyticsService> {
   const module: TestingModule = await Test.createTestingModule({
     providers: [
-      MonitorsService,
+      MonitorsAnalyticsService,
       { provide: PrismaService, useValue: prismaMock },
       { provide: ChecksService, useValue: {} },
       { provide: AuditService, useValue: { log: vi.fn() } },
@@ -39,7 +40,7 @@ async function buildService(prismaMock: object): Promise<MonitorsService> {
       { provide: VersionDetectionService, useValue: {} },
     ],
   }).compile();
-  return module.get(MonitorsService);
+  return module.get(MonitorsAnalyticsService);
 }
 
 describe('MonitorsService.downtimeCostReport', () => {

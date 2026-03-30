@@ -7,7 +7,7 @@
  * and handling of HTTP monitors (no days parsed).
  */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { MonitorsService } from './monitors.service';
+import { MonitorsDiagnosticsService } from './monitors-diagnostics.service';
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
@@ -62,19 +62,13 @@ function makeMonitor(
 
 function buildService(monitors: unknown[]) {
   const prisma = makePrisma(monitors);
-  return new MonitorsService(
-    prisma as never,
-    {} as never, // ChecksService
-    {} as never, // AuditService
-    {} as never, // RealtimeEvents
-    {} as never, // VersionDetectionService
-  );
+  return new (MonitorsDiagnosticsService as unknown as new (...args: unknown[]) => MonitorsDiagnosticsService)(prisma as never);
 }
 
 // ── Tests ──────────────────────────────────────────────────────────────────────
 
 describe('MonitorsService.getSslSummary', () => {
-  let service: MonitorsService;
+  let service: MonitorsDiagnosticsService;
 
   beforeEach(() => {
     service = buildService([

@@ -14,12 +14,13 @@
 import { describe, it, expect, vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
 import { NotFoundException } from '@nestjs/common';
-import { MonitorsService } from './monitors.service';
+import { MonitorsSlaService } from './monitors-sla.service';
 import { VersionDetectionService } from './version-detection.service';
 import { PrismaService } from '../common/prisma.service';
 import { ChecksService } from '../checks/checks.service';
 import { AuditService } from '../common/audit.service';
 import { RealtimeEvents } from '../realtime/realtime.events';
+import { MonitorsService } from './monitors.service';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -54,10 +55,10 @@ function buildPrisma(opts: {
   };
 }
 
-async function buildService(prisma: ReturnType<typeof buildPrisma>): Promise<MonitorsService> {
+async function buildService(prisma: ReturnType<typeof buildPrisma>): Promise<MonitorsSlaService> {
   const module: TestingModule = await Test.createTestingModule({
     providers: [
-      MonitorsService,
+      MonitorsSlaService,
       { provide: PrismaService, useValue: prisma },
       { provide: ChecksService, useValue: {} },
       { provide: AuditService, useValue: { log: vi.fn() } },
@@ -65,7 +66,7 @@ async function buildService(prisma: ReturnType<typeof buildPrisma>): Promise<Mon
       { provide: VersionDetectionService, useValue: {} },
     ],
   }).compile();
-  return module.get(MonitorsService);
+  return module.get(MonitorsSlaService);
 }
 
 // ── Fixtures ───────────────────────────────────────────────────────────────

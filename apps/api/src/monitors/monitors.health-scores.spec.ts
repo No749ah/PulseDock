@@ -11,12 +11,13 @@
  */
 import { describe, it, expect, vi } from 'vitest';
 import { Test, TestingModule } from '@nestjs/testing';
-import { MonitorsService } from './monitors.service';
+import { MonitorsDiagnosticsService } from './monitors-diagnostics.service';
 import { PrismaService } from '../common/prisma.service';
 import { ChecksService } from '../checks/checks.service';
 import { AuditService } from '../common/audit.service';
 import { RealtimeEvents } from '../realtime/realtime.events';
 import { VersionDetectionService } from './version-detection.service';
+import { MonitorsService } from './monitors.service';
 
 // ── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -42,10 +43,10 @@ function makePrisma(opts: {
   };
 }
 
-async function buildService(prisma: ReturnType<typeof makePrisma>): Promise<MonitorsService> {
+async function buildService(prisma: ReturnType<typeof makePrisma>): Promise<MonitorsDiagnosticsService> {
   const module: TestingModule = await Test.createTestingModule({
     providers: [
-      MonitorsService,
+      MonitorsDiagnosticsService,
       { provide: PrismaService, useValue: prisma },
       { provide: ChecksService, useValue: {} },
       { provide: AuditService, useValue: { log: vi.fn() } },
@@ -53,7 +54,7 @@ async function buildService(prisma: ReturnType<typeof makePrisma>): Promise<Moni
       { provide: VersionDetectionService, useValue: {} },
     ],
   }).compile();
-  return module.get(MonitorsService);
+  return module.get(MonitorsDiagnosticsService);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

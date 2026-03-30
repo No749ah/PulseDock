@@ -4,6 +4,12 @@ import { V2SystemController } from './system/system.controller';
 import { V2AlertsController } from './alerts/alerts.controller';
 import { V2ChecksController } from './checks/checks.controller';
 import { MonitorsService } from '../monitors/monitors.service';
+import { MonitorsCrudService } from '../monitors/monitors-crud.service';
+import { MonitorsAnalyticsService } from '../monitors/monitors-analytics.service';
+import { MonitorsSlaService } from '../monitors/monitors-sla.service';
+import { MonitorsDiagnosticsService } from '../monitors/monitors-diagnostics.service';
+import { MonitorsExportService } from '../monitors/monitors-export.service';
+import { MonitorsComparisonService } from '../monitors/monitors-comparison.service';
 import { ChecksService } from '../checks/checks.service';
 import { AuditService } from '../common/audit.service';
 
@@ -27,6 +33,6 @@ import { AuditService } from '../common/audit.service';
  */
 @Module({
   controllers: [V2MonitorsController, V2AlertsController, V2ChecksController, V2SystemController],
-  providers: [MonitorsService, ChecksService, AuditService],
+  providers: [MonitorsService, MonitorsCrudService, MonitorsAnalyticsService, MonitorsSlaService, MonitorsDiagnosticsService, MonitorsExportService, MonitorsComparisonService, ChecksService, AuditService],
 })
 export class V2Module {}

@@ -1,16 +1,10 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { BadRequestException } from '@nestjs/common';
-import { MonitorsService } from './monitors.service';
+import { MonitorsExportService } from './monitors-export.service';
 
 // Minimal stub — previewFromOpenApi and importFromOpenApi have no Prisma dependency for preview
-function makeService(): MonitorsService {
-  const svc = new MonitorsService(
-    null as never,
-    null as never,
-    null as never,
-    null as never,
-    null as never,
-  );
+function makeService(): MonitorsExportService {
+  const svc = new (MonitorsExportService as unknown as new (...args: unknown[]) => MonitorsExportService)(null as never, null as never, {} as never);
   return svc;
 }
 
@@ -44,7 +38,7 @@ const SWAGGER2_SPEC = JSON.stringify({
 });
 
 describe('MonitorsService.previewFromOpenApi', () => {
-  let service: MonitorsService;
+  let service: MonitorsExportService;
 
   beforeEach(() => {
     service = makeService();
@@ -153,16 +147,18 @@ describe('MonitorsService.previewFromOpenApi', () => {
 });
 
 describe('MonitorsService.importFromOpenApi', () => {
-  let service: MonitorsService;
+  let service: MonitorsExportService;
 
   beforeEach(() => {
     service = makeService();
-    // Mock create to avoid Prisma
+    // Mock crud.create to avoid Prisma
     let idCounter = 0;
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    (service as any).create = async (_userId: string, body: { name: string; target: string }) => {
-      idCounter++;
-      return { id: `mock-${idCounter}`, name: body.name, target: body.target };
+    (service as any).crud = {
+      create: async (_userId: string, body: { name: string; target: string }) => {
+        idCounter++;
+        return { id: `mock-${idCounter}`, name: body.name, target: body.target };
+      },
     };
   });
 

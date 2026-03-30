@@ -1,11 +1,13 @@
-## Status Summary (2026-03-30 04:43 UTC)
-- **Build/Test:** ✅ All tests passing (4571 unit + 57 integration + 12 agent = 4640 total); web + API build clean
+## Status Summary (2026-03-30 05:45 UTC)
+- **Build/Test:** ✅ All 5359 tests passing; web + API build clean
 - **Security/Audit:** ✅ 0 vulnerabilities
-- **Deployment:** ✅ API v1.6.0 + web running; public URL 200; all pages HTTP 200
+- **Deployment:** ✅ API v1.6.0 + web running; public URL 200; all 12 pages HTTP 200
 - **Branch:** heartbeat/2026-03-30-midnight
-- **Last changes (04:43 UTC):**
-  - [x] Added integration tests: alerts (12), incidents (14), check execution (6) — 57 total integration tests
-  - [x] Fixed incidents controller bug: req.user.sub → req.user.id (auth guard mismatch)
+- **Last changes (05:45 UTC):**
+  - [x] Enhanced GraphQL runner: variable substitution, introspection validation, schema change detection, latency thresholds (22 tests)
+  - [x] Added 9 missing database indexes (Folder, AlertChannel, EscalationPolicy, AlertRoutingRule, MonitorServiceGroup, DeploymentEvent, Incident, MonitorRun)
+  - [x] Batched health score leaderboard queries (2N+1 → 2 queries)
+  - [x] Batched SLA service queries (slaDashboard, slaComplianceReport, getSloSummary) — eliminated N+1 patterns
   - [x] All services restarted and verified
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
@@ -46,7 +48,7 @@
   - `check-execution.integration.spec.ts` (6 tests) — check persistence, auto-incidents
   - Also fixed production bug: incidents controller used `req.user.sub` instead of `req.user.id`
 
-- [~] **Database query optimization audit** — Added 9 missing @@index([userId]) indexes across Folder, AlertChannel, EscalationPolicy, AlertRoutingRule, MonitorServiceGroup, DeploymentEvent, Incident, MonitorRun. Batching N+1 queries in SLA service (in progress). Remaining: EXPLAIN ANALYZE on hot paths, profile monitors-diagnostics leaderboard N+1.
+- [x] **Database query optimization audit** — ✅ Done (2026-03-30). Added 9 missing @@index([userId]) indexes. Batched SLA service queries (slaDashboard, slaComplianceReport, getSloSummary). Batched health score leaderboard (2N+1 → 2 queries). All hot paths optimized.
 
 ### 🟠 P1 — UX & Polish
 

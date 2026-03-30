@@ -57,6 +57,8 @@ interface DeliveryHistory {
   deliveries: AlertDelivery[];
 }
 import { PERIOD_LABELS, formatDuration } from "./components/types";
+import { MonitorTabBar } from "./components/MonitorTabBar";
+import type { TabDef } from "./components/MonitorTabBar";
 
 // ── Latency Distribution Types ───────────────────────────────────────────────
 
@@ -1165,185 +1167,57 @@ export default function MonitorDetailPage() {
           </div>
         )}
 
-        {/* Main Tab Navigation */}
-        <div className="flex gap-1 p-1 bg-white/3 border border-white/8 rounded-xl overflow-x-auto scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent max-w-full">
-          <button
-            onClick={() => setActiveMainTab("overview")}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors ${
-              activeMainTab === "overview"
-                ? "bg-white/10 text-text-primary"
-                : "text-text-muted hover:text-text-secondary"
-            }`}
-          >
-            Overview
-          </button>
-          <button
-            onClick={() => setActiveMainTab("slo")}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-              activeMainTab === "slo"
-                ? "bg-white/10 text-text-primary"
-                : "text-text-muted hover:text-text-secondary"
-            }`}
-          >
-            <Gauge className="w-3.5 h-3.5" />
-            SLO / SLI
-          </button>
-          {(monitor.type === "HTTP" || monitor.type === "BROWSER" || monitor.type === "TCP") && (
-            <button
-              onClick={async () => {
-                setActiveMainTab("performance");
+        {/* Main Tab Navigation — primary tabs always visible, secondary in "More" dropdown */}
+        <MonitorTabBar
+          tabs={(() => {
+            const isHttp = monitor.type === "HTTP" || monitor.type === "BROWSER";
+            const isTcp = monitor.type === "TCP";
+            const hasPerf = isHttp || isTcp;
+            const hasCert = isHttp || monitor.type === "SSL_CERT";
+            const hasSecurityHeaders = isHttp && !!(monitor.config as Record<string, unknown>)?.checkSecurityHeaders;
+            const hasContentChanges = isHttp && !!(monitor.config as Record<string, unknown>)?.detectContentChanges;
+            const hasTrackedHeaders = isHttp && !!((monitor as typeof monitor & { trackedHeaders?: string | null }).trackedHeaders);
+            const hasGeo = !!monitor.geoRegions && monitor.geoRegions.length > 0;
+            const hasMetric = isHttp && !!monitor.metricPath;
+
+            const loadPerf = async () => {
+              const user = getUser();
+              if (!user) return;
+              setPerfLoading(true);
+              setPerfError(null);
+              try {
+                const [data, comparison, txData] = await Promise.all([
+                  api<LatencyDistributionData>(`/v1/monitors/${id}/latency-distribution?period=${perfPeriod}`, user.id),
+                  api<PeriodComparisonData>(`/v1/monitors/${id}/period-comparison?period=${perfPeriod}`, user.id).catch(() => null),
+                  api<StatusTransitionsData>(`/v1/monitors/${id}/status-transitions?period=${perfPeriod}`, user.id).catch(() => null),
+                ]);
+                setPerfData(data);
+                setPerfComparison(comparison);
+                setTransitionsData(txData);
+              } catch {
+                setPerfError("Failed to load performance data");
+              } finally {
+                setPerfLoading(false);
+              }
+            };
+
+            const loadCert = async () => {
+              if (!certDetails && !certLoading) {
                 const user = getUser();
                 if (!user) return;
-                setPerfLoading(true);
-                setPerfError(null);
+                setCertLoading(true);
                 try {
-                  const [data, comparison, txData] = await Promise.all([
-                    api<LatencyDistributionData>(`/v1/monitors/${id}/latency-distribution?period=${perfPeriod}`, user.id),
-                    api<PeriodComparisonData>(`/v1/monitors/${id}/period-comparison?period=${perfPeriod}`, user.id).catch(() => null),
-                    api<StatusTransitionsData>(`/v1/monitors/${id}/status-transitions?period=${perfPeriod}`, user.id).catch(() => null),
-                  ]);
-                  setPerfData(data);
-                  setPerfComparison(comparison);
-                  setTransitionsData(txData);
+                  const data = await api<Record<string, unknown>>(`/v1/monitors/${id}/certificate`, user.id);
+                  setCertDetails(data);
                 } catch {
-                  setPerfError("Failed to load performance data");
+                  setCertDetails({ supported: true, available: false, reason: "Failed to fetch certificate details" });
                 } finally {
-                  setPerfLoading(false);
+                  setCertLoading(false);
                 }
-              }}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                activeMainTab === "performance"
-                  ? "bg-white/10 text-text-primary"
-                  : "text-text-muted hover:text-text-secondary"
-              }`}
-            >
-              <TrendingUp className="w-3.5 h-3.5" />
-              Performance
-            </button>
-          )}
-          {(monitor.type === "HTTP" || monitor.type === "SSL_CERT" || monitor.type === "BROWSER") && (
-            <button
-              onClick={async () => {
-                setActiveMainTab("certificate");
-                if (!certDetails && !certLoading) {
-                  const user = getUser();
-                  if (!user) return;
-                  setCertLoading(true);
-                  try {
-                    const data = await api<Record<string, unknown>>(`/v1/monitors/${id}/certificate`, user.id);
-                    setCertDetails(data);
-                  } catch {
-                    setCertDetails({ supported: true, available: false, reason: "Failed to fetch certificate details" });
-                  } finally {
-                    setCertLoading(false);
-                  }
-                }
-              }}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                activeMainTab === "certificate"
-                  ? "bg-white/10 text-text-primary"
-                  : "text-text-muted hover:text-text-secondary"
-              }`}
-            >
-              <Shield className="w-3.5 h-3.5" />
-              Certificate
-            </button>
-          )}
-          {monitor.type === "WHOIS" && (
-            <button
-              onClick={() => setActiveMainTab("domain")}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                activeMainTab === "domain"
-                  ? "bg-white/10 text-text-primary"
-                  : "text-text-muted hover:text-text-secondary"
-              }`}
-            >
-              <Globe className="w-3.5 h-3.5" />
-              Domain
-            </button>
-          )}
-          {monitor.type === "CT_LOG" && (
-            <button
-              onClick={() => setActiveMainTab("ctlog")}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                activeMainTab === "ctlog"
-                  ? "bg-white/10 text-text-primary"
-                  : "text-text-muted hover:text-text-secondary"
-              }`}
-            >
-              <Shield className="w-3.5 h-3.5" />
-              CT Logs
-            </button>
-          )}
-          {monitor.type === "TRANSACTION" && (
-            <button
-              onClick={() => setActiveMainTab("transaction")}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                activeMainTab === "transaction"
-                  ? "bg-white/10 text-text-primary"
-                  : "text-text-muted hover:text-text-secondary"
-              }`}
-            >
-              <List className="w-3.5 h-3.5" />
-              Steps
-            </button>
-          )}
-          {(monitor.type === "HTTP" || monitor.type === "BROWSER") && !!(monitor.config as Record<string, unknown>)?.checkSecurityHeaders && (
-            <button
-              onClick={() => setActiveMainTab("security")}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                activeMainTab === "security"
-                  ? "bg-white/10 text-text-primary"
-                  : "text-text-muted hover:text-text-secondary"
-              }`}
-            >
-              <Shield className="w-3.5 h-3.5" />
-              Security
-            </button>
-          )}
-          {(monitor.type === "HTTP" || monitor.type === "BROWSER") && !!(monitor.config as Record<string, unknown>)?.detectContentChanges && (
-            <button
-              onClick={() => setActiveMainTab("content")}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                activeMainTab === "content"
-                  ? "bg-white/10 text-text-primary"
-                  : "text-text-muted hover:text-text-secondary"
-              }`}
-            >
-              <FileText className="w-3.5 h-3.5" />
-              Content
-            </button>
-          )}
-          {(monitor.type === "HTTP" || monitor.type === "BROWSER") && !!((monitor as typeof monitor & { trackedHeaders?: string | null }).trackedHeaders) && (
-            <button
-              onClick={() => setActiveMainTab("headers")}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                activeMainTab === "headers"
-                  ? "bg-white/10 text-text-primary"
-                  : "text-text-muted hover:text-text-secondary"
-              }`}
-            >
-              <List className="w-3.5 h-3.5" />
-              Headers
-            </button>
-          )}
-          {(monitor.type === "HTTP" || monitor.type === "BROWSER") && (
-            <button
-              onClick={() => setActiveMainTab("diff")}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                activeMainTab === "diff"
-                  ? "bg-white/10 text-text-primary"
-                  : "text-text-muted hover:text-text-secondary"
-              }`}
-            >
-              <GitCompare className="w-3.5 h-3.5" />
-              Diff
-            </button>
-          )}
-          {/* Annotations tab — always visible */}
-          <button
-            onClick={async () => {
-              setActiveMainTab("annotations");
+              }
+            };
+
+            const loadAnnotations = async () => {
               const user = getUser();
               if (!user || annotations.length > 0) return;
               setAnnotationsLoading(true);
@@ -1355,100 +1229,49 @@ export default function MonitorDetailPage() {
               } finally {
                 setAnnotationsLoading(false);
               }
-            }}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-              activeMainTab === "annotations"
-                ? "bg-white/10 text-text-primary"
-                : "text-text-muted hover:text-text-secondary"
-            }`}
-          >
-            <MessageSquare className="w-3.5 h-3.5" />
-            Annotations
-            {annotations.length > 0 && (
-              <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-accent/20 text-accent text-[10px] font-bold">
-                {annotations.length}
-              </span>
-            )}
-          </button>
-          {/* Geo tab — only if geoRegions configured */}
-          {monitor.geoRegions && monitor.geoRegions.length > 0 && (
-            <button
-              onClick={() => setActiveMainTab("geo")}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                activeMainTab === "geo"
-                  ? "bg-white/10 text-text-primary"
-                  : "text-text-muted hover:text-text-secondary"
-              }`}
-            >
-              <Globe className="w-3.5 h-3.5" />
-              Geo
-            </button>
-          )}
-          <button
-            onClick={() => setActiveMainTab("failures")}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-              activeMainTab === "failures"
-                ? "bg-white/10 text-text-primary"
-                : "text-text-muted hover:text-text-secondary"
-            }`}
-          >
-            <AlertTriangle className="w-3.5 h-3.5" />
-            Failures
-          </button>
-          <button
-            onClick={() => setActiveMainTab("simulate")}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-              activeMainTab === "simulate"
-                ? "bg-white/10 text-text-primary"
-                : "text-text-muted hover:text-text-secondary"
-            }`}
-          >
-            <Zap className="w-3.5 h-3.5" />
-            Simulate
-          </button>
-          {/* Metric tab — only for HTTP/BROWSER monitors with metricPath configured */}
-          {(monitor.type === "HTTP" || monitor.type === "BROWSER") && !!monitor.metricPath && (
-            <button
-              onClick={async () => {
-                setActiveMainTab("metric");
-                const user = getUser();
-                if (!user) return;
-                setMetricLoading(true);
-                setMetricError(null);
-                try {
-                  const data = await api<MetricHistoryData>(`/v1/monitors/${id}/metric-history?periodDays=${metricPeriod}&limit=200`, user.id);
-                  setMetricData(data);
-                } catch {
-                  setMetricError("Failed to load metric history");
-                } finally {
-                  setMetricLoading(false);
-                }
-              }}
-              className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-                activeMainTab === "metric"
-                  ? "bg-white/10 text-text-primary"
-                  : "text-text-muted hover:text-text-secondary"
-              }`}
-            >
-              <BarChart2 className="w-3.5 h-3.5" />
-              Metric
-            </button>
-          )}
-          {/* Config History tab button */}
-          <button
-            onClick={() => setActiveMainTab("config-history")}
-            className={`px-4 py-1.5 rounded-lg text-sm font-medium transition-colors flex items-center gap-1.5 ${
-              activeMainTab === "config-history"
-                ? "bg-white/10 text-text-primary"
-                : "text-text-muted hover:text-text-secondary"
-            }`}
-          >
-            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Config History
-          </button>
-        </div>
+            };
+
+            const loadMetric = async () => {
+              const user = getUser();
+              if (!user) return;
+              setMetricLoading(true);
+              setMetricError(null);
+              try {
+                const data = await api<MetricHistoryData>(`/v1/monitors/${id}/metric-history?periodDays=${metricPeriod}&limit=200`, user.id);
+                setMetricData(data);
+              } catch {
+                setMetricError("Failed to load metric history");
+              } finally {
+                setMetricLoading(false);
+              }
+            };
+
+            return [
+              // ── Primary tabs (always visible) ──
+              { id: "overview", label: "Overview", primary: true },
+              { id: "slo", label: "SLO / SLI", icon: Gauge, primary: true },
+              { id: "performance", label: "Performance", icon: TrendingUp, primary: true, visible: hasPerf, onSelect: loadPerf },
+              { id: "failures", label: "Failures", icon: AlertTriangle, primary: true },
+
+              // ── Secondary tabs (in "More" dropdown) ──
+              { id: "certificate", label: "Certificate", icon: Shield, primary: false, visible: hasCert, onSelect: loadCert },
+              { id: "domain", label: "Domain", icon: Globe, primary: false, visible: monitor.type === "WHOIS" },
+              { id: "ctlog", label: "CT Logs", icon: Shield, primary: false, visible: monitor.type === "CT_LOG" },
+              { id: "transaction", label: "Steps", icon: List, primary: false, visible: monitor.type === "TRANSACTION" },
+              { id: "security", label: "Security", icon: Shield, primary: false, visible: hasSecurityHeaders },
+              { id: "content", label: "Content", icon: FileText, primary: false, visible: hasContentChanges },
+              { id: "headers", label: "Headers", icon: List, primary: false, visible: hasTrackedHeaders },
+              { id: "diff", label: "Diff", icon: GitCompare, primary: false, visible: isHttp },
+              { id: "geo", label: "Geo", icon: Globe, primary: false, visible: hasGeo },
+              { id: "annotations", label: "Annotations", icon: MessageSquare, primary: false, badge: annotations.length, onSelect: loadAnnotations },
+              { id: "simulate", label: "Simulate", icon: Zap, primary: false },
+              { id: "metric", label: "Metric", icon: BarChart2, primary: false, visible: hasMetric, onSelect: loadMetric },
+              { id: "config-history", label: "Config History", icon: Clock, primary: false },
+            ] as TabDef[];
+          })()}
+          activeTab={activeMainTab}
+          onTabChange={(id) => setActiveMainTab(id as typeof activeMainTab)}
+        />
 
         {/* Simulate Alerts Tab */}
         {activeMainTab === "simulate" && (

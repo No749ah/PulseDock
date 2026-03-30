@@ -46,7 +46,7 @@
   - `check-execution.integration.spec.ts` (6 tests) — check persistence, auto-incidents
   - Also fixed production bug: incidents controller used `req.user.sub` instead of `req.user.id`
 
-- [ ] **Database query optimization audit** — Run `EXPLAIN ANALYZE` on hot paths: monitors list, check history, dashboard stats, fleet report. Add missing indexes. Profile N+1 queries in Prisma includes.
+- [~] **Database query optimization audit** — Added 9 missing @@index([userId]) indexes across Folder, AlertChannel, EscalationPolicy, AlertRoutingRule, MonitorServiceGroup, DeploymentEvent, Incident, MonitorRun. Batching N+1 queries in SLA service (in progress). Remaining: EXPLAIN ANALYZE on hot paths, profile monitors-diagnostics leaderboard N+1.
 
 ### 🟠 P1 — UX & Polish
 
@@ -62,7 +62,7 @@
 
 ### 🟡 P2 — Features & Enhancements
 
-- [ ] **GraphQL monitor improvements** — Current implementation is basic. Add: variable substitution, introspection validation, response time tracking, schema change detection.
+- [x] **GraphQL monitor improvements** — ✅ Done (2026-03-30). Added: template variable substitution ({{VAR_NAME}}), introspection validation with schema hash, schema change detection (previousSchemaHash comparison), latency threshold support (yellow/degraded). 22 tests covering all features.
 
 - [x] **Webhook signature verification docs** — `docs/WEBHOOKS.md` with payload format, HMAC-SHA256 examples in Node.js, Python, Go, PHP. *(2026-03-30)*
 

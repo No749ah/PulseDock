@@ -4681,17 +4681,17 @@ describe('getHealthSummary()', () => {
     expect(result.overall.avg).toBe(0);
   });
 
-  it('catches errors in getHealthScore and returns grade F', async () => {
+  it('gives full score to monitors with no run data', async () => {
     const p = makePrisma();
     (p.monitor.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([
-      { id: 'm-err', name: 'Broken' },
+      { id: 'm-no-data', name: 'No Runs', type: 'HTTP', slaTarget: null },
     ]);
-    // findFirst returns null → getHealthScore will throw NotFoundException
-    (p.monitor.findFirst as ReturnType<typeof vi.fn>).mockResolvedValue(null);
+    // No runs at all → default to full score (no failures = healthy)
+    (p.monitorRun.findMany as ReturnType<typeof vi.fn>).mockResolvedValue([]);
     const svc = makeService(p);
     const result = await svc.getHealthSummary('user-1');
-    expect(result.scores[0].grade).toBe('F');
-    expect(result.scores[0].score).toBe(0);
+    expect(result.scores[0].grade).toBe('A');
+    expect(result.scores[0].score).toBe(100);
   });
 });
 

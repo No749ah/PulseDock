@@ -40,7 +40,17 @@ function buildPrisma(opts: {
 
   return {
     monitor: {
-      findMany: vi.fn().mockResolvedValue(monitors),
+      findMany: vi.fn().mockImplementation(({ where }: any) => {
+        // Handle batch interval query (where: { id: { in: [...] } })
+        if (where?.id?.in) {
+          return Promise.resolve(
+            monitors
+              .filter((m) => (where.id.in as string[]).includes(m.id))
+              .map((m) => ({ ...m, intervalSec })),
+          );
+        }
+        return Promise.resolve(monitors);
+      }),
       findUnique: vi.fn().mockImplementation(({ where }: { where: { id: string } }) =>
         Promise.resolve(monitors.find((m) => m.id === where.id)
           ? { ...monitors.find((m) => m.id === where.id), intervalSec }
@@ -50,8 +60,23 @@ function buildPrisma(opts: {
     },
     monitorRun: {
       findMany: vi.fn().mockImplementation(
-        ({ where }: { where: { monitorId: string } }) =>
-          Promise.resolve((runsByMonitor[where.monitorId] ?? []).map((r) => ({ ok: r.ok }))),
+        ({ where }: any) => {
+          // Handle batch query with { monitorId: { in: [...] } }
+          if (where?.monitorId?.in) {
+            const ids = where.monitorId.in as string[];
+            const baseDate = new Date(Date.now() - 3_600_000); // 1h ago to be safely before `now`
+            const allRuns: Array<{ monitorId: string; ok: boolean; checkedAt: Date }> = [];
+            for (const id of ids) {
+              const monRuns = runsByMonitor[id] ?? [];
+              for (let i = 0; i < monRuns.length; i++) {
+                allRuns.push({ monitorId: id, ok: monRuns[i].ok, checkedAt: new Date(baseDate.getTime() - i * 60_000) });
+              }
+            }
+            return Promise.resolve(allRuns);
+          }
+          // Handle single monitorId query (legacy)
+          return Promise.resolve((runsByMonitor[where.monitorId] ?? []).map((r) => ({ ok: r.ok })));
+        },
       ),
       count: vi.fn().mockImplementation(
         ({ where }: { where: { monitorId: string; ok: boolean } }) => {
@@ -63,6 +88,27 @@ function buildPrisma(opts: {
       groupBy: vi.fn().mockResolvedValue([]),
     },
     incident: {
+      findMany: vi.fn().mockImplementation(
+        ({ where }: any) => {
+          // Handle batch query with { monitors: { some: { monitorId: { in: [...] } } } }
+          if (where?.monitors?.some?.monitorId?.in) {
+            const ids = where.monitors.some.monitorId.in as string[];
+            const incidents: Array<{ id: string; createdAt: Date; monitors: Array<{ monitorId: string }> }> = [];
+            for (const id of ids) {
+              const count = incidentCountByMonitor[id] ?? 0;
+              for (let i = 0; i < count; i++) {
+                incidents.push({
+                  id: `inc-${id}-${i}`,
+                  createdAt: new Date(),
+                  monitors: [{ monitorId: id }],
+                });
+              }
+            }
+            return Promise.resolve(incidents);
+          }
+          return Promise.resolve([]);
+        },
+      ),
       count: vi.fn().mockImplementation(
         ({ where }: { where: { monitors: { some: { monitorId: string } } } }) => {
           const monId = where.monitors.some.monitorId;

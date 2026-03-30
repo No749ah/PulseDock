@@ -38,8 +38,9 @@ function makeMonitor(overrides: Record<string, unknown> = {}) {
   };
 }
 
-function makeRuns(total: number, failedCount: number, baseDate = new Date()) {
+function makeRuns(total: number, failedCount: number, baseDate = new Date(Date.now() - 60_000), monitorId = 'monitor-1') {
   return Array.from({ length: total }, (_, i) => ({
+    monitorId,
     ok: i >= failedCount,
     checkedAt: new Date(baseDate.getTime() - i * 60_000),
     latencyMs: null,
@@ -105,8 +106,9 @@ describe('MonitorsService - slaDashboard', () => {
   it('returns compliant=true for monitor with uptimePct > slaTarget', async () => {
     const monitor = makeMonitor({ id: 'mon-1', slaTarget: 99.9 });
     prisma.monitor.findMany.mockResolvedValue([monitor]);
-    // 1000 runs, 0 failed → 100% uptime
-    prisma.monitorRun.findMany.mockResolvedValue(makeRuns(1000, 0));
+    // 1000 runs, 0 failed → 100% uptime (batch query returns all runs with monitorId)
+    const base = new Date(Date.now() - 3_600_000); // 1h ago to avoid race with `now`
+    prisma.monitorRun.findMany.mockResolvedValue(makeRuns(1000, 0, base, 'mon-1'));
 
     const result = await service.slaDashboard('user-1');
     expect(result.monitors).toHaveLength(1);
@@ -118,7 +120,8 @@ describe('MonitorsService - slaDashboard', () => {
     const monitor = makeMonitor({ id: 'mon-1', slaTarget: 99.9 });
     prisma.monitor.findMany.mockResolvedValue([monitor]);
     // 1000 runs, 5 failed → 99.5% uptime < 99.9% target
-    prisma.monitorRun.findMany.mockResolvedValue(makeRuns(1000, 5));
+    const base = new Date(Date.now() - 3_600_000);
+    prisma.monitorRun.findMany.mockResolvedValue(makeRuns(1000, 5, base, 'mon-1'));
 
     const result = await service.slaDashboard('user-1');
     expect(result.monitors[0].compliant).toBe(false);
@@ -128,7 +131,8 @@ describe('MonitorsService - slaDashboard', () => {
   it('returns null compliant and null budgets for monitor with no slaTarget', async () => {
     const monitor = makeMonitor({ id: 'mon-1', slaTarget: null });
     prisma.monitor.findMany.mockResolvedValue([monitor]);
-    prisma.monitorRun.findMany.mockResolvedValue(makeRuns(100, 5));
+    const base = new Date(Date.now() - 3_600_000);
+    prisma.monitorRun.findMany.mockResolvedValue(makeRuns(100, 5, base, 'mon-1'));
 
     const result = await service.slaDashboard('user-1');
     expect(result.monitors[0].slaTarget).toBeNull();
@@ -141,7 +145,8 @@ describe('MonitorsService - slaDashboard', () => {
     const monitor = makeMonitor({ id: 'mon-1', slaTarget: 99.9 });
     prisma.monitor.findMany.mockResolvedValue([monitor]);
     // 1000 runs, 10 failed → exactly 99.0% uptime
-    prisma.monitorRun.findMany.mockResolvedValue(makeRuns(1000, 10));
+    const base = new Date(Date.now() - 3_600_000);
+    prisma.monitorRun.findMany.mockResolvedValue(makeRuns(1000, 10, base, 'mon-1'));
 
     const result = await service.slaDashboard('user-1');
     const m = result.monitors[0];
@@ -165,15 +170,14 @@ describe('MonitorsService - slaDashboard', () => {
     ];
     prisma.monitor.findMany.mockResolvedValue(monitors);
 
-    // Per-monitor runs based on ID
-    prisma.monitorRun.findMany.mockImplementation(({ where }: any) => {
-      const id = where?.monitorId;
-      if (id === 'm1') return Promise.resolve(makeRuns(1000, 0));   // 100% → compliant (100 - 99.0 = 1.0 >= 0.1)
-      if (id === 'm2') return Promise.resolve(makeRuns(2000, 1));   // 99.95% → at risk (99.95 - 99.9 = 0.05 < 0.1)
-      if (id === 'm3') return Promise.resolve(makeRuns(1000, 5));   // 99.5% → breached
-      if (id === 'm4') return Promise.resolve(makeRuns(100, 3));    // no target
-      return Promise.resolve([]);
-    });
+    // Batch query returns all runs for all monitors combined
+    const base = new Date(Date.now() - 3_600_000);
+    prisma.monitorRun.findMany.mockResolvedValue([
+      ...makeRuns(1000, 0, base, 'm1'),   // 100% → compliant (100 - 99.0 = 1.0 >= 0.1)
+      ...makeRuns(2000, 1, base, 'm2'),   // 99.95% → at risk (99.95 - 99.9 = 0.05 < 0.1)
+      ...makeRuns(1000, 5, base, 'm3'),   // 99.5% → breached
+      ...makeRuns(100, 3, base, 'm4'),    // no target
+    ]);
 
     const result = await service.slaDashboard('user-1');
     expect(result.summary.totalMonitors).toBe(4);

@@ -27,22 +27,6 @@ export class MonitorsSlaService {
       },
     });
 
-    // Helper: compute uptime % for a monitor in a given period
-    const computeUptime = async (
-      monitorId: string,
-      from: Date,
-      to: Date,
-    ): Promise<{ totalRuns: number; failedRuns: number; uptimePct: number }> => {
-      const runs = await this.prisma.monitorRun.findMany({
-        where: { monitorId, checkedAt: { gte: from, lt: to } },
-        select: { ok: true },
-      });
-      const totalRuns = runs.length;
-      const failedRuns = runs.filter((r) => !r.ok).length;
-      const uptimePct = totalRuns === 0 ? 100 : ((totalRuns - failedRuns) / totalRuns) * 100;
-      return { totalRuns, failedRuns, uptimePct: Math.round(uptimePct * 10000) / 10000 };
-    };
-
     // Build 3-month history labels
     const historyMonths: Array<{ label: string; start: Date; end: Date }> = [];
     for (let i = 2; i >= 0; i--) {
@@ -52,59 +36,80 @@ export class MonitorsSlaService {
       historyMonths.push({ label, start: d, end });
     }
 
-    const monitorsData = await Promise.all(
-      monitors.map(async (m) => {
-        const slaTarget = m.slaTarget != null ? Number(m.slaTarget) : null;
+    // Single batch query: fetch ALL runs for ALL monitors from earliest history month to now
+    const monitorIds = monitors.map((m) => m.id);
+    const earliestStart = historyMonths.length > 0 ? historyMonths[0].start : monthStart;
+    const allRuns = monitorIds.length > 0
+      ? await this.prisma.monitorRun.findMany({
+          where: { monitorId: { in: monitorIds }, checkedAt: { gte: earliestStart, lt: now } },
+          select: { monitorId: true, ok: true, checkedAt: true },
+        })
+      : [];
 
-        // Current month stats
-        const { totalRuns, failedRuns, uptimePct } = await computeUptime(m.id, monthStart, now);
+    // In-memory uptime computation from batch data
+    const computeUptimeFromBatch = (
+      monitorId: string,
+      from: Date,
+      to: Date,
+    ): { totalRuns: number; failedRuns: number; uptimePct: number } => {
+      const runs = allRuns.filter(
+        (r) => r.monitorId === monitorId && r.checkedAt >= from && r.checkedAt < to,
+      );
+      const totalRuns = runs.length;
+      const failedRuns = runs.filter((r) => !r.ok).length;
+      const uptimePct = totalRuns === 0 ? 100 : ((totalRuns - failedRuns) / totalRuns) * 100;
+      return { totalRuns, failedRuns, uptimePct: Math.round(uptimePct * 10000) / 10000 };
+    };
 
-        // Compliance
-        let compliant: boolean | null = null;
-        let errorBudgetUsedPct: number | null = null;
-        let budgetRemainingPct: number | null = null;
+    const monitorsData = monitors.map((m) => {
+      const slaTarget = m.slaTarget != null ? Number(m.slaTarget) : null;
 
-        if (slaTarget != null) {
-          compliant = uptimePct >= slaTarget;
-          const allowedDown = 100 - slaTarget;
-          if (allowedDown <= 0) {
-            errorBudgetUsedPct = uptimePct < 100 ? 100 : 0;
-          } else {
-            errorBudgetUsedPct = Math.min(100, Math.max(0, ((100 - uptimePct) / allowedDown) * 100));
-            errorBudgetUsedPct = Math.round(errorBudgetUsedPct * 100) / 100;
-          }
-          budgetRemainingPct = Math.round((100 - errorBudgetUsedPct) * 100) / 100;
+      // Current month stats
+      const { totalRuns, failedRuns, uptimePct } = computeUptimeFromBatch(m.id, monthStart, now);
+
+      // Compliance
+      let compliant: boolean | null = null;
+      let errorBudgetUsedPct: number | null = null;
+      let budgetRemainingPct: number | null = null;
+
+      if (slaTarget != null) {
+        compliant = uptimePct >= slaTarget;
+        const allowedDown = 100 - slaTarget;
+        if (allowedDown <= 0) {
+          errorBudgetUsedPct = uptimePct < 100 ? 100 : 0;
+        } else {
+          errorBudgetUsedPct = Math.min(100, Math.max(0, ((100 - uptimePct) / allowedDown) * 100));
+          errorBudgetUsedPct = Math.round(errorBudgetUsedPct * 100) / 100;
         }
+        budgetRemainingPct = Math.round((100 - errorBudgetUsedPct) * 100) / 100;
+      }
 
-        // Monthly history (last 3 months)
-        const monthlyHistory = await Promise.all(
-          historyMonths.map(async (hm) => {
-            const { uptimePct: hUptime } = await computeUptime(m.id, hm.start, hm.end);
-            const hCompliant = slaTarget != null ? hUptime >= slaTarget : null;
-            return {
-              month: hm.label,
-              uptimePct: Math.round(hUptime * 10000) / 10000,
-              compliant: hCompliant,
-            };
-          }),
-        );
-
+      // Monthly history (last 3 months)
+      const monthlyHistory = historyMonths.map((hm) => {
+        const { uptimePct: hUptime } = computeUptimeFromBatch(m.id, hm.start, hm.end);
+        const hCompliant = slaTarget != null ? hUptime >= slaTarget : null;
         return {
-          id: m.id,
-          name: m.name,
-          type: m.type,
-          folder: m.folderId,
-          slaTarget,
-          uptimePct,
-          compliant,
-          errorBudgetUsedPct,
-          budgetRemainingPct,
-          totalRuns,
-          failedRuns,
-          monthlyHistory,
+          month: hm.label,
+          uptimePct: Math.round(hUptime * 10000) / 10000,
+          compliant: hCompliant,
         };
-      }),
-    );
+      });
+
+      return {
+        id: m.id,
+        name: m.name,
+        type: m.type,
+        folder: m.folderId,
+        slaTarget,
+        uptimePct,
+        compliant,
+        errorBudgetUsedPct,
+        budgetRemainingPct,
+        totalRuns,
+        failedRuns,
+        monthlyHistory,
+      };
+    });
 
     // Summary
     const compliantCount = monitorsData.filter((m) => m.compliant === true && (m.slaTarget == null || m.uptimePct - (m.slaTarget ?? 0) >= 0.1)).length;
@@ -174,101 +179,128 @@ export class MonitorsSlaService {
       orderBy: { name: 'asc' },
     });
 
-    // Compute uptime per monitor per month
-    const computeUptime = async (monitorId: string, from: Date, to: Date) => {
-      const runs = await this.prisma.monitorRun.findMany({
-        where: { monitorId, checkedAt: { gte: from, lt: to } },
-        select: { ok: true },
-      });
+    // Single batch query: fetch ALL runs for ALL monitors in the full period
+    const monitorIds = monitors.map((m) => m.id);
+    const allRuns = monitorIds.length > 0
+      ? await this.prisma.monitorRun.findMany({
+          where: { monitorId: { in: monitorIds }, checkedAt: { gte: periodStart, lt: now } },
+          select: { monitorId: true, ok: true, checkedAt: true },
+        })
+      : [];
+
+    // In-memory uptime computation from batch data
+    const computeUptimeFromBatch = (monitorId: string, from: Date, to: Date) => {
+      const runs = allRuns.filter(
+        (r) => r.monitorId === monitorId && r.checkedAt >= from && r.checkedAt < to,
+      );
       const total = runs.length;
       const failed = runs.filter((r) => !r.ok).length;
       const uptimePct = total === 0 ? null : Math.round(((total - failed) / total) * 1000000) / 10000;
       return { total, failed, uptimePct };
     };
 
-    // Compute incident count for a monitor in a period
-    const computeIncidents = async (monitorId: string, from: Date, to: Date) => {
-      return this.prisma.incident.count({
-        where: {
-          monitors: { some: { monitorId } },
-          createdAt: { gte: from, lt: to },
-        },
-      });
+    // Batch query: fetch ALL incidents for ALL monitors in the full period
+    const allIncidents = monitorIds.length > 0
+      ? await this.prisma.incident.findMany({
+          where: {
+            monitors: { some: { monitorId: { in: monitorIds } } },
+            createdAt: { gte: periodStart, lt: now },
+          },
+          select: {
+            id: true,
+            createdAt: true,
+            monitors: { select: { monitorId: true } },
+          },
+        })
+      : [];
+
+    // Compute incident count for a monitor in a period from batch data
+    const computeIncidentsFromBatch = (monitorId: string, from: Date, to: Date): number => {
+      return allIncidents.filter(
+        (inc) =>
+          inc.createdAt >= from &&
+          inc.createdAt < to &&
+          inc.monitors.some((m) => m.monitorId === monitorId),
+      ).length;
     };
 
-    // Approximate downtime minutes from failed checks × interval
-    const computeDowntimeRuns = async (monitorId: string, from: Date, to: Date) => {
-      const mon = await this.prisma.monitor.findUnique({
-        where: { id: monitorId },
-        select: { intervalSec: true },
-      });
-      const intervalSec = mon?.intervalSec ?? 60;
-      const failed = await this.prisma.monitorRun.count({
-        where: { monitorId, ok: false, checkedAt: { gte: from, lt: to } },
-      });
+    // Batch query: fetch all monitor intervals for downtime calculation
+    const monitorIntervals = new Map<string, number>();
+    const monitorsWithInterval = monitorIds.length > 0
+      ? await this.prisma.monitor.findMany({
+          where: { id: { in: monitorIds } },
+          select: { id: true, intervalSec: true },
+        })
+      : [];
+    for (const m of monitorsWithInterval) {
+      monitorIntervals.set(m.id, m.intervalSec ?? 60);
+    }
+
+    // Compute downtime from batch data
+    const computeDowntimeFromBatch = (monitorId: string, from: Date, to: Date): number => {
+      const intervalSec = monitorIntervals.get(monitorId) ?? 60;
+      const failed = allRuns.filter(
+        (r) => r.monitorId === monitorId && !r.ok && r.checkedAt >= from && r.checkedAt < to,
+      ).length;
       return Math.round((failed * intervalSec) / 60);
     };
 
-    const monitorsData = await Promise.all(
-      monitors.map(async (m) => {
-        const slaTarget = Number(m.slaTarget);
+    const monitorsData = monitors.map((m) => {
+      const slaTarget = Number(m.slaTarget);
 
-        // Per-month breakdown
-        const monthlyBreakdown = await Promise.all(
-          monthBuckets.map(async (bucket) => {
-            const { total, failed, uptimePct } = await computeUptime(m.id, bucket.start, bucket.end);
-            const incidents = await computeIncidents(m.id, bucket.start, bucket.end);
-            const downtimeMinutes = await computeDowntimeRuns(m.id, bucket.start, bucket.end);
-            const compliant = uptimePct !== null ? uptimePct >= slaTarget : null;
-            const errorBudgetUsedPct =
-              uptimePct !== null
-                ? Math.min(100, Math.max(0, Math.round(((100 - uptimePct) / Math.max(0.0001, 100 - slaTarget)) * 10000) / 100))
-                : null;
-
-            return {
-              month: bucket.label,
-              totalChecks: total,
-              failedChecks: failed,
-              uptimePct,
-              downtimeMinutes,
-              incidents,
-              compliant,
-              errorBudgetUsedPct,
-            };
-          }),
-        );
-
-        // Overall period stats
-        const { total: periodTotal, failed: periodFailed, uptimePct: periodUptime } = await computeUptime(m.id, periodStart, now);
-        const periodIncidents = await computeIncidents(m.id, periodStart, now);
-        const periodDowntime = await computeDowntimeRuns(m.id, periodStart, now);
-        const periodCompliant = periodUptime !== null ? periodUptime >= slaTarget : null;
-        const allowedDown = 100 - slaTarget;
+      // Per-month breakdown
+      const monthlyBreakdown = monthBuckets.map((bucket) => {
+        const { total, failed, uptimePct } = computeUptimeFromBatch(m.id, bucket.start, bucket.end);
+        const incidents = computeIncidentsFromBatch(m.id, bucket.start, bucket.end);
+        const downtimeMinutes = computeDowntimeFromBatch(m.id, bucket.start, bucket.end);
+        const compliant = uptimePct !== null ? uptimePct >= slaTarget : null;
         const errorBudgetUsedPct =
-          periodUptime !== null && allowedDown > 0
-            ? Math.min(100, Math.max(0, Math.round(((100 - periodUptime) / allowedDown) * 10000) / 100))
+          uptimePct !== null
+            ? Math.min(100, Math.max(0, Math.round(((100 - uptimePct) / Math.max(0.0001, 100 - slaTarget)) * 10000) / 100))
             : null;
 
         return {
-          id: m.id,
-          name: m.name,
-          type: m.type,
-          target: m.target,
-          description: m.description ?? null,
-          slaTarget,
-          period: {
-            totalChecks: periodTotal,
-            failedChecks: periodFailed,
-            uptimePct: periodUptime,
-            downtimeMinutes: periodDowntime,
-            incidents: periodIncidents,
-            compliant: periodCompliant,
-            errorBudgetUsedPct,
-          },
-          monthlyBreakdown,
+          month: bucket.label,
+          totalChecks: total,
+          failedChecks: failed,
+          uptimePct,
+          downtimeMinutes,
+          incidents,
+          compliant,
+          errorBudgetUsedPct,
         };
-      }),
-    );
+      });
+
+      // Overall period stats
+      const { total: periodTotal, failed: periodFailed, uptimePct: periodUptime } = computeUptimeFromBatch(m.id, periodStart, now);
+      const periodIncidents = computeIncidentsFromBatch(m.id, periodStart, now);
+      const periodDowntime = computeDowntimeFromBatch(m.id, periodStart, now);
+      const periodCompliant = periodUptime !== null ? periodUptime >= slaTarget : null;
+      const allowedDown = 100 - slaTarget;
+      const errorBudgetUsedPct =
+        periodUptime !== null && allowedDown > 0
+          ? Math.min(100, Math.max(0, Math.round(((100 - periodUptime) / allowedDown) * 10000) / 100))
+          : null;
+
+      return {
+        id: m.id,
+        name: m.name,
+        type: m.type,
+        target: m.target,
+        description: m.description ?? null,
+        slaTarget,
+        period: {
+          totalChecks: periodTotal,
+          failedChecks: periodFailed,
+          uptimePct: periodUptime,
+          downtimeMinutes: periodDowntime,
+          incidents: periodIncidents,
+          compliant: periodCompliant,
+          errorBudgetUsedPct,
+        },
+        monthlyBreakdown,
+      };
+    });
 
     const compliantCount = monitorsData.filter((m) => m.period.compliant === true).length;
     const breachedCount = monitorsData.filter((m) => m.period.compliant === false).length;
@@ -948,53 +980,68 @@ export class MonitorsSlaService {
     }
 
     const now = new Date();
-    const results = await Promise.all(
-      monitors.map(async (m) => {
-        try {
-          const periodDays = m.slaPeriodDays ?? 30;
-          const slaTarget = m.slaTarget ?? 99.9;
-          const from = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000);
 
-          const runs = await this.prisma.monitorRun.findMany({
-            where: { monitorId: m.id, checkedAt: { gte: from } },
-            select: { ok: true },
-          });
-
-          const totalChecks = runs.length;
-          const okChecks = runs.filter((r) => r.ok).length;
-          const actualUptime = totalChecks === 0 ? 100 : (okChecks / totalChecks) * 100;
-
-          const periodMinutes = periodDays * 24 * 60;
-          const budgetMinutes = ((100 - slaTarget) / 100) * periodMinutes;
-          const burnedMinutes = totalChecks === 0 ? 0 : ((totalChecks - okChecks) / totalChecks) * periodMinutes;
-          const budgetRemainingPct = budgetMinutes === 0 ? 100 : Math.max(0, ((budgetMinutes - burnedMinutes) / budgetMinutes) * 100);
-
-          let status: 'ok' | 'warning' | 'breached';
-          if (actualUptime < slaTarget) {
-            status = 'breached';
-          } else if (budgetRemainingPct < 10) {
-            status = 'warning';
-          } else {
-            status = 'ok';
-          }
-
-          return {
-            monitorId: m.id,
-            name: m.name,
-            type: m.type,
-            slaTarget,
-            periodDays,
-            actualUptime: Math.round(actualUptime * 10000) / 10000,
-            totalChecks,
-            status,
-            budgetRemainingPct: Math.round(budgetRemainingPct * 10) / 10,
-            hasLatencySli: m.sliLatencyTarget != null,
-          };
-        } catch {
-          return null;
-        }
-      }),
+    // Find the earliest "from" date across all monitors to batch-fetch runs
+    const monitorConfigs = monitors.map((m) => {
+      const periodDays = m.slaPeriodDays ?? 30;
+      const slaTarget = m.slaTarget ?? 99.9;
+      const from = new Date(now.getTime() - periodDays * 24 * 60 * 60 * 1000);
+      return { ...m, periodDays, slaTarget, from };
+    });
+    const earliestFrom = monitorConfigs.reduce(
+      (min, mc) => (mc.from < min ? mc.from : min),
+      now,
     );
+
+    // Single batch query for ALL monitor runs
+    const allMonitorIds = monitors.map((m) => m.id);
+    const allRuns = allMonitorIds.length > 0
+      ? await this.prisma.monitorRun.findMany({
+          where: { monitorId: { in: allMonitorIds }, checkedAt: { gte: earliestFrom } },
+          select: { monitorId: true, ok: true, checkedAt: true },
+        })
+      : [];
+
+    const results = monitorConfigs.map((mc) => {
+      try {
+        const runs = allRuns.filter(
+          (r) => r.monitorId === mc.id && r.checkedAt >= mc.from,
+        );
+
+        const totalChecks = runs.length;
+        const okChecks = runs.filter((r) => r.ok).length;
+        const actualUptime = totalChecks === 0 ? 100 : (okChecks / totalChecks) * 100;
+
+        const periodMinutes = mc.periodDays * 24 * 60;
+        const budgetMinutes = ((100 - mc.slaTarget) / 100) * periodMinutes;
+        const burnedMinutes = totalChecks === 0 ? 0 : ((totalChecks - okChecks) / totalChecks) * periodMinutes;
+        const budgetRemainingPct = budgetMinutes === 0 ? 100 : Math.max(0, ((budgetMinutes - burnedMinutes) / budgetMinutes) * 100);
+
+        let status: 'ok' | 'warning' | 'breached';
+        if (actualUptime < mc.slaTarget) {
+          status = 'breached';
+        } else if (budgetRemainingPct < 10) {
+          status = 'warning';
+        } else {
+          status = 'ok';
+        }
+
+        return {
+          monitorId: mc.id,
+          name: mc.name,
+          type: mc.type,
+          slaTarget: mc.slaTarget,
+          periodDays: mc.periodDays,
+          actualUptime: Math.round(actualUptime * 10000) / 10000,
+          totalChecks,
+          status,
+          budgetRemainingPct: Math.round(budgetRemainingPct * 10) / 10,
+          hasLatencySli: mc.sliLatencyTarget != null,
+        };
+      } catch {
+        return null;
+      }
+    });
 
     const valid = results.filter((r): r is NonNullable<typeof r> => r !== null);
     const summary = {

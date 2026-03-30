@@ -194,21 +194,110 @@ export class MonitorsDiagnosticsService {
     scores: Array<{ monitorId: string; name: string; score: number; grade: string }>;
     overall: { avg: number; a: number; b: number; c: number; d: number; f: number };
   }> {
+    const now = new Date();
+    const window7d = 7 * 86_400_000;
+    const since14d = new Date(now.getTime() - 2 * window7d);
+    const boundary7d = new Date(now.getTime() - window7d);
+
+    // Batch: fetch all monitors with SLA config in a single query
     const monitors = await this.prisma.monitor.findMany({
       where: { userId },
-      select: { id: true, name: true },
+      select: { id: true, name: true, type: true, slaTarget: true },
     });
 
-    const scores = await Promise.all(
-      monitors.map(async (m) => {
-        try {
-          const hs = await this.getHealthScore(userId, m.id);
-          return { monitorId: m.id, name: m.name, score: hs.score, grade: hs.grade };
-        } catch {
-          return { monitorId: m.id, name: m.name, score: 0, grade: 'F' };
+    if (monitors.length === 0) {
+      return { scores: [], overall: { avg: 0, a: 0, b: 0, c: 0, d: 0, f: 0 } };
+    }
+
+    const monitorIds = monitors.map((m) => m.id);
+
+    // Batch: fetch ALL runs for ALL monitors in a single query (14d window)
+    const allRuns = await this.prisma.monitorRun.findMany({
+      where: { monitorId: { in: monitorIds }, userId, checkedAt: { gte: since14d } },
+      orderBy: { checkedAt: 'asc' },
+      select: { monitorId: true, ok: true, latencyMs: true, checkedAt: true },
+    });
+
+    // Group runs by monitorId
+    const runsByMonitor = new Map<string, typeof allRuns>();
+    for (const run of allRuns) {
+      const arr = runsByMonitor.get(run.monitorId);
+      if (arr) arr.push(run);
+      else runsByMonitor.set(run.monitorId, [run]);
+    }
+
+    // Compute health score for each monitor using pre-fetched data
+    const scores = monitors.map((m) => {
+      const runs = runsByMonitor.get(m.id) ?? [];
+      const recentRuns = runs.filter((r) => r.checkedAt >= boundary7d);
+      const priorRuns = runs.filter((r) => r.checkedAt < boundary7d);
+
+      // 1. Uptime score (40 pts)
+      let uptimeScore = 40;
+      if (recentRuns.length > 0) {
+        const uptimePct = (recentRuns.filter((r) => r.ok).length / recentRuns.length) * 100;
+        const clamped = Math.max(0, uptimePct - 90);
+        uptimeScore = Math.round((clamped / 10) * 40);
+      }
+
+      // 2. Latency trend score (20 pts)
+      const isVersionMonitor = m.type === 'GIT_RELEASE' || m.type === 'DOCKER_IMAGE';
+      let latencyScore = 20;
+      if (!isVersionMonitor) {
+        const p95 = (r: Array<{ latencyMs: number | null }>): number | null => {
+          const values = r.map((x) => x.latencyMs).filter((v): v is number => v !== null).sort((a, b) => a - b);
+          if (values.length === 0) return null;
+          return values[Math.max(0, Math.ceil(values.length * 0.95) - 1)];
+        };
+        const recentP95 = p95(recentRuns);
+        const priorP95 = p95(priorRuns);
+        if (recentP95 !== null && priorP95 !== null && priorP95 > 0) {
+          const changePct = ((recentP95 - priorP95) / priorP95) * 100;
+          if (changePct > 50) latencyScore = 0;
+          else if (changePct > 10) latencyScore = 10;
+        } else if (recentP95 === null) {
+          latencyScore = 20;
         }
-      }),
-    );
+      }
+
+      // 3. SLA compliance score (20 pts)
+      let slaScore = 20;
+      if (m.slaTarget !== null && m.slaTarget !== undefined) {
+        const allowedDownPct = (100 - Number(m.slaTarget)) / 100;
+        const failedChecks = recentRuns.filter((r) => !r.ok).length;
+        if (allowedDownPct <= 0) {
+          slaScore = failedChecks === 0 ? 20 : 0;
+        } else {
+          const actualDownPct = recentRuns.length === 0 ? 0 : failedChecks / recentRuns.length;
+          const budgetConsumedPct = (actualDownPct / allowedDownPct) * 100;
+          if (budgetConsumedPct >= 100) slaScore = 0;
+          else if (budgetConsumedPct >= 50) slaScore = 10;
+        }
+      }
+
+      // 4. Incident-free streak score (20 pts)
+      let streakScore = 20;
+      const lastFailRun = [...runs].reverse().find((r) => !r.ok);
+      const lastRun = runs[runs.length - 1] ?? null;
+      if (lastRun !== null && !lastRun.ok) {
+        streakScore = 0;
+      } else if (lastFailRun) {
+        const daysSinceFail = (now.getTime() - lastFailRun.checkedAt.getTime()) / 86_400_000;
+        if (daysSinceFail >= 7) streakScore = 20;
+        else if (daysSinceFail >= 3) streakScore = 10;
+        else streakScore = 5;
+      }
+
+      const score = uptimeScore + latencyScore + slaScore + streakScore;
+      let grade: string;
+      if (score >= 85) grade = 'A';
+      else if (score >= 70) grade = 'B';
+      else if (score >= 50) grade = 'C';
+      else if (score >= 25) grade = 'D';
+      else grade = 'F';
+
+      return { monitorId: m.id, name: m.name, score, grade };
+    });
 
     const gradeCount = { a: 0, b: 0, c: 0, d: 0, f: 0 };
     for (const s of scores) {

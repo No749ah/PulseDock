@@ -17,7 +17,7 @@ import { useToast } from "../../components/ui/toast";
 import { useDebounce } from "../../lib/useDebounce";
 import Link from "next/link";
 import { MonitorStatusCell } from "../components/MonitorStatusCell";
-import { MiniSparkline } from "../../components/charts";
+import { MiniSparkline } from "../../components/charts/mini-sparkline";
 import { brand } from "../../lib/brand";
 import type { MonitorTag, TagItem, AlertChannelSummary, MonitorItem, MonitorRun, AlertChannel, PluginField, MonitorPlugin, MonitorFormDataExtended } from "./types";
 import { CHANNEL_TYPE_COLORS, NOTIFY_ON_LABELS } from "./constants";

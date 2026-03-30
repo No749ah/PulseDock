@@ -14,7 +14,7 @@ import { Badge } from "../../components/Badge";
 import { Button } from "../../components/Button";
 import { FadeIn } from "../../components/FadeIn";
 import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from "../../components/Table";
-import { ResponseAreaChart, CheckBarChart, LineSparkline } from "../../../components/charts";
+import { ResponseAreaChart, CheckBarChart } from "../../../components/charts/recharts-barrel";
 import { relativeTime, formatMonitorType } from "../../components/timeUtils";
 import type {
   MonitorItem,
@@ -36,6 +36,7 @@ const SloTab = nextDynamic(() => import("./components/SloTab").then(m => ({ defa
 const UptimeHeatmapChart = nextDynamic(() => import("./components/UptimeHeatmapChart").then(m => ({ default: m.UptimeHeatmapChart })), { ssr: false });
 const ResponseBodyViewer = nextDynamic(() => import("./components/ResponseBodyViewer").then(m => ({ default: m.ResponseBodyViewer })), { ssr: false });
 const CertificateModal = nextDynamic(() => import("./components/CertificateModal").then(m => ({ default: m.CertificateModal })), { ssr: false });
+const LineSparkline = nextDynamic(() => import("../../../components/charts/LineSparkline").then(m => ({ default: m.LineSparkline })), { ssr: false });
 
 interface AlertDelivery {
   id: string;

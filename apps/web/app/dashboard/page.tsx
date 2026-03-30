@@ -17,7 +17,7 @@ import { StaggerList } from "../components/StaggerList";
 import { CountUp } from "../components/CountUp";
 import { relativeTime, formatMonitorType } from "../components/timeUtils";
 import { OnboardingChecklist } from "../components/OnboardingChecklist";
-import { MiniSparkline } from "../../components/charts";
+import { MiniSparkline } from "../../components/charts/mini-sparkline";
 import { ProductTour, type TourStep } from "../../components/product-tour";
 import { brand } from "../../lib/brand";
 

@@ -22,6 +22,7 @@ Welcome to the PulseDock documentation. This directory contains all guides for i
 | [Plugins](./PLUGINS.md) | Custom monitor type plugin system |
 | [E2E Testing](./E2E.md) | End-to-end tests with Playwright |
 | [Logging](./LOGGING.md) | Log management, rotation, and aggregation |
+| [Webhooks](./WEBHOOKS.md) | Webhook alert channel setup, payloads, signature verification |
 | [Security](./SECURITY.md) | Security practices, CSP, CSRF, auth hardening |
 | [Troubleshooting](./TROUBLESHOOTING.md) | Common issues and fixes |
 

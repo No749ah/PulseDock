@@ -271,15 +271,15 @@ function NavSidebar({
   }, [pathname]);
 
   const renderItem = (item: NavItem) => {
-    const isActive = pathname === item.href;
+    const isActive = pathname === item.href || (item.href !== '/dashboard' && item.href !== '/' && pathname.startsWith(item.href + '/'));
     return (
       <li key={item.href}>
         <Link
           href={item.href}
           className={[
-            'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+            'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors relative',
             isActive
-              ? 'bg-accent/15 text-accent border border-accent/25'
+              ? 'bg-accent/15 text-accent border border-accent/25 before:absolute before:left-0 before:top-1.5 before:bottom-1.5 before:w-[3px] before:rounded-full before:bg-accent'
               : 'text-text-secondary hover:text-text-primary hover:bg-surface-elevated',
           ].join(' ')}
         >

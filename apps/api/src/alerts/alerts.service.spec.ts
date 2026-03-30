@@ -121,6 +121,7 @@ function makePrisma(monitorAlerts: { alertChannel: AlertChannel }[] = []) {
     },
     monitorRun: {
       findFirst: vi.fn().mockResolvedValue(null),
+      findMany: vi.fn().mockResolvedValue([]),
     },
     alertDeliveryLog: {
       create: vi.fn().mockResolvedValue({}),

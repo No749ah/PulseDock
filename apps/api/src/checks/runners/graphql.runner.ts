@@ -1,9 +1,24 @@
 import { Logger } from '@nestjs/common';
+import { createHash } from 'crypto';
 
 const logger = new Logger('GraphQLRunner');
 
 /** Default introspection health query */
 const DEFAULT_QUERY = '{ __typename }';
+
+/** Lightweight introspection query for schema change detection */
+const INTROSPECTION_QUERY = `{
+  __schema {
+    queryType { name }
+    mutationType { name }
+    subscriptionType { name }
+    types {
+      name
+      kind
+      fields { name type { name kind ofType { name kind } } }
+    }
+  }
+}`;
 
 /** Simple JSONPath resolver for basic dot-notation paths like $.data.__typename */
 function resolveJsonPath(obj: unknown, path: string): unknown {
@@ -15,6 +30,22 @@ function resolveJsonPath(obj: unknown, path: string): unknown {
     current = (current as Record<string, unknown>)[part];
   }
   return current;
+}
+
+/**
+ * Substitute {{VAR_NAME}} placeholders in a query string with values from the vars map.
+ * Unknown placeholders are left as-is.
+ */
+export function substituteVariables(template: string, vars: Record<string, string>): string {
+  return template.replace(/\{\{(\w+)\}\}/g, (_match, key: string) => {
+    return key in vars ? vars[key] : `{{${key}}}`;
+  });
+}
+
+/** Compute a stable SHA-256 hash of the introspection schema for change detection */
+function hashSchema(schemaData: unknown): string {
+  const json = JSON.stringify(schemaData, Object.keys(schemaData as Record<string, unknown>).sort());
+  return createHash('sha256').update(json).digest('hex').slice(0, 16);
 }
 
 export interface GraphQLRunnerConfig {
@@ -32,6 +63,29 @@ export interface GraphQLRunnerConfig {
   timeoutMs?: number;
   /** Custom HTTP headers (e.g. Authorization) */
   headers?: Record<string, string>;
+  /**
+   * Template variable substitutions for the query string.
+   * Placeholders like {{VAR_NAME}} in the query will be replaced with
+   * the corresponding value from this map.
+   */
+  templateVars?: Record<string, string>;
+  /**
+   * Latency threshold in milliseconds. If the response takes longer,
+   * the check returns yellow (degraded) instead of green.
+   */
+  latencyThresholdMs?: number;
+  /**
+   * Enable introspection validation: sends an introspection query
+   * and verifies the schema is accessible. Returns a schema hash
+   * for change detection.
+   */
+  validateIntrospection?: boolean;
+  /**
+   * Previous schema hash to compare against for schema change detection.
+   * If set and the current schema hash differs, the result includes
+   * schemaChanged=true.
+   */
+  previousSchemaHash?: string;
 }
 
 export interface GraphQLRunResult {
@@ -42,6 +96,12 @@ export interface GraphQLRunResult {
   statusCode?: number;
   graphqlErrors?: string[];
   resolvedValue?: unknown;
+  /** Schema hash from introspection (when validateIntrospection=true) */
+  schemaHash?: string;
+  /** True when the schema changed compared to previousSchemaHash */
+  schemaChanged?: boolean;
+  /** Number of types found in the introspection schema */
+  schemaTypeCount?: number;
 }
 
 /**
@@ -51,8 +111,13 @@ export interface GraphQLRunResult {
  */
 export async function runGraphQLCheck(config: GraphQLRunnerConfig): Promise<GraphQLRunResult> {
   const startTime = Date.now();
-  const query = config.query?.trim() || DEFAULT_QUERY;
+  let query = config.query?.trim() || DEFAULT_QUERY;
   const timeoutMs = config.timeoutMs ?? 30_000;
+
+  // Apply template variable substitution
+  if (config.templateVars && Object.keys(config.templateVars).length > 0) {
+    query = substituteVariables(query, config.templateVars);
+  }
 
   let variables: Record<string, unknown> | undefined;
   if (config.variables?.trim()) {
@@ -196,6 +261,18 @@ export async function runGraphQLCheck(config: GraphQLRunnerConfig): Promise<Grap
       }
     }
 
+    // Check latency threshold
+    if (config.latencyThresholdMs && latencyMs > config.latencyThresholdMs) {
+      return {
+        ok: true,
+        level: 'yellow',
+        message: `GraphQL check passed but slow (${latencyMs}ms > ${config.latencyThresholdMs}ms threshold)`,
+        latencyMs,
+        statusCode,
+        resolvedValue: resolved,
+      };
+    }
+
     return {
       ok: true,
       level: 'green',
@@ -206,14 +283,89 @@ export async function runGraphQLCheck(config: GraphQLRunnerConfig): Promise<Grap
     };
   }
 
+  // Check latency threshold even without dataPath
+  if (config.latencyThresholdMs && latencyMs > config.latencyThresholdMs) {
+    return {
+      ok: true,
+      level: 'yellow',
+      message: `GraphQL check passed but slow (${latencyMs}ms > ${config.latencyThresholdMs}ms threshold)`,
+      latencyMs,
+      statusCode,
+    };
+  }
+
   // No data path specified — just check data exists and no errors
-  return {
+  const baseResult: GraphQLRunResult = {
     ok: true,
     level: 'green',
     message: `GraphQL check passed (${latencyMs}ms)`,
     latencyMs,
     statusCode,
   };
+
+  // Run introspection validation if requested
+  if (config.validateIntrospection) {
+    const introspectionResult = await runIntrospection(config, timeoutMs);
+    if (introspectionResult) {
+      baseResult.schemaHash = introspectionResult.schemaHash;
+      baseResult.schemaTypeCount = introspectionResult.typeCount;
+
+      if (config.previousSchemaHash && introspectionResult.schemaHash !== config.previousSchemaHash) {
+        baseResult.schemaChanged = true;
+        baseResult.message = `GraphQL check passed (${latencyMs}ms) — schema changed (${config.previousSchemaHash.slice(0, 8)}→${introspectionResult.schemaHash.slice(0, 8)})`;
+      }
+    }
+  }
+
+  return baseResult;
 }
 
+/**
+ * Run an introspection query to get the schema hash.
+ * Returns null if introspection is disabled or fails (non-blocking).
+ */
+async function runIntrospection(
+  config: GraphQLRunnerConfig,
+  timeoutMs: number,
+): Promise<{ schemaHash: string; typeCount: number } | null> {
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    Accept: 'application/json',
+    ...config.headers,
+  };
 
+  try {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+    const resp = await fetch(config.url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ query: INTROSPECTION_QUERY }),
+      signal: controller.signal,
+    });
+    clearTimeout(timer);
+
+    if (!resp.ok) {
+      logger.debug(`Introspection query returned HTTP ${resp.status} for ${config.url}`);
+      return null;
+    }
+
+    const body = (await resp.json()) as Record<string, unknown>;
+    const schema = resolveJsonPath(body, '$.data.__schema');
+    if (!schema || typeof schema !== 'object') {
+      logger.debug(`Introspection response missing __schema for ${config.url}`);
+      return null;
+    }
+
+    const types = (schema as Record<string, unknown>)['types'] as Array<Record<string, unknown>> | undefined;
+    const typeCount = types?.length ?? 0;
+    const schemaHash = hashSchema(schema);
+
+    return { schemaHash, typeCount };
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.debug(`Introspection failed for ${config.url}: ${msg}`);
+    return null;
+  }
+}

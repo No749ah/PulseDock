@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { runGraphQLCheck } from './graphql.runner';
+import { runGraphQLCheck, substituteVariables } from './graphql.runner';
 
 // Mock global fetch
 const mockFetch = vi.fn();
@@ -162,5 +162,135 @@ describe('runGraphQLCheck', () => {
     });
     expect(result.ok).toBe(true);
     expect(result.resolvedValue).toBe('octocat');
+  });
+
+  it('substitutes template variables in the query', async () => {
+    mockFetch.mockResolvedValueOnce(
+      makeResponse({ data: { user: { name: 'Alice' } } }),
+    );
+    await runGraphQLCheck({
+      url: 'https://api.example.com/graphql',
+      query: '{ user(id: "{{USER_ID}}") { name } }',
+      templateVars: { USER_ID: '42' },
+    });
+    const sentBody = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(sentBody.query).toBe('{ user(id: "42") { name } }');
+  });
+
+  it('returns yellow when latency exceeds threshold (no dataPath)', async () => {
+    // Simulate slow response by mocking Date.now
+    let callCount = 0;
+    const originalNow = Date.now;
+    vi.spyOn(Date, 'now').mockImplementation(() => {
+      callCount++;
+      // First call = start, subsequent calls = after fetch
+      return callCount === 1 ? 1000 : 2500;
+    });
+
+    mockFetch.mockResolvedValueOnce(
+      makeResponse({ data: { __typename: 'Query' } }),
+    );
+
+    const result = await runGraphQLCheck({
+      url: 'https://api.example.com/graphql',
+      latencyThresholdMs: 500,
+    });
+    expect(result.ok).toBe(true);
+    expect(result.level).toBe('yellow');
+    expect(result.message).toContain('slow');
+    expect(result.message).toContain('threshold');
+
+    Date.now = originalNow;
+  });
+
+  it('returns yellow when latency exceeds threshold (with dataPath)', async () => {
+    let callCount = 0;
+    vi.spyOn(Date, 'now').mockImplementation(() => {
+      callCount++;
+      return callCount === 1 ? 1000 : 3000;
+    });
+
+    mockFetch.mockResolvedValueOnce(
+      makeResponse({ data: { status: 'ok' } }),
+    );
+
+    const result = await runGraphQLCheck({
+      url: 'https://api.example.com/graphql',
+      dataPath: '$.data.status',
+      expectedValue: 'ok',
+      latencyThresholdMs: 500,
+    });
+    expect(result.ok).toBe(true);
+    expect(result.level).toBe('yellow');
+    expect(result.message).toContain('slow');
+  });
+
+  it('runs introspection validation and returns schemaHash', async () => {
+    const schemaData = {
+      __schema: {
+        queryType: { name: 'Query' },
+        mutationType: null,
+        subscriptionType: null,
+        types: [{ name: 'Query', kind: 'OBJECT', fields: [{ name: 'hello', type: { name: 'String', kind: 'SCALAR', ofType: null } }] }],
+      },
+    };
+
+    // First call = main query, second call = introspection
+    mockFetch
+      .mockResolvedValueOnce(makeResponse({ data: { __typename: 'Query' } }))
+      .mockResolvedValueOnce(makeResponse({ data: schemaData }));
+
+    const result = await runGraphQLCheck({
+      url: 'https://api.example.com/graphql',
+      validateIntrospection: true,
+    });
+    expect(result.ok).toBe(true);
+    expect(result.level).toBe('green');
+    expect(result.schemaHash).toBeDefined();
+    expect(result.schemaHash!.length).toBe(16);
+    expect(result.schemaTypeCount).toBe(1);
+    expect(mockFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it('detects schema change via previousSchemaHash', async () => {
+    const schemaData = {
+      __schema: {
+        queryType: { name: 'Query' },
+        mutationType: null,
+        subscriptionType: null,
+        types: [{ name: 'Query', kind: 'OBJECT', fields: [] }],
+      },
+    };
+
+    mockFetch
+      .mockResolvedValueOnce(makeResponse({ data: { __typename: 'Query' } }))
+      .mockResolvedValueOnce(makeResponse({ data: schemaData }));
+
+    const result = await runGraphQLCheck({
+      url: 'https://api.example.com/graphql',
+      validateIntrospection: true,
+      previousSchemaHash: 'aaaaaaaaaaaaaaaa', // won't match
+    });
+    expect(result.ok).toBe(true);
+    expect(result.schemaChanged).toBe(true);
+    expect(result.message).toContain('schema changed');
+  });
+});
+
+describe('substituteVariables', () => {
+  it('replaces known placeholders', () => {
+    expect(substituteVariables('Hello {{NAME}}!', { NAME: 'World' })).toBe('Hello World!');
+  });
+
+  it('leaves unknown placeholders intact', () => {
+    expect(substituteVariables('{{KNOWN}} {{UNKNOWN}}', { KNOWN: 'yes' })).toBe('yes {{UNKNOWN}}');
+  });
+
+  it('handles multiple occurrences', () => {
+    expect(substituteVariables('{{A}} and {{A}}', { A: 'x' })).toBe('x and x');
+  });
+
+  it('returns original string when no vars provided', () => {
+    expect(substituteVariables('no vars {{HERE}}', {})).toBe('no vars {{HERE}}');
   });
 });

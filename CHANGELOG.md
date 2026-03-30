@@ -173,6 +173,19 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ## [1.1.0] — 2026-03-21
 
 ### Added
+- **Swagger API documentation audit** — All 143 endpoints annotated with `@ApiResponse` (401/403/404/400). Error response coverage: 16 → 82 annotations.
+- **Status page subscriber emails** — Outage/degraded events trigger notifications to all page subscribers.
+- **Status page SVG badge** — `GET /v1/public/status-badge/:slug.svg` with embed modal (Markdown/HTML/URL).
+- **Status page PDF export** — Print button + comprehensive `@media print` stylesheet.
+- **Status page webhook on status change** — Page-level webhook URL; fires on status transitions.
+- **Admin user management overhaul** — Edit modal: display name, role, disable/enable, force password reset, remove MFA, delete.
+- **Dashboard UX** — Customizable section order, time range selector (1h/6h/24h/7d/30d), live pulsing indicator.
+- **Monitors UX** — Pagination (10/25/50/100/All), advanced filter panel, sortable columns, hover quick-actions, row expansion.
+- **Command palette (Ctrl+K)** — Fuzzy search across commands, navigation, create actions. Keyboard shortcuts modal (`?`).
+- **Notification bell** — In-app notification dropdown with version update counts and monitor names.
+- **Tool registry expanded to 1385+ tools** — Added AI/ML, ERP/Business, Search/Vector DB, IoT/Edge, Photo/Document categories.
+- **Accessibility audit** — ARIA roles, landmarks, live regions across all public status page widgets and root layout.
+- **JSDoc documentation** — `@param`/`@returns`/`@throws` across 12+ service files.
 - **Widget resolver coverage complete** — All 82 status-page widget types now have per-widget API data endpoints. Added resolvers for `active-incident-banner` (returns active incidents + down monitors with all-clear flag), `maintenance-calendar` (upcoming/active windows for 90-day window), `multi-monitor-status-grid`, `multi-status-badges`, `version-check-badge`, `update-summary`, and 10 content-only widgets. Widget audit: ✅ 82/82 types, zero palette/renderer/resolver gaps.
 - **BROWSER monitor type** — Full page check with browser User-Agent, 2xx/3xx status assertion, expected text search (case-insensitive), CSS selector presence check (#id, .class, tag, [attr], tag.class, tag#id), custom allowed status codes. 9 new unit tests.
 - **DNS/PING monitor config UI** — Create/edit modal now shows type-specific fields for DNS (record type, expected value, timeout) and PING (ping count, max packet-loss %) monitors. Config correctly serialized to API and pre-filled when editing.
@@ -195,109 +208,6 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - **Tool registry** — 5,009 unique tool entries across all categories. 50 tools have verified platform variant definitions.
 - **Widget audit** — Automated `npm run widget:audit` passes with zero gaps across all 82 widget types.
 - **Test suite** — 1,736 API tests passing (up from 1,346 at v1.0.2). Zero TypeScript strict mode errors.
-
----
-
-## [Unreleased] — 2026-03-20 (ongoing)
-
-### Added
-- **Swagger API documentation audit** — Comprehensive pass across all 143 endpoints: added `@ApiResponse` decorators for 401 (Not authenticated), 403 (Access denied), 404 (Not found), and 400 (Validation error) where applicable. Added rich `description` strings to all `@ApiOperation` decorators explaining behaviour, parameter semantics, and edge cases. Error response annotation coverage increased from 16 → 82 annotations. Affected: incidents, maintenance, status-pages, team, tags, apikeys controllers.
-- **Documentation audit** — Updated `docs/API.md`: added endpoint overview table (143 endpoints across 19 controllers), comprehensive sections for incidents, maintenance, status pages, API keys, and team endpoints. Fixed stale link. Updated `docs/TROUBLESHOOTING.md`: fixed stale references, added 3 new troubleshooting entries. Updated `docs/VERSION-CHECKS.md`: added missing `apt` and `helm` providers.
-- **Registry runtime mock verification lane** — Added `npm run registry:verify:runtime:mocks` with `packages/tool-registry/scripts/verified-runtime-mock-check.ts` to exercise verified version templates against HTTP mocks (including endpoint fallback + json-path extraction behavior). Report output is stored in `packages/tool-registry/audit/verified-runtime-mock-check.json`.
-
-### Changed
-- **Sticky table headers + column visibility** — Alerts and Versions tables now have sticky `<thead>` (stays visible while scrolling); column visibility toggle persisted to `localStorage` on both pages; Incidents table has sticky header too
-- **Accessibility (a11y) — public status page widgets** — `LiveStatusRefresh`: `role="status"` + `aria-live="polite"` + descriptive `aria-label` for screen readers; decorative pulsing dots: `aria-hidden="true"`; `ServiceHealthMatrix` and `SLAComplianceTable` tables: `aria-label` + `scope="col"` on all `<th>` headers; `AggregateHealthScore` and `IncidentSeverityDistribution` SVGs: `role="img"` + `aria-label` + `<title>` element; `PerformanceTrend` sparkline SVG: `aria-hidden="true"` (value conveyed in text); color-only status dots marked `aria-hidden="true"` throughout
-- **Accessibility (a11y) — public status page root** — `role="main"` on page container; skip-to-content landmark link; `role="toolbar"` on controls bar; `role="region"` + `aria-label` on all widget grid containers; `OverallSystemStatus`: `role="status"` + `aria-live="polite"` + full status description in `aria-label`; `UptimeBar`: `role="progressbar"` with `aria-valuenow/min/max`; `ComponentStatusList`: converted to `<ul>`/`<li>` with per-item descriptive `aria-label`; `ActiveIncidentBanner`: `role="alert"` + `aria-live="assertive"` when incidents active
-- **Command palette (Ctrl+K)** — Fuzzy search across all app commands, navigation, create actions, and external links. Recent commands, group labels, keyboard shortcuts hints. Keyboard shortcuts modal (`?`). Both wired in root layout.
-- **JSDoc** — Comprehensive `@param`/`@returns`/`@throws` annotations added to: `checks.service.ts`, `maintenance.service.ts`, `status-pages.service.ts`, `agent.service.ts`, `audit.service.ts`, `bootstrap.service.ts`, `data.service.ts`, `mailer.service.ts`, `metrics.service.ts`, `prisma.service.ts`, `backup.service.ts`, `tags.service.ts`
-
-### Changed
-- **Docs** — Tool registry count updated to 2500+ in `docs/README.md` and `docs/VERSION-CHECKS.md`
-
----
-
-## [Unreleased] — 2026-03-19 (ongoing)
-
-### Added
-- **Status page subscriber emails** — Outage/degraded events now trigger email notifications to all page subscribers; recovery events are suppressed to avoid noise
-- **Status page SVG badge** — `GET /v1/public/status-badge/:slug.svg` — shields.io-style badge; embed modal with Markdown/HTML/URL copy snippets on Status Pages list
-- **Status page PDF export** — Print button + comprehensive `@media print` stylesheet; widget flow renders correctly as single-column PDF; report meta footer with timestamp and URL
-- **Status page webhook on status change** — Page-level webhook URL in settings; fires on any status transition with full payload (slug, title, overall level, changed monitors)
-- **Admin user management overhaul** — Edit modal now supports: display name, role, disable/enable, force password reset link (15-min token + copy button), remove MFA, delete user with confirmation
-- **Admin user list** — MFA and unverified badges shown inline per user
-- **Monitors pagination** — 10/25/50/100/All selector with localStorage persistence, prev/next + page buttons, sticky header
-- **Versions page** — No double-v in update badge (`v18.9.0` not `vv18.9.0`); target column truncated with hover tooltip
-- **Command palette** — 6 new commands; `⌘K` → `Ctrl K` label; selection highlight redesigned (accent left-border, no tinted text)
-- **Account page** — Full-width layout (no `max-w-5xl` cap); FadeIn animations removed; columns rebalanced (API Keys left, Activity Log right)
-- **Status page editor** — All 50+ widget types now have meaningful canvas previews instead of blank/italic placeholders
-- **Status page editor** — Page Settings modal is now scrollable with sticky header/footer (was overflowing off-screen)
-- **Status page editor** — 17 widget types added to DTO validation whitelist (offline-banner, custom-metric-chart, dependency-map, tab-container, multi-environment-status, collapsible-section, etc.) — saves were silently rejected before
-- **Public status page widgets — visual overhaul** — UptimeBar shows large colored percentage + status icon + tinted border; ResponseTimeChart has a proper empty state; UptimeTimeline uses taller slimmer bars (contribution-graph style); OverallSystemStatus pulses on outage; UptimeComparisonChart bars capped at 96% to show background track
-- **Dashboard version stats fix** — "Updates Available" now uses version-summary API (always latest run) instead of time-range-filtered runs — was showing 0 even when updates existed
-- **API endpoints** — Admin: `POST /v1/admin/users/:id/reset-mfa`, `POST /v1/admin/users/:id/force-password-reset`, `DELETE /v1/admin/users/:id`
-- **.env.example** — Comprehensive reference for all environment variables with defaults, security guidance, and comments
-- **Notification bell** — Shows version update counts + monitor names; clicking navigates to the relevant page
-- **Incidents page** — Search filter, sortable columns (title/status/severity/date), CSV export
-- **JSDoc** — Comprehensive documentation added to status-pages, alerts, and auth services
-- **Email notifications to status page subscribers** on outage/degraded events
-- **Breadcrumbs** on monitor detail page; account page loading state breadcrumb
-- **DEPLOYMENT.md** — Comprehensive rewrite covering Docker Compose, Kubernetes/Helm, bare metal, nginx config, env var table, health checks
-- Dashboard: customizable section order (localStorage), time range selector (1h/6h/24h/7d/30d), live pulsing indicator
-- Monitors: advanced filter panel (status/type/tag), sortable columns, hover quick-actions, latency column, check-now button, card view polish
-- Monitors: status bar history tooltips, row expansion with check history
-- Status pages: copy/paste widgets across pages (Ctrl+C/V), count-up animations on uptime cards
-- Versions page: summary row, diff indicators, changelog links, sort dropdown
-- Incidents: summary header, severity/status badges, duration display, empty state
-- Alert channels: channel type icons, last-triggered column, improved test button
-- Maintenance: upcoming calendar widget, status badges, duration display
-- Account: Team Members UI, Workspace Settings UI, Data Retention card
-- Team API: stub endpoints (GET/POST/DELETE /v1/team/*)
-- Settings API: data retention endpoint (GET/PUT /v1/settings/retention)
-- Changelog page with timeline layout and navigation entry
-- Chart.js components: LineSparkline, BarChartCJS
-- Loading skeletons: TableSkeleton, route loading.tsx files
-- Command palette: 7 new commands, shortcut kbd badges
-- Error pages: custom 404, error boundary, global-error
-
-### Fixed
-- **Backup service** — Pre-existing TS errors: wrong field names (`config` → `configJson`, `monitorTags`, removed non-existent `settings`/`enabled` fields from status page select)
-- **Status page password UX** — Confirm field added; inline remove confirmation (no browser `confirm()` dialog); amber lock card for protected pages
-- **Mobile landing page** — Reduced hero padding, tighter feature card spacing, comparison table scroll hint, larger nav touch targets, better font scaling
-
-### Security
-- API key scope enforcement: @RequireScope decorator + ScopeGuard
-- Rate limiting: per-endpoint overrides (30/min for write ops)
-
-### Performance
-- DB indexes: AuditLog compound indexes (userId+createdAt)
-- N+1 eliminated in version summary queries
-- Scheduler: jitter (0-5s per monitor), queue depth tracking
-- Webhook delivery: exponential backoff (1s/2s/4s)
-
-### Tests
-- 1519 total (1497 API + 10 CLI + 12 Agent) — all green
-- Reports service: 11 new unit tests
-- Team service: 3 unit tests
-- Scope guard: 14 unit tests
-- Alert delivery: 3 new coverage tests
-
----
-
-## [Unreleased] — Prior
-
-### Added
-- **Tool registry expanded 1303 → 1385 tools (+82)** — New tool categories: AI/ML platforms, ERP/Business software, Search/Vector databases, IoT/Edge devices, Photo/Document services.
-- **Landing page — Social Proof section** — Three-card grid (Open Source & Private, Community-Driven, Built for Self-Hosters) with GitHub CTA, placed between Open Source Banner and Pricing sections.
-- **Branded 404 page** — Replaced interactive easter-egg 404 with a clean, branded `not-found.tsx` using PulseDock logo, accent-coloured 404 heading, and Dashboard/Home CTAs.
-- **Breadcrumbs component** — New `apps/web/app/components/Breadcrumbs.tsx` generic breadcrumb nav component for use across dashboard pages.
-- **Status page editor — universal config panel phase 2 controls** — Extended the shared widget properties sidebar with visibility rules (always/operational/degraded/outage + hide-when-no-data), click actions (none/monitor-detail/external URL), style controls (border toggle, radius, padding), and mobile behavior controls (normal/full-width/collapsed/hidden).
-
-### Fixed
-- **44 broken Simple Icons slugs** — Corrected icon slug mappings in the tool registry to match current Simple Icons v13 naming conventions.
-
-### Changed
-- **Accessibility improvements** — All hero section background blob animations changed from `animate-blob` to `motion-safe:animate-blob`. Added `aria-label` attributes to all major `<section>` elements on the landing page (Hero, Stats, Features, How it works, Screenshots, Demo, Comparison, Open source, Social proof, Pricing, CTA).
 
 ---
 
@@ -574,7 +484,19 @@ This is the first stable production release of PulseDock. All major features are
 - **Single root `.env`** — Shared across API and Web via workspace setup
 - **Docker support** — `docker-compose.yml` for local dev with PostgreSQL + Redis
 
-[Unreleased]: https://github.com/No749ah/PulseDock/compare/v0.5.0...HEAD
+[1.6.0]: https://github.com/No749ah/PulseDock/compare/v1.5.0...v1.6.0
+[1.5.0]: https://github.com/No749ah/PulseDock/compare/v1.4.0...v1.5.0
+[1.4.0]: https://github.com/No749ah/PulseDock/compare/v1.3.0...v1.4.0
+[1.3.0]: https://github.com/No749ah/PulseDock/compare/v1.2.0...v1.3.0
+[1.2.0]: https://github.com/No749ah/PulseDock/compare/v1.1.0...v1.2.0
+[1.1.0]: https://github.com/No749ah/PulseDock/compare/v1.0.2...v1.1.0
+[1.0.2]: https://github.com/No749ah/PulseDock/compare/v1.0.1...v1.0.2
+[1.0.1]: https://github.com/No749ah/PulseDock/compare/v1.0.0...v1.0.1
+[1.0.0]: https://github.com/No749ah/PulseDock/compare/v0.9.0...v1.0.0
+[0.9.0]: https://github.com/No749ah/PulseDock/compare/v0.8.0...v0.9.0
+[0.8.0]: https://github.com/No749ah/PulseDock/compare/v0.7.0...v0.8.0
+[0.7.0]: https://github.com/No749ah/PulseDock/compare/v0.6.0...v0.7.0
+[0.6.0]: https://github.com/No749ah/PulseDock/compare/v0.5.0...v0.6.0
 [0.5.0]: https://github.com/No749ah/PulseDock/compare/v0.4.0...v0.5.0
 [0.4.0]: https://github.com/No749ah/PulseDock/compare/v0.3.0...v0.4.0
 [0.3.0]: https://github.com/No749ah/PulseDock/compare/v0.2.0...v0.3.0

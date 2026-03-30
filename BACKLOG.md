@@ -1,10 +1,11 @@
-## Status Summary (2026-03-30 10:17 UTC)
-- **Build/Test:** ✅ All tests passing (25 folder + 22 package tests); web + API build clean; 0 TS errors
+## Status Summary (2026-03-30 11:17 UTC)
+- **Build/Test:** ✅ 4598 API + 757 web + 22 package tests passing; build clean; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities
-- **Deployment:** ✅ API v1.6.0 + web running; public URL 200; all 16 pages HTTP 200
+- **Deployment:** ✅ API v1.6.0 + web running; public URL 200; all 13 pages HTTP 200
 - **Branch:** heartbeat/2026-03-30-midnight
-- **Last changes (10:17 UTC):**
-  - [x] **Monitor grouping hierarchy** — Nested folder support (max 5 levels). Self-referencing tree in DB. Cycle detection. Stats bubble up. New /flat and /move endpoints. Mute/unmute cascades to subfolders. Frontend tree indentation + parent selector.
+- **Last changes (11:17 UTC):**
+  - [x] **Consolidate v2 shared types** — Extracted AuthenticatedRequest + JwtUser to common/auth.types.ts. Created v2/v2.types.ts with PaginatedEnvelope, parsePagination, buildMeta helpers. Removed 7x duplicated interfaces across controllers. 14 new unit tests for helpers.
+  - [x] **Visual regression test script** — scripts/visual-test.ts for automated screenshot capture across desktop/tablet/mobile × light/dark. Requires Playwright (chromium deps not available in container).
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
@@ -48,7 +49,7 @@
 
 ### 🟠 P1 — UX & Polish
 
-- [ ] **Visual browser testing** — Automated screenshot comparison on all pages (desktop/tablet/mobile × light/dark). Catch regressions. Use Playwright for headless rendering.
+- [ ] **Visual browser testing** — Script created (scripts/visual-test.ts) but blocked: container lacks Playwright chromium system deps (libnspr4.so etc). Needs `npx playwright install-deps chromium` with root access. Once deps installed, run `npx tsx scripts/visual-test.ts` for automated screenshot capture across all pages × 3 viewports × 2 themes.
 
 - [ ] **Status page widget visual audit (browser)** — Open the widget showcase page in a browser, screenshot each widget, check for broken layouts, empty states, alignment issues. Fix anything that doesn't look Apple-quality.
 
@@ -74,7 +75,7 @@
 
 - [ ] **Prune old status summaries from git history** — BACKLOG.md accumulated 800+ lines of redundant status summaries. Cleaned in this cycle but git history still carries them.
 
-- [ ] **Consolidate duplicate API endpoints** — Some features have both v1 and v2 endpoints. Audit for overlap and deprecate where appropriate.
+- [x] **Consolidate duplicate API endpoints** — ✅ Done (2026-03-30). Extracted shared v2 types (PaginatedEnvelope, AuthenticatedRequest, parsePagination, buildMeta) into v2/v2.types.ts and common/auth.types.ts. v1 and v2 are complementary (v2 adds pagination), not duplicates. 14 unit tests added.
 
 - [x] **Upgrade path documentation** — `docs/UPGRADING.md` covers all 5 pending major upgrades with risk assessment, breaking changes, and strategy. *(2026-03-30)*
 

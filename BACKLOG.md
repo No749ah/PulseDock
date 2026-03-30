@@ -1,11 +1,10 @@
-## Status Summary (2026-03-30 09:35 UTC)
-- **Build/Test:** ✅ All tests passing; web + API build clean; 0 TS errors
+## Status Summary (2026-03-30 10:17 UTC)
+- **Build/Test:** ✅ All tests passing (25 folder + 22 package tests); web + API build clean; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities
 - **Deployment:** ✅ API v1.6.0 + web running; public URL 200; all 16 pages HTTP 200
 - **Branch:** heartbeat/2026-03-30-midnight
-- **Last changes (09:35 UTC):**
-  - [x] **Sidebar navigation UX** — Reorganized 51 nav items: added categorized sub-sections (Real-time, Performance, Intelligence, Infrastructure, Versions) within expanded groups. Moved SSL + Version Tracking to secondary. NavGroup.secondary now uses labeled NavSubSection[] for scanability.
-  - [x] **Monitor detail page UX** — Replaced flat 17-tab scrollbar with primary tabs (Overview, SLO/SLI, Performance, Failures) + "More" dropdown for 13 secondary tabs. Extracted reusable MonitorTabBar component. Net code reduction.
+- **Last changes (10:17 UTC):**
+  - [x] **Monitor grouping hierarchy** — Nested folder support (max 5 levels). Self-referencing tree in DB. Cycle detection. Stats bubble up. New /flat and /move endpoints. Mute/unmute cascades to subfolders. Frontend tree indentation + parent selector.
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
@@ -67,7 +66,7 @@
 
 - [x] **Status page custom CSS** — ✅ Already implemented. Custom CSS textarea in status page editor settings panel (max 10,000 chars), injected into public page `<head>` via `<style>`. Works in both live pages and preview mode.
 
-- [ ] **Monitor grouping hierarchy** — Currently flat folders + tags. Support nested folder hierarchy for large deployments (50+ monitors).
+- [x] **Monitor grouping hierarchy** — ✅ Done (2026-03-30). Nested folder hierarchy (max 5 levels) with self-referencing Folder tree. Cycle detection, stats aggregation bubbling up, new `/flat` + `/move` endpoints. Mute/unmute cascades to subfolders. Frontend tree view with indentation + parent selector in create modal. 25 unit tests.
 
 - [x] **Batch notification digest improvements** — Added weekly_digest option (cron: Mon 07:05 UTC). Trend data in digests deferred (requires significant mailer template rework). *(2026-03-30)*
 

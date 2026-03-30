@@ -1,5 +1,9 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { MonitorsController } from './monitors.controller';
+import { MonitorsExportController } from './monitors-export.controller';
+import { MonitorsDiagnosticsController } from './monitors-diagnostics.controller';
+import { MonitorsSlaController } from './monitors-sla.controller';
+import { MonitorsComparisonController } from './monitors-comparison.controller';
 
 function makeReq(userId = 'user-1') {
   return { user: { id: userId } };
@@ -163,27 +167,7 @@ describe('MonitorsController', () => {
     expect(service.versionSummary).toHaveBeenCalledWith('user-1');
   });
 
-  it('exportMonitors() delegates to service.exportMonitorsConfig', async () => {
-    const mockRes = { setHeader: vi.fn(), send: vi.fn() } as unknown as import('express').Response;
-    service.exportMonitorsConfig = vi.fn().mockResolvedValue({ content: '{}', contentType: 'application/json', filename: 'pulsedock.json' });
-    await controller.exportMonitorsConfig(makeReq(), mockRes, 'json', undefined, undefined);
-    expect(service.exportMonitorsConfig).toHaveBeenCalledWith('user-1', expect.objectContaining({ format: 'json' }));
-  });
-
-  it('importMonitors() delegates to service.importMonitors', async () => {
-    service.importMonitors.mockResolvedValue({ imported: 2, errors: [] });
-    const result = await controller.importMonitors(makeReq(), { monitors: [{ name: 'A', target: 'https://a.com', type: 'HTTP' }] as never[] });
-    expect(service.importMonitors).toHaveBeenCalledWith('user-1', expect.any(Array));
-    expect((result as Record<string, unknown>)['imported']).toBe(2);
-  });
-
-  it('importExternal() delegates to service.importExternal', async () => {
-    service.importExternal.mockResolvedValue({ imported: 3, skipped: 0, errors: [], message: 'Imported 3 monitors.' });
-    const body = { source: 'uptime-robot' as const, payload: { monitors: [] } };
-    const result = await controller.importExternal(makeReq(), body);
-    expect(service.importExternal).toHaveBeenCalledWith('user-1', 'uptime-robot', { monitors: [] });
-    expect((result as Record<string, unknown>)['imported']).toBe(3);
-  });
+  // exportMonitors/importMonitors/importExternal moved to MonitorsExportController — tests below
 
   it('listAlerts() delegates to service.listMonitorAlerts', async () => {
     service.listMonitorAlerts.mockResolvedValue([]);
@@ -286,42 +270,8 @@ describe('MonitorsController', () => {
     expect(service.monitorChart).toHaveBeenCalledWith('user-1', 'm-1', '7d');
   });
 
-  // ── healthScore() ─────────────────────────────────────────────────────
-
-  it('healthScore() delegates to service.getHealthScore', async () => {
-    service.getHealthScore.mockResolvedValue({ score: 87, grade: 'A' });
-    const result = await controller.healthScore(makeReq(), 'm-1');
-    expect(service.getHealthScore).toHaveBeenCalledWith('user-1', 'm-1');
-    expect(result).toEqual({ score: 87, grade: 'A' });
-  });
-
-  // ── healthSummary() ───────────────────────────────────────────────────
-
-  it('healthSummary() delegates to service.getHealthSummary', async () => {
-    service.getHealthSummary.mockResolvedValue({ scores: [], overall: { avg: 0 } });
-    const result = await controller.healthSummary(makeReq());
-    expect(service.getHealthSummary).toHaveBeenCalledWith('user-1');
-  });
-
-  // ── errorBudget() ─────────────────────────────────────────────────────
-
-  it('errorBudget() parses slaTarget and period correctly', async () => {
-    service.getErrorBudget.mockResolvedValue({ remaining: 0.1 });
-    await controller.errorBudget(makeReq(), 'm-1', '99.5', '7d');
-    expect(service.getErrorBudget).toHaveBeenCalledWith('m-1', 'user-1', { slaTarget: 99.5, period: '7d' });
-  });
-
-  it('errorBudget() defaults slaTarget to 99.9 and period to 30d when invalid', async () => {
-    service.getErrorBudget.mockResolvedValue({ remaining: 0 });
-    await controller.errorBudget(makeReq(), 'm-1', 'not-a-number', 'bad-period');
-    expect(service.getErrorBudget).toHaveBeenCalledWith('m-1', 'user-1', { slaTarget: 99.9, period: '30d' });
-  });
-
-  it('errorBudget() defaults to 99.9 when slaTarget is out of range', async () => {
-    service.getErrorBudget.mockResolvedValue({ remaining: 0 });
-    await controller.errorBudget(makeReq(), 'm-1', '0', '30d');
-    expect(service.getErrorBudget).toHaveBeenCalledWith('m-1', 'user-1', { slaTarget: 99.9, period: '30d' });
-  });
+  // healthScore/healthSummary moved to MonitorsDiagnosticsController
+  // errorBudget moved to MonitorsSlaController — tests below
 
   // ── updateAlert() ─────────────────────────────────────────────────────
 
@@ -735,31 +685,61 @@ describe('resetContentBaseline()', () => {
   });
 });
 
-describe('getSloReport()', () => {
-  it('delegates to monitorsService.getSloReport', async () => {
+// ─── MonitorsSlaController tests ────────────────────────────────────────
+
+describe('MonitorsSlaController.getSloReport()', () => {
+  it('delegates to slaService.getSloReport', async () => {
     const svc = makeFullService();
     svc.getSloReport.mockResolvedValue({ slo: 99.9 });
-    const ctrl = new MonitorsController(svc as never, {} as never, {} as never);
+    const ctrl = new MonitorsSlaController(svc as never);
     await ctrl.getSloReport(makeReq(), 'mon-1');
     expect(svc.getSloReport).toHaveBeenCalledWith('user-1', 'mon-1');
   });
 });
 
-describe('getSloSummary()', () => {
-  it('delegates to monitorsService.getSloSummary', async () => {
+describe('MonitorsSlaController.getSloSummary()', () => {
+  it('delegates to slaService.getSloSummary', async () => {
     const svc = makeFullService();
     svc.getSloSummary.mockResolvedValue([]);
-    const ctrl = new MonitorsController(svc as never, {} as never, {} as never);
+    const ctrl = new MonitorsSlaController(svc as never);
     await ctrl.getSloSummary(makeReq());
     expect(svc.getSloSummary).toHaveBeenCalledWith('user-1');
   });
 });
 
-describe('getStatusTransitions()', () => {
+describe('MonitorsSlaController.errorBudget()', () => {
+  it('parses slaTarget and period correctly', async () => {
+    const svc = makeFullService();
+    svc.getErrorBudget.mockResolvedValue({ remaining: 0.1 });
+    const ctrl = new MonitorsSlaController(svc as never);
+    await ctrl.errorBudget(makeReq(), 'm-1', '99.5', '7d');
+    expect(svc.getErrorBudget).toHaveBeenCalledWith('m-1', 'user-1', { slaTarget: 99.5, period: '7d' });
+  });
+
+  it('defaults slaTarget to 99.9 and period to 30d when invalid', async () => {
+    const svc = makeFullService();
+    svc.getErrorBudget.mockResolvedValue({ remaining: 0 });
+    const ctrl = new MonitorsSlaController(svc as never);
+    await ctrl.errorBudget(makeReq(), 'm-1', 'not-a-number', 'bad-period');
+    expect(svc.getErrorBudget).toHaveBeenCalledWith('m-1', 'user-1', { slaTarget: 99.9, period: '30d' });
+  });
+
+  it('defaults to 99.9 when slaTarget is out of range', async () => {
+    const svc = makeFullService();
+    svc.getErrorBudget.mockResolvedValue({ remaining: 0 });
+    const ctrl = new MonitorsSlaController(svc as never);
+    await ctrl.errorBudget(makeReq(), 'm-1', '0', '30d');
+    expect(svc.getErrorBudget).toHaveBeenCalledWith('m-1', 'user-1', { slaTarget: 99.9, period: '30d' });
+  });
+});
+
+// ─── MonitorsComparisonController tests ─────────────────────────────────
+
+describe('MonitorsComparisonController.getStatusTransitions()', () => {
   it('defaults period to 7d when not provided', async () => {
     const svc = makeFullService();
     svc.getStatusTransitions.mockResolvedValue([]);
-    const ctrl = new MonitorsController(svc as never, {} as never, {} as never);
+    const ctrl = new MonitorsComparisonController(svc as never);
     await ctrl.getStatusTransitions(makeReq(), 'mon-1');
     expect(svc.getStatusTransitions).toHaveBeenCalledWith('user-1', 'mon-1', '7d');
   });
@@ -767,7 +747,7 @@ describe('getStatusTransitions()', () => {
   it('uses valid provided period', async () => {
     const svc = makeFullService();
     svc.getStatusTransitions.mockResolvedValue([]);
-    const ctrl = new MonitorsController(svc as never, {} as never, {} as never);
+    const ctrl = new MonitorsComparisonController(svc as never);
     await ctrl.getStatusTransitions(makeReq(), 'mon-1', '30d');
     expect(svc.getStatusTransitions).toHaveBeenCalledWith('user-1', 'mon-1', '30d');
   });
@@ -775,17 +755,17 @@ describe('getStatusTransitions()', () => {
   it('falls back to 7d for invalid period string', async () => {
     const svc = makeFullService();
     svc.getStatusTransitions.mockResolvedValue([]);
-    const ctrl = new MonitorsController(svc as never, {} as never, {} as never);
+    const ctrl = new MonitorsComparisonController(svc as never);
     await ctrl.getStatusTransitions(makeReq(), 'mon-1', 'invalid');
     expect(svc.getStatusTransitions).toHaveBeenCalledWith('user-1', 'mon-1', '7d');
   });
 });
 
-describe('getLatencyDistribution()', () => {
+describe('MonitorsComparisonController.getLatencyDistribution()', () => {
   it('defaults period to 7d', async () => {
     const svc = makeFullService();
     svc.getLatencyDistribution.mockResolvedValue({});
-    const ctrl = new MonitorsController(svc as never, {} as never, {} as never);
+    const ctrl = new MonitorsComparisonController(svc as never);
     await ctrl.getLatencyDistribution(makeReq(), 'mon-1');
     expect(svc.getLatencyDistribution).toHaveBeenCalledWith('user-1', 'mon-1', '7d');
   });
@@ -793,7 +773,7 @@ describe('getLatencyDistribution()', () => {
   it('passes valid period 24h', async () => {
     const svc = makeFullService();
     svc.getLatencyDistribution.mockResolvedValue({});
-    const ctrl = new MonitorsController(svc as never, {} as never, {} as never);
+    const ctrl = new MonitorsComparisonController(svc as never);
     await ctrl.getLatencyDistribution(makeReq(), 'mon-1', '24h');
     expect(svc.getLatencyDistribution).toHaveBeenCalledWith('user-1', 'mon-1', '24h');
   });
@@ -801,17 +781,17 @@ describe('getLatencyDistribution()', () => {
   it('falls back to 7d for invalid period', async () => {
     const svc = makeFullService();
     svc.getLatencyDistribution.mockResolvedValue({});
-    const ctrl = new MonitorsController(svc as never, {} as never, {} as never);
+    const ctrl = new MonitorsComparisonController(svc as never);
     await ctrl.getLatencyDistribution(makeReq(), 'mon-1', 'bad-value');
     expect(svc.getLatencyDistribution).toHaveBeenCalledWith('user-1', 'mon-1', '7d');
   });
 });
 
-describe('getPeriodComparison()', () => {
+describe('MonitorsComparisonController.getPeriodComparison()', () => {
   it('defaults to 7d', async () => {
     const svc = makeFullService();
     svc.getPeriodComparison.mockResolvedValue({});
-    const ctrl = new MonitorsController(svc as never, {} as never, {} as never);
+    const ctrl = new MonitorsComparisonController(svc as never);
     await ctrl.getPeriodComparison(makeReq(), 'mon-1');
     expect(svc.getPeriodComparison).toHaveBeenCalledWith('user-1', 'mon-1', '7d');
   });
@@ -819,7 +799,7 @@ describe('getPeriodComparison()', () => {
   it('passes valid period 30d', async () => {
     const svc = makeFullService();
     svc.getPeriodComparison.mockResolvedValue({});
-    const ctrl = new MonitorsController(svc as never, {} as never, {} as never);
+    const ctrl = new MonitorsComparisonController(svc as never);
     await ctrl.getPeriodComparison(makeReq(), 'mon-1', '30d');
     expect(svc.getPeriodComparison).toHaveBeenCalledWith('user-1', 'mon-1', '30d');
   });
@@ -827,9 +807,68 @@ describe('getPeriodComparison()', () => {
   it('falls back to 7d for unrecognized period', async () => {
     const svc = makeFullService();
     svc.getPeriodComparison.mockResolvedValue({});
-    const ctrl = new MonitorsController(svc as never, {} as never, {} as never);
+    const ctrl = new MonitorsComparisonController(svc as never);
     await ctrl.getPeriodComparison(makeReq(), 'mon-1', 'weekly');
     expect(svc.getPeriodComparison).toHaveBeenCalledWith('user-1', 'mon-1', '7d');
+  });
+});
+
+// ─── MonitorsDiagnosticsController tests ────────────────────────────────
+
+describe('MonitorsDiagnosticsController.healthScore()', () => {
+  it('delegates to diagnosticsService.getHealthScore', async () => {
+    const svc = makeFullService();
+    svc.getHealthScore.mockResolvedValue({ score: 87, grade: 'A' });
+    const ctrl = new MonitorsDiagnosticsController(svc as never);
+    const result = await ctrl.healthScore(makeReq(), 'm-1');
+    expect(svc.getHealthScore).toHaveBeenCalledWith('user-1', 'm-1');
+    expect(result).toEqual({ score: 87, grade: 'A' });
+  });
+});
+
+describe('MonitorsDiagnosticsController.healthSummary()', () => {
+  it('delegates to diagnosticsService.getHealthSummary', async () => {
+    const svc = makeFullService();
+    svc.getHealthSummary.mockResolvedValue({ scores: [], overall: { avg: 0 } });
+    const ctrl = new MonitorsDiagnosticsController(svc as never);
+    await ctrl.healthSummary(makeReq());
+    expect(svc.getHealthSummary).toHaveBeenCalledWith('user-1');
+  });
+});
+
+// ─── MonitorsExportController tests ─────────────────────────────────────
+
+describe('MonitorsExportController.exportMonitorsConfig()', () => {
+  it('delegates to exportService.exportMonitorsConfig', async () => {
+    const svc = makeFullService();
+    const mockRes = { setHeader: vi.fn(), send: vi.fn() } as unknown as import('express').Response;
+    svc.exportMonitorsConfig = vi.fn().mockResolvedValue({ content: '{}', contentType: 'application/json', filename: 'pulsedock.json' });
+    const ctrl = new MonitorsExportController(svc as never);
+    await ctrl.exportMonitorsConfig(makeReq(), mockRes, 'json', undefined, undefined);
+    expect(svc.exportMonitorsConfig).toHaveBeenCalledWith('user-1', expect.objectContaining({ format: 'json' }));
+  });
+});
+
+describe('MonitorsExportController.importMonitors()', () => {
+  it('delegates to exportService.importMonitors', async () => {
+    const svc = makeFullService();
+    svc.importMonitors.mockResolvedValue({ imported: 2, errors: [] });
+    const ctrl = new MonitorsExportController(svc as never);
+    const result = await ctrl.importMonitors(makeReq(), { monitors: [{ name: 'A', target: 'https://a.com', type: 'HTTP' }] as never[] });
+    expect(svc.importMonitors).toHaveBeenCalledWith('user-1', expect.any(Array));
+    expect((result as Record<string, unknown>)['imported']).toBe(2);
+  });
+});
+
+describe('MonitorsExportController.importExternal()', () => {
+  it('delegates to exportService.importExternal', async () => {
+    const svc = makeFullService();
+    svc.importExternal.mockResolvedValue({ imported: 3, skipped: 0, errors: [], message: 'Imported 3 monitors.' });
+    const ctrl = new MonitorsExportController(svc as never);
+    const body = { source: 'uptime-robot' as const, payload: { monitors: [] } };
+    const result = await ctrl.importExternal(makeReq(), body);
+    expect(svc.importExternal).toHaveBeenCalledWith('user-1', 'uptime-robot', { monitors: [] });
+    expect((result as Record<string, unknown>)['imported']).toBe(3);
   });
 });
 

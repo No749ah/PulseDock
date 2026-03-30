@@ -8,6 +8,11 @@ import { AppController } from './app.controller';
 import { AuthService } from './auth/auth.service';
 import { AuthController } from './auth/auth.controller';
 import { MonitorsController } from './monitors/monitors.controller';
+import { MonitorsAnalyticsController } from './monitors/monitors-analytics.controller';
+import { MonitorsSlaController } from './monitors/monitors-sla.controller';
+import { MonitorsDiagnosticsController } from './monitors/monitors-diagnostics.controller';
+import { MonitorsExportController } from './monitors/monitors-export.controller';
+import { MonitorsComparisonController } from './monitors/monitors-comparison.controller';
 import { AnnotationsController } from './monitors/annotations.controller';
 import { ServiceGroupsController } from './monitors/service-groups.controller';
 import { ServiceGroupsService } from './monitors/service-groups.service';
@@ -100,6 +105,11 @@ import { DependenciesService } from './dependencies/dependencies.service';
     AppController,
     AuthController,
     MonitorsController,
+    MonitorsAnalyticsController,
+    MonitorsSlaController,
+    MonitorsDiagnosticsController,
+    MonitorsExportController,
+    MonitorsComparisonController,
     AlertsController,
     AlertRoutingController,
     HeartbeatController,

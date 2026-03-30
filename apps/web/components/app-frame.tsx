@@ -124,7 +124,6 @@ const navGroups: NavGroup[] = [
       { href: '/incidents', label: 'Incidents', icon: AlertOctagon },
     ],
     secondary: [
-      { href: '/alerts/escalation', label: 'Escalation', icon: AlertOctagon },
       { href: '/alerts/analytics', label: 'Alert Analytics', icon: BarChart2 },
       { href: '/alerts/noise', label: 'Noise Analysis', icon: VolumeX },
       { href: '/alerts/history', label: 'Delivery History', icon: ClipboardList },

@@ -24,6 +24,7 @@ Welcome to the PulseDock documentation. This directory contains all guides for i
 | [Logging](./LOGGING.md) | Log management, rotation, and aggregation |
 | [Webhooks](./WEBHOOKS.md) | Webhook alert channel setup, payloads, signature verification |
 | [Security](./SECURITY.md) | Security practices, CSP, CSRF, auth hardening |
+| [Upgrading](./UPGRADING.md) | Major dependency upgrade guide and timeline |
 | [Troubleshooting](./TROUBLESHOOTING.md) | Common issues and fixes |
 
 ## Additional

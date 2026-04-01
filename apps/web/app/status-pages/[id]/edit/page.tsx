@@ -13,43 +13,10 @@ import {
   useSensors,
 } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
-import {
-  Save,
-  Eye,
-  ExternalLink,
-  ChevronLeft,
-  Globe,
-  EyeOff,
-  Activity,
-  Grid,
-  X,
-  Settings,
-  Image,
-  Copy,
-  Undo2,
-  Redo2,
-  Lock,
-  Monitor,
-  Tablet,
-  Smartphone,
-  ZoomIn,
-  ZoomOut,
-  Maximize2,
-  LayoutTemplate,
-  Settings2,
-  RefreshCw,
-  History,
-  AlignStartVertical,
-  AlignEndVertical,
-  AlignStartHorizontal,
-  AlignEndHorizontal,
-  AlignCenterVertical,
-  AlignCenterHorizontal,
-} from "lucide-react";
+import { Settings, Tablet, Smartphone } from "lucide-react";
 import { api } from "../../../../lib/api";
 import { getUser } from "../../../../components/auth";
 import { useToast } from "../../../../components/ui/toast";
-import { brand } from "../../../../lib/brand";
 
 import type {
   Widget,
@@ -68,7 +35,6 @@ import {
   CATEGORIES,
   ROW_H,
   COL_COUNT,
-  STATUS_TEMPLATES,
 } from "./components/constants";
 import {
   needsMonitorConfig,
@@ -77,6 +43,10 @@ import {
 import { PaletteWidget } from "./components/PaletteWidget";
 import { CanvasDropZone } from "./components/CanvasDropZone";
 import { ConfigPanel } from "./components/ConfigPanel";
+import { EditorToolbar } from "./components/EditorToolbar";
+import { PageSettingsModal } from "./components/PageSettingsModal";
+import { TemplateGalleryModal } from "./components/TemplateGalleryModal";
+import { VersionHistoryModal } from "./components/VersionHistoryModal";
 
 // ── Main page ────────────────────────────────────────────────────────────
 
@@ -115,11 +85,6 @@ export default function StatusPageEditorPage() {
   const [showPageSettings, setShowPageSettings] = useState(false);
   const [showVersionHistory, setShowVersionHistory] = useState(false);
   const [pageSettings, setPageSettings] = useState<PageSettings>({});
-  const [passwordInput, setPasswordInput] = useState("");
-  const [passwordConfirm, setPasswordConfirm] = useState("");
-  const [changingPassword, setChangingPassword] = useState(false);
-  const [showChangePassword, setShowChangePassword] = useState(false);
-  const [confirmRemovePassword, setConfirmRemovePassword] = useState(false);
 
   const versionHistoryKey = `sp-vhist-${id}`;
   const [versionHistory, setVersionHistory] = useState<VersionEntry[]>(() => {
@@ -888,235 +853,41 @@ export default function StatusPageEditorPage() {
     <DndContext sensors={sensors} onDragStart={handleDragStart} onDragMove={handleDragMove} onDragEnd={handleDragEnd}>
       <div className="flex h-screen flex-col bg-bg text-text-primary">
         {/* Toolbar */}
-        <header className="flex items-center gap-3 border-b border-border bg-surface/80 px-4 py-3 backdrop-blur-sm">
-          <button
-            onClick={() => router.push("/status-pages")}
-            className="flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-sm text-text-secondary transition hover:text-text-primary"
-          >
-            <ChevronLeft className="h-4 w-4" />
-            Pages
-          </button>
-          <div className="mx-2 h-4 w-px bg-border" />
-          <div className="min-w-0 flex-1">
-            <h1 className="truncate text-sm font-semibold text-text-primary">{page.title}</h1>
-            <div className="flex items-center gap-2">
-              <code className="font-mono text-xs text-text-secondary">/status/{page.slug}</code>
-              {page.isPublished && (
-                <span className="inline-flex items-center gap-1 rounded-full bg-green-500/15 px-2 py-0.5 text-xs font-semibold text-green-400">
-                  <span className="h-1.5 w-1.5 rounded-full bg-green-400" />
-                  Live
-                </span>
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <span className="text-xs text-text-secondary/60">{widgets.length} widget{widgets.length !== 1 ? "s" : ""}</span>
-            {selectedIds.size > 0 && (() => {
-              const allSelected = new Set(selectedIds);
-              if (selectedId) allSelected.add(selectedId);
-              const count = allSelected.size;
-              return (
-                <>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2 py-0.5 text-xs font-semibold text-accent">
-                    {count} selected
-                    <button
-                      onClick={() => { setSelectedId(null); setSelectedIds(new Set()); }}
-                      className="ml-1 hover:text-accent/70 transition"
-                      title="Deselect all"
-                    >
-                      <X className="h-2.5 w-2.5" />
-                    </button>
-                  </span>
-                  {count >= 2 && (
-                    <div className="flex items-center rounded-lg border border-border bg-bg overflow-hidden" title="Align selected widgets">
-                      {([
-                        { icon: AlignStartVertical, dir: "left" as const, title: "Align left edges" },
-                        { icon: AlignCenterVertical, dir: "center-h" as const, title: "Center horizontally" },
-                        { icon: AlignEndVertical, dir: "right" as const, title: "Align right edges" },
-                        { icon: AlignStartHorizontal, dir: "top" as const, title: "Align top edges" },
-                        { icon: AlignCenterHorizontal, dir: "center-v" as const, title: "Center vertically" },
-                        { icon: AlignEndHorizontal, dir: "bottom" as const, title: "Align bottom edges" },
-                      ] as const).map(({ icon: Icon, dir, title }) => (
-                        <button
-                          key={dir}
-                          onClick={() => alignSelected(dir)}
-                          title={title}
-                          className="flex items-center justify-center px-2 py-1.5 text-text-secondary/60 transition hover:bg-accent/10 hover:text-accent"
-                        >
-                          <Icon className="h-3.5 w-3.5" />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </>
-              );
-            })()}
-            {/* Full Preview — always available, opens authenticated preview route */}
-            <a
-              href={`/status-pages/${page.id}/preview`}
-              target="_blank"
-              rel="noopener noreferrer"
-              title="Open full preview with live data (opens in new tab)"
-              className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:text-text-primary"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-              Full Preview
-            </a>
-            {page.isPublished && (
-              <a
-                href={`${publicBase}/status/${page.slug}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:text-text-primary"
-              >
-                <ExternalLink className="h-3.5 w-3.5" />
-                Public Page
-              </a>
-            )}
-            <button
-              onClick={handleTogglePublish}
-              disabled={publishing}
-              className={`flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-xs font-medium transition disabled:opacity-50 ${
-                page.isPublished
-                  ? "border-border bg-bg text-text-secondary hover:border-red-500/40 hover:text-red-400"
-                  : "border-green-500/40 bg-green-500/10 text-green-400 hover:bg-green-500/20"
-              }`}
-            >
-              {page.isPublished ? (
-                <><EyeOff className="h-3.5 w-3.5" /> Unpublish</>
-              ) : (
-                <><Eye className="h-3.5 w-3.5" /> Publish</>
-              )}
-            </button>
-            <button
-              onClick={undo}
-              title="Undo (Ctrl+Z)"
-              className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-2 py-1.5 text-xs text-text-secondary transition hover:text-text-primary disabled:opacity-30"
-            >
-              <Undo2 className="h-3.5 w-3.5" />
-            </button>
-            <button
-              onClick={redo}
-              title="Redo (Ctrl+Y)"
-              className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-2 py-1.5 text-xs text-text-secondary transition hover:text-text-primary disabled:opacity-30"
-            >
-              <Redo2 className="h-3.5 w-3.5" />
-            </button>
-            {/* Viewport mode (responsive preview) */}
-            <div className="flex items-center rounded-lg border border-border bg-bg overflow-hidden">
-              {([
-                { mode: "desktop" as ViewportMode, icon: Monitor, title: "Desktop view" },
-                { mode: "tablet" as ViewportMode, icon: Tablet, title: "Tablet view (768px)" },
-                { mode: "mobile" as ViewportMode, icon: Smartphone, title: "Mobile view (375px)" },
-              ] as const).map(({ mode, icon: Icon, title }) => (
-                <button
-                  key={mode}
-                  onClick={() => setViewportMode(mode)}
-                  title={title}
-                  className={`flex items-center justify-center px-2.5 py-1.5 text-xs transition ${
-                    viewportMode === mode
-                      ? "bg-accent/10 text-accent"
-                      : "text-text-secondary hover:text-text-primary"
-                  }`}
-                >
-                  <Icon className="h-3.5 w-3.5" />
-                </button>
-              ))}
-            </div>
-
-            {/* Show/hide grid toggle */}
-            <button
-              onClick={() => setShowGrid((v) => !v)}
-              title={showGrid ? "Hide grid" : "Show grid"}
-              className={`flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs transition ${showGrid ? "border-accent/40 bg-accent/10 text-accent" : "border-border bg-bg text-text-secondary hover:text-text-primary"}`}
-            >
-              <Grid className="h-3.5 w-3.5" />
-            </button>
-
-            {/* Live data preview toggle */}
-            <button
-              onClick={handleToggleLiveData}
-              disabled={loadingLiveData}
-              title={liveDataMode ? "Showing live data — click to switch back to static preview" : "Preview with live data from your monitors"}
-              className={`flex items-center gap-1.5 rounded-lg border px-2 py-1.5 text-xs transition disabled:opacity-50 ${liveDataMode ? "border-green-500/40 bg-green-500/10 text-green-400" : "border-border bg-bg text-text-secondary hover:text-text-primary"}`}
-            >
-              {loadingLiveData ? (
-                <><RefreshCw className="h-3.5 w-3.5 animate-spin" /> Loading…</>
-              ) : (
-                <><Activity className="h-3.5 w-3.5" /> {liveDataMode ? "Live" : "Preview"}</>
-              )}
-            </button>
-
-            {/* Canvas zoom controls */}
-            <div className="flex items-center rounded-lg border border-border bg-bg overflow-hidden">
-              <button onClick={zoomOut} title="Zoom out (Ctrl+scroll)" className="flex items-center justify-center px-2 py-1.5 text-xs text-text-secondary hover:text-text-primary transition">
-                <ZoomOut className="h-3.5 w-3.5" />
-              </button>
-              <button onClick={zoomReset} title="Reset zoom" className="px-2 py-1.5 text-xs font-mono text-text-secondary hover:text-text-primary transition min-w-[40px] text-center">
-                {Math.round(zoom * 100)}%
-              </button>
-              <button onClick={zoomIn} title="Zoom in (Ctrl+scroll)" className="flex items-center justify-center px-2 py-1.5 text-xs text-text-secondary hover:text-text-primary transition">
-                <ZoomIn className="h-3.5 w-3.5" />
-              </button>
-              <button onClick={() => { zoomReset(); setViewportMode("desktop"); }} title="Fit to screen" className="flex items-center justify-center px-2 py-1.5 text-xs text-text-secondary hover:text-text-primary transition border-l border-border">
-                <Maximize2 className="h-3 w-3" />
-              </button>
-            </div>
-
-            {/* Version history button */}
-            <button
-              onClick={() => { setShowVersionHistory(true); loadApiHistory(); }}
-              title={`Version history — ${versionHistory.length} save${versionHistory.length !== 1 ? "s" : ""} stored`}
-              className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:text-text-primary"
-            >
-              <History className="h-3.5 w-3.5" />
-              History
-              {versionHistory.length > 0 && (
-                <span className="ml-0.5 rounded-full bg-accent/20 px-1.5 py-0.5 text-[10px] font-semibold text-accent">{versionHistory.length}</span>
-              )}
-            </button>
-
-            {/* Template gallery button */}
-            <button
-              onClick={() => setShowTemplateGallery(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:text-text-primary"
-            >
-              <LayoutTemplate className="h-3.5 w-3.5" />
-              Templates
-            </button>
-
-            {/* Page settings button */}
-            <button
-              onClick={() => setShowPageSettings(true)}
-              className="flex items-center gap-1.5 rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary transition hover:text-text-primary"
-            >
-              <Settings2 className="h-3.5 w-3.5" />
-              Settings
-            </button>
-
-            {/* Auto-save toggle */}
-            <button
-              onClick={() => setAutoSaveEnabled(v => !v)}
-              title={autoSaveEnabled ? "Auto-save is ON — click to disable" : "Auto-save is OFF — click to enable"}
-              className={`flex items-center gap-1 rounded-lg border px-2 py-1.5 text-xs transition ${autoSaveEnabled ? 'border-accent/40 bg-accent/10 text-accent' : 'border-border bg-bg text-text-secondary hover:text-text-primary'}`}
-            >
-              <span className={`h-1.5 w-1.5 rounded-full ${autoSaveEnabled ? 'bg-accent animate-pulse' : 'bg-text-secondary/40'}`} />
-              Auto
-            </button>
-
-            {/* Manual save button — greyed when no changes */}
-            <button
-              onClick={() => handleSave()}
-              disabled={saving || !isDirty}
-              title={isDirty ? "Save changes" : "No unsaved changes"}
-              className="flex items-center gap-1.5 rounded-lg bg-accent px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-accent/90 disabled:opacity-40 disabled:cursor-default"
-            >
-              <Save className="h-3.5 w-3.5" />
-              {saving ? "Saving…" : isDirty ? "Save*" : "Saved"}
-            </button>
-          </div>
-        </header>
+        <EditorToolbar
+          page={page}
+          widgets={widgets}
+          publicBase={publicBase}
+          selectedId={selectedId}
+          selectedIds={selectedIds}
+          publishing={publishing}
+          saving={saving}
+          isDirty={isDirty}
+          autoSaveEnabled={autoSaveEnabled}
+          showGrid={showGrid}
+          zoom={zoom}
+          viewportMode={viewportMode}
+          liveDataMode={liveDataMode}
+          loadingLiveData={loadingLiveData}
+          versionHistoryLength={versionHistory.length}
+          onBack={() => router.push("/status-pages")}
+          onDeselect={() => { setSelectedId(null); setSelectedIds(new Set()); }}
+          onAlignSelected={alignSelected}
+          onTogglePublish={handleTogglePublish}
+          onUndo={undo}
+          onRedo={redo}
+          onSetViewportMode={setViewportMode}
+          onToggleGrid={() => setShowGrid((v) => !v)}
+          onToggleLiveData={handleToggleLiveData}
+          onZoomOut={zoomOut}
+          onZoomIn={zoomIn}
+          onZoomReset={zoomReset}
+          onZoomFit={() => { zoomReset(); setViewportMode("desktop"); }}
+          onOpenVersionHistory={() => { setShowVersionHistory(true); loadApiHistory(); }}
+          onOpenTemplates={() => setShowTemplateGallery(true)}
+          onOpenSettings={() => setShowPageSettings(true)}
+          onToggleAutoSave={() => setAutoSaveEnabled((v) => !v)}
+          onSave={() => handleSave()}
+        />
 
         {/* Editor body */}
         <div className="flex flex-1 overflow-hidden">
@@ -1254,536 +1025,34 @@ export default function StatusPageEditorPage() {
 
       {/* Page Settings Modal */}
       {showPageSettings && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
-          <div className="w-full max-w-md rounded-2xl border border-border bg-surface shadow-2xl shadow-black/50 flex flex-col" style={{ maxHeight: 'min(90vh, 760px)' }}>
-            <div className="flex items-center justify-between border-b border-border px-6 py-4 shrink-0">
-              <div>
-                <h2 className="text-base font-semibold text-text-primary">Page Settings</h2>
-                <p className="text-xs text-text-muted mt-0.5">Configure theme, appearance, auto-refresh, and branding.</p>
-              </div>
-              <button onClick={() => setShowPageSettings(false)} className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="overflow-y-auto p-6 space-y-5 flex-1">
-              {/* Logo URL */}
-              <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1.5">Logo URL</label>
-                <input
-                  type="url"
-                  placeholder="https://example.com/logo.png"
-                  value={pageSettings.logoUrl ?? ""}
-                  onChange={(e) => setPageSettings((s) => ({ ...s, logoUrl: e.target.value || undefined }))}
-                  className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
-                />
-                <p className="mt-1 text-xs text-text-muted">Displayed above the page title. Leave empty to hide.</p>
-              </div>
-
-              {/* Favicon URL */}
-              <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1.5">Favicon URL</label>
-                <input
-                  type="url"
-                  placeholder="https://example.com/favicon.ico"
-                  value={pageSettings.faviconUrl ?? ""}
-                  onChange={(e) => setPageSettings((s) => ({ ...s, faviconUrl: e.target.value || undefined }))}
-                  className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
-                />
-                <p className="mt-1 text-xs text-text-muted">Custom favicon for the public status page. Leave empty to use default.</p>
-              </div>
-
-              {/* Accent color */}
-              <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1.5">Accent Color</label>
-                <div className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    value={pageSettings.accentColor ?? "#6366f1"}
-                    onChange={(e) => setPageSettings((s) => ({ ...s, accentColor: e.target.value }))}
-                    className="h-8 w-10 rounded cursor-pointer border border-border bg-bg"
-                  />
-                  <input
-                    type="text"
-                    placeholder="#6366f1"
-                    value={pageSettings.accentColor ?? ""}
-                    onChange={(e) => setPageSettings((s) => ({ ...s, accentColor: e.target.value || undefined }))}
-                    className="flex-1 rounded-lg border border-border bg-bg px-3 py-2 text-xs font-mono text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
-                  />
-                </div>
-                <p className="mt-1 text-xs text-text-muted">Override the default accent color on the public page.</p>
-              </div>
-
-              {/* Auto-refresh interval */}
-              <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1.5">
-                  <RefreshCw className="inline h-3 w-3 mr-1" />
-                  Auto-Refresh Interval
-                </label>
-                <select
-                  value={pageSettings.autoRefreshInterval ?? 60}
-                  onChange={(e) => setPageSettings((s) => ({ ...s, autoRefreshInterval: Number(e.target.value) }))}
-                  className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text-primary focus:border-accent focus:outline-none"
-                >
-                  <option value={0}>Off (manual only)</option>
-                  <option value={10}>Every 10 seconds</option>
-                  <option value={30}>Every 30 seconds</option>
-                  <option value={60}>Every 60 seconds (default)</option>
-                  <option value={300}>Every 5 minutes</option>
-                  <option value={600}>Every 10 minutes</option>
-                </select>
-              </div>
-
-              {/* Theme selector */}
-              <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1.5">Theme</label>
-                <div className="flex rounded-lg border border-border bg-bg overflow-hidden">
-                  {(["dark", "light", "system"] as const).map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => setPageSettings((s) => ({ ...s, theme: t }))}
-                      className={`flex-1 py-1.5 text-xs font-medium capitalize transition ${(pageSettings.theme ?? "dark") === t ? "bg-accent/15 text-accent" : "text-text-secondary hover:text-text-primary"}`}
-                    >{t}</button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Font selector */}
-              <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1.5">Font</label>
-                <select
-                  value={pageSettings.fontFamily ?? "inter"}
-                  onChange={(e) => setPageSettings((s) => ({ ...s, fontFamily: e.target.value as PageSettings["fontFamily"] }))}
-                  className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text-primary focus:border-accent focus:outline-none"
-                >
-                  <option value="inter">Inter (default)</option>
-                  <option value="roboto">Roboto</option>
-                  <option value="system">System UI</option>
-                  <option value="mono">Monospace</option>
-                </select>
-              </div>
-
-              {/* Background style */}
-              <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1.5">Background</label>
-                <div className="flex rounded-lg border border-border bg-bg overflow-hidden mb-2">
-                  {(["solid", "gradient", "grid-dots"] as const).map((style) => (
-                    <button
-                      key={style}
-                      onClick={() => setPageSettings((s) => ({ ...s, backgroundStyle: style }))}
-                      className={`flex-1 py-1.5 text-xs font-medium capitalize transition ${(pageSettings.backgroundStyle ?? "solid") === style ? "bg-accent/15 text-accent" : "text-text-secondary hover:text-text-primary"}`}
-                    >{style === "grid-dots" ? "Grid Dots" : style}</button>
-                  ))}
-                </div>
-                {(pageSettings.backgroundStyle ?? "solid") === "solid" && (
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="color"
-                      value={pageSettings.backgroundColor ?? "#0f1117"}
-                      onChange={(e) => setPageSettings((s) => ({ ...s, backgroundColor: e.target.value }))}
-                      className="h-8 w-10 rounded cursor-pointer border border-border bg-bg"
-                    />
-                    <input
-                      type="text"
-                      placeholder="#0f1117"
-                      value={pageSettings.backgroundColor ?? ""}
-                      onChange={(e) => setPageSettings((s) => ({ ...s, backgroundColor: e.target.value || undefined }))}
-                      className="flex-1 rounded-lg border border-border bg-bg px-3 py-2 text-xs font-mono text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
-                    />
-                  </div>
-                )}
-              </div>
-
-              {/* Branding toggle */}
-              <div className="flex items-center justify-between rounded-xl border border-border bg-bg/60 px-4 py-3">
-                <div>
-                  <p className="text-xs font-medium text-text-primary">Show &quot;Powered by {brand.name}&quot;</p>
-                  <p className="text-xs text-text-muted mt-0.5">Displays the {brand.name} branding in the page footer.</p>
-                </div>
-                <button
-                  onClick={() => setPageSettings((s) => ({ ...s, showBranding: !(s.showBranding !== false) }))}
-                  className={`relative h-5 w-9 rounded-full transition-colors ${(pageSettings.showBranding !== false) ? 'bg-accent' : 'bg-surface-elevated border border-border'}`}
-                >
-                  <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${(pageSettings.showBranding !== false) ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                </button>
-              </div>
-
-              {/* Password Protection */}
-              <div className="pt-2 border-t border-border/50">
-                <p className="text-xs font-semibold text-text-primary mb-2">Password Protection</p>
-                {page?.hasPassword ? (
-                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-4 py-3 space-y-3">
-                    {/* Status row */}
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        <Lock className="w-4 h-4 text-amber-400 shrink-0" />
-                        <div>
-                          <p className="text-xs font-semibold text-text-primary">Password protected</p>
-                          <p className="text-[10px] text-text-secondary">Viewers must enter the password to view this page.</p>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Change password toggle */}
-                    {!confirmRemovePassword && (
-                      <div className="space-y-2">
-                        <button
-                          type="button"
-                          onClick={() => { setShowChangePassword((v) => !v); setPasswordInput(""); setPasswordConfirm(""); }}
-                          className="text-xs text-accent hover:text-accent/80 transition-colors"
-                        >{showChangePassword ? "↑ Cancel" : "Change password"}</button>
-
-                        {showChangePassword && (
-                          <div className="space-y-2">
-                            <input
-                              type="password"
-                              placeholder="New password"
-                              value={passwordInput}
-                              onChange={(e) => setPasswordInput(e.target.value)}
-                              className="w-full rounded-lg border border-border bg-bg px-2.5 py-2 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
-                              autoFocus
-                            />
-                            <input
-                              type="password"
-                              placeholder="Confirm new password"
-                              value={passwordConfirm}
-                              onChange={(e) => setPasswordConfirm(e.target.value)}
-                              className={`w-full rounded-lg border bg-bg px-2.5 py-2 text-xs text-text-primary placeholder:text-text-secondary/40 focus:outline-none ${passwordConfirm && passwordInput !== passwordConfirm ? "border-danger focus:border-danger" : "border-border focus:border-accent"}`}
-                            />
-                            {passwordConfirm && passwordInput !== passwordConfirm && (
-                              <p className="text-[10px] text-danger">Passwords don't match</p>
-                            )}
-                            <div className="flex gap-2">
-                              <button
-                                type="button"
-                                onClick={() => { setShowChangePassword(false); setPasswordInput(""); setPasswordConfirm(""); }}
-                                className="flex-1 rounded-lg border border-border py-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors"
-                              >Cancel</button>
-                              <button
-                                type="button"
-                                disabled={changingPassword || !passwordInput || passwordInput !== passwordConfirm}
-                                onClick={async () => {
-                                  setChangingPassword(true);
-                                  try {
-                                    await api(`/v1/status-pages/${id}`, undefined, { method: "PATCH", body: JSON.stringify({ password: passwordInput }) });
-                                    setPasswordInput(""); setPasswordConfirm(""); setShowChangePassword(false);
-                                    toastCtx.success("Password updated");
-                                  } catch { toastCtx.error("Failed to update password"); }
-                                  finally { setChangingPassword(false); }
-                                }}
-                                className="flex-1 rounded-lg bg-accent py-1.5 text-xs font-semibold text-white disabled:opacity-50 transition-colors"
-                              >{changingPassword ? "Updating…" : "Update"}</button>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    )}
-
-                    {/* Remove confirmation */}
-                    {!showChangePassword && (
-                      confirmRemovePassword ? (
-                        <div className="rounded-lg border border-danger/30 bg-danger/5 px-3 py-2.5 space-y-2">
-                          <p className="text-xs font-medium text-danger">Remove password?</p>
-                          <p className="text-[10px] text-text-secondary">The page will become publicly accessible to anyone with the link.</p>
-                          <div className="flex gap-2">
-                            <button type="button" onClick={() => setConfirmRemovePassword(false)} className="flex-1 rounded-lg border border-border py-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors">Cancel</button>
-                            <button
-                              type="button"
-                              disabled={changingPassword}
-                              onClick={async () => {
-                                setChangingPassword(true);
-                                try {
-                                  await api(`/v1/status-pages/${id}`, undefined, { method: "PATCH", body: JSON.stringify({ removePassword: true }) });
-                                  setPage((p) => p ? { ...p, hasPassword: false } : p);
-                                  setConfirmRemovePassword(false);
-                                  toastCtx.success("Password removed — page is now public");
-                                } catch { toastCtx.error("Failed to remove password"); }
-                                finally { setChangingPassword(false); }
-                              }}
-                              className="flex-1 rounded-lg bg-danger py-1.5 text-xs font-semibold text-white disabled:opacity-50 transition-colors"
-                            >{changingPassword ? "Removing…" : "Yes, remove"}</button>
-                          </div>
-                        </div>
-                      ) : (
-                        <button type="button" onClick={() => setConfirmRemovePassword(true)} className="text-xs text-danger/70 hover:text-danger transition-colors">
-                          Remove password protection
-                        </button>
-                      )
-                    )}
-                  </div>
-                ) : (
-                  <div className="rounded-xl border border-border bg-bg/60 px-4 py-3 space-y-3">
-                    <div className="flex items-center gap-2">
-                      <Globe className="w-4 h-4 text-text-secondary shrink-0" />
-                      <p className="text-xs text-text-secondary">No password — page is publicly accessible to anyone.</p>
-                    </div>
-                    <div className="space-y-2">
-                      <input
-                        type="password"
-                        placeholder="Enter a password to restrict access"
-                        value={passwordInput}
-                        onChange={(e) => setPasswordInput(e.target.value)}
-                        className="w-full rounded-lg border border-border bg-bg px-2.5 py-2 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
-                      />
-                      <input
-                        type="password"
-                        placeholder="Confirm password"
-                        value={passwordConfirm}
-                        onChange={(e) => setPasswordConfirm(e.target.value)}
-                        className={`w-full rounded-lg border bg-bg px-2.5 py-2 text-xs text-text-primary placeholder:text-text-secondary/40 focus:outline-none ${passwordConfirm && passwordInput !== passwordConfirm ? "border-danger focus:border-danger" : "border-border focus:border-accent"}`}
-                      />
-                      {passwordConfirm && passwordInput !== passwordConfirm && (
-                        <p className="text-[10px] text-danger">Passwords don't match</p>
-                      )}
-                      <button
-                        type="button"
-                        disabled={changingPassword || !passwordInput || passwordInput !== passwordConfirm}
-                        onClick={async () => {
-                          setChangingPassword(true);
-                          try {
-                            await api(`/v1/status-pages/${id}`, undefined, { method: "PATCH", body: JSON.stringify({ password: passwordInput }) });
-                            setPasswordInput(""); setPasswordConfirm("");
-                            setPage((p) => p ? { ...p, hasPassword: true } : p);
-                            toastCtx.success("Password set — viewers must enter it to access");
-                          } catch { toastCtx.error("Failed to set password"); }
-                          finally { setChangingPassword(false); }
-                        }}
-                        className="w-full rounded-lg bg-accent py-2 text-xs font-semibold text-white disabled:opacity-50 transition-colors hover:bg-accent/90"
-                      >{changingPassword ? "Setting…" : "Set password"}</button>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Webhook Notifications */}
-              <div className="pt-2 border-t border-border/50">
-                <p className="text-xs font-semibold text-text-primary mb-1">Webhook Notifications</p>
-                <p className="text-[11px] text-text-muted mb-3">Receive a POST request when the overall page status changes between <span className="text-green-400 font-medium">operational</span>, <span className="text-yellow-400 font-medium">degraded</span>, and <span className="text-red-400 font-medium">outage</span>.</p>
-                <div className="rounded-xl border border-border bg-bg/60 px-4 py-3 space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-text-secondary mb-1.5">Webhook URL</label>
-                    <input
-                      type="url"
-                      placeholder="https://example.com/webhook/status"
-                      value={pageSettings.notifyWebhookUrl ?? ""}
-                      onChange={(e) => setPageSettings((s) => ({ ...s, notifyWebhookUrl: e.target.value || undefined }))}
-                      className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
-                    />
-                    <p className="text-[10px] text-text-secondary mt-1">Leave empty to disable. Save the page to apply changes.</p>
-                  </div>
-                  {pageSettings.notifyWebhookUrl && (
-                    <div className="rounded-lg bg-surface-elevated/50 border border-border/50 p-2.5">
-                      <p className="text-[10px] font-semibold text-text-secondary mb-1.5">Example payload</p>
-                      <pre className="text-[10px] text-text-muted font-mono whitespace-pre-wrap leading-relaxed">{JSON.stringify({
-                        event: "status_page.status_changed",
-                        slug: page?.slug ?? "my-page",
-                        status: "degraded",
-                        previousStatus: "operational",
-                        timestamp: new Date().toISOString(),
-                        affectedMonitors: [{ id: "abc123", name: "API" }],
-                      }, null, 2)}</pre>
-                    </div>
-                  )}
-                  <div>
-                    <label className="block text-xs font-medium text-text-secondary mb-1.5">Slack Webhook URL</label>
-                    <input
-                      type="url"
-                      placeholder="https://hooks.slack.com/services/..."
-                      value={pageSettings.slackWebhookUrl ?? ""}
-                      onChange={(e) => setPageSettings((s) => ({ ...s, slackWebhookUrl: e.target.value || undefined }))}
-                      className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
-                    />
-                    <p className="text-[10px] text-text-secondary mt-1">Optional. Posts a Slack message when the page status changes.</p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-text-secondary mb-1.5">Discord Webhook URL</label>
-                    <input
-                      type="url"
-                      placeholder="https://discord.com/api/webhooks/..."
-                      value={pageSettings.discordWebhookUrl ?? ""}
-                      onChange={(e) => setPageSettings((s) => ({ ...s, discordWebhookUrl: e.target.value || undefined }))}
-                      className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
-                    />
-                    <p className="text-[10px] text-text-secondary mt-1">Optional. Posts a Discord embed when the page status changes.</p>
-                  </div>
-                </div>
-              </div>
-
-              {/* Advanced / Custom CSS */}
-              <div className="pt-2 border-t border-border/50">
-                <p className="text-xs font-semibold text-text-primary mb-3">Advanced</p>
-                <div>
-                  <label className="block text-xs font-medium text-text-secondary mb-1.5">
-                    Custom CSS <span className="text-text-muted">(advanced)</span>
-                  </label>
-                  <textarea
-                    rows={6}
-                    placeholder={"/* Add custom styles for your status page */\nbody { font-family: 'Inter', sans-serif; }\n.page-title { color: #6366f1; }"}
-                    value={pageSettings.customCss ?? ""}
-                    onChange={(e) => setPageSettings((s) => ({ ...s, customCss: e.target.value || undefined }))}
-                    className="w-full rounded-lg border border-border bg-bg px-2.5 py-1.5 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none font-mono resize-y min-h-[80px]"
-                    spellCheck={false}
-                  />
-                  <p className="text-[10px] text-text-secondary mt-1">
-                    CSS injected into the public page &lt;head&gt;. Use to override fonts, colors, or layout. Max 10,000 characters.
-                  </p>
-                </div>
-              </div>
-
-              {/* SEO Section */}
-              <div className="pt-2 border-t border-border/50">
-                <p className="text-xs font-semibold text-text-primary mb-3">SEO &amp; Social Sharing</p>
-                <div className="space-y-3">
-                  <div>
-                    <label className="block text-xs font-medium text-text-secondary mb-1.5">Meta Title</label>
-                    <input
-                      type="text"
-                      placeholder="My Company Status"
-                      maxLength={60}
-                      value={pageSettings.metaTitle ?? ""}
-                      onChange={(e) => setPageSettings((s) => ({ ...s, metaTitle: e.target.value || undefined }))}
-                      className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
-                    />
-                    <p className="mt-1 text-[10px] text-text-muted">Overrides the page title in search results and browser tab (max 60 chars).</p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-text-secondary mb-1.5">Meta Description</label>
-                    <textarea
-                      rows={2}
-                      placeholder="Live status and uptime for all our services."
-                      maxLength={160}
-                      value={pageSettings.metaDescription ?? ""}
-                      onChange={(e) => setPageSettings((s) => ({ ...s, metaDescription: e.target.value || undefined }))}
-                      className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
-                    />
-                    <p className="mt-1 text-[10px] text-text-muted">Shown in search engine snippets (max 160 chars).</p>
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-text-secondary mb-1.5">OG Image URL</label>
-                    <input
-                      type="url"
-                      placeholder="https://example.com/og-image.png"
-                      value={pageSettings.ogImageUrl ?? ""}
-                      onChange={(e) => setPageSettings((s) => ({ ...s, ogImageUrl: e.target.value || undefined }))}
-                      className="w-full rounded-lg border border-border bg-bg px-3 py-2 text-xs text-text-primary placeholder:text-text-secondary/40 focus:border-accent focus:outline-none"
-                    />
-                    <p className="mt-1 text-[10px] text-text-muted">Image shown when sharing on Twitter, Discord, Slack, etc. (1200×630px recommended).</p>
-                  </div>
-                  <div className="flex items-center justify-between rounded-xl border border-border bg-bg/60 px-4 py-3">
-                    <div>
-                      <p className="text-xs font-medium text-text-primary">Allow search engines to index</p>
-                      <p className="text-xs text-text-muted mt-0.5">Adds robots meta tag (index, follow). Disable for private pages.</p>
-                    </div>
-                    <button
-                      onClick={() => setPageSettings((s) => ({ ...s, robotsIndex: !(s.robotsIndex !== false) }))}
-                      className={`relative h-5 w-9 rounded-full transition-colors ${(pageSettings.robotsIndex !== false) ? 'bg-accent' : 'bg-surface-elevated border border-border'}`}
-                    >
-                      <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${(pageSettings.robotsIndex !== false) ? 'translate-x-4' : 'translate-x-0.5'}`} />
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-            <div className="flex justify-end gap-2 border-t border-border px-6 py-4 shrink-0">
-              <button onClick={() => setShowPageSettings(false)} className="rounded-lg border border-border bg-bg px-4 py-2 text-xs font-medium text-text-secondary hover:text-text-primary transition">
-                Cancel
-              </button>
-              <button
-                onClick={() => { setShowPageSettings(false); handleSave(); }}
-                className="rounded-lg bg-accent px-4 py-2 text-xs font-semibold text-white transition hover:bg-accent/90"
-              >
-                Save Settings
-              </button>
-            </div>
-          </div>
-        </div>
+        <PageSettingsModal
+          page={page}
+          pageSettings={pageSettings}
+          setPageSettings={setPageSettings}
+          setPage={setPage}
+          id={id}
+          onClose={() => setShowPageSettings(false)}
+          onSave={() => handleSave()}
+        />
       )}
 
       {/* Template Gallery Modal */}
       {showTemplateGallery && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-2xl rounded-2xl border border-border bg-surface shadow-2xl shadow-black/50 mx-4 max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-border px-6 py-4">
-              <div>
-                <h2 className="text-base font-semibold text-text-primary">Template Gallery</h2>
-                <p className="text-xs text-text-muted mt-0.5">Start from a preset layout. This will replace your current canvas.</p>
-              </div>
-              <button
-                onClick={() => setShowTemplateGallery(false)}
-                className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="overflow-y-auto p-6 grid grid-cols-2 gap-4">
-              {STATUS_TEMPLATES.map((tmpl) => (
-                <button
-                  key={tmpl.id}
-                  onClick={() => applyTemplate(tmpl)}
-                  className="text-left rounded-xl border border-border bg-bg/60 p-4 hover:border-accent/50 hover:bg-accent/5 transition-all group"
-                >
-                  <div className="text-2xl mb-2">{tmpl.preview}</div>
-                  <p className="text-sm font-semibold text-text-primary group-hover:text-accent transition">{tmpl.name}</p>
-                  <p className="text-xs text-text-muted mt-1">{tmpl.description}</p>
-                  <p className="text-xs text-text-secondary/60 mt-2">{tmpl.widgets.length} widgets</p>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
+        <TemplateGalleryModal
+          onClose={() => setShowTemplateGallery(false)}
+          onApply={applyTemplate}
+        />
       )}
+
       {/* Version History Modal */}
       {showVersionHistory && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-          <div className="w-full max-w-lg rounded-2xl border border-border bg-surface shadow-2xl shadow-black/50 mx-4 max-h-[80vh] flex flex-col">
-            <div className="flex items-center justify-between border-b border-border px-6 py-4">
-              <div>
-                <h2 className="text-base font-semibold text-text-primary">Version History</h2>
-                <p className="text-xs text-text-muted mt-0.5">Last 10 saves stored on server. One-click restore.</p>
-              </div>
-              <button onClick={() => setShowVersionHistory(false)} className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition">
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <div className="overflow-y-auto p-4 space-y-2">
-              {apiHistoryLoading ? (
-                <div className="py-8 text-center text-sm text-text-secondary">
-                  <div className="animate-spin rounded-full h-6 w-6 border-2 border-accent border-t-transparent mx-auto mb-2" />
-                  <p>Loading history…</p>
-                </div>
-              ) : apiHistory.length === 0 ? (
-                <div className="py-8 text-center text-sm text-text-secondary">
-                  <History className="h-8 w-8 mx-auto mb-2 text-text-muted/40" />
-                  <p>No server saves yet.</p>
-                  <p className="text-xs text-text-muted mt-1">Save your page to start tracking history.</p>
-                </div>
-              ) : apiHistory.map((entry, i) => {
-                const d = new Date(entry.savedAt);
-                const dateLabel = d.toLocaleDateString(undefined, { month: "short", day: "numeric" }) + " " + d.toLocaleTimeString(undefined, { hour: "2-digit", minute: "2-digit" });
-                const widgetCount = Array.isArray(entry.layout?.widgets) ? entry.layout.widgets.length : 0;
-                const isRestoring = restoringHistoryId === entry.id;
-                return (
-                  <div key={entry.id} className="flex items-center justify-between rounded-xl border border-border bg-bg/60 px-4 py-3 group">
-                    <div>
-                      <p className="text-xs font-medium text-text-primary flex items-center gap-2">
-                        {i === 0 && <span className="text-[10px] rounded-full bg-accent/15 text-accent px-1.5 py-0.5 font-semibold">Latest</span>}
-                        {entry.label ? <span className="text-[10px] text-text-muted italic">{entry.label}</span> : null}
-                        {dateLabel}
-                      </p>
-                      <p className="text-[10px] text-text-muted mt-0.5">{widgetCount} widget{widgetCount !== 1 ? "s" : ""}</p>
-                    </div>
-                    <button
-                      onClick={() => restoreApiVersion(entry.id)}
-                      disabled={isRestoring}
-                      className="rounded-lg border border-border bg-bg px-3 py-1.5 text-xs font-medium text-text-secondary hover:border-accent/50 hover:text-accent transition opacity-0 group-hover:opacity-100 disabled:opacity-50"
-                    >
-                      {isRestoring ? "Restoring…" : "Restore"}
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
+        <VersionHistoryModal
+          apiHistory={apiHistory}
+          apiHistoryLoading={apiHistoryLoading}
+          restoringHistoryId={restoringHistoryId}
+          onClose={() => setShowVersionHistory(false)}
+          onRestore={restoreApiVersion}
+        />
       )}
     </DndContext>
   );

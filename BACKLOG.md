@@ -6,6 +6,8 @@
   - [x] **Heartbeat health check** — `git pull origin dev`, `npm run build`, `npm run test`, `npm audit` all successful.
   - [x] **Visual test unblock attempt** — Installed Playwright browser binaries (`npx playwright install chromium`).
   - [x] **Visual test diagnostics improved** — `scripts/visual-test.ts` now detects missing shared library runtime failures and prints explicit root-level fix instructions (`npx playwright install-deps chromium`).
+  - [x] **Restart + post-deploy verification** — Restarted API/Web via `npm run restart`; API `/health` and web `/login` healthy; auth-protected endpoints correctly enforce token checks.
+  - [x] **Frontend audit** — Local and reverse-proxy pages `/login`, `/dashboard`, `/monitors`, `/alerts`, `/account`, `/projects`, `/versions`, `/admin` all return HTTP 200.
 
 ## Status Summary (2026-03-30 12:30 UTC)
 - **Build/Test:** ✅ 4598 API + 757 web + 22 package tests passing; build clean; 0 TS errors

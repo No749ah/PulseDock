@@ -1,8 +1,9 @@
-## Status Summary (2026-04-01 21:22 UTC)
+## Status Summary (2026-04-01 21:35 UTC)
 - **Build/Test:** ✅ Build clean; 4675 API + 760 web + 10 CLI + 12 agent tests passing; 0 vulnerabilities
 - **Deployment:** ✅ Restarted API + web (`npm run restart`); `/health` 200, `/login` 200, `/api/v1/monitors` (proxy) 401 expected; all audited routes 200 locally + via `https://oc-dev-test.no749ah.com`
 - **Branch:** heartbeat/2026-04-01-afternoon
-- **Last changes (21:22 UTC):**
+- **Last changes (21:35 UTC):**
+  - [x] **incidents/page.tsx refactor** — 1179→183 lines; useIncidents hook + IncidentRow, IncidentModals, IncidentToolbar, MonitorPicker extracted.
   - [x] **dashboard/page.tsx refactor** — 1184→176 lines; useDashboard hook + 8 extracted section components.
   - [x] **monitors/[id]/page.tsx refactor** — 5605→246 lines; 13 existing tab components wired + SimulateTab/PerformanceTab extracted.
   - [x] **monitors/page.tsx refactor** — 2947→249 lines; useMonitors hook + extracted page-level components.

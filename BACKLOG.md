@@ -49,6 +49,8 @@
 
 - [x] **Fix global search monitor type filtering** — ✅ Done (2026-04-01). Replaced invalid `VERSION_CHECK` literal with proper enum filters (`type: { notIn: [GIT_RELEASE, DOCKER_IMAGE] }` for uptime monitors and `type: { in: [...] }` for version monitors). Added targeted unit coverage + integration coverage for `/v1/search` (auth, limits, isolation, result mapping).
 
+- [ ] **Normalize API path expectations in ops checks/docs** — Health checks currently mix `http://localhost:4321/v1/*` (direct API) and `http://localhost:1234/api/v1/*` (web proxy). Add one canonical verification script/doc so heartbeat checks cannot accidentally probe nonexistent direct `/api/v1/*` routes.
+
 ### 🟠 P1 — UX & Polish
 
 - [x] **Visual browser testing** — ✅ Done (2026-04-01). Added rootless runner `scripts/visual-test-docker.sh` + `npm run test:visual:docker`; verified with 90/90 passing screenshots across all target pages × 3 viewports × 2 themes.

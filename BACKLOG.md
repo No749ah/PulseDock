@@ -1,11 +1,14 @@
-## Status Summary (2026-04-01 19:50 UTC)
-- **Build/Test:** ✅ Build clean, all tests passing (4675 API + 10 CLI + 12 agent), 0 vulnerabilities
+## Status Summary (2026-04-01 20:37 UTC)
+- **Build/Test:** ✅ Build clean; 4675 API + 760 web + 10 CLI + 12 agent tests passing; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
 - **Branch:** heartbeat/2026-04-01-afternoon
-- **Last changes (19:50 UTC):**
-  - [x] **Monitor detail refactor** - `monitors/[id]/page.tsx` 5605→246 lines; 13 existing tab components wired up, SimulateTab + PerformanceTab extracted (separate subagent commit).
-  - [x] **Changelog page** - Added missing v1.1.0-v1.6.0 releases (6 versions were absent from web UI, CHANGELOG.md had them all along).
-  - [x] **package.json license** - Fixed Apache-2.0 → MIT to match LICENSE file and README badge.
+- **Last changes (20:37 UTC):**
+  - [x] **monitors/[id]/page.tsx refactor** — 5605→246 lines; 13 existing tab components wired + SimulateTab/PerformanceTab extracted.
+  - [x] **monitors/page.tsx refactor** — 2947→249 lines; useMonitors hook + 8 components extracted.
+  - [x] **alerts/page.tsx refactor** — 2003→173 lines; useAlerts hook + 9 components extracted.
+  - [x] **Changelog page** — Added missing v1.1.0–v1.6.0 entries (6 releases absent from web UI).
+  - [x] **package.json license** — Fixed Apache-2.0 → MIT (matches LICENSE file and README badge).
+  - [ ] **MonitorFormModal.tsx refactor** — 2581 lines, in progress — extracting type-specific config sections.
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
@@ -49,7 +52,7 @@
 
 - [x] **Fix global search monitor type filtering** - ✅ Done (2026-04-01). Replaced invalid `VERSION_CHECK` literal with proper enum filters (`type: { notIn: [GIT_RELEASE, DOCKER_IMAGE] }` for uptime monitors and `type: { in: [...] }` for version monitors). Added targeted unit coverage + integration coverage for `/v1/search` (auth, limits, isolation, result mapping).
 
-- [x] **Normalize API path expectations in ops checks/docs** — ✅ Done (2026-04-01). `scripts/verify-deployment.sh` is the canonical verification script with all three access paths documented (direct API port 4321, web proxy port 1234, public reverse proxy). Path anti-pattern guard included.
+- [x] **Normalize API path expectations in ops checks/docs** - ✅ Done (2026-04-01). `scripts/verify-deployment.sh` is the canonical verification script with all three access paths documented (direct API port 4321, web proxy port 1234, public reverse proxy). Path anti-pattern guard included.
 
 ### 🟠 P1 - UX & Polish
 

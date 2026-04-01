@@ -1,13 +1,10 @@
-## Status Summary (2026-04-01 21:35 UTC)
-- **Build/Test:** ✅ Build clean; 4675 API + 760 web + 10 CLI + 12 agent tests passing; 0 vulnerabilities
-- **Deployment:** ✅ Restarted API + web (`npm run restart`); `/health` 200, `/login` 200, `/api/v1/monitors` (proxy) 401 expected; all audited routes 200 locally + via `https://oc-dev-test.no749ah.com`
+## Status Summary (2026-04-01 22:10 UTC)
+- **Build/Test:** ✅ Build clean; 4712 API + 776 web + 10 CLI + 12 agent tests passing; 0 vulnerabilities
+- **Deployment:** ✅ Restarted API + web (`npm run restart`); `/health` 200, `/login` 200, all audited routes 200 locally + via `https://oc-dev-test.no749ah.com`
 - **Branch:** heartbeat/2026-04-01-afternoon
-- **Last changes (21:35 UTC):**
-  - [x] **incidents/page.tsx refactor** — 1179→183 lines; useIncidents hook + IncidentRow, IncidentModals, IncidentToolbar, MonitorPicker extracted.
-  - [x] **dashboard/page.tsx refactor** — 1184→176 lines; useDashboard hook + 8 extracted section components.
-  - [x] **monitors/[id]/page.tsx refactor** — 5605→246 lines; 13 existing tab components wired + SimulateTab/PerformanceTab extracted.
-  - [x] **monitors/page.tsx refactor** — 2947→249 lines; useMonitors hook + extracted page-level components.
-  - [x] **alerts/page.tsx refactor** — 2003→173 lines; useAlerts hook + extracted page-level components.
+- **Last changes (22:10 UTC):**
+  - [x] **Fix missing reportHtml module** — Created `apps/web/app/monitors/sla/components/reportHtml.ts` resolving TS2307 that silently broke the SLA compliance report download button. Generates printable HTML with summary cards, fleet stats, per-monitor detail tables, monthly breakdown, sorted by compliance status. XSS-safe (all user strings escaped).
+  - [x] **Add 16 tests for reportHtml** — Full coverage: HTML structure, period dates, summary counts, status badges, HTML escaping, empty-state, sort order, null rendering, print button. Web tests: 760 → 776.
   - [x] **MonitorFormModal.tsx refactor** — 2581→216 lines; split into type-specific form sections under `monitors/components/form/*`.
   - [x] **OverviewTab.tsx refactor** — extracted overview cards into `monitors/[id]/components/overview/*` for maintainability.
   - [x] **Changelog page** — Added missing v1.1.0–v1.6.0 entries (6 releases absent from web UI).

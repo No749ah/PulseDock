@@ -40,7 +40,7 @@
     "registry:audit:verified:check": "npm run registry:audit:verified && npx ts-node --project packages/tool-registry/tsconfig.json packages/tool-registry/scripts/verified-runtime-regression.ts",
     "registry:verify:runtime:mocks": "npx ts-node --project packages/tool-registry/tsconfig.json packages/tool-registry/scripts/verified-runtime-mock-check.ts"
   },
-  "license": "Apache-2.0",
+  "license": "MIT",
   "dependencies": {
     "@tabler/icons-react": "^3.41.1",
     "@vitest/coverage-v8": "^4.1.2",

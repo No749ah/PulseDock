@@ -57,6 +57,21 @@ interface ScreenshotResult {
   httpStatus?: number;
 }
 
+function printPlaywrightDependencyHint(err: unknown): void {
+  const message = err instanceof Error ? err.message : String(err);
+
+  if (!message.includes('error while loading shared libraries')) {
+    return;
+  }
+
+  console.error('\n⚠️  Playwright browser runtime dependencies are missing on this host.');
+  console.error('   This environment needs system packages for headless Chromium.');
+  console.error('   Fix (requires root):');
+  console.error('     npx playwright install-deps chromium');
+  console.error('   Then rerun:');
+  console.error('     npx tsx scripts/visual-test.ts --base-url=http://localhost:1234\n');
+}
+
 async function captureScreenshot(
   page: Page,
   pageName: string,
@@ -115,7 +130,15 @@ async function run() {
   console.log(`   Base URL: ${BASE_URL}`);
   console.log(`   Output: ${OUT_DIR}\n`);
 
-  const browser = await chromium.launch({ headless: true });
+  let browser: Browser;
+
+  try {
+    browser = await chromium.launch({ headless: true });
+  } catch (err) {
+    printPlaywrightDependencyHint(err);
+    throw err;
+  }
+
   const context = await browser.newContext();
   const page = await context.newPage();
 

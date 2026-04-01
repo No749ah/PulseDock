@@ -42,7 +42,7 @@ function makeRuns(total: number, failedCount: number, baseDate = new Date(Date.n
   return Array.from({ length: total }, (_, i) => ({
     monitorId,
     ok: i >= failedCount,
-    checkedAt: new Date(baseDate.getTime() - i * 60_000),
+    checkedAt: new Date(baseDate.getTime() - i * 1_000),
     latencyMs: null,
   }));
 }

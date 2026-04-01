@@ -67,15 +67,16 @@ describe('MonitorsService.reliabilityTrend', () => {
     const monitors: MockMonitor[] = [
       { id: 'm1', name: 'Flaky', type: 'HTTP', pinned: false, createdAt: new Date(), folder: null },
     ];
+    // Previous week (days 3-6): all ok, fast latency -> high score
+    // Current week (days 0-2): all fail -> low score -> degrading
     const runs: MockRun[] = [
-      { monitorId: 'm1', ok: true, latencyMs: 100, checkedAt: makeDate(10) },
-      { monitorId: 'm1', ok: true, latencyMs: 100, checkedAt: makeDate(11) },
-      { monitorId: 'm1', ok: true, latencyMs: 100, checkedAt: makeDate(12) },
-      { monitorId: 'm1', ok: true, latencyMs: 100, checkedAt: makeDate(13) },
-      { monitorId: 'm1', ok: false, latencyMs: null, checkedAt: makeDate(3) },
-      { monitorId: 'm1', ok: false, latencyMs: null, checkedAt: makeDate(4) },
-      { monitorId: 'm1', ok: false, latencyMs: null, checkedAt: makeDate(5) },
-      { monitorId: 'm1', ok: true, latencyMs: 4000, checkedAt: makeDate(2) },
+      { monitorId: 'm1', ok: true, latencyMs: 100, checkedAt: makeDate(3) },
+      { monitorId: 'm1', ok: true, latencyMs: 100, checkedAt: makeDate(4) },
+      { monitorId: 'm1', ok: true, latencyMs: 100, checkedAt: makeDate(5) },
+      { monitorId: 'm1', ok: true, latencyMs: 100, checkedAt: makeDate(6) },
+      { monitorId: 'm1', ok: false, latencyMs: null, checkedAt: makeDate(0) },
+      { monitorId: 'm1', ok: false, latencyMs: null, checkedAt: makeDate(1) },
+      { monitorId: 'm1', ok: false, latencyMs: null, checkedAt: makeDate(2) },
     ];
     const svc = buildService(monitors, runs);
     const result = await svc.reliabilityTrend('user-1', 4);
@@ -87,13 +88,17 @@ describe('MonitorsService.reliabilityTrend', () => {
       { id: 'good', name: 'Good', type: 'HTTP', pinned: false, createdAt: new Date(), folder: null },
       { id: 'bad', name: 'Bad', type: 'HTTP', pinned: false, createdAt: new Date(), folder: null },
     ];
+    // good: prev week bad, current week ok -> improving
+    // bad: prev week ok, current week bad -> degrading
     const runs: MockRun[] = [
-      { monitorId: 'good', ok: false, latencyMs: null, checkedAt: makeDate(10) },
+      { monitorId: 'good', ok: false, latencyMs: null, checkedAt: makeDate(6) },
+      { monitorId: 'good', ok: false, latencyMs: null, checkedAt: makeDate(5) },
+      { monitorId: 'good', ok: true, latencyMs: 100, checkedAt: makeDate(1) },
       { monitorId: 'good', ok: true, latencyMs: 100, checkedAt: makeDate(2) },
-      { monitorId: 'good', ok: true, latencyMs: 100, checkedAt: makeDate(3) },
-      { monitorId: 'bad', ok: true, latencyMs: 100, checkedAt: makeDate(10) },
+      { monitorId: 'bad', ok: true, latencyMs: 100, checkedAt: makeDate(6) },
+      { monitorId: 'bad', ok: true, latencyMs: 100, checkedAt: makeDate(5) },
+      { monitorId: 'bad', ok: false, latencyMs: null, checkedAt: makeDate(1) },
       { monitorId: 'bad', ok: false, latencyMs: null, checkedAt: makeDate(2) },
-      { monitorId: 'bad', ok: false, latencyMs: null, checkedAt: makeDate(3) },
     ];
     const svc = buildService(monitors, runs);
     const result = await svc.reliabilityTrend('user-1', 4);

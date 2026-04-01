@@ -1,3 +1,13 @@
+## Status Summary (2026-04-01 10:20 UTC)
+- **Build/Test:** ✅ 4672 API (+74) + 757 web + 22 package tests passing; build clean; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API v1.6.0 + web running; public URL 200; all 12 pages HTTP 200
+- **Branch:** heartbeat/2026-03-30-afternoon
+- **Last changes (10:20 UTC):**
+  - [x] **Status page editor widget previews** — Fixed 11 widget types falling through to 'label only' fallback in editor canvas. Added missing cases for: `overall-system-status`, `multi-monitor-status-grid`, `monitor-group-status`, `sla-summary`, `scheduled-maintenance`, `rolling-uptime-cards`, `status-history-ribbon`, `uptime-percentage-card`, `component-status-list`, `service-health-matrix`, `aggregate-health-score`. All 82 palette types now covered.
+  - [x] **Unit tests for MonitorsComparisonService** — 51 new tests covering: `pearsonCorrelation` edge cases, `compareMonitors` validation/stats/correlation, `getLatencyDistribution` bucketing/percentiles/hourly avg, `getPeriodComparison` deltas, `getStatusTransitions` MTTR/MTBF/outage detection.
+  - [x] **Unit tests for MonitorsDiagnosticsService** — 23 new tests covering: `getHealthScore` all 4 scoring dimensions (uptime 40pts, latency trend 20pts, SLA budget 20pts, streak 20pts), grade thresholds A–F, no-run defaults, version monitor exemptions.
+
 ## Status Summary (2026-04-01 09:12 UTC)
 - **Build/Test:** ✅ Build clean; tests passing; 0 vulnerabilities
 - **Security/Audit:** ✅ 0 high vulnerabilities (`npm audit --audit-level=high`)
@@ -62,7 +72,11 @@
 
 - [ ] **Visual browser testing** — Script created (scripts/visual-test.ts). Browser binaries installed (`npx playwright install chromium`) and runtime diagnostics improved, but still blocked by missing system deps (`libnspr4.so`). Needs root: `npx playwright install-deps chromium`. Once deps installed, run `npx tsx scripts/visual-test.ts` for automated screenshot capture across all pages × 3 viewports × 2 themes.
 
-- [ ] **Status page widget visual audit (browser)** — Open the widget showcase page in a browser, screenshot each widget, check for broken layouts, empty states, alignment issues. Fix anything that doesn't look Apple-quality.
+- [x] **Unit tests for monitor sub-services (comparison + diagnostics)** — ✅ Done (2026-04-01). 74 new unit tests for MonitorsComparisonService (pearsonCorrelation, compareMonitors, getLatencyDistribution, getPeriodComparison, getStatusTransitions) and MonitorsDiagnosticsService (getHealthScore: all 4 scoring dimensions, grade thresholds A–F). API test total: 4598 → 4672.
+
+- [x] **Status page widget preview coverage** — ✅ Done (2026-04-01). All 82 widget palette types now have editor canvas previews. Fixed 11 missing widget cases + 3 type aliases. Zero fallthrough to default.
+
+- [ ] **Status page widget visual audit (browser)** — Visual quality inspection via browser. Blocked: no browser available in sandbox. Playwright needs root deps (`npx playwright install-deps chromium`).
 
 - [x] **Loading performance audit** — ✅ Done (2026-03-30). Dashboard JS reduced 24% (1314KB → 1001KB). Chart.js removed from critical path (lazy-loaded only on monitor detail). Deleted unused BarChartCJS. TTFB <21ms on all pages. Gzipped dashboard JS ~300KB via reverse proxy.
 

@@ -1,12 +1,13 @@
-## Status Summary (2026-04-01 12:20 UTC)
+## Status Summary (2026-04-01 12:28 UTC)
 - **Build/Test:** ✅ 4673 API + 757 web + 22 package tests passing; build clean; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities
 - **Deployment:** ✅ API + web running; public URL 200; all pages HTTP 200
-- **Branch:** heartbeat/2026-04-01-noon
-- **Last changes (12:20 UTC):**
+- **Branch:** heartbeat/2026-04-01-afternoon (new cycle branch)
+- **Last changes (12:28 UTC):**
   - [x] **Visual browser testing unblocked in rootless environments** — Added `scripts/visual-test-docker.sh` + `npm run test:visual:docker`. Runner now works without host bind mounts (uses `docker cp`) and without root-level `install-deps`.
   - [x] **Visual regression run completed** — `npm run test:visual:docker` against `https://oc-dev-test.no749ah.com`: 90/90 screenshots passed (all pages × desktop/tablet/mobile × light/dark).
-  - [x] **Developer guidance updated** — `scripts/visual-test.ts` now prints Docker fallback hint; troubleshooting docs include rootless visual-test path.
+  - [x] **Branch management (12:00 UTC cycle)** — Merged `heartbeat/2026-04-01-noon` → `dev`, deleted old heartbeat branch (local + remote), created/pushed `heartbeat/2026-04-01-afternoon`.
+  - [x] **Post-deploy verification** — API `/health` 200, web `/login` 200, API and web `/api/v1/monitors` reject invalid bearer with 401, reverse proxy `/login` + `/dashboard` 200.
 
 ## Status Summary (2026-04-01 09:12 UTC)
 - **Build/Test:** ✅ Build clean; tests passing; 0 vulnerabilities

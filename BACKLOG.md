@@ -1,14 +1,13 @@
-## Status Summary (2026-03-30 12:30 UTC)
-- **Build/Test:** ✅ All tests passing; build clean; 0 TS errors
-- **Security/Audit:** ✅ 0 vulnerabilities
-- **Deployment:** ✅ API v1.6.0 + web running; public URL 200; all pages HTTP 200
-- **Branch:** heartbeat/2026-03-30-afternoon (merged heartbeat/2026-03-30-midnight → dev at 12:24 UTC)
-- **Last changes (12:30 UTC):**
-  - [x] **Branch management** — Merged 34 commits from heartbeat/2026-03-30-midnight → dev, deleted old branch, created heartbeat/2026-03-30-afternoon.
-  - [x] **Sidebar nav UX** — Active item now has accent bar (CSS ::before), sub-page prefix matching highlights parent nav item.
-  - [x] Full health check: build clean, all tests green, 0 vulnerabilities, all pages 200, public URL 200.
+## Status Summary (2026-04-01 09:12 UTC)
+- **Build/Test:** ✅ Build clean; tests passing; 0 vulnerabilities
+- **Security/Audit:** ✅ 0 high vulnerabilities (`npm audit --audit-level=high`)
+- **Branch:** heartbeat/2026-03-30-afternoon
+- **Last changes (09:12 UTC):**
+  - [x] **Heartbeat health check** — `git pull origin dev`, `npm run build`, `npm run test`, `npm audit` all successful.
+  - [x] **Visual test unblock attempt** — Installed Playwright browser binaries (`npx playwright install chromium`).
+  - [x] **Visual test diagnostics improved** — `scripts/visual-test.ts` now detects missing shared library runtime failures and prints explicit root-level fix instructions (`npx playwright install-deps chromium`).
 
-## Status Summary (2026-03-30 11:17 UTC)
+## Status Summary (2026-03-30 12:30 UTC)
 - **Build/Test:** ✅ 4598 API + 757 web + 22 package tests passing; build clean; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities
 - **Deployment:** ✅ API v1.6.0 + web running; public URL 200; all 13 pages HTTP 200
@@ -59,7 +58,7 @@
 
 ### 🟠 P1 — UX & Polish
 
-- [ ] **Visual browser testing** — Script created (scripts/visual-test.ts) but blocked: container lacks Playwright chromium system deps (libnspr4.so etc). Needs `npx playwright install-deps chromium` with root access. Once deps installed, run `npx tsx scripts/visual-test.ts` for automated screenshot capture across all pages × 3 viewports × 2 themes.
+- [ ] **Visual browser testing** — Script created (scripts/visual-test.ts). Browser binaries installed (`npx playwright install chromium`) and runtime diagnostics improved, but still blocked by missing system deps (`libnspr4.so`). Needs root: `npx playwright install-deps chromium`. Once deps installed, run `npx tsx scripts/visual-test.ts` for automated screenshot capture across all pages × 3 viewports × 2 themes.
 
 - [ ] **Status page widget visual audit (browser)** — Open the widget showcase page in a browser, screenshot each widget, check for broken layouts, empty states, alignment issues. Fix anything that doesn't look Apple-quality.
 

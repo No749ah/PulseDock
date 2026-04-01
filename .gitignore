@@ -37,6 +37,7 @@ Thumbs.db
 # Media artifacts
 apps/web/public/hero-video/*.mp4
 .github/mp4/
+scripts/screenshots/*.png
 
 # Keys
 .keys/

@@ -1,54 +1,11 @@
-## Status Summary (2026-04-01 16:10 UTC)
-- **Build/Test:** ✅ Build + tests + audit clean; visual suite 90/90 passed
-- **Security/Audit:** ✅ 0 vulnerabilities (`npm audit --audit-level=high`)
-- **Deployment:** ✅ Web/API healthy; local + reverse proxy pages return HTTP 200
+## Status Summary (2026-04-01 17:12 UTC)
+- **Build/Test:** ✅ `git pull origin dev`, `npm run build`, `npm run test`, and `npm audit --audit-level=high` all clean (4675 API + 10 CLI + 12 agent tests passing; 0 vulnerabilities).
+- **Deployment:** ✅ Restarted API + web (`npm run restart`), `/health` 200, `/login` 200, `/v1/monitors` rejects invalid bearer with 401, and all audited frontend routes return 200 locally + via `https://oc-dev-test.no749ah.com`.
 - **Branch:** heartbeat/2026-04-01-afternoon
-- **Last changes (16:10 UTC):**
-  - [x] **Status page widget visual audit completed** — Ran `npm run test:visual:docker -- --base-url=https://oc-dev-test.no749ah.com` (90/90 passing) and `npm run widget:audit` (82/82 coverage).
-  - [x] **Widget preview rendering fix shipped** — Fixed `version-timeline` preview dot colors by replacing dynamic Tailwind class interpolation with explicit static classes.
-  - [x] **Audit findings documented** — Added `docs/STATUS_PAGE_WIDGET_VISUAL_AUDIT_2026-04-01.md` with method, findings, actions, and artifact links.
-
-## Status Summary (2026-04-01 16:15 UTC)
-- **Build/Test:** ✅ Build clean; tests passing; 0 TS errors
-- **Security/Audit:** ✅ 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted; localhost + reverse proxy audits all HTTP 200
-- **Branch:** heartbeat/2026-04-01-afternoon
-- **Last changes (16:15 UTC):**
-  - [x] **Visual runner auth support** — `scripts/visual-test.ts` now supports authenticated captures via `VISUAL_TEST_EMAIL` / `VISUAL_TEST_PASSWORD` (or `--email/--password`) and flags auth-route login redirects as errors instead of false-green passes.
-  - [x] **Docker visual runner passthrough** — `scripts/visual-test-docker.sh` now forwards auth env vars into the Playwright container so authenticated UI screenshots work in rootless/containerized flows.
-  - [x] **Mandatory restart + post-deploy verification** — Restarted both API + web (`npm run restart`), verified `/health` 200, `/login` 200, `/api/v1/monitors` invalid bearer 401, and reverse proxy `/dashboard` 200.
-  - [x] **Frontend error audit completed** — `/login`, `/dashboard`, `/monitors`, `/alerts`, `/account`, `/projects`, `/versions`, `/admin` all return HTTP 200 on localhost and `https://oc-dev-test.no749ah.com`.
-
-## Status Summary (2026-04-01 12:28 UTC)
-- **Build/Test:** ✅ 4673 API + 757 web + 22 package tests passing; build clean; 0 TS errors
-- **Security/Audit:** ✅ 0 vulnerabilities
-- **Deployment:** ✅ API + web running; public URL 200; all pages HTTP 200
-- **Branch:** heartbeat/2026-04-01-afternoon (new cycle branch)
-- **Last changes (12:28 UTC):**
-  - [x] **Visual browser testing unblocked in rootless environments** — Added `scripts/visual-test-docker.sh` + `npm run test:visual:docker`. Runner now works without host bind mounts (uses `docker cp`) and without root-level `install-deps`.
-  - [x] **Visual regression run completed** — `npm run test:visual:docker` against `https://oc-dev-test.no749ah.com`: 90/90 screenshots passed (all pages × desktop/tablet/mobile × light/dark).
-  - [x] **Branch management (12:00 UTC cycle)** — Merged `heartbeat/2026-04-01-noon` → `dev`, deleted old heartbeat branch (local + remote), created/pushed `heartbeat/2026-04-01-afternoon`.
-  - [x] **Post-deploy verification** — API `/health` 200, web `/login` 200, API and web `/api/v1/monitors` reject invalid bearer with 401, reverse proxy `/login` + `/dashboard` 200.
-
-## Status Summary (2026-04-01 09:12 UTC)
-- **Build/Test:** ✅ Build clean; tests passing; 0 vulnerabilities
-- **Security/Audit:** ✅ 0 high vulnerabilities (`npm audit --audit-level=high`)
-- **Branch:** heartbeat/2026-03-30-afternoon
-- **Last changes (09:12 UTC):**
-  - [x] **Heartbeat health check** — `git pull origin dev`, `npm run build`, `npm run test`, `npm audit` all successful.
-  - [x] **Visual test unblock attempt** — Installed Playwright browser binaries (`npx playwright install chromium`).
-  - [x] **Visual test diagnostics improved** — `scripts/visual-test.ts` now detects missing shared library runtime failures and prints explicit root-level fix instructions (`npx playwright install-deps chromium`).
-  - [x] **Restart + post-deploy verification** — Restarted API/Web via `npm run restart`; API `/health` and web `/login` healthy; auth-protected endpoints correctly enforce token checks.
-  - [x] **Frontend audit** — Local and reverse-proxy pages `/login`, `/dashboard`, `/monitors`, `/alerts`, `/account`, `/projects`, `/versions`, `/admin` all return HTTP 200.
-
-## Status Summary (2026-03-30 12:30 UTC)
-- **Build/Test:** ✅ 4598 API + 757 web + 22 package tests passing; build clean; 0 TS errors
-- **Security/Audit:** ✅ 0 vulnerabilities
-- **Deployment:** ✅ API v1.6.0 + web running; public URL 200; all 13 pages HTTP 200
-- **Branch:** heartbeat/2026-03-30-midnight
-- **Last changes (11:17 UTC):**
-  - [x] **Consolidate v2 shared types** — Extracted AuthenticatedRequest + JwtUser to common/auth.types.ts. Created v2/v2.types.ts with PaginatedEnvelope, parsePagination, buildMeta helpers. Removed 7x duplicated interfaces across controllers. 14 new unit tests for helpers.
-  - [x] **Visual regression test script** — scripts/visual-test.ts for automated screenshot capture across desktop/tablet/mobile × light/dark. Requires Playwright (chromium deps not available in container).
+- **Last changes (17:12 UTC):**
+  - [x] **Backlog hygiene pass completed** — Pruned redundant top-of-file status history to a single current summary so the backlog stays actionable.
+  - [x] **P3 cleanup item completed** — Closed “Prune old status summaries” as done for tracked workspace content (git history itself remains immutable by design).
+  - [x] **Next.js build warning cleanup** — Removed invalid `optimizePackageImports` root key from `apps/web/next.config.mjs` so production builds stay warning-clean.
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
@@ -104,6 +61,8 @@
 
 - [x] **Loading performance audit** — ✅ Done (2026-03-30). Dashboard JS reduced 24% (1314KB → 1001KB). Chart.js removed from critical path (lazy-loaded only on monitor detail). Deleted unused BarChartCJS. TTFB <21ms on all pages. Gzipped dashboard JS ~300KB via reverse proxy.
 
+- [x] **Remove invalid Next.js config warning** — ✅ Done (2026-04-01). Removed deprecated/invalid `optimizePackageImports` root key from `apps/web/next.config.mjs` so `npm run build` no longer emits config warnings.
+
 - [x] **Monitor detail page UX** — ✅ Done (2026-03-30). Replaced flat 17-tab scrollbar with primary tabs + "More" dropdown. Extracted MonitorTabBar component. 4 primary tabs always visible, 13 secondary in dropdown.
 
 - [x] **Sidebar navigation UX** — ✅ Done (2026-03-30). Reorganized into categorized sub-sections with labels. Monitoring group: 3 primary + 5 sub-sections (Real-time, Performance, Intelligence, Infrastructure, Versions). Progressive disclosure preserved.
@@ -122,7 +81,7 @@
 
 ### 🟢 P3 — Maintenance & Cleanup
 
-- [ ] **Prune old status summaries from git history** — BACKLOG.md accumulated 800+ lines of redundant status summaries. Cleaned in this cycle but git history still carries them.
+- [x] **Prune old status summaries from backlog file** — ✅ Done (2026-04-01). Removed redundant top-of-file status blocks and kept a single current status summary. (Note: git commit history itself is immutable and intentionally unchanged.)
 
 - [x] **Consolidate duplicate API endpoints** — ✅ Done (2026-03-30). Extracted shared v2 types (PaginatedEnvelope, AuthenticatedRequest, parsePagination, buildMeta) into v2/v2.types.ts and common/auth.types.ts. v1 and v2 are complementary (v2 adds pagination), not duplicates. 14 unit tests added.
 

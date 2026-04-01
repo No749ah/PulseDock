@@ -9,6 +9,7 @@ export function WidgetPreview({ type, config, w, liveData }: { type: string; con
   const label = (config.label as string) || "";
   switch (type) {
     case "overall-status":
+    case "overall-system-status":
       return (<div className="flex items-center gap-2"><div className="h-3 w-3 rounded-full bg-success animate-pulse" /><span className="text-sm font-semibold text-success">{label || "All Systems Operational"}</span></div>);
     case "current-status-badge":
       return (<div className="flex items-center gap-2"><div className="h-2.5 w-2.5 rounded-full bg-success" /><span className="text-xs font-medium text-text-primary">{label || "Monitor"}</span><span className="text-[10px] px-1.5 py-0.5 rounded-full bg-success/15 text-success font-medium">Up</span></div>);
@@ -25,6 +26,7 @@ export function WidgetPreview({ type, config, w, liveData }: { type: string; con
     case "response-time-chart":
       return (<div className="space-y-1"><div className="flex justify-between text-[10px] text-text-secondary"><span>{label || "Response Time"}</span><span className="font-mono">~120ms</span></div><svg viewBox="0 0 100 20" className="w-full h-6 text-accent/60" preserveAspectRatio="none"><polyline fill="none" stroke="currentColor" strokeWidth="1.5" points="0,15 10,12 20,14 30,10 40,8 50,11 60,7 70,9 80,6 90,8 100,5" /></svg></div>);
     case "multi-monitor-grid":
+    case "multi-monitor-status-grid":
       return (<div className="flex flex-wrap gap-1">{["API", "Web", "DB", "Redis", "CDN", "Auth"].map((n) => (<div key={n} className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-surface-elevated text-[10px]"><div className="h-1.5 w-1.5 rounded-full bg-success" /><span className="text-text-secondary">{n}</span></div>))}</div>);
     case "incident-history":
       return (<div className="space-y-1 text-[10px]"><span className="text-text-secondary">{label || "Recent Incidents"}</span><div className="flex items-center gap-1.5"><div className="h-1.5 w-1.5 rounded-full bg-success" /><span className="text-text-secondary">No incidents in the last 7 days</span></div></div>);
@@ -42,6 +44,7 @@ export function WidgetPreview({ type, config, w, liveData }: { type: string; con
     case "custom-header":
       return (<div><div className="text-sm font-bold text-text-primary">{label || "Status Page"}</div><div className="text-[10px] text-text-secondary">Subtitle or description</div></div>);
     case "monitor-group":
+    case "monitor-group-status":
       return (<div className="space-y-1.5"><div className="text-[10px] font-semibold text-text-secondary uppercase">{label || "Infrastructure"}</div>{["API Server","Database","Cache","Queue"].map(n=>(<div key={n} className="flex items-center gap-1.5 text-[10px]"><div className="h-1.5 w-1.5 rounded-full bg-success"/><span className="text-text-primary">{n}</span><span className="ml-auto text-text-muted font-mono">12ms</span></div>))}</div>);
     case "multi-status-badges":
       return (<div className="grid grid-cols-3 gap-1.5">{["API","Web","DB","Redis","Auth","CDN"].map(n=>(<div key={n} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-surface-elevated border border-border/50"><div className="h-2 w-2 rounded-full bg-success"/><span className="text-[10px] font-medium text-text-primary">{n}</span></div>))}</div>);
@@ -53,6 +56,26 @@ export function WidgetPreview({ type, config, w, liveData }: { type: string; con
       return (<div className="flex items-center gap-4"><div className="flex items-center gap-1.5"><span className="text-lg font-bold text-success">2</span><span className="text-[10px] text-text-secondary">up to date</span></div><div className="flex items-center gap-1.5"><span className="text-lg font-bold text-warning">1</span><span className="text-[10px] text-text-secondary">minor update</span></div><div className="flex items-center gap-1.5"><span className="text-lg font-bold text-danger">0</span><span className="text-[10px] text-text-secondary">major update</span></div></div>);
     case "divider":
       return <hr className="border-border my-1" />;
+
+    case "sla-summary":
+      return (<div className="flex items-center gap-4"><div className="text-center"><div className="text-lg font-bold text-success tabular-nums">99.97%</div><div className="text-[9px] text-text-muted">Actual</div></div><div className="text-text-secondary text-[10px]">/</div><div className="text-center"><div className="text-lg font-bold text-text-secondary tabular-nums">99.9%</div><div className="text-[9px] text-text-muted">Target</div></div><div className="ml-auto px-1.5 py-0.5 rounded-full bg-success/15 text-success text-[10px] font-semibold">✓ Met</div></div>);
+    case "scheduled-maintenance":
+      return (<div className="space-y-1 text-[10px]"><span className="text-text-secondary font-medium">{label || "Scheduled Maintenance"}</span><div className="flex items-center gap-2 px-2 py-1.5 rounded bg-warning/10 border border-warning/20"><div className="h-1.5 w-1.5 rounded-full bg-warning shrink-0"/><div><div className="font-medium text-warning">DB Migration</div><div className="text-text-muted">Apr 5 · 02:00–04:00 UTC</div></div></div></div>);
+    case "rolling-uptime-cards":
+      return (<div className="flex gap-2">{[["24h","100%",true],["7d","99.9%",true],["30d","99.7%",true],["90d","98.5%",false]].map(([p,v,ok])=>(<div key={String(p)} className="flex-1 text-center"><div className={`text-sm font-bold tabular-nums ${ok?"text-success":"text-warning"}`}>{v}</div><div className="text-[9px] text-text-muted">{p}</div></div>))}</div>);
+    case "status-history-ribbon":
+      return (<div className="space-y-1"><div className="text-[10px] text-text-secondary mb-1">{label || "90-day Status History"}</div><div className="flex gap-px">{Array.from({length:90},(_,i)=>(<div key={i} className={`flex-1 rounded-sm ${i===18?"bg-danger/60":i===42?"bg-warning/50":"bg-success/45"}`} style={{height:8}}/>))}</div><div className="flex justify-between text-[9px] text-text-muted mt-0.5"><span>90d ago</span><span>Today</span></div></div>);
+    case "uptime-percentage-card": {
+      const uptimePct2 = typeof live?.uptimePct === "number" ? live.uptimePct : 99.92;
+      const color2 = uptimePct2 >= 99.5 ? "text-success" : uptimePct2 >= 90 ? "text-warning" : "text-danger";
+      return (<div className="flex items-center gap-3"><div><div className={`text-2xl font-bold tabular-nums ${color2}`}>{uptimePct2}%</div><div className="text-[10px] text-text-secondary">{label || "Uptime (30d)"}</div></div><div className="ml-auto text-[10px] text-success">↑ +0.1%</div></div>);
+    }
+    case "component-status-list":
+      return (<div className="space-y-1.5"><div className="flex items-center gap-2 mb-2"><div className="h-2.5 w-2.5 rounded-full bg-success"/><span className="text-xs font-semibold text-success">All Systems Operational</span></div>{["API","Web","Database","CDN"].map(n=>(<div key={n} className="flex items-center gap-2 text-[10px]"><div className="h-1.5 w-1.5 rounded-full bg-success"/><span className="text-text-primary">{n}</span><span className="ml-auto text-success font-medium">Operational</span></div>))}</div>);
+    case "service-health-matrix":
+      return (<div className="space-y-1"><div className="text-[10px] text-text-secondary mb-1">{label || "Service Health Matrix"}</div><div className="overflow-x-auto"><table className="w-full text-[9px]"><thead><tr><th className="text-left text-text-muted pb-1">Service</th>{["Prod","Staging","Dev"].map(e=>(<th key={e} className="text-center text-text-muted pb-1">{e}</th>))}</tr></thead><tbody>{["API","Web","DB"].map((s,i)=>(<tr key={s}><td className="text-text-primary py-0.5">{s}</td>{[true,true,i!==2].map((ok,j)=>(<td key={j} className="text-center py-0.5"><div className={`inline-block h-2 w-2 rounded-full ${ok?"bg-success":"bg-warning"}`}/></td>))}</tr>))}</tbody></table></div></div>);
+    case "aggregate-health-score":
+      return (<div className="flex flex-col items-center"><svg viewBox="0 0 60 34" className="w-16"><path d="M5 30 A 25 25 0 0 1 55 30" fill="none" stroke="#1f2937" strokeWidth="6" strokeLinecap="round"/><path d="M5 30 A 25 25 0 0 1 55 30" fill="none" stroke="#22c55e" strokeWidth="6" strokeLinecap="round" strokeDasharray="78.5" strokeDashoffset="10"/><text x="30" y="31" textAnchor="middle" fill="currentColor" fontSize="8">94</text></svg><div className="text-[10px] font-semibold text-success">A</div><div className="text-[9px] text-text-muted">{label || "Health Score"}</div></div>);
 
     // ── Performance ────────────────────────────────────────────────────────
     case "response-time-heatmap":

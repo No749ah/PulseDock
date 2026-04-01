@@ -1,11 +1,11 @@
-## Status Summary (2026-04-01 17:12 UTC)
-- **Build/Test:** ✅ `git pull origin dev`, `npm run build`, `npm run test`, and `npm audit --audit-level=high` all clean (4675 API + 10 CLI + 12 agent tests passing; 0 vulnerabilities).
-- **Deployment:** ✅ Restarted API + web (`npm run restart`), `/health` 200, `/login` 200, `/v1/monitors` rejects invalid bearer with 401, and all audited frontend routes return 200 locally + via `https://oc-dev-test.no749ah.com`.
+## Status Summary (2026-04-01 19:50 UTC)
+- **Build/Test:** ✅ Build clean, all tests passing (4675 API + 10 CLI + 12 agent), 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
 - **Branch:** heartbeat/2026-04-01-afternoon
-- **Last changes (17:12 UTC):**
-  - [x] **Backlog hygiene pass completed** — Pruned redundant top-of-file status history to a single current summary so the backlog stays actionable.
-  - [x] **P3 cleanup item completed** — Closed “Prune old status summaries” as done for tracked workspace content (git history itself remains immutable by design).
-  - [x] **Next.js build warning cleanup** — Removed invalid `optimizePackageImports` root key from `apps/web/next.config.mjs` so production builds stay warning-clean.
+- **Last changes (19:50 UTC):**
+  - [x] **Monitor detail refactor** - `monitors/[id]/page.tsx` 5605→246 lines; 13 existing tab components wired up, SimulateTab + PerformanceTab extracted (separate subagent commit).
+  - [x] **Changelog page** - Added missing v1.1.0-v1.6.0 releases (6 versions were absent from web UI, CHANGELOG.md had them all along).
+  - [x] **package.json license** - Fixed Apache-2.0 → MIT to match LICENSE file and README badge.
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
@@ -19,77 +19,77 @@
 
 ## Next Up (Priority Order)
 
-### 🔴 P0 — Architecture & Code Quality
+### 🔴 P0 - Architecture & Code Quality
 
-- [x] **Refactor monitors.service.ts (9613 lines → modular)** — ✅ Done (2026-03-30). Split into 6 sub-services:
-  - `monitors-crud.service.ts` — CRUD, list, clone, bulk operations
-  - `monitors-analytics.service.ts` — fleet report, trends, correlation, anomaly, failure prediction, heatmaps
-  - `monitors-sla.service.ts` — SLA dashboard, compliance, forecast, error budget, burn rate
-  - `monitors-diagnostics.service.ts` — health scores, coverage, check rate, schedule, interval optimizer
-  - `monitors-export.service.ts` — export/import, config, OpenAPI import, Docker Compose import
-  - `monitors-comparison.service.ts` — compare, latency distribution, period comparison
+- [x] **Refactor monitors.service.ts (9613 lines → modular)** - ✅ Done (2026-03-30). Split into 6 sub-services:
+  - `monitors-crud.service.ts` - CRUD, list, clone, bulk operations
+  - `monitors-analytics.service.ts` - fleet report, trends, correlation, anomaly, failure prediction, heatmaps
+  - `monitors-sla.service.ts` - SLA dashboard, compliance, forecast, error budget, burn rate
+  - `monitors-diagnostics.service.ts` - health scores, coverage, check rate, schedule, interval optimizer
+  - `monitors-export.service.ts` - export/import, config, OpenAPI import, Docker Compose import
+  - `monitors-comparison.service.ts` - compare, latency distribution, period comparison
   - `monitors.service.ts` is now a thin facade. All 1044 monitor tests passing.
 
-- [x] **Refactor monitors.controller.ts** — ✅ Already split into 10 sub-controllers (2510 lines total across alerts, analytics, comparison, details, diagnostics, export, runs, sla, state + main controller). Each handles its domain routes.
+- [x] **Refactor monitors.controller.ts** - ✅ Already split into 10 sub-controllers (2510 lines total across alerts, analytics, comparison, details, diagnostics, export, runs, sla, state + main controller). Each handles its domain routes.
 
-- [x] **Refactor alerts.service.ts** — ✅ Already split into sub-services:
-  - `alerts-delivery.service.ts` (1079 lines) — channel dispatch, retry, batching
-  - `alerts-routing.service.ts` (683 lines) — routing rules, escalation
-  - `alerts.service.ts` (219 lines) — thin facade
+- [x] **Refactor alerts.service.ts** - ✅ Already split into sub-services:
+  - `alerts-delivery.service.ts` (1079 lines) - channel dispatch, retry, batching
+  - `alerts-routing.service.ts` (683 lines) - routing rules, escalation
+  - `alerts.service.ts` (219 lines) - thin facade
 
-- [x] **API integration tests with real database** — ✅ Done (2026-03-30). 57 integration tests across 5 files running against real PostgreSQL:
-  - `auth.integration.spec.ts` (9 tests) — registration, login, lockout, token validation
-  - `monitors-crud.integration.spec.ts` (12 tests) — full CRUD, types, auth isolation
-  - `alerts-channels.integration.spec.ts` (12 tests) — channel CRUD, ownership isolation
-  - `incidents.integration.spec.ts` (14 tests) — lifecycle, timeline, insights
-  - `check-execution.integration.spec.ts` (6 tests) — check persistence, auto-incidents
+- [x] **API integration tests with real database** - ✅ Done (2026-03-30). 57 integration tests across 5 files running against real PostgreSQL:
+  - `auth.integration.spec.ts` (9 tests) - registration, login, lockout, token validation
+  - `monitors-crud.integration.spec.ts` (12 tests) - full CRUD, types, auth isolation
+  - `alerts-channels.integration.spec.ts` (12 tests) - channel CRUD, ownership isolation
+  - `incidents.integration.spec.ts` (14 tests) - lifecycle, timeline, insights
+  - `check-execution.integration.spec.ts` (6 tests) - check persistence, auto-incidents
   - Also fixed production bug: incidents controller used `req.user.sub` instead of `req.user.id`
 
-- [x] **Database query optimization audit** — ✅ Done (2026-03-30). Added 9 missing @@index([userId]) indexes. Batched SLA service queries (slaDashboard, slaComplianceReport, getSloSummary). Batched health score leaderboard (2N+1 → 2 queries). All hot paths optimized.
+- [x] **Database query optimization audit** - ✅ Done (2026-03-30). Added 9 missing @@index([userId]) indexes. Batched SLA service queries (slaDashboard, slaComplianceReport, getSloSummary). Batched health score leaderboard (2N+1 → 2 queries). All hot paths optimized.
 
-- [x] **Fix global search monitor type filtering** — ✅ Done (2026-04-01). Replaced invalid `VERSION_CHECK` literal with proper enum filters (`type: { notIn: [GIT_RELEASE, DOCKER_IMAGE] }` for uptime monitors and `type: { in: [...] }` for version monitors). Added targeted unit coverage + integration coverage for `/v1/search` (auth, limits, isolation, result mapping).
+- [x] **Fix global search monitor type filtering** - ✅ Done (2026-04-01). Replaced invalid `VERSION_CHECK` literal with proper enum filters (`type: { notIn: [GIT_RELEASE, DOCKER_IMAGE] }` for uptime monitors and `type: { in: [...] }` for version monitors). Added targeted unit coverage + integration coverage for `/v1/search` (auth, limits, isolation, result mapping).
 
-- [ ] **Normalize API path expectations in ops checks/docs** — Health checks currently mix `http://localhost:4321/v1/*` (direct API) and `http://localhost:1234/api/v1/*` (web proxy). Add one canonical verification script/doc so heartbeat checks cannot accidentally probe nonexistent direct `/api/v1/*` routes.
+- [x] **Normalize API path expectations in ops checks/docs** — ✅ Done (2026-04-01). `scripts/verify-deployment.sh` is the canonical verification script with all three access paths documented (direct API port 4321, web proxy port 1234, public reverse proxy). Path anti-pattern guard included.
 
-### 🟠 P1 — UX & Polish
+### 🟠 P1 - UX & Polish
 
-- [x] **Visual browser testing** — ✅ Done (2026-04-01). Added rootless runner `scripts/visual-test-docker.sh` + `npm run test:visual:docker`; verified with 90/90 passing screenshots across all target pages × 3 viewports × 2 themes.
+- [x] **Visual browser testing** - ✅ Done (2026-04-01). Added rootless runner `scripts/visual-test-docker.sh` + `npm run test:visual:docker`; verified with 90/90 passing screenshots across all target pages × 3 viewports × 2 themes.
 
-- [x] **Unit tests for monitor sub-services (comparison + diagnostics)** — ✅ Done (2026-04-01). 74 new unit tests for MonitorsComparisonService (pearsonCorrelation, compareMonitors, getLatencyDistribution, getPeriodComparison, getStatusTransitions) and MonitorsDiagnosticsService (getHealthScore: all 4 scoring dimensions, grade thresholds A–F). API test total: 4598 → 4672.
+- [x] **Unit tests for monitor sub-services (comparison + diagnostics)** - ✅ Done (2026-04-01). 74 new unit tests for MonitorsComparisonService (pearsonCorrelation, compareMonitors, getLatencyDistribution, getPeriodComparison, getStatusTransitions) and MonitorsDiagnosticsService (getHealthScore: all 4 scoring dimensions, grade thresholds A-F). API test total: 4598 → 4672.
 
-- [x] **Status page widget preview coverage** — ✅ Done (2026-04-01). All 82 widget palette types now have editor canvas previews. Fixed 11 missing widget cases + 3 type aliases. Zero fallthrough to default.
+- [x] **Status page widget preview coverage** - ✅ Done (2026-04-01). All 82 widget palette types now have editor canvas previews. Fixed 11 missing widget cases + 3 type aliases. Zero fallthrough to default.
 
-- [x] **Status page widget visual audit (browser)** — ✅ Done (2026-04-01). Executed visual sweep (`npm run test:visual:docker`, 90/90 pass), validated widget coverage (`npm run widget:audit`, 82/82), fixed `version-timeline` preview color-dot rendering defect, and documented qualitative findings in `docs/STATUS_PAGE_WIDGET_VISUAL_AUDIT_2026-04-01.md`.
+- [x] **Status page widget visual audit (browser)** - ✅ Done (2026-04-01). Executed visual sweep (`npm run test:visual:docker`, 90/90 pass), validated widget coverage (`npm run widget:audit`, 82/82), fixed `version-timeline` preview color-dot rendering defect, and documented qualitative findings in `docs/STATUS_PAGE_WIDGET_VISUAL_AUDIT_2026-04-01.md`.
 
-- [x] **Loading performance audit** — ✅ Done (2026-03-30). Dashboard JS reduced 24% (1314KB → 1001KB). Chart.js removed from critical path (lazy-loaded only on monitor detail). Deleted unused BarChartCJS. TTFB <21ms on all pages. Gzipped dashboard JS ~300KB via reverse proxy.
+- [x] **Loading performance audit** - ✅ Done (2026-03-30). Dashboard JS reduced 24% (1314KB → 1001KB). Chart.js removed from critical path (lazy-loaded only on monitor detail). Deleted unused BarChartCJS. TTFB <21ms on all pages. Gzipped dashboard JS ~300KB via reverse proxy.
 
-- [x] **Remove invalid Next.js config warning** — ✅ Done (2026-04-01). Removed deprecated/invalid `optimizePackageImports` root key from `apps/web/next.config.mjs` so `npm run build` no longer emits config warnings.
+- [x] **Remove invalid Next.js config warning** - ✅ Done (2026-04-01). Removed deprecated/invalid `optimizePackageImports` root key from `apps/web/next.config.mjs` so `npm run build` no longer emits config warnings.
 
-- [x] **Monitor detail page UX** — ✅ Done (2026-03-30). Replaced flat 17-tab scrollbar with primary tabs + "More" dropdown. Extracted MonitorTabBar component. 4 primary tabs always visible, 13 secondary in dropdown.
+- [x] **Monitor detail page UX** - ✅ Done (2026-03-30). Replaced flat 17-tab scrollbar with primary tabs + "More" dropdown. Extracted MonitorTabBar component. 4 primary tabs always visible, 13 secondary in dropdown.
 
-- [x] **Sidebar navigation UX** — ✅ Done (2026-03-30). Reorganized into categorized sub-sections with labels. Monitoring group: 3 primary + 5 sub-sections (Real-time, Performance, Intelligence, Infrastructure, Versions). Progressive disclosure preserved.
+- [x] **Sidebar navigation UX** - ✅ Done (2026-03-30). Reorganized into categorized sub-sections with labels. Monitoring group: 3 primary + 5 sub-sections (Real-time, Performance, Intelligence, Infrastructure, Versions). Progressive disclosure preserved.
 
-### 🟡 P2 — Features & Enhancements
+### 🟡 P2 - Features & Enhancements
 
-- [x] **GraphQL monitor improvements** — ✅ Done (2026-03-30). Added: template variable substitution ({{VAR_NAME}}), introspection validation with schema hash, schema change detection (previousSchemaHash comparison), latency threshold support (yellow/degraded). 22 tests covering all features.
+- [x] **GraphQL monitor improvements** - ✅ Done (2026-03-30). Added: template variable substitution ({{VAR_NAME}}), introspection validation with schema hash, schema change detection (previousSchemaHash comparison), latency threshold support (yellow/degraded). 22 tests covering all features.
 
-- [x] **Webhook signature verification docs** — `docs/WEBHOOKS.md` with payload format, HMAC-SHA256 examples in Node.js, Python, Go, PHP. *(2026-03-30)*
+- [x] **Webhook signature verification docs** - `docs/WEBHOOKS.md` with payload format, HMAC-SHA256 examples in Node.js, Python, Go, PHP. *(2026-03-30)*
 
-- [x] **Status page custom CSS** — ✅ Already implemented. Custom CSS textarea in status page editor settings panel (max 10,000 chars), injected into public page `<head>` via `<style>`. Works in both live pages and preview mode.
+- [x] **Status page custom CSS** - ✅ Already implemented. Custom CSS textarea in status page editor settings panel (max 10,000 chars), injected into public page `<head>` via `<style>`. Works in both live pages and preview mode.
 
-- [x] **Monitor grouping hierarchy** — ✅ Done (2026-03-30). Nested folder hierarchy (max 5 levels) with self-referencing Folder tree. Cycle detection, stats aggregation bubbling up, new `/flat` + `/move` endpoints. Mute/unmute cascades to subfolders. Frontend tree view with indentation + parent selector in create modal. 25 unit tests.
+- [x] **Monitor grouping hierarchy** - ✅ Done (2026-03-30). Nested folder hierarchy (max 5 levels) with self-referencing Folder tree. Cycle detection, stats aggregation bubbling up, new `/flat` + `/move` endpoints. Mute/unmute cascades to subfolders. Frontend tree view with indentation + parent selector in create modal. 25 unit tests.
 
-- [x] **Batch notification digest improvements** — Added weekly_digest option (cron: Mon 07:05 UTC). Trend data in digests deferred (requires significant mailer template rework). *(2026-03-30)*
+- [x] **Batch notification digest improvements** - Added weekly_digest option (cron: Mon 07:05 UTC). Trend data in digests deferred (requires significant mailer template rework). *(2026-03-30)*
 
-### 🟢 P3 — Maintenance & Cleanup
+### 🟢 P3 - Maintenance & Cleanup
 
-- [x] **Prune old status summaries from backlog file** — ✅ Done (2026-04-01). Removed redundant top-of-file status blocks and kept a single current status summary. (Note: git commit history itself is immutable and intentionally unchanged.)
+- [x] **Prune old status summaries from backlog file** - ✅ Done (2026-04-01). Removed redundant top-of-file status blocks and kept a single current status summary. (Note: git commit history itself is immutable and intentionally unchanged.)
 
-- [x] **Consolidate duplicate API endpoints** — ✅ Done (2026-03-30). Extracted shared v2 types (PaginatedEnvelope, AuthenticatedRequest, parsePagination, buildMeta) into v2/v2.types.ts and common/auth.types.ts. v1 and v2 are complementary (v2 adds pagination), not duplicates. 14 unit tests added.
+- [x] **Consolidate duplicate API endpoints** - ✅ Done (2026-03-30). Extracted shared v2 types (PaginatedEnvelope, AuthenticatedRequest, parsePagination, buildMeta) into v2/v2.types.ts and common/auth.types.ts. v1 and v2 are complementary (v2 adds pagination), not duplicates. 14 unit tests added.
 
-- [x] **Upgrade path documentation** — `docs/UPGRADING.md` covers all 5 pending major upgrades with risk assessment, breaking changes, and strategy. *(2026-03-30)*
+- [x] **Upgrade path documentation** - `docs/UPGRADING.md` covers all 5 pending major upgrades with risk assessment, breaking changes, and strategy. *(2026-03-30)*
 
-- [x] **CHANGELOG cleanup** — Merged 3 stale "Unreleased" sections into v1.1.0. All 18 releases properly versioned with comparison links. *(2026-03-30)*
+- [x] **CHANGELOG cleanup** - Merged 3 stale "Unreleased" sections into v1.1.0. All 18 releases properly versioned with comparison links. *(2026-03-30)*
 
 ---
 

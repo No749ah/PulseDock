@@ -1,5 +1,6 @@
 "use client";
 
+import React from "react";
 import { MonitorFormModal } from "./MonitorFormModal";
 import type { TagItem, MonitorPlugin, MonitorFormDataExtended } from "../types";
 
@@ -19,10 +20,10 @@ interface Props {
   onSubmit: () => void;
   onSetShowTemplates: (value: boolean) => void;
   onSetFormData: (value: MonitorFormDataExtended) => void;
-  onSetFormErrors: (value: Record<string, string>) => void;
-  onSetFormTouched: (value: Record<string, boolean>) => void;
+  onSetFormErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  onSetFormTouched: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
   onSetTagInput: (value: string) => void;
-  onSetSelectedTags: (value: string[]) => void;
+  onSetSelectedTags: React.Dispatch<React.SetStateAction<string[]>>;
   onApplyTemplate: (template: import("../../components/MonitorTemplates").MonitorTemplate) => void;
   onCopySuccess: (message: string) => void;
 }

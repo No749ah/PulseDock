@@ -1,8 +1,11 @@
-## Status Summary (2026-04-01 10:20 UTC)
-- **Build/Test:** ✅ 4672 API (+74) + 757 web + 22 package tests passing; build clean; 0 TS errors
+## Status Summary (2026-04-01 11:20 UTC)
+- **Build/Test:** ✅ 4673 API + 757 web + 22 package tests passing; build clean; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities
-- **Deployment:** ✅ API v1.6.0 + web running; public URL 200; all 12 pages HTTP 200
-- **Branch:** heartbeat/2026-03-30-afternoon
+- **Deployment:** ✅ API + web running; public URL 200; all pages HTTP 200
+- **Branch:** heartbeat/2026-04-01-noon (merged heartbeat/2026-03-30-afternoon → dev at 11:11 UTC)
+- **Last changes (11:20 UTC):**
+  - [x] **Branch management** — Merged heartbeat/2026-03-30-afternoon → dev, deleted old branch, created heartbeat/2026-04-01-noon
+  - [x] **Active incidents dashboard banner** — Dashboard now shows active incidents (INVESTIGATING/IDENTIFIED/MONITORING) as a prominent red banner. Incidents API extended with ?status=CSV&limit=N filter params. 51 incidents + 101 dashboard tests green.
 - **Last changes (10:20 UTC):**
   - [x] **Status page editor widget previews** — Fixed 11 widget types falling through to 'label only' fallback in editor canvas. Added missing cases for: `overall-system-status`, `multi-monitor-status-grid`, `monitor-group-status`, `sla-summary`, `scheduled-maintenance`, `rolling-uptime-cards`, `status-history-ribbon`, `uptime-percentage-card`, `component-status-list`, `service-health-matrix`, `aggregate-health-score`. All 82 palette types now covered.
   - [x] **Unit tests for MonitorsComparisonService** — 51 new tests covering: `pearsonCorrelation` edge cases, `compareMonitors` validation/stats/correlation, `getLatencyDistribution` bucketing/percentiles/hourly avg, `getPeriodComparison` deltas, `getStatusTransitions` MTTR/MTBF/outage detection.

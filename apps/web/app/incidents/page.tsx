@@ -1,866 +1,132 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Shield, Edit, Trash2, Plus, ChevronDown, ChevronUp, MessageSquarePlus, Search, Download, ChevronsUpDown, LayoutTemplate } from 'lucide-react';
+import { Plus, Shield } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
-import { Badge } from '../components/Badge';
-import { Modal } from '../components/Modal';
-import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from '../components/Table';
-import { getUser } from '../../components/auth';
-import { api } from '../../lib/api';
-import { useToast } from '../../components/ui/toast';
-import { useTableSort, exportCSV } from '../../lib/useTableSort';
 import { TablePagination } from '../components/SortableTable';
 
-// Types
-type IncidentStatus = 'INVESTIGATING' | 'IDENTIFIED' | 'MONITORING' | 'RESOLVED';
-type IncidentSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
-
-type MonitorOption = {
-  id: string;
-  name: string;
-  type: string;
-};
-
-type IncidentUpdate = {
-  id: string;
-  body: string;
-  status: IncidentStatus;
-  createdAt: string;
-};
-
-type LinkedMonitor = {
-  monitor: {
-    id: string;
-    name: string;
-    type: string;
-    target?: string;
-  };
-};
-
-type Incident = {
-  id: string;
-  title: string;
-  description: string | null;
-  status: IncidentStatus;
-  severity: IncidentSeverity;
-  autoCreated: boolean;
-  resolvedAt: string | null;
-  rootCause: string | null;
-  postmortemNotes: string | null;
-  createdAt: string;
-  updatedAt: string;
-  updates: IncidentUpdate[];
-  monitors: LinkedMonitor[];
-};
-
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
-const statusLabels: Record<IncidentStatus, string> = {
-  INVESTIGATING: 'Investigating',
-  IDENTIFIED: 'Identified',
-  MONITORING: 'Monitoring',
-  RESOLVED: 'Resolved',
-};
-
-const statusColors: Record<IncidentStatus, string> = {
-  INVESTIGATING: 'bg-red-500/20 text-red-400 border-red-500/30',
-  IDENTIFIED: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-  MONITORING: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  RESOLVED: 'bg-green-500/20 text-green-400 border-green-500/30',
-};
-
-const severityColors: Record<IncidentSeverity, string> = {
-  LOW: 'bg-blue-500/20 text-blue-400 border-blue-500/30',
-  MEDIUM: 'bg-yellow-500/20 text-yellow-400 border-yellow-500/30',
-  HIGH: 'bg-orange-500/20 text-orange-400 border-orange-500/30',
-  CRITICAL: 'bg-red-500/20 text-red-400 border-red-500/30',
-};
-
-const severityLabels: Record<IncidentSeverity, string> = {
-  LOW: 'Minor',
-  MEDIUM: 'Major',
-  HIGH: 'Major',
-  CRITICAL: 'Critical',
-};
-
-function formatDuration(ms: number): string {
-  const totalMins = Math.floor(ms / 60000);
-  if (totalMins < 60) return `${totalMins}m`;
-  const hrs = Math.floor(totalMins / 60);
-  const mins = totalMins % 60;
-  return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
-}
-
-function incidentDuration(incident: Incident): string {
-  const start = new Date(incident.createdAt).getTime();
-  if (incident.status === 'RESOLVED') {
-    const end = new Date(incident.updatedAt).getTime();
-    return `lasted ${formatDuration(end - start)}`;
-  }
-  return `ongoing for ${formatDuration(Date.now() - start)}`;
-}
-
-const inputClass =
-  'w-full px-4 py-3 bg-surface border border-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent';
-
-const selectClass = `${inputClass} cursor-pointer`;
-
-function relativeTime(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'just now';
-  if (mins < 60) return `${mins}m ago`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
-  const days = Math.floor(hrs / 24);
-  return `${days}d ago`;
-}
-
-// ─── Monitor Picker ──────────────────────────────────────────────────────────
-
-function MonitorPicker({
-  monitors,
-  selectedIds,
-  onChange,
-}: {
-  monitors: MonitorOption[];
-  selectedIds: string[];
-  onChange: (ids: string[]) => void;
-}) {
-  return (
-    <div>
-      <label className="block text-sm font-medium text-text-primary mb-1">
-        Affected monitors <span className="text-text-secondary/60">(optional)</span>
-      </label>
-      {monitors.length === 0 ? (
-        <p className="text-xs text-text-secondary italic">No monitors yet</p>
-      ) : (
-        <div className="max-h-48 overflow-y-auto space-y-0.5 border border-border rounded-lg p-2">
-          {monitors.map((m) => (
-            <label
-              key={m.id}
-              className="flex items-center gap-2 px-2 py-1.5 rounded hover:bg-surface-elevated cursor-pointer"
-            >
-              <input
-                type="checkbox"
-                className="accent-accent flex-shrink-0"
-                checked={selectedIds.includes(m.id)}
-                onChange={(e) => {
-                  onChange(
-                    e.target.checked
-                      ? [...selectedIds, m.id]
-                      : selectedIds.filter((id) => id !== m.id),
-                  );
-                }}
-              />
-              <span className="text-sm text-text-primary flex-1 truncate">{m.name}</span>
-              <span className="text-xs text-text-secondary flex-shrink-0">{m.type.replace('_', ' ')}</span>
-            </label>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-// ─── Incident Templates ──────────────────────────────────────────────────────
-
-interface IncidentTemplate {
-  id: string;
-  label: string;
-  icon: string;
-  title: string;
-  description: string;
-  severity: IncidentSeverity;
-}
-
-const INCIDENT_TEMPLATES: IncidentTemplate[] = [
-  {
-    id: 'service-outage',
-    label: 'Service Outage',
-    icon: '🔴',
-    title: 'Service outage — {service}',
-    description: 'We are investigating reports of a complete service outage. Users may be unable to access the service. Our team is working on a resolution.',
-    severity: 'CRITICAL',
-  },
-  {
-    id: 'degraded-performance',
-    label: 'Degraded Performance',
-    icon: '🟡',
-    title: 'Degraded performance — {service}',
-    description: 'We are experiencing degraded performance impacting some users. Response times are elevated and some requests may be failing. We are investigating the root cause.',
-    severity: 'HIGH',
-  },
-  {
-    id: 'database-issue',
-    label: 'Database Issue',
-    icon: '🗄️',
-    title: 'Database connectivity issues',
-    description: 'We are investigating database connectivity issues that may affect data reads and writes. Some operations may fail or be delayed.',
-    severity: 'CRITICAL',
-  },
-  {
-    id: 'deploy-issue',
-    label: 'Deploy Rollback',
-    icon: '🚀',
-    title: 'Deployment issue — rolling back',
-    description: 'A recent deployment introduced an issue impacting service availability. We are rolling back to the previous stable version.',
-    severity: 'HIGH',
-  },
-  {
-    id: 'third-party',
-    label: 'Third-party Outage',
-    icon: '🌐',
-    title: 'Third-party service outage',
-    description: 'We are experiencing issues due to an outage with a third-party dependency. We are monitoring the situation and will provide updates as we receive them.',
-    severity: 'MEDIUM',
-  },
-  {
-    id: 'network',
-    label: 'Network Issue',
-    icon: '📡',
-    title: 'Network connectivity issues',
-    description: 'We are investigating network connectivity issues that may affect service availability for some users in certain regions.',
-    severity: 'HIGH',
-  },
-  {
-    id: 'ssl-cert',
-    label: 'SSL Certificate',
-    icon: '🔒',
-    title: 'SSL certificate issue',
-    description: 'Users may encounter SSL certificate errors when accessing our service. We are working to resolve the certificate issue urgently.',
-    severity: 'CRITICAL',
-  },
-  {
-    id: 'maintenance',
-    label: 'Unplanned Maintenance',
-    icon: '🔧',
-    title: 'Unplanned maintenance in progress',
-    description: 'We are performing emergency maintenance to address a critical issue. Some services may be unavailable during this period.',
-    severity: 'LOW',
-  },
-];
-
-// ─── Main Component ──────────────────────────────────────────────────────────
+import { useIncidents } from './hooks/useIncidents';
+import { CreateIncidentModal, EditIncidentModal, PostUpdateModal, DeleteIncidentModal } from './components/IncidentModals';
+import { IncidentRow } from './components/IncidentRow';
+import { IncidentToolbar } from './components/IncidentToolbar';
 
 export default function IncidentsPage() {
-  const router = useRouter();
-  const { success, error: toastError } = useToast();
-
-  const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [monitors, setMonitors] = useState<MonitorOption[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-
-  // Create modal
-  const [createOpen, setCreateOpen] = useState(false);
-  const [createForm, setCreateForm] = useState({
-    title: '',
-    description: '',
-    severity: 'MEDIUM' as IncidentSeverity,
-  });
-  const [createMonitorIds, setCreateMonitorIds] = useState<string[]>([]);
-  const [showTemplates, setShowTemplates] = useState(false);
-  const [creating, setCreating] = useState(false);
-
-  // Edit modal
-  const [editOpen, setEditOpen] = useState(false);
-  const [editForm, setEditForm] = useState({
-    title: '',
-    description: '',
-    status: 'INVESTIGATING' as IncidentStatus,
-    severity: 'MEDIUM' as IncidentSeverity,
-  });
-  const [editMonitorIds, setEditMonitorIds] = useState<string[]>([]);
-  const [editing, setEditing] = useState(false);
-  const [selected, setSelected] = useState<Incident | null>(null);
-
-  // Update modal
-  const [updateOpen, setUpdateOpen] = useState(false);
-  const [updateForm, setUpdateForm] = useState({
-    body: '',
-    status: 'INVESTIGATING' as IncidentStatus,
-  });
-  const [posting, setPosting] = useState(false);
-  const [updateTarget, setUpdateTarget] = useState<Incident | null>(null);
-
-  // Delete modal
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleteTarget, setDeleteTarget] = useState<Incident | null>(null);
-  const [deleting, setDeleting] = useState(false);
-
-  // Post-mortem inline editing
-  const [postmortemEditId, setPostmortemEditId] = useState<string | null>(null);
-  const [postmortemForm, setPostmortemForm] = useState({ rootCause: '', postmortemNotes: '' });
-  const [savingPostmortem, setSavingPostmortem] = useState(false);
-  const [generatingPostmortem, setGeneratingPostmortem] = useState<string | null>(null);
-
-  useEffect(() => {
-    const user = getUser();
-    if (!user) router.push('/login');
-  }, [router]);
-
-  async function load() {
-    setLoading(true);
-    try {
-      const [incidentsData, monitorsData] = await Promise.all([
-        api<Incident[]>('/v1/incidents'),
-        api<MonitorOption[]>('/v1/monitors'),
-      ]);
-      setIncidents(incidentsData);
-      setMonitors(monitorsData);
-    } catch {
-      toastError('Failed to load incidents');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => { load(); }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // ── Create ──
-  async function confirmCreate() {
-    if (!createForm.title.trim()) return;
-    setCreating(true);
-    try {
-      await api('/v1/incidents', undefined, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: createForm.title.trim(),
-          description: createForm.description.trim() || undefined,
-          severity: createForm.severity,
-          monitorIds: createMonitorIds.length > 0 ? createMonitorIds : undefined,
-        }),
-      });
-      success('Incident created');
-      setCreateOpen(false);
-      setShowTemplates(false);
-      setCreateForm({ title: '', description: '', severity: 'MEDIUM' });
-      setCreateMonitorIds([]);
-      load();
-    } catch {
-      toastError('Failed to create incident');
-    } finally {
-      setCreating(false);
-    }
-  }
-
-  // ── Edit ──
-  function openEdit(incident: Incident) {
-    setSelected(incident);
-    setEditForm({
-      title: incident.title,
-      description: incident.description ?? '',
-      status: incident.status,
-      severity: incident.severity,
-    });
-    setEditMonitorIds(incident.monitors.map((m) => m.monitor.id));
-    setEditOpen(true);
-  }
-
-  async function confirmEdit() {
-    if (!selected) return;
-    setEditing(true);
-    try {
-      await api(`/v1/incidents/${selected.id}`, undefined, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: editForm.title.trim(),
-          description: editForm.description.trim() || undefined,
-          status: editForm.status,
-          severity: editForm.severity,
-          monitorIds: editMonitorIds,
-        }),
-      });
-      success('Incident updated');
-      setEditOpen(false);
-      load();
-    } catch {
-      toastError('Failed to update incident');
-    } finally {
-      setEditing(false);
-    }
-  }
-
-  // ── Post Update ──
-  function openUpdate(incident: Incident) {
-    setUpdateTarget(incident);
-    setUpdateForm({ body: '', status: incident.status });
-    setUpdateOpen(true);
-  }
-
-  async function confirmUpdate() {
-    if (!updateTarget || !updateForm.body.trim()) return;
-    setPosting(true);
-    try {
-      await api(`/v1/incidents/${updateTarget.id}/updates`, undefined, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          body: updateForm.body.trim(),
-          status: updateForm.status,
-        }),
-      });
-      success('Update posted');
-      setUpdateOpen(false);
-      load();
-      setExpandedId(updateTarget.id);
-    } catch {
-      toastError('Failed to post update');
-    } finally {
-      setPosting(false);
-    }
-  }
-
-  // ── Delete ──
-  function openPostmortem(incident: Incident) {
-    setPostmortemEditId(incident.id);
-    setPostmortemForm({
-      rootCause: incident.rootCause ?? '',
-      postmortemNotes: incident.postmortemNotes ?? '',
-    });
-  }
-
-  async function savePostmortem(incidentId: string) {
-    setSavingPostmortem(true);
-    try {
-      await api(`/v1/incidents/${incidentId}/postmortem`, undefined, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          rootCause: postmortemForm.rootCause.trim() || null,
-          postmortemNotes: postmortemForm.postmortemNotes.trim() || null,
-        }),
-      });
-      success('Post-mortem saved');
-      setPostmortemEditId(null);
-      load();
-    } catch {
-      toastError('Failed to save post-mortem');
-    } finally {
-      setSavingPostmortem(false);
-    }
-  }
-
-  async function generatePostmortem(incidentId: string) {
-    const user = getUser();
-    if (!user) return;
-    setGeneratingPostmortem(incidentId);
-    try {
-      const result = await api<{ markdown: string; saved: boolean }>(`/v1/incidents/${incidentId}/generate-postmortem`, user.id, { method: 'POST' });
-      // Fill the form with the generated content
-      setPostmortemForm((prev) => ({
-        ...prev,
-        postmortemNotes: result.markdown,
-      }));
-      setPostmortemEditId(incidentId);
-      success(result.saved ? 'Post-mortem generated and saved' : 'Post-mortem generated — review and save');
-    } catch {
-      toastError('Failed to generate post-mortem');
-    } finally {
-      setGeneratingPostmortem(null);
-    }
-  }
-
-  function openDelete(incident: Incident) {
-    setDeleteTarget(incident);
-    setDeleteOpen(true);
-  }
-
-  async function confirmDelete() {
-    if (!deleteTarget) return;
-    setDeleting(true);
-    try {
-      await api(`/v1/incidents/${deleteTarget.id}`, undefined, { method: 'DELETE' });
-      success('Incident deleted');
-      setDeleteOpen(false);
-      if (expandedId === deleteTarget.id) setExpandedId(null);
-      load();
-    } catch {
-      toastError('Failed to delete incident');
-    } finally {
-      setDeleting(false);
-    }
-  }
-
-  const [searchQuery, setSearchQuery] = useState('');
-  const [resolvedPage, setResolvedPage] = useState(1);
-  const [resolvedPageSize, setResolvedPageSize] = useState('10');
-  const { sort: incidentSort, toggle: incidentToggle, sorted: incidentSorted } = useTableSort<'title' | 'status' | 'severity' | 'updatedAt'>('updatedAt', 'desc');
-
-  const filteredIncidents = incidents.filter((i) => {
-    if (!searchQuery.trim()) return true;
-    const q = searchQuery.toLowerCase();
-    return i.title.toLowerCase().includes(q) || i.status.toLowerCase().includes(q) || i.severity.toLowerCase().includes(q);
-  });
-
-  function SortIcon({ col }: { col: 'title' | 'status' | 'severity' | 'updatedAt' }) {
-    if (incidentSort.key !== col) return <ChevronsUpDown className="w-3 h-3 opacity-40" />;
-    return incidentSort.dir === 'asc' ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />;
-  }
-
-  const sortedFiltered = incidentSorted(filteredIncidents, (i) => {
-    if (incidentSort.key === 'title') return i.title;
-    if (incidentSort.key === 'status') return i.status;
-    if (incidentSort.key === 'severity') return i.severity;
-    return i.updatedAt;
-  });
-
-  const activeIncidents = sortedFiltered.filter((i) => i.status !== 'RESOLVED');
-  const resolvedIncidents = sortedFiltered.filter((i) => i.status === 'RESOLVED');
-
-  // Pagination for resolved incidents
-  const resolvedSize = Number(resolvedPageSize);
-  const resolvedPageCount = Math.max(1, Math.ceil(resolvedIncidents.length / resolvedSize));
-  const safeResolvedPage = Math.min(resolvedPage, resolvedPageCount);
-  const paginatedResolved = resolvedIncidents.slice(
-    (safeResolvedPage - 1) * resolvedSize,
-    safeResolvedPage * resolvedSize,
-  );
-
-  const now = new Date();
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const resolvedThisMonth = resolvedIncidents.filter(
-    (i) => new Date(i.updatedAt).getTime() >= startOfMonth.getTime(),
-  );
+  const inc = useIncidents();
 
   return (
-    <AppFrame title="Incidents" subtitle="Track and manage operational incidents" breadcrumbs={[{ label: "Incidents" }]}>
-      {loading ? (
+    <AppFrame title="Incidents" subtitle="Track and manage operational incidents" breadcrumbs={[{ label: 'Incidents' }]}>
+      {inc.loading ? (
         <div className="space-y-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="h-16 rounded-xl bg-surface animate-pulse" />
-          ))}
+          {[1, 2, 3].map((i) => <div key={i} className="h-16 rounded-xl bg-surface animate-pulse" />)}
         </div>
       ) : (
         <>
           {/* Modals */}
-
-          {/* Create */}
-          <Modal
-            isOpen={createOpen}
-            onClose={() => { setCreateOpen(false); setShowTemplates(false); }}
-            title="Create incident"
-            actions={
-              <>
-                <Button variant="secondary" onClick={() => { setCreateOpen(false); setShowTemplates(false); }}>Cancel</Button>
-                <Button variant="primary" onClick={confirmCreate} disabled={!createForm.title.trim() || creating}>
-                  {creating ? 'Creating…' : 'Create'}
-                </Button>
-              </>
-            }
-          >
-            <div className="space-y-4">
-              {/* Template picker */}
-              <div>
-                <button
-                  type="button"
-                  className="flex items-center gap-2 text-sm text-accent hover:text-accent/80 transition-colors"
-                  onClick={() => setShowTemplates((v) => !v)}
-                >
-                  <LayoutTemplate className="w-4 h-4" />
-                  {showTemplates ? 'Hide templates' : 'Start from a template'}
-                  <ChevronDown className={`w-3 h-3 transition-transform ${showTemplates ? 'rotate-180' : ''}`} />
-                </button>
-                {showTemplates && (
-                  <div className="mt-2 grid grid-cols-2 gap-1.5 max-h-52 overflow-y-auto pr-1">
-                    {INCIDENT_TEMPLATES.map((tpl) => (
-                      <button
-                        key={tpl.id}
-                        type="button"
-                        className="flex items-start gap-2 p-2.5 rounded-lg border border-border bg-surface hover:bg-surface-elevated hover:border-accent/40 text-left transition-colors group"
-                        onClick={() => {
-                          setCreateForm({ title: tpl.title, description: tpl.description, severity: tpl.severity });
-                          setShowTemplates(false);
-                        }}
-                      >
-                        <span className="text-base leading-none mt-0.5 flex-shrink-0">{tpl.icon}</span>
-                        <div className="min-w-0">
-                          <div className="text-xs font-semibold text-text-primary group-hover:text-accent transition-colors truncate">{tpl.label}</div>
-                          <div className="text-xs text-text-secondary mt-0.5">{tpl.severity.charAt(0) + tpl.severity.slice(1).toLowerCase()}</div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">Title <span className="text-danger">*</span></label>
-                <input
-                  className={inputClass}
-                  placeholder="Brief description of the incident"
-                  value={createForm.title}
-                  onChange={(e) => setCreateForm({ ...createForm, title: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">Description</label>
-                <textarea
-                  className={`${inputClass} resize-none`}
-                  rows={3}
-                  placeholder="What's happening? What's the impact?"
-                  value={createForm.description}
-                  onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">Severity</label>
-                <select
-                  className={selectClass}
-                  value={createForm.severity}
-                  onChange={(e) => setCreateForm({ ...createForm, severity: e.target.value as IncidentSeverity })}
-                >
-                  <option value="LOW">Low</option>
-                  <option value="MEDIUM">Medium</option>
-                  <option value="HIGH">High</option>
-                  <option value="CRITICAL">Critical</option>
-                </select>
-              </div>
-              <MonitorPicker
-                monitors={monitors}
-                selectedIds={createMonitorIds}
-                onChange={setCreateMonitorIds}
-              />
-            </div>
-          </Modal>
-
-          {/* Edit */}
-          <Modal
-            isOpen={editOpen}
-            onClose={() => setEditOpen(false)}
-            title="Edit incident"
-            actions={
-              <>
-                <Button variant="secondary" onClick={() => setEditOpen(false)}>Cancel</Button>
-                <Button variant="primary" onClick={confirmEdit} disabled={!editForm.title.trim() || editing}>
-                  {editing ? 'Saving…' : 'Save changes'}
-                </Button>
-              </>
-            }
-          >
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">Title <span className="text-danger">*</span></label>
-                <input
-                  className={inputClass}
-                  value={editForm.title}
-                  onChange={(e) => setEditForm({ ...editForm, title: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">Description</label>
-                <textarea
-                  className={`${inputClass} resize-none`}
-                  rows={3}
-                  value={editForm.description}
-                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">Status</label>
-                  <select
-                    className={selectClass}
-                    value={editForm.status}
-                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value as IncidentStatus })}
-                  >
-                    <option value="INVESTIGATING">Investigating</option>
-                    <option value="IDENTIFIED">Identified</option>
-                    <option value="MONITORING">Monitoring</option>
-                    <option value="RESOLVED">Resolved</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-text-primary mb-1">Severity</label>
-                  <select
-                    className={selectClass}
-                    value={editForm.severity}
-                    onChange={(e) => setEditForm({ ...editForm, severity: e.target.value as IncidentSeverity })}
-                  >
-                    <option value="LOW">Low</option>
-                    <option value="MEDIUM">Medium</option>
-                    <option value="HIGH">High</option>
-                    <option value="CRITICAL">Critical</option>
-                  </select>
-                </div>
-              </div>
-              <MonitorPicker
-                monitors={monitors}
-                selectedIds={editMonitorIds}
-                onChange={setEditMonitorIds}
-              />
-            </div>
-          </Modal>
-
-          {/* Post Update */}
-          <Modal
-            isOpen={updateOpen}
-            onClose={() => setUpdateOpen(false)}
-            title="Post incident update"
-            actions={
-              <>
-                <Button variant="secondary" onClick={() => setUpdateOpen(false)}>Cancel</Button>
-                <Button variant="primary" onClick={confirmUpdate} disabled={!updateForm.body.trim() || posting}>
-                  {posting ? 'Posting…' : 'Post update'}
-                </Button>
-              </>
-            }
-          >
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">Update <span className="text-danger">*</span></label>
-                <textarea
-                  className={`${inputClass} resize-none`}
-                  rows={4}
-                  placeholder="What's the current status? What actions are being taken?"
-                  value={updateForm.body}
-                  onChange={(e) => setUpdateForm({ ...updateForm, body: e.target.value })}
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-1">New status</label>
-                <select
-                  className={selectClass}
-                  value={updateForm.status}
-                  onChange={(e) => setUpdateForm({ ...updateForm, status: e.target.value as IncidentStatus })}
-                >
-                  <option value="INVESTIGATING">Investigating</option>
-                  <option value="IDENTIFIED">Identified</option>
-                  <option value="MONITORING">Monitoring</option>
-                  <option value="RESOLVED">Resolved</option>
-                </select>
-              </div>
-            </div>
-          </Modal>
-
-          {/* Delete */}
-          <Modal
-            isOpen={deleteOpen}
-            onClose={() => setDeleteOpen(false)}
-            title="Delete incident"
-            actions={
-              <>
-                <Button variant="secondary" onClick={() => setDeleteOpen(false)}>Cancel</Button>
-                <Button
-                  variant="primary"
-                  className="!bg-danger hover:!bg-danger/80"
-                  onClick={confirmDelete}
-                  disabled={deleting}
-                >
-                  {deleting ? 'Deleting…' : 'Delete'}
-                </Button>
-              </>
-            }
-          >
-            <p className="text-text-primary">
-              Delete <strong>{deleteTarget?.title}</strong>? This will permanently remove the incident and all its updates. This cannot be undone.
-            </p>
-          </Modal>
+          <CreateIncidentModal
+            open={inc.createOpen}
+            onClose={() => { inc.setCreateOpen(false); inc.setShowTemplates(false); }}
+            form={inc.createForm}
+            onFormChange={inc.setCreateForm}
+            monitorIds={inc.createMonitorIds}
+            onMonitorIdsChange={inc.setCreateMonitorIds}
+            monitors={inc.monitors}
+            showTemplates={inc.showTemplates}
+            onToggleTemplates={() => inc.setShowTemplates((v) => !v)}
+            creating={inc.creating}
+            onConfirm={inc.confirmCreate}
+          />
+          <EditIncidentModal
+            open={inc.editOpen}
+            onClose={() => inc.setEditOpen(false)}
+            form={inc.editForm}
+            onFormChange={inc.setEditForm}
+            monitorIds={inc.editMonitorIds}
+            onMonitorIdsChange={inc.setEditMonitorIds}
+            monitors={inc.monitors}
+            editing={inc.editing}
+            onConfirm={inc.confirmEdit}
+          />
+          <PostUpdateModal
+            open={inc.updateOpen}
+            onClose={() => inc.setUpdateOpen(false)}
+            form={inc.updateForm}
+            onFormChange={inc.setUpdateForm}
+            posting={inc.posting}
+            onConfirm={inc.confirmUpdate}
+          />
+          <DeleteIncidentModal
+            open={inc.deleteOpen}
+            onClose={() => inc.setDeleteOpen(false)}
+            incident={inc.deleteTarget}
+            deleting={inc.deleting}
+            onConfirm={inc.confirmDelete}
+          />
 
           {/* Page header */}
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
             <div>
               <h2 className="text-2xl font-bold text-text-primary">Incidents</h2>
               <p className="text-text-secondary text-sm mt-1">
-                {incidents.length} total · {activeIncidents.length} active · {resolvedThisMonth.length} resolved this month
+                {inc.incidents.length} total · {inc.activeIncidents.length} active · {inc.resolvedThisMonth.length} resolved this month
               </p>
             </div>
-            <Button size="lg" onClick={() => setCreateOpen(true)}>
-              <span className="flex items-center gap-2">
-                <Plus className="w-4 h-4" /> Create Incident
-              </span>
+            <Button size="lg" onClick={() => inc.setCreateOpen(true)}>
+              <span className="flex items-center gap-2"><Plus className="w-4 h-4" /> Create Incident</span>
             </Button>
           </div>
 
           {/* Toolbar: search + sort + export */}
-          {incidents.length > 0 && (
-            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 mb-4">
-              <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-text-muted" />
-                <input
-                  type="text"
-                  placeholder="Search incidents…"
-                  value={searchQuery}
-                  onChange={(e) => { setSearchQuery(e.target.value); setResolvedPage(1); }}
-                  className="w-full pl-9 pr-4 py-2 rounded-xl bg-surface border border-border text-sm text-text-primary placeholder:text-text-secondary/50 focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
-                />
-              </div>
-              <div className="flex items-center gap-2 shrink-0">
-                {(['title', 'status', 'severity', 'updatedAt'] as const).map((col) => (
-                  <button
-                    key={col}
-                    onClick={() => incidentToggle(col)}
-                    className={`flex items-center gap-1 px-2.5 py-2 rounded-lg border text-xs font-medium transition-colors ${incidentSort.key === col ? 'border-accent/40 bg-accent/10 text-accent' : 'border-border text-text-secondary hover:text-text-primary hover:border-border-hover'}`}
-                  >
-                    {col === 'updatedAt' ? 'Date' : col.charAt(0).toUpperCase() + col.slice(1)}
-                    <SortIcon col={col} />
-                  </button>
-                ))}
-                <button
-                  onClick={() => exportCSV('incidents.csv', filteredIncidents.map((i) => ({
-                    title: i.title,
-                    status: i.status,
-                    severity: i.severity,
-                    autoCreated: i.autoCreated ? 'Yes' : 'No',
-                    updatedAt: i.updatedAt,
-                    monitors: i.monitors.map((m) => m.monitor.name).join('; '),
-                  })))}
-                  className="flex items-center gap-1.5 px-2.5 py-2 rounded-lg border border-border text-xs font-medium text-text-secondary hover:text-text-primary hover:border-border-hover transition-colors"
-                  title="Export to CSV"
-                >
-                  <Download className="w-3.5 h-3.5" /> CSV
-                </button>
-              </div>
-            </div>
+          {inc.incidents.length > 0 && (
+            <IncidentToolbar
+              searchQuery={inc.searchQuery}
+              onSearchChange={(q) => { inc.setSearchQuery(q); inc.setResolvedPage(1); }}
+              sortKey={inc.incidentSort.key as 'title' | 'status' | 'severity' | 'updatedAt'}
+              sortDir={inc.incidentSort.dir}
+              onToggleSort={inc.incidentToggle}
+              onExport={inc.handleExportCSV}
+            />
           )}
 
-          {incidents.length === 0 ? (
+          {inc.incidents.length === 0 ? (
             <Card className="text-center py-16">
               <div className="p-4 rounded-2xl bg-green-500/10 border border-green-500/20 inline-block mb-4">
                 <Shield className="w-12 h-12 text-green-400" />
               </div>
               <p className="text-text-primary text-lg font-medium mb-2">No incidents yet</p>
               <p className="text-green-400 text-sm font-medium mb-1">All systems operational</p>
-              <p className="text-text-secondary text-sm mb-6">
-                Create an incident to track and communicate operational issues to your team
-              </p>
-              <Button size="lg" onClick={() => setCreateOpen(true)}>
+              <p className="text-text-secondary text-sm mb-6">Create an incident to track and communicate operational issues to your team</p>
+              <Button size="lg" onClick={() => inc.setCreateOpen(true)}>
                 <span className="flex items-center gap-2"><Plus className="w-4 h-4" /> Create Incident</span>
               </Button>
             </Card>
           ) : (
             <div className="space-y-4">
               {/* Active incidents */}
-              {activeIncidents.length > 0 && (
+              {inc.activeIncidents.length > 0 && (
                 <section>
                   <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3">
-                    Active ({activeIncidents.length})
+                    Active ({inc.activeIncidents.length})
                   </h3>
                   <div className="space-y-2">
-                    {activeIncidents.map((incident) => (
+                    {inc.activeIncidents.map((incident) => (
                       <IncidentRow
                         key={incident.id}
                         incident={incident}
-                        expanded={expandedId === incident.id}
-                        onToggle={() => setExpandedId(expandedId === incident.id ? null : incident.id)}
-                        onEdit={() => openEdit(incident)}
-                        onUpdate={() => openUpdate(incident)}
-                        onDelete={() => openDelete(incident)}
-                        postmortemEditId={postmortemEditId}
-                        postmortemForm={postmortemForm}
-                        onOpenPostmortem={() => openPostmortem(incident)}
-                        onCancelPostmortem={() => setPostmortemEditId(null)}
-                        onSavePostmortem={() => savePostmortem(incident.id)}
-                        onPostmortemChange={setPostmortemForm}
-                        savingPostmortem={savingPostmortem}
-                        onGeneratePostmortem={() => generatePostmortem(incident.id)}
-                        generatingPostmortem={generatingPostmortem === incident.id}
+                        expanded={inc.expandedId === incident.id}
+                        onToggle={() => inc.setExpandedId(inc.expandedId === incident.id ? null : incident.id)}
+                        onEdit={() => inc.openEdit(incident)}
+                        onUpdate={() => inc.openUpdate(incident)}
+                        onDelete={() => inc.openDelete(incident)}
+                        postmortemEditId={inc.postmortemEditId}
+                        postmortemForm={inc.postmortemForm}
+                        onOpenPostmortem={() => inc.openPostmortem(incident)}
+                        onCancelPostmortem={() => inc.setPostmortemEditId(null)}
+                        onSavePostmortem={() => inc.savePostmortem(incident.id)}
+                        onPostmortemChange={inc.setPostmortemForm}
+                        savingPostmortem={inc.savingPostmortem}
+                        onGeneratePostmortem={() => inc.generatePostmortem(incident.id)}
+                        generatingPostmortem={inc.generatingPostmortem === incident.id}
                       />
                     ))}
                   </div>
@@ -868,41 +134,41 @@ export default function IncidentsPage() {
               )}
 
               {/* Resolved incidents */}
-              {resolvedIncidents.length > 0 && (
+              {inc.resolvedIncidents.length > 0 && (
                 <section>
                   <h3 className="text-sm font-semibold text-text-secondary uppercase tracking-wider mb-3 mt-6">
-                    Resolved ({resolvedIncidents.length})
+                    Resolved ({inc.resolvedIncidents.length})
                   </h3>
                   <div className="space-y-2">
-                    {paginatedResolved.map((incident) => (
+                    {inc.paginatedResolved.map((incident) => (
                       <IncidentRow
                         key={incident.id}
                         incident={incident}
-                        expanded={expandedId === incident.id}
-                        onToggle={() => setExpandedId(expandedId === incident.id ? null : incident.id)}
-                        onEdit={() => openEdit(incident)}
-                        onUpdate={() => openUpdate(incident)}
-                        onDelete={() => openDelete(incident)}
-                        postmortemEditId={postmortemEditId}
-                        postmortemForm={postmortemForm}
-                        onOpenPostmortem={() => openPostmortem(incident)}
-                        onCancelPostmortem={() => setPostmortemEditId(null)}
-                        onSavePostmortem={() => savePostmortem(incident.id)}
-                        onPostmortemChange={setPostmortemForm}
-                        savingPostmortem={savingPostmortem}
-                        onGeneratePostmortem={() => generatePostmortem(incident.id)}
-                        generatingPostmortem={generatingPostmortem === incident.id}
+                        expanded={inc.expandedId === incident.id}
+                        onToggle={() => inc.setExpandedId(inc.expandedId === incident.id ? null : incident.id)}
+                        onEdit={() => inc.openEdit(incident)}
+                        onUpdate={() => inc.openUpdate(incident)}
+                        onDelete={() => inc.openDelete(incident)}
+                        postmortemEditId={inc.postmortemEditId}
+                        postmortemForm={inc.postmortemForm}
+                        onOpenPostmortem={() => inc.openPostmortem(incident)}
+                        onCancelPostmortem={() => inc.setPostmortemEditId(null)}
+                        onSavePostmortem={() => inc.savePostmortem(incident.id)}
+                        onPostmortemChange={inc.setPostmortemForm}
+                        savingPostmortem={inc.savingPostmortem}
+                        onGeneratePostmortem={() => inc.generatePostmortem(incident.id)}
+                        generatingPostmortem={inc.generatingPostmortem === incident.id}
                       />
                     ))}
                   </div>
-                  {resolvedIncidents.length > resolvedSize && (
+                  {inc.resolvedIncidents.length > inc.resolvedSize && (
                     <TablePagination
-                      page={safeResolvedPage}
-                      pageCount={resolvedPageCount}
-                      pageSize={resolvedPageSize}
-                      totalItems={resolvedIncidents.length}
-                      onPage={(p) => setResolvedPage(p)}
-                      onPageSize={(s) => { setResolvedPageSize(s); setResolvedPage(1); }}
+                      page={inc.safeResolvedPage}
+                      pageCount={inc.resolvedPageCount}
+                      pageSize={inc.resolvedPageSize}
+                      totalItems={inc.resolvedIncidents.length}
+                      onPage={(p) => inc.setResolvedPage(p)}
+                      onPageSize={(s) => { inc.setResolvedPageSize(s); inc.setResolvedPage(1); }}
                       pageSizeOptions={[10, 25, 50, 100]}
                     />
                   )}
@@ -913,267 +179,5 @@ export default function IncidentsPage() {
         </>
       )}
     </AppFrame>
-  );
-}
-
-// ─── Incident Row ────────────────────────────────────────────────────────────
-
-function IncidentRow({
-  incident,
-  expanded,
-  onToggle,
-  onEdit,
-  onUpdate,
-  onDelete,
-  postmortemEditId,
-  postmortemForm,
-  onOpenPostmortem,
-  onCancelPostmortem,
-  onSavePostmortem,
-  onPostmortemChange,
-  savingPostmortem,
-  onGeneratePostmortem,
-  generatingPostmortem,
-}: {
-  incident: Incident;
-  expanded: boolean;
-  onToggle: () => void;
-  onEdit: () => void;
-  onUpdate: () => void;
-  onDelete: () => void;
-  postmortemEditId: string | null;
-  postmortemForm: { rootCause: string; postmortemNotes: string };
-  onOpenPostmortem: () => void;
-  onCancelPostmortem: () => void;
-  onSavePostmortem: () => void;
-  onPostmortemChange: (form: { rootCause: string; postmortemNotes: string }) => void;
-  savingPostmortem: boolean;
-  onGeneratePostmortem: () => void;
-  generatingPostmortem: boolean;
-}) {
-  return (
-    <Card className="p-0 overflow-hidden">
-      {/* Row header */}
-      <div
-        className="flex items-center gap-4 px-5 py-4 cursor-pointer hover:bg-surface-elevated/50 transition-colors"
-        onClick={onToggle}
-        role="button"
-        aria-expanded={expanded}
-        tabIndex={0}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); onToggle(); } }}
-      >
-        {/* Severity indicator */}
-        <div
-          className={`w-1 self-stretch rounded-full flex-shrink-0 ${
-            incident.severity === 'CRITICAL' ? 'bg-red-500' :
-            incident.severity === 'HIGH' ? 'bg-orange-500' :
-            incident.severity === 'MEDIUM' ? 'bg-yellow-500' :
-            'bg-blue-500'
-          }`}
-        />
-
-        {/* Title + badges */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <span className="font-semibold text-text-primary truncate">{incident.title}</span>
-            <Badge className={statusColors[incident.status]}>{statusLabels[incident.status]}</Badge>
-            <Badge className={severityColors[incident.severity]}>{severityLabels[incident.severity]}</Badge>
-            {incident.autoCreated && (
-              <Badge className="bg-blue-500/20 text-blue-400 border-blue-500/30">Auto</Badge>
-            )}
-          </div>
-          <div className="flex items-center gap-3 mt-1 flex-wrap">
-            {incident.description && (
-              <p className="text-sm text-text-secondary truncate">{incident.description}</p>
-            )}
-            <span className="text-xs text-text-secondary flex-shrink-0">
-              {incident.monitors.length} monitor{incident.monitors.length !== 1 ? 's' : ''} affected
-            </span>
-            <span className="text-xs text-text-secondary flex-shrink-0">
-              {incidentDuration(incident)}
-            </span>
-          </div>
-        </div>
-
-        {/* Meta */}
-        <div className="hidden sm:flex items-center gap-3 text-xs text-text-secondary flex-shrink-0">
-          <span>{incident.updates.length} update{incident.updates.length !== 1 ? 's' : ''}</span>
-          <span>{relativeTime(incident.createdAt)}</span>
-        </div>
-
-        {/* Actions */}
-        <div className="flex items-center gap-1 flex-shrink-0" onClick={(e) => e.stopPropagation()}>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={onUpdate}
-            aria-label="Post update"
-            title="Post update"
-          >
-            <span className="flex items-center gap-1.5">
-              <MessageSquarePlus className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline text-xs">Post Update</span>
-            </span>
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onEdit}
-            aria-label={`Edit ${incident.title}`}
-            title="Edit incident"
-          >
-            <Edit className="w-4 h-4" />
-          </Button>
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onDelete}
-            className="text-danger hover:text-danger"
-            aria-label={`Delete ${incident.title}`}
-            title="Delete incident"
-          >
-            <Trash2 className="w-4 h-4" />
-          </Button>
-          {expanded ? (
-            <ChevronUp className="w-4 h-4 text-text-secondary ml-1" />
-          ) : (
-            <ChevronDown className="w-4 h-4 text-text-secondary ml-1" />
-          )}
-        </div>
-      </div>
-
-      {/* Expanded: timeline + monitors */}
-      {expanded && (
-        <div className="border-t border-border px-5 py-4 space-y-4">
-          {/* Affected monitors */}
-          {incident.monitors.length > 0 && (
-            <div>
-              <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-2">Affected monitors</p>
-              <div className="flex flex-wrap gap-2">
-                {incident.monitors.map(({ monitor }) => (
-                  <Badge key={monitor.id} className="text-xs">
-                    {monitor.name}
-                  </Badge>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Timeline */}
-          <div>
-            <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider mb-3">Timeline</p>
-            {incident.updates.length === 0 ? (
-              <p className="text-sm text-text-secondary italic">No updates yet.</p>
-            ) : (
-              <div className="space-y-3">
-                {incident.updates.map((upd) => (
-                  <div key={upd.id} className="flex gap-3">
-                    <div className="flex flex-col items-center">
-                      <div className={`w-2.5 h-2.5 rounded-full mt-1.5 flex-shrink-0 ${statusColors[upd.status].split(' ')[0]}`} />
-                      <div className="w-px flex-1 bg-border mt-1" />
-                    </div>
-                    <div className="pb-3 min-w-0">
-                      <div className="flex items-center gap-2 mb-1">
-                        <Badge className={`text-xs ${statusColors[upd.status]}`}>{statusLabels[upd.status]}</Badge>
-                        <span className="text-xs text-text-secondary">{relativeTime(upd.createdAt)}</span>
-                      </div>
-                      <p className="text-sm text-text-primary whitespace-pre-wrap">{upd.body}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {/* Post-mortem section */}
-          <div className="border-t border-border/50 pt-4">
-            <div className="flex items-center justify-between mb-3">
-              <p className="text-xs font-semibold text-text-secondary uppercase tracking-wider">Post-Mortem</p>
-              <div className="flex items-center gap-3">
-                <button
-                  onClick={onGeneratePostmortem}
-                  disabled={generatingPostmortem}
-                  className="text-xs text-text-muted hover:text-accent transition-colors disabled:opacity-50"
-                  title="Auto-generate post-mortem from incident data"
-                >
-                  {generatingPostmortem ? '⏳ Generating…' : '✨ Auto-generate'}
-                </button>
-                {postmortemEditId !== incident.id && (
-                  <button
-                    onClick={onOpenPostmortem}
-                    className="text-xs text-accent hover:underline"
-                  >
-                    {incident.rootCause || incident.postmortemNotes ? 'Edit' : '+ Add Post-Mortem'}
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {postmortemEditId === incident.id ? (
-              <div className="space-y-3">
-                <div>
-                  <label className="block text-xs font-medium text-text-secondary mb-1">Root Cause</label>
-                  <textarea
-                    value={postmortemForm.rootCause}
-                    onChange={(e) => onPostmortemChange({ ...postmortemForm, rootCause: e.target.value })}
-                    placeholder="What caused this incident?"
-                    maxLength={5000}
-                    rows={3}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-surface text-text-primary placeholder-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-accent"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-text-secondary mb-1">Lessons Learned / Action Items</label>
-                  <textarea
-                    value={postmortemForm.postmortemNotes}
-                    onChange={(e) => onPostmortemChange({ ...postmortemForm, postmortemNotes: e.target.value })}
-                    placeholder="What can we do to prevent this in the future?"
-                    maxLength={10000}
-                    rows={4}
-                    className="w-full px-3 py-2 text-sm rounded-lg border border-border bg-surface text-text-primary placeholder-text-muted resize-none focus:outline-none focus:ring-1 focus:ring-accent"
-                  />
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={onSavePostmortem}
-                    disabled={savingPostmortem}
-                    className="px-3 py-1.5 text-xs font-medium rounded-lg bg-accent text-white hover:bg-accent/80 disabled:opacity-50 transition-colors"
-                  >
-                    {savingPostmortem ? 'Saving…' : 'Save Post-Mortem'}
-                  </button>
-                  <button
-                    onClick={onCancelPostmortem}
-                    className="px-3 py-1.5 text-xs text-text-secondary hover:text-text-primary transition-colors"
-                  >
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            ) : incident.rootCause || incident.postmortemNotes ? (
-              <div className="space-y-3">
-                {incident.rootCause && (
-                  <div>
-                    <p className="text-xs font-medium text-text-muted mb-1">Root Cause</p>
-                    <p className="text-sm text-text-primary whitespace-pre-wrap bg-surface-elevated rounded-lg px-3 py-2">
-                      {incident.rootCause}
-                    </p>
-                  </div>
-                )}
-                {incident.postmortemNotes && (
-                  <div>
-                    <p className="text-xs font-medium text-text-muted mb-1">Lessons Learned</p>
-                    <p className="text-sm text-text-primary whitespace-pre-wrap bg-surface-elevated rounded-lg px-3 py-2">
-                      {incident.postmortemNotes}
-                    </p>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <p className="text-sm text-text-muted italic">No post-mortem added yet.</p>
-            )}
-          </div>
-        </div>
-      )}
-    </Card>
   );
 }

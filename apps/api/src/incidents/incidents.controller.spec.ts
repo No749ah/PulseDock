@@ -62,9 +62,14 @@ describe('IncidentsController', () => {
 
   describe('findAll()', () => {
     it('returns incidents for the authenticated user', async () => {
-      const result = await controller.findAll(req as never);
-      expect(service.findAll).toHaveBeenCalledWith('user-1');
+      const result = await controller.findAll(req as never, undefined, undefined);
+      expect(service.findAll).toHaveBeenCalledWith('user-1', undefined, undefined);
       expect(result).toEqual([mockIncident]);
+    });
+
+    it('passes status filter to service', async () => {
+      await controller.findAll(req as never, 'INVESTIGATING,IDENTIFIED', '10');
+      expect(service.findAll).toHaveBeenCalledWith('user-1', ['INVESTIGATING', 'IDENTIFIED'], 10);
     });
   });
 

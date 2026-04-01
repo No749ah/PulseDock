@@ -48,9 +48,12 @@ export class IncidentsService {
    *
    * @param userId - Owner's user ID
    */
-  async findAll(userId: string) {
+  async findAll(userId: string, statuses?: string[], limit?: number) {
     return this.prisma.incident.findMany({
-      where: { userId },
+      where: {
+        userId,
+        ...(statuses && statuses.length > 0 ? { status: { in: statuses as import('@prisma/client').IncidentStatus[] } } : {}),
+      },
       include: {
         updates: { orderBy: { createdAt: 'desc' }, take: 1 },
         monitors: { include: { monitor: { select: { id: true, name: true, type: true } } } },
@@ -61,6 +64,7 @@ export class IncidentsService {
         { status: 'asc' },
         { createdAt: 'desc' },
       ],
+      ...(limit ? { take: limit } : {}),
     });
   }
 

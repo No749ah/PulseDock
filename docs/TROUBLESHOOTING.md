@@ -152,6 +152,15 @@ cd projects/PulseDock && npm run dev
 cd packages/e2e && PLAYWRIGHT_BASE_URL=http://localhost:1234 npx playwright test
 ```
 
+If you cannot install system dependencies as root (e.g. containerized dev environment), use the Docker-based visual runner:
+
+```bash
+cd projects/PulseDock
+bash ./scripts/visual-test-docker.sh --base-url=http://host.docker.internal:1234
+```
+
+This uses the official Playwright image with Chromium dependencies preinstalled.
+
 ---
 
 ### `npm run build` OOM (out of memory)

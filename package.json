@@ -32,6 +32,8 @@
     "widget:audit": "node ./scripts/widget-audit.mjs",
     "restart": "npm run restart:api && sleep 2 && npm run restart:web",
     "test:e2e": "npm run test -w @pulsedock/e2e",
+    "test:visual": "npx tsx scripts/visual-test.ts",
+    "test:visual:docker": "bash ./scripts/visual-test-docker.sh",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
     "registry:lint": "npx ts-node --project packages/tool-registry/tsconfig.json packages/tool-registry/scripts/lint-registry.ts",

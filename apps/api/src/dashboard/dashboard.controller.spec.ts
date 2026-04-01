@@ -61,6 +61,9 @@ describe('DashboardController', () => {
   beforeEach(() => {
     prisma = makePrisma();
     controller = new DashboardController(prisma as never);
+    // Provide sensible defaults so tests only need to mock what they care about
+    prisma.incident.findMany.mockResolvedValue([]);
+    prisma.monitorEvent.findMany.mockResolvedValue([]);
   });
 
   describe('overview()', () => {

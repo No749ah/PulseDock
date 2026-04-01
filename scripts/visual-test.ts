@@ -68,6 +68,8 @@ function printPlaywrightDependencyHint(err: unknown): void {
   console.error('   This environment needs system packages for headless Chromium.');
   console.error('   Fix (requires root):');
   console.error('     npx playwright install-deps chromium');
+  console.error('   Rootless fallback (Docker image with bundled deps):');
+  console.error('     bash ./scripts/visual-test-docker.sh --base-url=http://host.docker.internal:1234');
   console.error('   Then rerun:');
   console.error('     npx tsx scripts/visual-test.ts --base-url=http://localhost:1234\n');
 }

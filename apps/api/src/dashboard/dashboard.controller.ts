@@ -80,6 +80,19 @@ export class DashboardController {
     // Legacy aggregate (all monitors, for backwards compat)
     const total = monitors.length;
 
+    // Fetch active incidents (INVESTIGATING / IDENTIFIED / MONITORING)
+    const activeIncidents = await this.prisma.incident.findMany({
+      where: {
+        userId: req.user.id,
+        status: { in: ['INVESTIGATING', 'IDENTIFIED', 'MONITORING'] },
+      },
+      include: {
+        monitors: { include: { monitor: { select: { id: true, name: true } } } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 10,
+    });
+
     return {
       stats: {
         totalMonitors: total,
@@ -99,6 +112,14 @@ export class DashboardController {
         yellow: uptimeYellow,
         red: uptimeRed,
       },
+      activeIncidents: activeIncidents.map((i) => ({
+        id: i.id,
+        title: i.title,
+        status: i.status,
+        severity: i.severity,
+        createdAt: i.createdAt.toISOString(),
+        monitors: i.monitors.map((m) => ({ id: m.monitor.id, name: m.monitor.name })),
+      })),
       latestRuns: recentRuns.map((r) => ({
         id: r.id,
         userId: r.userId,

@@ -87,10 +87,18 @@ export class IncidentsController {
 
   @Get()
   @ApiOperation({ summary: 'List all incidents', description: 'Returns all incidents for the authenticated user, ordered by creation date descending. Includes active incidents first, then resolved.' })
+  @ApiQuery({ name: 'status', required: false, description: 'Comma-separated status filter (INVESTIGATING,IDENTIFIED,MONITORING,RESOLVED)', type: String })
+  @ApiQuery({ name: 'limit', required: false, description: 'Max results to return (default: unlimited)', type: Number })
   @ApiResponse({ status: 200, description: 'List of incidents ordered by createdAt descending.' })
   @ApiResponse({ status: 401, description: 'Not authenticated — Bearer token missing or expired.' })
-  findAll(@Req() req: AuthenticatedRequest) {
-    return this.incidents.findAll(req.user.id);
+  findAll(
+    @Req() req: AuthenticatedRequest,
+    @Query('status') statusFilter?: string,
+    @Query('limit') limitParam?: string,
+  ) {
+    const statuses = statusFilter ? statusFilter.split(',').map(s => s.trim()).filter(Boolean) : undefined;
+    const limit = limitParam ? Math.min(200, Math.max(1, parseInt(limitParam, 10) || 200)) : undefined;
+    return this.incidents.findAll(req.user.id, statuses, limit);
   }
 
   @Get('mttr-report')

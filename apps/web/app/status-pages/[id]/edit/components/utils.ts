@@ -129,6 +129,17 @@ export function getWidgetConfigHints(widgetType: string): string[] {
         "Select a monitor first, then tune metric + chart type.",
         "Use line/area for trends and bar for discrete comparisons.",
       ];
+    case "version-comparison-table":
+    case "outdated-components-alert":
+      return [
+        "Works best with version-check (GIT_RELEASE) monitor types.",
+        "Switch scope to 'All monitors' to auto-include all version monitors.",
+      ];
+    case "metric-comparison-row":
+      return [
+        "Aggregates uptime / latency metrics across selected monitors.",
+        "Switch scope to 'All monitors' to compare your entire fleet at once.",
+      ];
     default:
       return [];
   }

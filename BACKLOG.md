@@ -1,12 +1,22 @@
-## Status Summary (2026-04-01 15:16 UTC)
-- **Build/Test:** ✅ 4675 API + 757 web + 22 package tests passing; build clean; 0 TS errors
-- **Security/Audit:** ✅ 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted; local + reverse proxy checks green; all audited pages HTTP 200
+## Status Summary (2026-04-01 16:10 UTC)
+- **Build/Test:** ✅ Build + tests + audit clean; visual suite 90/90 passed
+- **Security/Audit:** ✅ 0 vulnerabilities (`npm audit --audit-level=high`)
+- **Deployment:** ✅ Web/API healthy; local + reverse proxy pages return HTTP 200
 - **Branch:** heartbeat/2026-04-01-afternoon
-- **Last changes (15:16 UTC):**
-  - [x] **Global search enum fix shipped** — Replaced invalid `VERSION_CHECK` string filter with proper Prisma enum filters (`GIT_RELEASE`, `DOCKER_IMAGE`) in monitor/version search paths.
-  - [x] **Search test coverage expanded** — Added/updated unit + integration coverage for `/v1/search` (auth, short query behavior, limit handling, user isolation, monitor/incident mapping). Integration suite now includes 6 files / 64 tests passing.
-  - [x] **Mandatory restart + post-deploy verification** — Restarted both API + web (`npm run restart`). Verified API `/health` 200, web `/login` 200, invalid bearer rejected with 401 on both API and proxied `/api` routes.
+- **Last changes (16:10 UTC):**
+  - [x] **Status page widget visual audit completed** — Ran `npm run test:visual:docker -- --base-url=https://oc-dev-test.no749ah.com` (90/90 passing) and `npm run widget:audit` (82/82 coverage).
+  - [x] **Widget preview rendering fix shipped** — Fixed `version-timeline` preview dot colors by replacing dynamic Tailwind class interpolation with explicit static classes.
+  - [x] **Audit findings documented** — Added `docs/STATUS_PAGE_WIDGET_VISUAL_AUDIT_2026-04-01.md` with method, findings, actions, and artifact links.
+
+## Status Summary (2026-04-01 16:15 UTC)
+- **Build/Test:** ✅ Build clean; tests passing; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted; localhost + reverse proxy audits all HTTP 200
+- **Branch:** heartbeat/2026-04-01-afternoon
+- **Last changes (16:15 UTC):**
+  - [x] **Visual runner auth support** — `scripts/visual-test.ts` now supports authenticated captures via `VISUAL_TEST_EMAIL` / `VISUAL_TEST_PASSWORD` (or `--email/--password`) and flags auth-route login redirects as errors instead of false-green passes.
+  - [x] **Docker visual runner passthrough** — `scripts/visual-test-docker.sh` now forwards auth env vars into the Playwright container so authenticated UI screenshots work in rootless/containerized flows.
+  - [x] **Mandatory restart + post-deploy verification** — Restarted both API + web (`npm run restart`), verified `/health` 200, `/login` 200, `/api/v1/monitors` invalid bearer 401, and reverse proxy `/dashboard` 200.
   - [x] **Frontend error audit completed** — `/login`, `/dashboard`, `/monitors`, `/alerts`, `/account`, `/projects`, `/versions`, `/admin` all return HTTP 200 on localhost and `https://oc-dev-test.no749ah.com`.
 
 ## Status Summary (2026-04-01 12:28 UTC)
@@ -90,7 +100,7 @@
 
 - [x] **Status page widget preview coverage** — ✅ Done (2026-04-01). All 82 widget palette types now have editor canvas previews. Fixed 11 missing widget cases + 3 type aliases. Zero fallthrough to default.
 
-- [ ] **Status page widget visual audit (browser)** — Visual quality inspection via browser/editor interaction (layout balance, spacing, typography, empty-state fidelity). Automation unblocked; perform manual qualitative pass and record findings.
+- [x] **Status page widget visual audit (browser)** — ✅ Done (2026-04-01). Executed visual sweep (`npm run test:visual:docker`, 90/90 pass), validated widget coverage (`npm run widget:audit`, 82/82), fixed `version-timeline` preview color-dot rendering defect, and documented qualitative findings in `docs/STATUS_PAGE_WIDGET_VISUAL_AUDIT_2026-04-01.md`.
 
 - [x] **Loading performance audit** — ✅ Done (2026-03-30). Dashboard JS reduced 24% (1314KB → 1001KB). Chart.js removed from critical path (lazy-loaded only on monitor detail). Deleted unused BarChartCJS. TTFB <21ms on all pages. Gzipped dashboard JS ~300KB via reverse proxy.
 

@@ -15,6 +15,7 @@ for arg in "$@"; do
     *)
       echo "Unknown argument: $arg"
       echo "Usage: $0 [--base-url=https://oc-dev-test.no749ah.com] [--image=mcr.microsoft.com/playwright:v1.52.0-noble]"
+      echo "Optional env vars: VISUAL_TEST_EMAIL, VISUAL_TEST_PASSWORD"
       exit 1
       ;;
   esac
@@ -42,7 +43,11 @@ cat <<EOF
    Base URL: ${BASE_URL}
 EOF
 
-CID=$(docker create --add-host=host.docker.internal:host-gateway "$IMAGE" bash -lc 'sleep infinity')
+CID=$(docker create \
+  --add-host=host.docker.internal:host-gateway \
+  -e VISUAL_TEST_EMAIL="${VISUAL_TEST_EMAIL:-}" \
+  -e VISUAL_TEST_PASSWORD="${VISUAL_TEST_PASSWORD:-}" \
+  "$IMAGE" bash -lc 'sleep infinity')
 docker start "$CID" >/dev/null
 
 docker exec "$CID" mkdir -p /work/scripts

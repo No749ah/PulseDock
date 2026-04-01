@@ -175,6 +175,28 @@ describe('SearchService', () => {
     expect(result.incidents).toHaveLength(1);
   });
 
+  it('monitor search query uses notIn for version types (not invalid VERSION_CHECK)', async () => {
+    mockPrisma.monitor.findMany.mockResolvedValue([]);
+    mockPrisma.incident.findMany.mockResolvedValue([]);
+    mockPrisma.publicStatusPage.findMany.mockResolvedValue([]);
+
+    await service.search('u1', 'anything', 5, new Set(['monitors']));
+    const call = mockPrisma.monitor.findMany.mock.calls[0][0];
+    // Should use notIn: [GIT_RELEASE, DOCKER_IMAGE] — never the invalid VERSION_CHECK string
+    expect(call.where.type).toEqual({ notIn: expect.arrayContaining(['GIT_RELEASE', 'DOCKER_IMAGE']) });
+    expect(call.where.type).not.toHaveProperty('not');
+  });
+
+  it('version search query uses in: [GIT_RELEASE, DOCKER_IMAGE]', async () => {
+    mockPrisma.monitor.findMany.mockResolvedValue([]);
+    mockPrisma.incident.findMany.mockResolvedValue([]);
+    mockPrisma.publicStatusPage.findMany.mockResolvedValue([]);
+
+    await service.search('u1', 'portainer', 5, new Set(['versions']));
+    const call = mockPrisma.monitor.findMany.mock.calls[0][0];
+    expect(call.where.type).toEqual({ in: expect.arrayContaining(['GIT_RELEASE', 'DOCKER_IMAGE']) });
+  });
+
   it('uses createdAt as fallback updatedAt when no runs', async () => {
     mockPrisma.monitor.findMany.mockResolvedValue([
       { id: 'm1', name: 'New Monitor', target: 'https://new.com', type: 'HTTP', enabled: true, createdAt: baseDate, runs: [] },

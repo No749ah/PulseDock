@@ -3,7 +3,11 @@
  * Performs case-insensitive substring matching across all major entity types.
  */
 import { Injectable } from '@nestjs/common';
+import { MonitorType } from '@prisma/client';
 import { PrismaService } from '../common/prisma.service';
+
+/** Monitor types that represent version intelligence (not uptime monitors). */
+const VERSION_MONITOR_TYPES: MonitorType[] = [MonitorType.GIT_RELEASE, MonitorType.DOCKER_IMAGE];
 
 export interface SearchItem {
   id: string;
@@ -72,7 +76,7 @@ export class SearchService {
     const rows = await this.prisma.monitor.findMany({
       where: {
         userId,
-        type: { not: 'VERSION_CHECK' as never },
+        type: { notIn: VERSION_MONITOR_TYPES },
         OR: [
           { name: { contains: q, mode: 'insensitive' } },
           { target: { contains: q, mode: 'insensitive' } },
@@ -208,7 +212,7 @@ export class SearchService {
     const rows = await this.prisma.monitor.findMany({
       where: {
         userId,
-        type: 'VERSION_CHECK' as never,
+        type: { in: VERSION_MONITOR_TYPES },
         OR: [
           { name: { contains: q, mode: 'insensitive' } },
           { target: { contains: q, mode: 'insensitive' } },

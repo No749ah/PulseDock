@@ -143,6 +143,7 @@ export const NEEDS_MONITORS_TYPES = new Set([
   'uptime-comparison-chart', 'response-time-comparison', 'sla-compliance-table',
   'service-health-matrix', 'sparkline-row', 'component-status-list',
   'aggregate-health-score', 'multi-environment-status',
+  'metric-comparison-row', 'outdated-components-alert', 'version-comparison-table',
 ]);
 
 /**

@@ -1,3 +1,14 @@
+## Status Summary (2026-04-01 15:16 UTC)
+- **Build/Test:** ✅ 4675 API + 757 web + 22 package tests passing; build clean; 0 TS errors
+- **Security/Audit:** ✅ 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted; local + reverse proxy checks green; all audited pages HTTP 200
+- **Branch:** heartbeat/2026-04-01-afternoon
+- **Last changes (15:16 UTC):**
+  - [x] **Global search enum fix shipped** — Replaced invalid `VERSION_CHECK` string filter with proper Prisma enum filters (`GIT_RELEASE`, `DOCKER_IMAGE`) in monitor/version search paths.
+  - [x] **Search test coverage expanded** — Added/updated unit + integration coverage for `/v1/search` (auth, short query behavior, limit handling, user isolation, monitor/incident mapping). Integration suite now includes 6 files / 64 tests passing.
+  - [x] **Mandatory restart + post-deploy verification** — Restarted both API + web (`npm run restart`). Verified API `/health` 200, web `/login` 200, invalid bearer rejected with 401 on both API and proxied `/api` routes.
+  - [x] **Frontend error audit completed** — `/login`, `/dashboard`, `/monitors`, `/alerts`, `/account`, `/projects`, `/versions`, `/admin` all return HTTP 200 on localhost and `https://oc-dev-test.no749ah.com`.
+
 ## Status Summary (2026-04-01 12:28 UTC)
 - **Build/Test:** ✅ 4673 API + 757 web + 22 package tests passing; build clean; 0 TS errors
 - **Security/Audit:** ✅ 0 vulnerabilities
@@ -68,6 +79,8 @@
   - Also fixed production bug: incidents controller used `req.user.sub` instead of `req.user.id`
 
 - [x] **Database query optimization audit** — ✅ Done (2026-03-30). Added 9 missing @@index([userId]) indexes. Batched SLA service queries (slaDashboard, slaComplianceReport, getSloSummary). Batched health score leaderboard (2N+1 → 2 queries). All hot paths optimized.
+
+- [x] **Fix global search monitor type filtering** — ✅ Done (2026-04-01). Replaced invalid `VERSION_CHECK` literal with proper enum filters (`type: { notIn: [GIT_RELEASE, DOCKER_IMAGE] }` for uptime monitors and `type: { in: [...] }` for version monitors). Added targeted unit coverage + integration coverage for `/v1/search` (auth, limits, isolation, result mapping).
 
 ### 🟠 P1 — UX & Polish
 

@@ -1,3 +1,12 @@
+## Status Summary (2026-04-02 19:15 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 3370 web + 137 integration + 114 CLI + 12 agent = **8688 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 8 pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-02-evening
+- **Last changes (19:15 UTC):**
+  - [x] **21 folder integration tests** — full CRUD lifecycle against real PostgreSQL: create root/nested, list as tree + flat, rename, move to new parent/root, circular-move rejection (self + descendant), delete with monitor unfile, mute/unmute cascading, mute-status endpoint, auth isolation (user B can't see/update user A's folders), input validation (invalid parentId, minute bounds). Integration: 116 → 137.
+
+---
+
 ## Status Summary (2026-04-02 18:17 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 3370 web + 116 integration + 114 CLI + 12 agent = **8667 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all 15 pages 200 locally + https://oc-dev-test.no749ah.com

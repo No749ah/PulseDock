@@ -1,13 +1,15 @@
-## Status Summary (2026-04-02 12:44 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 2680 web + 53 integration + 114 CLI + 12 agent = **7914 tests passing**; 0 vulnerabilities
+## Status Summary (2026-04-02 13:05 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 2680 web + 79 integration + 114 CLI + 12 agent = **7940 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com (HTML + sampled CSS/JS assets return 200)
 - **Branch:** heartbeat/2026-04-02-noon (merged midnight → dev, deleted old branch)
-- **Last changes (12:44 UTC):**
-  - [x] **14 new web route/SEO tests** — added specs for `app/api/[...path]/route.ts` (proxy behavior, body forwarding, header dedupe, Set-Cookie passthrough), `app/api/check-url/route.ts` (validation, status mapping, timeout/error handling), `sitemap.ts`, and `robots.ts`. Web tests: 2666 → 2680.
-  - [x] **Fix CLI strict TypeScript build blockers** — typed all implicit `any` callback params in CLI command specs and removed unused spy variable so `npm run build` passes across all workspaces.
-  - [x] **Full pipeline verification** — `npm run build` + `npm run test` completed successfully; web restarted after build.
-  - [x] **73 new web tests** — `status-pages/[id]/edit/components/constants.spec.ts` covering WIDGET_PALETTE/contracts.
-  - [x] **Release hygiene** — backfilled and pushed missing git tags `v0.7.0` through `v1.6.0` to origin.
+- **Branch:** heartbeat/2026-04-02-afternoon
+- **Last changes (13:05 UTC):**
+  - [x] **26 new integration tests** — `test/status-pages.integration.spec.ts`: CRUD lifecycle, slug auto-generation, publish toggle, user isolation (403), public route access, auth guard. Integration tests: 53 → 79.
+  - [x] **Branch management** — merged heartbeat/2026-04-02-noon → dev, deleted old branch, created heartbeat/2026-04-02-afternoon.
+  - [x] **14 new web route/SEO tests** — proxy, check-url, sitemap, robots specs.
+  - [x] **Fix CLI strict TypeScript build blockers** — typed implicit `any` callback params + removed unused spy.
+  - [x] **73 new web tests** — `status-pages/[id]/edit/components/constants.spec.ts`.
+  - [x] **Release hygiene** — backfilled missing git tags `v0.7.0` through `v1.6.0`.
 
 ---
 

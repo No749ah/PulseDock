@@ -1,48 +1,22 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useCallback, useEffect, useState } from 'react';
 import {
   Activity, AlertTriangle, BarChart2, Check, ChevronLeft, ChevronRight,
-  CheckCircle, ClipboardList, Copy, Database, KeyRound, Link2,
-  Mail, Monitor, RefreshCw, Server, Shield, ShieldOff, Trash2, UserCog,
-  Users, X, XCircle, Zap, Lock, RotateCcw, AlertCircle, Puzzle,
+  ClipboardList, Copy, Database, KeyRound, Link2,
+  Mail, Monitor, RefreshCw, Server, Trash2, UserCog,
+  Users, X, XCircle, CheckCircle, Zap, AlertCircle, Puzzle,
 } from 'lucide-react';
 import { AppFrame } from '../../components/app-frame';
 import { LoadingState } from '../../components/ui/loading-state';
-import { getUser } from '../../components/auth';
 import { api } from '../../lib/api';
 import { Badge } from '../../app/components/Badge';
 import { Card } from '../../app/components/Card';
 import { CountUp } from '../../app/components/CountUp';
 import { exportCSV, exportJSON } from '../../lib/useTableSort';
-
-// ── types ─────────────────────────────────────────────────────────────────────
-
-type AdminUser = {
-  id: string;
-  email: string;
-  displayName?: string | null;
-  role: 'admin' | 'user';
-  isActive?: boolean;
-  totpEnabled?: boolean;
-  emailVerified?: boolean;
-  createdAt: string;
-  updatedAt?: string | null;
-};
-type Invite = { id: string; email: string; role: 'admin' | 'user'; inviteUrl?: string; expiresAt: string; acceptedAt?: string | null };
-type AuditLog = { id: string; action: string; actorUserId: string | null; targetUserId: string | null; createdAt: string };
-type PasswordReset = { id: string; email: string; expiresAt: string; createdAt: string; resetUrl: string };
-
-type HealthData = {
-  ok: boolean; service: string; version: string; runtime: string; uptimeMs: number;
-  checks: { database: { status: 'ok' | 'error'; latencyMs: number | null } };
-};
-type MetricsData = { requestsTotal: number; errorsTotal: number; authLoginFailed: number; alertsSent: number; alertsFailed: number };
-type SystemStatsData = {
-  users: { total: number; active: number }; monitors: { total: number; enabled: number };
-  checksToday: number; failedToday: number; errorRatePct: number;
-};
+import { EditUserModal } from './components/EditUserModal';
+import { useAdmin, PAGE_SIZE } from './hooks/useAdmin';
+import type { HealthData, MetricsData, SystemStatsData } from './types';
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
@@ -58,15 +32,23 @@ function RelativeTime({ iso }: { iso: string }) {
   const d = new Date(iso);
   const diff = Date.now() - d.getTime();
   const s = Math.floor(diff / 1000);
-  let label = s < 60 ? `${s}s ago` : s < 3600 ? `${Math.floor(s / 60)}m ago` : s < 86400 ? `${Math.floor(s / 3600)}h ago` : d.toLocaleDateString();
+  const label = s < 60 ? `${s}s ago` : s < 3600 ? `${Math.floor(s / 60)}m ago` : s < 86400 ? `${Math.floor(s / 3600)}h ago` : d.toLocaleDateString();
   return <span title={d.toLocaleString()} className="text-text-secondary text-xs">{label}</span>;
 }
 
 function CopyBtn({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
-  const copy = () => { navigator.clipboard.writeText(value).then(() => { setCopied(true); setTimeout(() => setCopied(false), 2000); }); };
+  const copy = () => {
+    navigator.clipboard.writeText(value).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  };
   return (
-    <button onClick={copy} className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg bg-surface-elevated border border-border text-text-secondary hover:text-accent hover:border-accent transition-colors">
+    <button
+      onClick={copy}
+      className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs rounded-lg bg-surface-elevated border border-border text-text-secondary hover:text-accent hover:border-accent transition-colors"
+    >
       <Copy className="w-3.5 h-3.5" />
       {copied ? 'Copied!' : 'Copy'}
     </button>
@@ -100,7 +82,7 @@ function SectionHeader({ icon: Icon, title, count }: { icon: React.ComponentType
   );
 }
 
-// ── System Health ─────────────────────────────────────────────────────────────
+// ── System Health Widget ──────────────────────────────────────────────────────
 
 function SystemHealthWidget() {
   const [health, setHealth] = useState<HealthData | null>(null);
@@ -122,7 +104,11 @@ function SystemHealthWidget() {
     } finally { setRefreshing(false); }
   }, []);
 
-  useEffect(() => { void fetch_(); const t = setInterval(() => void fetch_(), 30_000); return () => clearInterval(t); }, [fetch_]);
+  useEffect(() => {
+    void fetch_();
+    const t = setInterval(() => void fetch_(), 30_000);
+    return () => clearInterval(t);
+  }, [fetch_]);
 
   const dbStatus = health?.checks?.database?.status;
   const ok = !error;
@@ -136,7 +122,11 @@ function SystemHealthWidget() {
         </div>
         <div className="flex items-center gap-3">
           {lastUpdated && <span className="text-xs text-text-secondary">{lastUpdated.toLocaleTimeString()}</span>}
-          <button onClick={() => void fetch_()} disabled={refreshing} className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated disabled:opacity-40 transition-colors">
+          <button
+            onClick={() => void fetch_()}
+            disabled={refreshing}
+            className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated disabled:opacity-40 transition-colors"
+          >
             <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
           </button>
         </div>
@@ -145,17 +135,30 @@ function SystemHealthWidget() {
       <div className={`flex items-center gap-3 px-4 py-3 rounded-xl mb-4 ${ok ? 'bg-success/10 border border-success/20' : 'bg-danger/10 border border-danger/20'}`}>
         {ok ? <CheckCircle className="w-5 h-5 text-success shrink-0" /> : <XCircle className="w-5 h-5 text-danger shrink-0" />}
         <div>
-          <p className={`font-semibold text-sm ${ok ? 'text-success' : 'text-danger'}`}>{ok ? 'All Systems Operational' : 'Service Degraded'}</p>
-          {health && <p className="text-xs text-text-secondary mt-0.5">{health.service} v{health.version} · {health.runtime}</p>}
+          <p className={`font-semibold text-sm ${ok ? 'text-success' : 'text-danger'}`}>
+            {ok ? 'All Systems Operational' : 'Service Degraded'}
+          </p>
+          {health && (
+            <p className="text-xs text-text-secondary mt-0.5">{health.service} v{health.version} · {health.runtime}</p>
+          )}
         </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
         {[
           { icon: Server, label: 'Uptime', value: health ? formatUptime(health.uptimeMs) : '—', color: 'text-accent' },
-          { icon: Database, label: 'Database', value: dbStatus === 'ok' ? 'OK' : dbStatus === 'error' ? 'ERROR' : '—', color: dbStatus === 'ok' ? 'text-success' : 'text-danger', sub: health?.checks?.database?.latencyMs != null ? `${health.checks.database.latencyMs}ms` : undefined },
+          {
+            icon: Database, label: 'Database',
+            value: dbStatus === 'ok' ? 'OK' : dbStatus === 'error' ? 'ERROR' : '—',
+            color: dbStatus === 'ok' ? 'text-success' : 'text-danger',
+            sub: health?.checks?.database?.latencyMs != null ? `${health.checks.database.latencyMs}ms` : undefined,
+          },
           { icon: Zap, label: 'Requests', value: metrics?.requestsTotal?.toLocaleString() ?? '—', color: 'text-text-primary' },
-          { icon: AlertTriangle, label: 'Errors', value: metrics?.errorsTotal?.toLocaleString() ?? '—', color: (metrics?.errorsTotal ?? 0) > 0 ? 'text-warning' : 'text-text-primary' },
+          {
+            icon: AlertTriangle, label: 'Errors',
+            value: metrics?.errorsTotal?.toLocaleString() ?? '—',
+            color: (metrics?.errorsTotal ?? 0) > 0 ? 'text-warning' : 'text-text-primary',
+          },
         ].map(({ icon: Icon, label, value, color, sub }) => (
           <div key={label} className="bg-surface-elevated rounded-xl p-4">
             <div className="flex items-center gap-1.5 mb-2">
@@ -177,7 +180,9 @@ function SystemHealthWidget() {
           ].map(({ label, value, danger, success }) => (
             <div key={label} className="bg-surface-elevated rounded-xl px-4 py-3 flex items-center justify-between">
               <span className="text-sm text-text-secondary">{label}</span>
-              <span className={`text-sm font-semibold tabular-nums ${danger ? 'text-danger' : success ? 'text-success' : 'text-text-primary'}`}>{value}</span>
+              <span className={`text-sm font-semibold tabular-nums ${danger ? 'text-danger' : success ? 'text-success' : 'text-text-primary'}`}>
+                {value}
+              </span>
             </div>
           ))}
         </div>
@@ -186,7 +191,7 @@ function SystemHealthWidget() {
   );
 }
 
-// ── System Stats ──────────────────────────────────────────────────────────────
+// ── System Stats Widget ───────────────────────────────────────────────────────
 
 function SystemStatsWidget() {
   const [stats, setStats] = useState<SystemStatsData | null>(null);
@@ -196,7 +201,17 @@ function SystemStatsWidget() {
     api<SystemStatsData>('/v1/admin/stats').then(setStats).catch(() => null).finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <Card className="mb-5"><div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">{Array.from({ length: 4 }).map((_, i) => <div key={i} className="h-20 bg-surface-elevated rounded-xl animate-pulse" />)}</div></Card>;
+  if (loading) {
+    return (
+      <Card className="mb-5">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="h-20 bg-surface-elevated rounded-xl animate-pulse" />
+          ))}
+        </div>
+      </Card>
+    );
+  }
   if (!stats) return null;
 
   const tiles = [
@@ -212,8 +227,13 @@ function SystemStatsWidget() {
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
         {tiles.map(({ label, value, sub, icon: Icon, color }) => (
           <div key={label} className="rounded-xl bg-surface-elevated border border-border p-4">
-            <div className="flex items-center gap-1.5 mb-2"><Icon className={`w-3.5 h-3.5 ${color}`} /><span className="text-[11px] text-text-secondary uppercase tracking-wide">{label}</span></div>
-            <span className={`text-2xl font-bold ${color}`}><CountUp value={`${value}`} duration={900} /></span>
+            <div className="flex items-center gap-1.5 mb-2">
+              <Icon className={`w-3.5 h-3.5 ${color}`} />
+              <span className="text-[11px] text-text-secondary uppercase tracking-wide">{label}</span>
+            </div>
+            <span className={`text-2xl font-bold ${color}`}>
+              <CountUp value={`${value}`} duration={900} />
+            </span>
             <p className="text-xs text-text-secondary mt-0.5">{sub}</p>
           </div>
         ))}
@@ -222,409 +242,24 @@ function SystemStatsWidget() {
   );
 }
 
-// ── Edit User Modal ───────────────────────────────────────────────────────────
-
-function EditUserModal({ user: u, currentUserId, onClose, onSave, onDelete }: {
-  user: AdminUser; currentUserId: string;
-  onClose: () => void;
-  onSave: (patch: Partial<AdminUser>) => Promise<void>;
-  onDelete: () => Promise<void>;
-}) {
-  const [email, setEmail] = useState(u.email);
-  const [displayName, setDisplayName] = useState(u.displayName ?? '');
-  const [role, setRole] = useState<'admin' | 'user'>(u.role);
-  const [saving, setSaving] = useState(false);
-  const [actionLoading, setActionLoading] = useState<string | null>(null);
-  const [error, setError] = useState('');
-  const [success, setSuccess] = useState('');
-  const [resetUrl, setResetUrl] = useState<string | null>(null);
-  const [confirmDelete, setConfirmDelete] = useState(false);
-
-  const isSelf = u.id === currentUserId;
-
-  async function handleSave() {
-    setSaving(true); setError(''); setSuccess('');
-    try {
-      await onSave({ email: email.trim(), displayName: displayName.trim() || undefined, role });
-      setSuccess('Changes saved.');
-    }
-    catch (e) { setError(e instanceof Error ? e.message : 'Failed to save'); }
-    finally { setSaving(false); }
-  }
-
-  async function toggleActive() {
-    setActionLoading('status'); setError(''); setSuccess('');
-    try { await onSave({ isActive: !(u.isActive !== false) }); setSuccess('Account status updated.'); }
-    catch (e) { setError(e instanceof Error ? e.message : 'Failed to update'); }
-    finally { setActionLoading(null); }
-  }
-
-  async function doResetMfa() {
-    setActionLoading('mfa'); setError(''); setSuccess('');
-    try {
-      await api(`/v1/admin/users/${u.id}/reset-mfa`, undefined, { method: 'POST' });
-      setSuccess('MFA disabled. User must re-authenticate.');
-    }
-    catch (e) { setError(e instanceof Error ? e.message : 'Failed to reset MFA'); }
-    finally { setActionLoading(null); }
-  }
-
-  async function doForcePasswordReset() {
-    setActionLoading('pwreset'); setError(''); setSuccess('');
-    try {
-      const res = await api<{ ok: boolean; resetUrl: string; expiresAt: string }>(`/v1/admin/users/${u.id}/force-password-reset`, undefined, { method: 'POST' });
-      setResetUrl(res.resetUrl);
-    }
-    catch (e) { setError(e instanceof Error ? e.message : 'Failed to create reset link'); }
-    finally { setActionLoading(null); }
-  }
-
-  async function doDelete() {
-    setActionLoading('delete'); setError('');
-    try { await onDelete(); onClose(); }
-    catch (e) { setError(e instanceof Error ? e.message : 'Failed to delete user'); setConfirmDelete(false); }
-    finally { setActionLoading(null); }
-  }
-
-  const inputClass = 'w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-sm text-text-primary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent';
-  const actionRowClass = 'flex items-center justify-between gap-3 py-3 px-3.5 rounded-xl bg-surface-elevated border border-border';
-
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm" onClick={onClose}>
-      <div className="w-full max-w-md rounded-2xl border border-border bg-surface shadow-2xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-
-        {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-border">
-          <div className="w-10 h-10 rounded-full bg-accent/15 flex items-center justify-center shrink-0 text-base font-bold text-accent uppercase">
-            {u.email[0]}
-          </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-semibold text-text-primary truncate">{u.displayName || u.email}</p>
-            {u.displayName && <p className="text-xs text-text-secondary truncate">{u.email}</p>}
-            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold border ${u.role === 'admin' ? 'text-accent bg-accent/10 border-accent/30' : 'text-text-secondary bg-surface-elevated border-border'}`}>
-                {u.role === 'admin' ? '🛡 Admin' : '👤 User'}
-              </span>
-              <span className={`px-1.5 py-0.5 rounded-full text-[10px] font-semibold border ${u.isActive !== false ? 'text-success bg-success/10 border-success/30' : 'text-danger bg-danger/10 border-danger/30'}`}>
-                {u.isActive !== false ? 'Active' : 'Disabled'}
-              </span>
-              {u.totpEnabled && (
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold border text-warning bg-warning/10 border-warning/30">
-                  🔐 MFA On
-                </span>
-              )}
-              {u.emailVerified && (
-                <span className="px-1.5 py-0.5 rounded-full text-[10px] font-semibold border text-success bg-success/10 border-success/30">
-                  ✓ Verified
-                </span>
-              )}
-            </div>
-          </div>
-          <button onClick={onClose} className="p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors">
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-
-        <div className="px-5 py-4 space-y-5 max-h-[70vh] overflow-y-auto">
-
-          {/* ── Profile ─────────────────────────────────────────────────── */}
-          <section>
-            <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-3">Profile</p>
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1.5">Display name</label>
-                <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Full name" className={inputClass} />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-text-secondary mb-1.5">Email address</label>
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} className={inputClass} />
-              </div>
-            </div>
-          </section>
-
-          {/* ── Role ────────────────────────────────────────────────────── */}
-          <section>
-            <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-3">Role</p>
-            <div className="flex gap-2">
-              {(['user', 'admin'] as const).map((r) => {
-                const isSelected = role === r;
-                const isAdmin = r === 'admin';
-                return (
-                  <button
-                    key={r}
-                    disabled={isSelf}
-                    onClick={() => setRole(r)}
-                    className={`flex items-center gap-2 flex-1 px-3 py-2.5 rounded-xl text-sm font-medium border transition-all ${
-                      isSelected
-                        ? isAdmin
-                          ? 'text-accent bg-accent/10 border-accent/40'
-                          : 'text-text-primary bg-surface-elevated border-border'
-                        : 'text-text-secondary bg-transparent border-border/50 hover:border-border hover:text-text-primary'
-                    } disabled:opacity-40 disabled:cursor-not-allowed`}
-                  >
-                    {isAdmin ? <Shield className="w-4 h-4 shrink-0" /> : <Users className="w-4 h-4 shrink-0" />}
-                    {isAdmin ? 'Admin' : 'User'}
-                    {isSelected && <Check className="w-3.5 h-3.5 ml-auto" />}
-                  </button>
-                );
-              })}
-            </div>
-            {isSelf && <p className="text-xs text-text-secondary mt-2">You cannot change your own role.</p>}
-          </section>
-
-          {/* ── Account Actions ──────────────────────────────────────────── */}
-          <section>
-            <p className="text-[11px] font-semibold text-text-muted uppercase tracking-wider mb-3">Account Actions</p>
-            <div className="space-y-2">
-
-              {/* Enable / Disable */}
-              <div className={actionRowClass}>
-                <div>
-                  <p className="text-sm font-medium text-text-primary">{u.isActive !== false ? 'Disable account' : 'Enable account'}</p>
-                  <p className="text-xs text-text-secondary mt-0.5">{u.isActive !== false ? 'Revokes all sessions, blocks sign-in' : 'Restore sign-in access'}</p>
-                </div>
-                <button
-                  disabled={isSelf || actionLoading === 'status'}
-                  onClick={toggleActive}
-                  className={`shrink-0 px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors disabled:opacity-40 disabled:cursor-not-allowed ${
-                    u.isActive !== false
-                      ? 'bg-danger/10 text-danger border-danger/30 hover:bg-danger/20'
-                      : 'bg-success/10 text-success border-success/30 hover:bg-success/20'
-                  }`}
-                >
-                  {actionLoading === 'status' ? '…' : u.isActive !== false ? 'Disable' : 'Enable'}
-                </button>
-              </div>
-
-              {/* Force password reset */}
-              <div className={actionRowClass}>
-                <div>
-                  <p className="text-sm font-medium text-text-primary">Force password reset</p>
-                  <p className="text-xs text-text-secondary mt-0.5">Revokes sessions + generates a 15-min reset link</p>
-                </div>
-                <button
-                  disabled={actionLoading === 'pwreset'}
-                  onClick={doForcePasswordReset}
-                  className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-warning/30 bg-warning/10 text-warning hover:bg-warning/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <RotateCcw className="w-3.5 h-3.5" />
-                  {actionLoading === 'pwreset' ? '…' : 'Reset'}
-                </button>
-              </div>
-
-              {/* Reset MFA */}
-              {u.totpEnabled && (
-                <div className={actionRowClass}>
-                  <div>
-                    <p className="text-sm font-medium text-text-primary">Remove MFA</p>
-                    <p className="text-xs text-text-secondary mt-0.5">Disables TOTP and clears recovery codes</p>
-                  </div>
-                  <button
-                    disabled={isSelf || actionLoading === 'mfa'}
-                    onClick={doResetMfa}
-                    className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold border border-warning/30 bg-warning/10 text-warning hover:bg-warning/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    <ShieldOff className="w-3.5 h-3.5" />
-                    {actionLoading === 'mfa' ? '…' : 'Remove MFA'}
-                  </button>
-                </div>
-              )}
-
-              {/* Reset link output */}
-              {resetUrl && (
-                <div className="rounded-xl border border-warning/30 bg-warning/5 px-3.5 py-3 space-y-2">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="w-3.5 h-3.5 text-warning shrink-0" />
-                    <p className="text-xs font-medium text-warning">Share this link with the user — expires in 15 min</p>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <code className="flex-1 text-[11px] font-mono text-text-primary break-all bg-bg rounded-lg px-2.5 py-1.5 border border-border">
-                      {resetUrl}
-                    </code>
-                    <button
-                      onClick={() => { void navigator.clipboard.writeText(resetUrl); }}
-                      className="shrink-0 p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
-                      title="Copy link"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* ── Danger Zone ─────────────────────────────────────────────── */}
-          {!isSelf && (
-            <section>
-              <p className="text-[11px] font-semibold text-danger/70 uppercase tracking-wider mb-3">Danger Zone</p>
-              {!confirmDelete ? (
-                <button
-                  onClick={() => setConfirmDelete(true)}
-                  className="w-full flex items-center gap-2 px-3.5 py-3 rounded-xl border border-danger/30 bg-danger/5 text-danger text-sm font-medium hover:bg-danger/10 transition-colors"
-                >
-                  <Trash2 className="w-4 h-4" />
-                  Delete user account
-                </button>
-              ) : (
-                <div className="rounded-xl border border-danger/40 bg-danger/5 px-3.5 py-3 space-y-3">
-                  <p className="text-sm font-semibold text-danger">Delete {u.email}?</p>
-                  <p className="text-xs text-text-secondary">This permanently deletes the account and all associated data. This cannot be undone.</p>
-                  <div className="flex gap-2">
-                    <button onClick={() => setConfirmDelete(false)} className="flex-1 py-2 rounded-lg border border-border text-xs text-text-secondary hover:text-text-primary transition-colors">
-                      Cancel
-                    </button>
-                    <button
-                      disabled={actionLoading === 'delete'}
-                      onClick={doDelete}
-                      className="flex-1 py-2 rounded-lg bg-danger text-white text-xs font-semibold hover:bg-danger/90 disabled:opacity-50 transition-colors"
-                    >
-                      {actionLoading === 'delete' ? 'Deleting…' : 'Yes, delete'}
-                    </button>
-                  </div>
-                </div>
-              )}
-            </section>
-          )}
-
-          {error && <p className="text-xs text-danger bg-danger/10 border border-danger/20 rounded-lg px-3 py-2">{error}</p>}
-          {success && !error && <p className="text-xs text-success bg-success/10 border border-success/20 rounded-lg px-3 py-2">{success}</p>}
-        </div>
-
-        <div className="flex gap-2 px-5 py-4 border-t border-border">
-          <button onClick={onClose} className="flex-1 py-2.5 rounded-xl border border-border text-sm text-text-secondary hover:text-text-primary transition-colors">Close</button>
-          <button onClick={handleSave} disabled={saving || !email.trim()} className="flex-1 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent/90 disabled:opacity-50 transition-colors">
-            {saving ? 'Saving…' : 'Save changes'}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 // ── Main Page ─────────────────────────────────────────────────────────────────
 
-const PAGE_SIZE = 10;
-
 export default function AdminPage() {
-  const router = useRouter();
-  const currentUser = useMemo(() => (typeof window !== 'undefined' ? getUser() : null), []);
-  const [users, setUsers] = useState<AdminUser[]>([]);
-  const [invites, setInvites] = useState<Invite[]>([]);
-  const [auditLogs, setAuditLogs] = useState<AuditLog[]>([]);
-  const [resets, setResets] = useState<PasswordReset[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [templateReports, setTemplateReports] = useState<{ id: string; toolId: string; endpoint?: string | null; statusCode?: number | null; error?: string | null; note?: string | null; createdAt: string; userId: string }[]>([]);
-  const [templateReportsPage, setTemplateReportsPage] = useState(1);
-  const [plugins, setPlugins] = useState<{ id: string; displayName: string; description: string | null; supportedMonitorTypes: string[]; configFields: { key: string; label: string; type: string; required?: boolean; placeholder?: string; helpText?: string }[] }[]>([]);
-
-  // invite form
-  const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRole, setInviteRole] = useState<'admin' | 'user'>('user');
-  const [latestInvite, setLatestInvite] = useState<Invite | null>(null);
-  const [inviting, setInviting] = useState(false);
-
-  // edit modal
-  const [editUser, setEditUser] = useState<AdminUser | null>(null);
-
-  // pagination
-  const [usersPage, setUsersPage] = useState(1);
-  const [invitesPage, setInvitesPage] = useState(1);
-  const [resetsPage, setResetsPage] = useState(1);
-  const [auditPage, setAuditPage] = useState(1);
-
-  useEffect(() => {
-    if (!currentUser) router.push('/login');
-    else if (currentUser.role !== 'admin') router.push('/unauthorized');
-  }, [currentUser, router]);
-
-  async function load() {
-    setLoading(true);
-    try {
-      const [u, inv, logs, rst] = await Promise.all([
-        api<AdminUser[]>('/v1/admin/users'),
-        api<Invite[]>('/v1/admin/invites'),
-        api<AuditLog[]>('/v1/admin/audit-logs'),
-        api<PasswordReset[]>('/v1/admin/password-resets'),
-      ]);
-      const [fb, pl] = await Promise.all([
-        api<{ total: number; reports: typeof templateReports }>('/v1/feedback/template-reports').catch(() => ({ total: 0, reports: [] })),
-        api<typeof plugins>('/v1/plugins').catch(() => []),
-      ]);
-      setUsers(u); setInvites(inv); setAuditLogs(logs); setResets(rst);
-      setTemplateReports(fb.reports);
-      setPlugins(pl);
-    } catch { router.push('/unauthorized'); }
-    finally { setLoading(false); }
-  }
-
-  useEffect(() => { if (currentUser?.role === 'admin') void load(); }, [currentUser]);
-
-  async function handleSaveUser(patch: Partial<AdminUser>) {
-    if (!editUser) return;
-    const updated = await api<AdminUser>('/v1/admin/users/update', undefined, {
-      method: 'PATCH',
-      body: JSON.stringify({ userId: editUser.id, ...patch }),
-    });
-    // Optimistically update local state
-    setUsers((prev) => prev.map((u) => u.id === editUser.id ? { ...u, ...updated } : u));
-    setEditUser((prev) => prev ? { ...prev, ...updated } : prev);
-  }
-
-  async function handleDeleteUser() {
-    if (!editUser) return;
-    await api(`/v1/admin/users/${editUser.id}`, undefined, { method: 'DELETE' });
-    setUsers((prev) => prev.filter((u) => u.id !== editUser.id));
-    setEditUser(null);
-  }
-
-  async function createInvite() {
-    if (!inviteEmail.trim()) return;
-    setInviting(true);
-    try {
-      const inv = await api<Invite>('/v1/admin/invites', undefined, {
-        method: 'POST',
-        body: JSON.stringify({ email: inviteEmail.trim(), role: inviteRole, expiresInHours: 48 }),
-      });
-      setLatestInvite(inv);
-      setInviteEmail('');
-      await load();
-    } finally { setInviting(false); }
-  }
-
-  async function revokeInvite(id: string) {
-    await api(`/v1/admin/invites/${id}`, undefined, { method: 'DELETE' });
-    await load();
-  }
-
-  async function revokeReset(id: string) {
-    await api(`/v1/admin/password-resets/${id}`, undefined, { method: 'DELETE' });
-    await load();
-  }
-
-  const usersPages = Math.max(1, Math.ceil(users.length / PAGE_SIZE));
-  const invitesPages = Math.max(1, Math.ceil(invites.length / PAGE_SIZE));
-  const resetsPages = Math.max(1, Math.ceil(resets.length / PAGE_SIZE));
-  const auditPages = Math.max(1, Math.ceil(auditLogs.length / PAGE_SIZE));
-
-  const userRows = users.slice((usersPage - 1) * PAGE_SIZE, usersPage * PAGE_SIZE);
-  const inviteRows = invites.slice((invitesPage - 1) * PAGE_SIZE, invitesPage * PAGE_SIZE);
-  const resetRows = resets.slice((resetsPage - 1) * PAGE_SIZE, resetsPage * PAGE_SIZE);
-  const auditRows = auditLogs.slice((auditPage - 1) * PAGE_SIZE, auditPage * PAGE_SIZE);
+  const a = useAdmin();
 
   return (
-    <AppFrame title="Admin" subtitle="System management, user access, and audit logs." breadcrumbs={[{ label: "Admin" }]}>
-      {loading ? <LoadingState label="Loading admin data…" /> : (
+    <AppFrame title="Admin" subtitle="System management, user access, and audit logs." breadcrumbs={[{ label: 'Admin' }]}>
+      {a.loading ? <LoadingState label="Loading admin data…" /> : (
         <div className="space-y-5">
           <SystemHealthWidget />
           <SystemStatsWidget />
 
-          {/* ── Recent Activity Feed ──────────────────────────────────────── */}
-          {auditLogs.length > 0 && (
+          {/* Recent Activity Feed */}
+          {a.auditLogs.length > 0 && (
             <Card>
-              <SectionHeader icon={ClipboardList} title="Recent Activity" count={Math.min(10, auditLogs.length)} />
+              <SectionHeader icon={ClipboardList} title="Recent Activity" count={Math.min(10, a.auditLogs.length)} />
               <div className="space-y-1">
-                {auditLogs.slice(0, 10).map((l) => (
+                {a.auditLogs.slice(0, 10).map((l) => (
                   <div key={l.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-surface-elevated/60 transition-colors border-b border-border/40 last:border-b-0">
                     <div className={`w-1.5 h-1.5 rounded-full shrink-0 mt-0.5 ${
                       l.action.toLowerCase().includes('delete') || l.action.toLowerCase().includes('fail') ? 'bg-danger/60' :
@@ -640,24 +275,22 @@ export default function AdminPage() {
             </Card>
           )}
 
-          {/* ── Users ─────────────────────────────────────────────────────── */}
+          {/* Users */}
           <Card>
-            <SectionHeader icon={Users} title="Users" count={users.length} />
+            <SectionHeader icon={Users} title="Users" count={a.users.length} />
             <div className="space-y-2">
-              {userRows.length === 0 && (
+              {a.userRows.length === 0 && (
                 <p className="text-sm text-text-secondary text-center py-6">No users found.</p>
               )}
-              {userRows.map((u) => (
+              {a.userRows.map((u) => (
                 <div
                   key={u.id}
                   className="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-elevated border border-border hover:border-accent/30 transition-colors cursor-pointer group"
-                  onClick={() => setEditUser(u)}
+                  onClick={() => a.setEditUser(u)}
                 >
-                  {/* Avatar */}
                   <div className="w-9 h-9 rounded-full bg-accent/15 flex items-center justify-center shrink-0 text-sm font-bold text-accent uppercase">
                     {u.email[0]}
                   </div>
-                  {/* Info */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-text-primary truncate">
                       {u.displayName ? (
@@ -670,7 +303,6 @@ export default function AdminPage() {
                       {!u.emailVerified && <span className="text-[10px] font-semibold text-text-muted bg-surface border border-border px-1.5 py-0.5 rounded-full">unverified</span>}
                     </div>
                   </div>
-                  {/* Badges */}
                   <div className="flex items-center gap-2 shrink-0">
                     <span className={`hidden sm:inline px-2 py-0.5 rounded-full text-[11px] font-semibold border ${u.role === 'admin' ? 'text-accent bg-accent/10 border-accent/30' : 'text-text-secondary bg-surface border-border'}`}>
                       {u.role === 'admin' ? '🛡 Admin' : '👤 User'}
@@ -685,10 +317,10 @@ export default function AdminPage() {
                 </div>
               ))}
             </div>
-            <Pagination page={usersPage} pages={usersPages} onPage={setUsersPage} />
+            <Pagination page={a.usersPage} pages={a.usersPages} onPage={a.setUsersPage} />
           </Card>
 
-          {/* ── Invite user ───────────────────────────────────────────────── */}
+          {/* Invite User */}
           <Card>
             <SectionHeader icon={Mail} title="Invite User" />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
@@ -696,8 +328,8 @@ export default function AdminPage() {
                 <label className="block text-xs font-medium text-text-secondary mb-1.5">Email address</label>
                 <input
                   type="email"
-                  value={inviteEmail}
-                  onChange={(e) => setInviteEmail(e.target.value)}
+                  value={a.inviteEmail}
+                  onChange={(e) => a.setInviteEmail(e.target.value)}
                   placeholder="new.user@company.com"
                   className="w-full px-3 py-2.5 rounded-xl bg-bg border border-border text-sm text-text-primary focus:outline-none focus:border-accent focus:ring-1 focus:ring-accent"
                 />
@@ -706,12 +338,12 @@ export default function AdminPage() {
                 <label className="block text-xs font-medium text-text-secondary mb-1.5">Role</label>
                 <div className="flex gap-2 pt-0.5">
                   {(['user', 'admin'] as const).map((r) => {
-                    const isSelected = inviteRole === r;
+                    const isSelected = a.inviteRole === r;
                     const isAdmin = r === 'admin';
                     return (
                       <button
                         key={r}
-                        onClick={() => setInviteRole(r)}
+                        onClick={() => a.setInviteRole(r)}
                         className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[12px] font-semibold border transition-all ${
                           isSelected
                             ? isAdmin
@@ -729,32 +361,32 @@ export default function AdminPage() {
               </div>
             </div>
             <button
-              onClick={createInvite}
-              disabled={inviting || !inviteEmail.trim()}
+              onClick={a.createInvite}
+              disabled={a.inviting || !a.inviteEmail.trim()}
               className="px-5 py-2.5 rounded-xl bg-accent text-white text-sm font-semibold hover:bg-accent/90 disabled:opacity-50 transition-colors"
             >
-              {inviting ? 'Creating…' : 'Create invite link'}
+              {a.inviting ? 'Creating…' : 'Create invite link'}
             </button>
 
-            {latestInvite && (
+            {a.latestInvite && (
               <div className="mt-4 p-4 rounded-xl bg-success/5 border border-success/20">
                 <div className="flex items-center gap-2 mb-2">
                   <Link2 className="w-4 h-4 text-success" />
                   <p className="text-sm font-medium text-success">Invite link created</p>
                 </div>
-                <p className="text-xs text-text-secondary break-all mb-3">{latestInvite.inviteUrl ?? '—'}</p>
+                <p className="text-xs text-text-secondary break-all mb-3">{a.latestInvite.inviteUrl ?? '—'}</p>
                 <div className="flex gap-2">
-                  <CopyBtn value={latestInvite.inviteUrl ?? ''} />
-                  <button onClick={() => setLatestInvite(null)} className="text-xs text-text-secondary hover:text-text-primary transition-colors">Dismiss</button>
+                  <CopyBtn value={a.latestInvite.inviteUrl ?? ''} />
+                  <button onClick={() => a.setLatestInvite(null)} className="text-xs text-text-secondary hover:text-text-primary transition-colors">Dismiss</button>
                 </div>
               </div>
             )}
 
-            {inviteRows.length > 0 && (
+            {a.inviteRows.length > 0 && (
               <div className="mt-5">
                 <p className="text-xs font-medium text-text-secondary uppercase tracking-wide mb-2">Active invites</p>
                 <div className="space-y-2">
-                  {inviteRows.map((inv) => (
+                  {a.inviteRows.map((inv) => (
                     <div key={inv.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-elevated border border-border">
                       <Mail className="w-4 h-4 text-text-secondary shrink-0" />
                       <div className="flex-1 min-w-0">
@@ -767,25 +399,29 @@ export default function AdminPage() {
                         {inv.acceptedAt ? 'Accepted' : 'Pending'}
                       </span>
                       {!inv.acceptedAt && (
-                        <button onClick={() => revokeInvite(inv.id)} className="p-1.5 rounded-lg text-text-secondary hover:text-danger hover:bg-danger/10 transition-colors" title="Revoke">
+                        <button
+                          onClick={() => a.revokeInvite(inv.id)}
+                          className="p-1.5 rounded-lg text-text-secondary hover:text-danger hover:bg-danger/10 transition-colors"
+                          title="Revoke"
+                        >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       )}
                     </div>
                   ))}
                 </div>
-                <Pagination page={invitesPage} pages={invitesPages} onPage={setInvitesPage} />
+                <Pagination page={a.invitesPage} pages={a.invitesPages} onPage={a.setInvitesPage} />
               </div>
             )}
           </Card>
 
-          {/* ── Password Resets ───────────────────────────────────────────── */}
-          {resets.length > 0 && (
+          {/* Password Resets */}
+          {a.resets.length > 0 && (
             <Card>
-              <SectionHeader icon={KeyRound} title="Pending Password Resets" count={resets.length} />
-              <p className="text-xs text-text-secondary mb-3">Fallback reset links when email delivery isn't configured.</p>
+              <SectionHeader icon={KeyRound} title="Pending Password Resets" count={a.resets.length} />
+              <p className="text-xs text-text-secondary mb-3">Fallback reset links when email delivery isn&apos;t configured.</p>
               <div className="space-y-2">
-                {resetRows.map((r) => (
+                {a.resetRows.map((r) => (
                   <div key={r.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-surface-elevated border border-border">
                     <KeyRound className="w-4 h-4 text-warning shrink-0" />
                     <div className="flex-1 min-w-0">
@@ -793,31 +429,31 @@ export default function AdminPage() {
                       <p className="text-xs text-text-secondary">Expires {new Date(r.expiresAt).toLocaleDateString()}</p>
                     </div>
                     <CopyBtn value={r.resetUrl} />
-                    <button onClick={() => revokeReset(r.id)} className="p-1.5 rounded-lg text-text-secondary hover:text-danger hover:bg-danger/10 transition-colors" title="Revoke">
+                    <button onClick={() => a.revokeReset(r.id)} className="p-1.5 rounded-lg text-text-secondary hover:text-danger hover:bg-danger/10 transition-colors" title="Revoke">
                       <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ))}
               </div>
-              <Pagination page={resetsPage} pages={resetsPages} onPage={setResetsPage} />
+              <Pagination page={a.resetsPage} pages={a.resetsPages} onPage={a.setResetsPage} />
             </Card>
           )}
 
-          {/* ── Audit Log ─────────────────────────────────────────────────── */}
+          {/* Audit Log */}
           <Card>
             <div className="flex items-center justify-between mb-1">
-              <SectionHeader icon={ClipboardList} title="Audit Log" count={auditLogs.length} />
-              {auditLogs.length > 0 && (
+              <SectionHeader icon={ClipboardList} title="Audit Log" count={a.auditLogs.length} />
+              {a.auditLogs.length > 0 && (
                 <div className="flex items-center gap-1 shrink-0">
                   <button
-                    onClick={() => exportCSV('audit-log.csv', auditLogs.map((l) => ({ id: l.id, action: l.action, actorUserId: l.actorUserId ?? 'system', targetUserId: l.targetUserId ?? '', createdAt: l.createdAt })))}
+                    onClick={() => exportCSV('audit-log.csv', a.auditLogs.map((l) => ({ id: l.id, action: l.action, actorUserId: l.actorUserId ?? 'system', targetUserId: l.targetUserId ?? '', createdAt: l.createdAt })))}
                     className="px-2.5 py-1.5 rounded text-xs text-text-secondary hover:text-text-primary hover:bg-surface-hover border border-border transition-colors"
                     title="Export audit log as CSV"
                   >
                     CSV
                   </button>
                   <button
-                    onClick={() => exportJSON('audit-log.json', auditLogs)}
+                    onClick={() => exportJSON('audit-log.json', a.auditLogs)}
                     className="px-2.5 py-1.5 rounded text-xs text-text-secondary hover:text-text-primary hover:bg-surface-hover border border-border transition-colors"
                     title="Export audit log as JSON"
                   >
@@ -827,48 +463,58 @@ export default function AdminPage() {
               )}
             </div>
             <div className="space-y-1">
-              {auditRows.length === 0 && <p className="text-sm text-text-secondary text-center py-6">No audit events yet.</p>}
-              {auditRows.map((l) => (
+              {a.auditRows.length === 0 && (
+                <p className="text-sm text-text-secondary text-center py-6">No audit events yet.</p>
+              )}
+              {a.auditRows.map((l) => (
                 <div key={l.id} className="flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-surface-elevated/60 transition-colors border-b border-border/40 last:border-b-0">
                   <div className="w-1.5 h-1.5 rounded-full bg-accent/60 shrink-0 mt-0.5" />
                   <p className="flex-1 text-sm font-mono text-text-primary">{l.action}</p>
-                  <p className="text-xs text-text-secondary hidden sm:block truncate max-w-[100px]" title={l.actorUserId ?? ''}>{l.actorUserId?.slice(0, 8) ?? 'system'}</p>
+                  <p className="text-xs text-text-secondary hidden sm:block truncate max-w-[100px]" title={l.actorUserId ?? ''}>
+                    {l.actorUserId?.slice(0, 8) ?? 'system'}
+                  </p>
                   <RelativeTime iso={l.createdAt} />
                 </div>
               ))}
             </div>
-            <Pagination page={auditPage} pages={auditPages} onPage={setAuditPage} />
+            <Pagination page={a.auditPage} pages={a.auditPages} onPage={a.setAuditPage} />
           </Card>
 
-          {/* ── Template Feedback Reports ──────────────────────────────────── */}
+          {/* Template Feedback Reports */}
           <Card>
-            <SectionHeader icon={AlertCircle} title="Template Feedback Reports" count={templateReports.length} />
-            {templateReports.length === 0 && (
+            <SectionHeader icon={AlertCircle} title="Template Feedback Reports" count={a.templateReports.length} />
+            {a.templateReports.length === 0 && (
               <p className="text-sm text-text-secondary text-center py-6">No template reports yet.</p>
             )}
-            {templateReports.slice((templateReportsPage - 1) * PAGE_SIZE, templateReportsPage * PAGE_SIZE).map((r) => (
-              <div key={r.id} className="flex flex-col gap-1 px-3 py-3 rounded-lg border-b border-border/40 last:border-b-0 hover:bg-surface-elevated/60 transition-colors">
-                <div className="flex items-center gap-3">
-                  <span className="text-sm font-semibold text-text-primary font-mono">{r.toolId}</span>
-                  {r.statusCode != null && <Badge variant="danger">{String(r.statusCode)}</Badge>}
-                  <RelativeTime iso={r.createdAt} />
+            {a.templateReports
+              .slice((a.templateReportsPage - 1) * PAGE_SIZE, a.templateReportsPage * PAGE_SIZE)
+              .map((r) => (
+                <div key={r.id} className="flex flex-col gap-1 px-3 py-3 rounded-lg border-b border-border/40 last:border-b-0 hover:bg-surface-elevated/60 transition-colors">
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-semibold text-text-primary font-mono">{r.toolId}</span>
+                    {r.statusCode != null && <Badge variant="danger">{String(r.statusCode)}</Badge>}
+                    <RelativeTime iso={r.createdAt} />
+                  </div>
+                  {r.endpoint && <p className="text-xs text-text-secondary font-mono truncate">Endpoint: {r.endpoint}</p>}
+                  {r.error && <p className="text-xs text-danger truncate">Error: {r.error}</p>}
+                  {r.note && <p className="text-xs text-text-secondary italic">&quot;{r.note}&quot;</p>}
                 </div>
-                {r.endpoint && <p className="text-xs text-text-secondary font-mono truncate">Endpoint: {r.endpoint}</p>}
-                {r.error && <p className="text-xs text-danger truncate">Error: {r.error}</p>}
-                {r.note && <p className="text-xs text-text-secondary italic">&quot;{r.note}&quot;</p>}
-              </div>
-            ))}
-            <Pagination page={templateReportsPage} pages={Math.max(1, Math.ceil(templateReports.length / PAGE_SIZE))} onPage={setTemplateReportsPage} />
+              ))}
+            <Pagination
+              page={a.templateReportsPage}
+              pages={Math.max(1, Math.ceil(a.templateReports.length / PAGE_SIZE))}
+              onPage={a.setTemplateReportsPage}
+            />
           </Card>
 
-          {/* ── Check Plugins ──────────────────────────────────────────────── */}
+          {/* Check Plugins */}
           <Card>
-            <SectionHeader icon={Puzzle} title="Check Plugins" count={plugins.length} />
-            {plugins.length === 0 && (
+            <SectionHeader icon={Puzzle} title="Check Plugins" count={a.plugins.length} />
+            {a.plugins.length === 0 && (
               <p className="text-sm text-text-secondary text-center py-6">No plugins loaded.</p>
             )}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {plugins.map((p) => (
+              {a.plugins.map((p) => (
                 <div key={p.id} className="flex flex-col gap-1 px-4 py-3 rounded-xl border border-border bg-surface-elevated hover:border-accent/30 transition-colors">
                   <div className="flex items-center gap-2">
                     <div className="w-7 h-7 rounded-lg bg-accent/10 flex items-center justify-center shrink-0">
@@ -889,7 +535,9 @@ export default function AdminPage() {
                     ))}
                   </div>
                   {p.configFields.length > 0 && (
-                    <p className="text-xs text-text-secondary mt-1">{p.configFields.length} config field{p.configFields.length !== 1 ? 's' : ''}</p>
+                    <p className="text-xs text-text-secondary mt-1">
+                      {p.configFields.length} config field{p.configFields.length !== 1 ? 's' : ''}
+                    </p>
                   )}
                 </div>
               ))}
@@ -901,13 +549,13 @@ export default function AdminPage() {
         </div>
       )}
 
-      {editUser && (
+      {a.editUser && (
         <EditUserModal
-          user={editUser}
-          currentUserId={currentUser?.id ?? ''}
-          onClose={() => setEditUser(null)}
-          onSave={handleSaveUser}
-          onDelete={handleDeleteUser}
+          user={a.editUser}
+          currentUserId={a.currentUser?.id ?? ''}
+          onClose={() => a.setEditUser(null)}
+          onSave={a.handleSaveUser}
+          onDelete={a.handleDeleteUser}
         />
       )}
     </AppFrame>

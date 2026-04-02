@@ -1,3 +1,71 @@
+## Status Summary (2026-04-02 10:17 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 2389 web + 53 integration + 12 agent = 7509 tests passing; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-02-midnight
+- **Last changes (10:17 UTC):**
+  - [x] **122 new web unit tests across 4 hook spec files** — incidents/types (48): formatDuration, incidentDuration, relativeTime, statusLabels, severityLabels, statusColors, severityColors with float edge cases; monitors/sla/hooks/useSla (18): complianceStatus all branches including IEEE 754 boundary; admin/hooks/useAdmin (20): PAGE_SIZE, computePages, paginateRows, pagination integration; monitors/hooks/useMonitors (36): filterMonitors 7 filter scenarios + computeMonitorSummary + pagination boundary. Web tests: 2267 → 2389. Spec files: 109 → 113.
+
+---
+
+## Status Summary (2026-04-02 09:14 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 2267 web + 53 integration + 12 agent = 7387 tests passing; 0 vulnerabilities; 8/8 quality checks
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-02-midnight
+- **Last changes (09:14 UTC):**
+  - [x] **392 new web unit tests across 11 monitor form section spec files** — VersionConfigSection (13), WhoisConfigSection (21), CtLogConfigSection (23), TcpConfigSection (11), SslConfigSection (11), PingConfigSection (20), SmtpConfigSection (13), FtpImapPop3ConfigSection (13), BrowserConfigSection (17), AlertChannelsSection (4), TransactionStepBuilder (87). Web tests: 2092 → 2267. +11 spec files (98 → 109).
+
+---
+
+## Status Summary (2026-04-02 08:14 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 2092 web + 53 integration + 12 agent = 7212 tests passing; 0 vulnerabilities; 8/8 quality checks
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-02-midnight
+- **Last changes (08:14 UTC):**
+  - [x] **81 new web unit tests across 3 new + 1 updated spec files** — useAlerts buildConfig() for all 16 channel types (57 tests), useDashboard type constants and section labels (31 tests), VersionStatsCards data contract (21 tests), monitors/utils buildEditFormData + buildFormDataFromTemplate refactored/expanded. Web tests: 2011 → 2092. +3 spec files (95 → 98).
+
+---
+
+## Status Summary (2026-04-02 07:15 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 2011 web + 53 integration + 12 agent = 7131 tests passing; 0 vulnerabilities; 8/8 quality checks
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-02-midnight
+- **Last changes (07:15 UTC):**
+  - [x] **279 new web unit tests across 10 spec files** — BasicSettingsSection (57), HttpConfigSection (63), DnsConfigSection (33), AdvancedSettingsSection (73), GeoRegionsInput (37), HeartbeatConfigSection (19), GraphqlConfigSection (28), SystemInfoCard (19), ChangePasswordCard (14), ChannelScheduleSection (33). Web tests: 1732 → 2011. +10 spec files (85 → 95).
+
+---
+
+## Status Summary (2026-04-02 06:19 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 1732 web + 53 integration + 12 agent = 6852 tests passing; 0 vulnerabilities; 8/8 quality checks
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-02-midnight
+- **Last changes (06:19 UTC):**
+  - [x] **Fix stale FIELD_LABELS test count** — ConfigHistoryTab spec had `toHaveLength(34)` but map has 35 entries; fixed assertion + description.
+  - [x] **220 new web component tests across 14 spec files** — VersionTableRow (23), VersionToolbar (19), VersionExpandedRow (19), MonitorsPagination (12), MonitorBulkActionsBar (14), MonitorRow (14), AdvancedFiltersPanel (18), CountdownWidget (15), MetricTab (20), SloTab (14), SimulateTab (13), SecurityTab (20), DiffTab (11), ContentTab (13). Web tests: 947 → 1732. +14 spec files (71 → 85).
+
+---
+
+## Status Summary (2026-04-02 04:14 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 947 web + 53 integration + 12 agent = 6067 tests passing; 0 vulnerabilities; 8/8 quality checks
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-02-midnight
+- **Last changes (04:14 UTC):**
+  - [x] **Dashboard section component tests** — 155 new web tests across 7 dashboard components + OnboardingChecklist. Covers severity/status badge classes, time range labels, section order helpers, HealthTimeline trend/avg/colour logic, version badge selection, SLO compliance %, uptime colour thresholds. Web tests: 792 → 947.
+
+---
+
+## Status Summary (2026-04-02 02:56 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 776 web + 10 CLI + 12 agent tests passing; 0 vulnerabilities; 8/8 quality checks
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-02-midnight
+- **Coverage status:** Every service and controller now has a spec file (zero missing specs).
+- **Last changes (02:56 UTC):**
+  - [x] **Alert delivery/routing service tests** — 52 new tests. API: 4692 → 4744.
+  - [x] **Monitor sub-service tests** — 114 new tests (monitors-sla, monitors-crud, monitors-export, monitors-analytics, alerts-analysis). API: 4744 → 4858.
+  - [x] **Monitor controller specs** — 197 new tests across all 9 previously-untested controllers. API: 4858 → 5055.
+  - [x] **TS fix** — Resolved TS2345 in monitors-export.controller.spec.ts (missing required baseUrl field in mock). Code quality: 8/8.
+
+---
+
 ## Status Summary (2026-04-01 22:10 UTC)
 - **Build/Test:** ✅ Build clean; 4712 API + 776 web + 10 CLI + 12 agent tests passing; 0 vulnerabilities
 - **Deployment:** ✅ Restarted API + web (`npm run restart`); `/health` 200, `/login` 200, all audited routes 200 locally + via `https://oc-dev-test.no749ah.com`

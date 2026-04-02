@@ -30,7 +30,7 @@ import {
 } from './organizations.dto'
 
 interface AuthRequest extends Request {
-  user: { sub: string }
+  user: { id: string }
 }
 
 @ApiTags('Organizations')
@@ -44,7 +44,7 @@ export class OrganizationsController {
   @ApiOperation({ summary: 'List organizations the current user belongs to' })
   @ApiResponse({ status: 200, description: 'List of organizations' })
   getOrganizations(@Request() req: AuthRequest) {
-    return this.orgsService.getOrganizations(req.user.sub)
+    return this.orgsService.getOrganizations(req.user.id)
   }
 
   @Post()
@@ -53,7 +53,7 @@ export class OrganizationsController {
   @ApiResponse({ status: 201, description: 'Organization created' })
   @ApiResponse({ status: 409, description: 'Slug already taken' })
   createOrganization(@Request() req: AuthRequest, @Body() dto: CreateOrganizationDto) {
-    return this.orgsService.createOrganization(req.user.sub, dto)
+    return this.orgsService.createOrganization(req.user.id, dto)
   }
 
   @Get('slug-check')
@@ -70,7 +70,7 @@ export class OrganizationsController {
   @ApiResponse({ status: 200, description: 'Invite accepted, joined organization' })
   @ApiResponse({ status: 400, description: 'Invalid or expired token' })
   acceptInvite(@Request() req: AuthRequest, @Query('token') token: string) {
-    return this.orgsService.acceptInvite(token, req.user.sub)
+    return this.orgsService.acceptInvite(token, req.user.id)
   }
 
   @Get(':id')
@@ -79,7 +79,7 @@ export class OrganizationsController {
   @ApiResponse({ status: 200, description: 'Organization with member list' })
   @ApiResponse({ status: 404, description: 'Organization not found or not a member' })
   getOrganization(@Request() req: AuthRequest, @Param('id') id: string) {
-    return this.orgsService.getOrganization(id, req.user.sub)
+    return this.orgsService.getOrganization(id, req.user.id)
   }
 
   @Patch(':id')
@@ -92,7 +92,7 @@ export class OrganizationsController {
     @Param('id') id: string,
     @Body() dto: UpdateOrganizationDto,
   ) {
-    return this.orgsService.updateOrganization(id, req.user.sub, dto)
+    return this.orgsService.updateOrganization(id, req.user.id, dto)
   }
 
   @Delete(':id')
@@ -102,7 +102,7 @@ export class OrganizationsController {
   @ApiResponse({ status: 204, description: 'Organization deleted' })
   @ApiResponse({ status: 403, description: 'Only the owner can delete an organization' })
   deleteOrganization(@Request() req: AuthRequest, @Param('id') id: string) {
-    return this.orgsService.deleteOrganization(id, req.user.sub)
+    return this.orgsService.deleteOrganization(id, req.user.id)
   }
 
   @Post(':id/switch')
@@ -112,7 +112,7 @@ export class OrganizationsController {
   @ApiResponse({ status: 204, description: 'Active organization updated' })
   @ApiResponse({ status: 404, description: 'Not a member of this organization' })
   switchOrganization(@Request() req: AuthRequest, @Param('id') id: string) {
-    return this.orgsService.switchOrganization(id, req.user.sub)
+    return this.orgsService.switchOrganization(id, req.user.id)
   }
 
   @Get(':id/members')
@@ -120,7 +120,7 @@ export class OrganizationsController {
   @ApiParam({ name: 'id', description: 'Organization ID' })
   @ApiResponse({ status: 200, description: 'List of members with user details' })
   getMembers(@Request() req: AuthRequest, @Param('id') id: string) {
-    return this.orgsService.getMembers(id, req.user.sub)
+    return this.orgsService.getMembers(id, req.user.id)
   }
 
   @Post(':id/members/invite')
@@ -135,7 +135,7 @@ export class OrganizationsController {
     @Param('id') id: string,
     @Body() dto: InviteOrgMemberDto,
   ) {
-    return this.orgsService.inviteMember(id, req.user.sub, dto)
+    return this.orgsService.inviteMember(id, req.user.id, dto)
   }
 
   @Patch(':id/members/:userId')
@@ -150,7 +150,7 @@ export class OrganizationsController {
     @Param('userId') targetUserId: string,
     @Body() dto: UpdateOrgMemberRoleDto,
   ) {
-    return this.orgsService.updateMemberRole(id, targetUserId, req.user.sub, dto)
+    return this.orgsService.updateMemberRole(id, targetUserId, req.user.id, dto)
   }
 
   @Delete(':id/members/:userId')
@@ -165,6 +165,6 @@ export class OrganizationsController {
     @Param('id') id: string,
     @Param('userId') targetUserId: string,
   ) {
-    return this.orgsService.removeMember(id, targetUserId, req.user.sub)
+    return this.orgsService.removeMember(id, targetUserId, req.user.id)
   }
 }

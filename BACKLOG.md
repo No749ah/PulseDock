@@ -1,3 +1,42 @@
+## Status Summary (2026-04-02 21:17 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 3370 web + 200 integration + 114 CLI + 12 agent = **8751 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 14 pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-02-evening
+- **Last changes (21:17 UTC):**
+  - [x] **Fix organizations controller production bug** — `OrganizationsController` typed `AuthRequest` with `{ sub: string }` but the shared `AuthGuard` populates `req.user` as `{ id: string }`. Every org endpoint was passing `undefined` as userId, causing `PrismaClientValidationError` on all writes and broken isolation on reads. Fixed both controller and unit spec mock.
+  - [x] **22 organizations integration tests** — full lifecycle: create, list, slug-check (available + unavailable), get single, update name, list members, invite existing user (direct add), reject double-invite (400), show invited member, reject non-owner role update (403), update member role to ADMIN, prevent changing OWNER role, remove member, switch active org, reject non-member switch (404), reject delete by non-owner (403), delete (owner only 204), verify gone (404). Auth guard (401). Integration: 160 → 182.
+  - [x] **18 notification-preferences integration tests** — GET auto-creates defaults (idempotent), PATCH notifyOnDown/notifyOnRecovery/notifyOnDegraded, quiet hours (valid + out-of-range 400), frequency hourly/daily/invalid (400), storm protection + threshold (valid + min/max violations), user isolation (A's changes don't affect B), digest-queue endpoint (authenticated + empty + 401). Integration: 182 → 200.
+
+---
+
+## Status Summary (2026-04-02 20:12 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 3370 web + 160 integration + 114 CLI + 12 agent = **8711 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 14 pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-02-evening
+- **Last changes (20:12 UTC):**
+  - [x] **Fix NestJS route shadowing bug** — `GET /v1/deployments/summary` and `GET /v1/deployments/by-monitor/:id` were returning 404 because the `:id` route was declared before them. Moved static routes before parameterized ones in `DeploymentsController`. Real production bug: the summary endpoint was completely broken.
+  - [x] **23 deployment integration tests** — full CRUD lifecycle against real PostgreSQL: create (defaults + all fields), list with service/environment/status filters, get single, update status+notes, delete, summary with custom days param, listByMonitor + empty-monitor case, deploy token generation, CI/CD webhook receiver, auth guard (401), user isolation (list/get/patch/delete all blocked for other-user deployments), input validation (400 on missing service field). Integration: 137 → 160.
+
+---
+
+## Status Summary (2026-04-02 19:15 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 3370 web + 137 integration + 114 CLI + 12 agent = **8688 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 8 pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-02-evening
+- **Last changes (19:15 UTC):**
+  - [x] **21 folder integration tests** — full CRUD lifecycle against real PostgreSQL: create root/nested, list as tree + flat, rename, move to new parent/root, circular-move rejection (self + descendant), delete with monitor unfile, mute/unmute cascading, mute-status endpoint, auth isolation (user B can't see/update user A's folders), input validation (invalid parentId, minute bounds). Integration: 116 → 137.
+
+---
+
+## Status Summary (2026-04-02 18:17 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 3370 web + 116 integration + 114 CLI + 12 agent = **8667 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 15 pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-02-evening
+- **Last changes (18:17 UTC):**
+  - [x] **101 new web unit tests across 6 page spec files** — ssl/page (26: daysLabel, expiryBadgeVariant, relativeTime with fake timers), reports/page (44: formatMinutes, formatDuration, budgetStatusBadgeVariant, budgetBarColor, uptimeBadgeVariant, statusBadgeVariant, DAY_NAMES), activity/page (30: relativeTime, levelColor, levelBg, severityColor), maintenance/effectiveness/page (22: formatDuration, STATUS_CONFIG palette coverage), deployments/page (24: STATUS_CONFIG, envClass case-insensitive with fallback), search/page (16: TYPE_CONFIG 4 types, STATUS_COLOR_MAP 5 entries). Web: 3269 → 3370. Spec files: 147 → 153.
+
+---
+
 ## Status Summary (2026-04-02 17:20 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 3269 web + 116 integration + 114 CLI + 12 agent = **8566 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
@@ -5,6 +44,16 @@
 - **Last changes (17:20 UTC):**
   - [x] **19 maintenance window integration tests** — full CRUD lifecycle against real PostgreSQL: create/read/update/delete, auth guard (401/403), user isolation (403 cross-user), active window detection (isActive flag true/false), future windows excluded from /active endpoint, weekly/daily recurrence fields. Integration: 97 → 116.
   - [x] **44 public monitor page unit tests** — pure helper coverage for `app/public/monitor/[token]/page.spec.ts`: `formatRelative` (8 boundary tests with fake timers), `formatType` (13: all 11 known types + unknown + empty), `statusMeta` (6: all status values), `levelColor` (3), `buildDayBars` (8: 90 bars, pct/color thresholds, rounding, ordering), `buildSparkPath` (8: null cases, M/L command structure, x-span 0→400, latency skip). Web: 3225 → 3269.
+
+---
+
+## Status Summary (2026-04-02 18:18 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 3326 web + 97 integration + 114 CLI + 12 agent = **8604 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-02-evening
+- **Last changes (18:18 UTC):**
+  - [x] **Branch management** — merged heartbeat/2026-04-02-afternoon → dev, deleted old branch, created heartbeat/2026-04-02-evening
+  - [x] **101 new web unit tests across 3 spec files** — shared.spec.ts (49): timeAgo/formatRelative with fake timers, isNoConfig, levelLabel, computeSystemLevel, buildStatusConfig all levels, uptimeBarColor/uptimePctColor thresholds; MonitorFiltersPanel.spec.ts (30): parseSearchQuery, matchesSearch case-insensitive, matchesStatus 3 variants, matchesFolder null-passthrough, matchesTag, countActiveFilters; PasswordGate.spec.ts (22): isSubmitDisabled, getButtonLabel, buildAuthUrl encoding, buildRedirectUrl, parseApiError fallback chain. Web: 3225 → 3326.
 
 ---
 

@@ -160,6 +160,7 @@ export async function cleanupTestUser(prisma: PrismaService | undefined, userId:
     await prisma.folder.deleteMany({ where: { userId } });
     await prisma.tag.deleteMany({ where: { userId } });
     await prisma.apiKey.deleteMany({ where: { userId } });
+    await prisma.deploymentEvent.deleteMany({ where: { userId } });
     await prisma.session.deleteMany({ where: { userId } });
     await prisma.auditLog.deleteMany({ where: { actorUserId: userId } });
     await prisma.user.delete({ where: { id: userId } }).catch(() => { /* already gone */ });

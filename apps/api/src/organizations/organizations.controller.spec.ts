@@ -19,7 +19,7 @@ const makeService = () => ({
   removeMember: vi.fn(),
 });
 
-const req = (userId = 'user-1') => ({ user: { sub: userId } } as never);
+const req = (userId = 'user-1') => ({ user: { id: userId } } as never);
 
 describe('OrganizationsController', () => {
   let controller: OrganizationsController;

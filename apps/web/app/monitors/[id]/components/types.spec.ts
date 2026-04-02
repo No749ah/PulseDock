@@ -190,6 +190,16 @@ describe('types — ErrorBudget shape', () => {
 });
 
 describe('types — SloReport shape', () => {
+  const makeErrorBudget = () => ({
+    uptimeBudgetMinutes: 43.2,
+    uptimeBurnedMinutes: 10,
+    uptimeBurnRate: 0.23,
+    latencyBudgetPct: 1,
+    latencyBurnedPct: 0.2,
+    latencyBurnRate: 0.2,
+    overallHealth: 'ok' as const,
+  });
+
   it('accepts valid SLO report', () => {
     const report: SloReport = {
       monitorId: 'm-1',
@@ -202,6 +212,7 @@ describe('types — SloReport shape', () => {
         failedChecks: 2,
         remainingBudgetMinutes: 40,
       },
+      errorBudget: makeErrorBudget(),
     };
     expect(report.uptime.status).toBe('ok');
     expect(report.uptime.actual).toBeGreaterThan(report.uptime.target);
@@ -214,6 +225,7 @@ describe('types — SloReport shape', () => {
         monitorId: 'm-1',
         period: { days: 7, from: '', to: '' },
         uptime: { target: 99, actual: 98, status, totalChecks: 100, failedChecks: 2, remainingBudgetMinutes: 0 },
+        errorBudget: makeErrorBudget(),
       };
       expect(report.uptime.status).toBe(status);
     }

@@ -96,7 +96,8 @@ describe('CountdownWidget — expired logic', () => {
   });
 
   it('not expired when secondsLeft > 0', () => {
-    const expired = 5 === 0;
+    const secondsLeft: number = 5;
+    const expired = secondsLeft === 0;
     expect(expired).toBe(false);
   });
 });

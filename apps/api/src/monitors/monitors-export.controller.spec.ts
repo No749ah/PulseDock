@@ -150,7 +150,7 @@ describe('MonitorsExportController', () => {
 
   it('importFromOpenApiPreview() delegates to exportService.previewFromOpenApi', async () => {
     service.previewFromOpenApi.mockResolvedValue([]);
-    const body = { url: 'https://api.example.com/openapi.json' };
+    const body = { url: 'https://api.example.com/openapi.json', baseUrl: 'https://api.example.com' };
     await controller.importFromOpenApiPreview(makeReq(), body);
     expect(service.previewFromOpenApi).toHaveBeenCalledWith(body);
   });

@@ -1,3 +1,13 @@
+## Status Summary (2026-04-02 15:16 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 2951 web + 97 integration + 114 CLI + 12 agent = **8229 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-02-afternoon
+- **Last changes (15:16 UTC):**
+  - [x] **18 API keys integration tests** — CRUD lifecycle (create with name/scope/expiry, list with user isolation, API key auth flow, rotate with invalidation, delete with auth revocation), auth guard (401/403), user isolation (user B can't rotate/delete user A's keys). Integration: 79 → 97.
+  - [x] **22 DigestQueueCard unit tests** — `formatRelative` (12 cases: just now/Nm ago/Nh ago/Nd ago with fake timers), `EVENT_LABELS` structure (5 tests), `EVENT_COLORS` structure (5 tests). Web: 2929 → 2951.
+
+---
+
 ## Status Summary (2026-04-02 14:16 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 2929 web + 79 integration + 114 CLI + 12 agent = **8189 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com (HTML + sampled CSS/JS assets return 200)

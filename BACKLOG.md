@@ -1,3 +1,14 @@
+## Status Summary (2026-04-02 21:17 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 3370 web + 200 integration + 114 CLI + 12 agent = **8751 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 14 pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-02-evening
+- **Last changes (21:17 UTC):**
+  - [x] **Fix organizations controller production bug** — `OrganizationsController` typed `AuthRequest` with `{ sub: string }` but the shared `AuthGuard` populates `req.user` as `{ id: string }`. Every org endpoint was passing `undefined` as userId, causing `PrismaClientValidationError` on all writes and broken isolation on reads. Fixed both controller and unit spec mock.
+  - [x] **22 organizations integration tests** — full lifecycle: create, list, slug-check (available + unavailable), get single, update name, list members, invite existing user (direct add), reject double-invite (400), show invited member, reject non-owner role update (403), update member role to ADMIN, prevent changing OWNER role, remove member, switch active org, reject non-member switch (404), reject delete by non-owner (403), delete (owner only 204), verify gone (404). Auth guard (401). Integration: 160 → 182.
+  - [x] **18 notification-preferences integration tests** — GET auto-creates defaults (idempotent), PATCH notifyOnDown/notifyOnRecovery/notifyOnDegraded, quiet hours (valid + out-of-range 400), frequency hourly/daily/invalid (400), storm protection + threshold (valid + min/max violations), user isolation (A's changes don't affect B), digest-queue endpoint (authenticated + empty + 401). Integration: 182 → 200.
+
+---
+
 ## Status Summary (2026-04-02 20:12 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 3370 web + 160 integration + 114 CLI + 12 agent = **8711 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all 14 pages 200 locally + https://oc-dev-test.no749ah.com

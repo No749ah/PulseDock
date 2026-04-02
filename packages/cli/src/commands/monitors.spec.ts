@@ -43,12 +43,14 @@ const MOCK_CHECK_RESULT = {
 let loadConfigSpy: ReturnType<typeof vi.spyOn>;
 let apiRequestSpy: ReturnType<typeof vi.spyOn>;
 let stdoutSpy: ReturnType<typeof vi.spyOn>;
+let stderrSpy: ReturnType<typeof vi.spyOn>;
 let exitSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
   loadConfigSpy = vi.spyOn(configModule, 'loadConfig').mockReturnValue(MOCK_CONFIG);
   apiRequestSpy = vi.spyOn(httpModule, 'apiRequest').mockResolvedValue(MOCK_PAGINATED);
   stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
+  stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation(() => true);
   exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
 });
 
@@ -131,7 +133,8 @@ describe('monitors list — pretty output', () => {
   it('shows page info line', async () => {
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'monitors', 'list']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    // printInfo writes to stderr
+    const output = stderrSpy.mock.calls.map((c) => c[0]).join('');
     expect(output).toContain('2 of 2 monitors');
   });
 

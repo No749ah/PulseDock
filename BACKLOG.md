@@ -1,10 +1,9 @@
-## Status Summary (2026-04-02 13:16 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 2688 web + 79 integration + 114 CLI + 12 agent = **7948 tests passing**; 0 vulnerabilities
+## Status Summary (2026-04-02 14:16 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 2929 web + 79 integration + 114 CLI + 12 agent = **8189 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com (HTML + sampled CSS/JS assets return 200)
 - **Branch:** heartbeat/2026-04-02-afternoon
-- **Last changes (13:16 UTC):**
-  - [x] **8 new web auth session tests** — `apps/web/components/auth.spec.ts`: cookie-auth token stubs, local cache hydration, invalid storage payload handling, logout API call contract, and clearSession network-failure fallback.
-  - [x] **Heartbeat health checks rerun** — `git pull origin dev`, `npm run build`, `npm run test`, `npm audit` all green.
+- **Last changes (14:16 UTC):**
+  - [x] **241 new web unit tests across 10 component spec files** — TwoFactorCard (39), GrafanaIntegrationCard (25), ProfileCard (20), NotificationPrefsCard (27), DeleteChannelConfirm (14), DeliveryHistoryModal (22), CreateChannelModal (42), CtLogTab (24), DomainTab (32), TransactionTab (36). Web tests: 2688 → 2929. Spec files: 125 → 135.
 
 ---
 

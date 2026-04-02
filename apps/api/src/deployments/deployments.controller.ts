@@ -58,34 +58,8 @@ export class DeploymentsController {
     });
   }
 
-  @Get(':id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Get a deployment event' })
-  findOne(@Req() req: { user: { id: string } }, @Param('id') id: string) {
-    return this.svc.findOne(req.user.id, id);
-  }
-
-  @Patch(':id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Update a deployment event' })
-  update(
-    @Req() req: { user: { id: string } },
-    @Param('id') id: string,
-    @Body() dto: UpdateDeploymentDto,
-  ) {
-    return this.svc.update(req.user.id, id, dto);
-  }
-
-  @Delete(':id')
-  @UseGuards(AuthGuard)
-  @ApiBearerAuth()
-  @HttpCode(HttpStatus.NO_CONTENT)
-  @ApiOperation({ summary: 'Delete a deployment event' })
-  remove(@Req() req: { user: { id: string } }, @Param('id') id: string) {
-    return this.svc.remove(req.user.id, id);
-  }
+  // NOTE: Static routes (summary, by-monitor, token/generate) MUST be declared
+  // before parameterized routes (:id) to prevent NestJS route shadowing.
 
   @Post('token/generate')
   @UseGuards(AuthGuard)
@@ -118,6 +92,35 @@ export class DeploymentsController {
     @Query('days') days?: string,
   ) {
     return this.svc.listByMonitor(req.user.id, monitorId, days ? parseInt(days, 10) : 30);
+  }
+
+  @Get(':id')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get a deployment event' })
+  findOne(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.svc.findOne(req.user.id, id);
+  }
+
+  @Patch(':id')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update a deployment event' })
+  update(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Body() dto: UpdateDeploymentDto,
+  ) {
+    return this.svc.update(req.user.id, id, dto);
+  }
+
+  @Delete(':id')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a deployment event' })
+  remove(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.svc.remove(req.user.id, id);
   }
 
   @Get(':id/monitor-impact/:monitorId')

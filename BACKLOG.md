@@ -1,3 +1,12 @@
+## Status Summary (2026-04-02 16:25 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 3225 web + 97 integration + 114 CLI + 12 agent = **8503 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-02-afternoon
+- **Last changes (16:25 UTC):**
+  - [x] **104 new web unit tests across 5 component spec files** — DeleteMonitorConfirm (13): shouldRender guard, loading button label/disabled state, delete message formatting; BadgeModal (22): all 8 embed code builders (markdown/html/direct URL/iframe/card-iframe/script-tag/floating-widget/style-variant); QuickAddModal (23): URL parsing/validation (http+https pass, ftp/mailto fail), countValid, buildPayload folderId coercion; ResponseBodyViewer (20): tryFormatJson object/array/invalid/plain, lineCount, isTall threshold, typeLabel; LinkedIncidentsCard (26): shouldRender, formatDuration all branches, getSeverityClass 4 levels, getStatusDot, sliceIncidents overflow. Web: 3121 → 3225.
+
+---
+
 ## Status Summary (2026-04-02 16:19 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 3121 web + 97 integration + 114 CLI + 12 agent = **8399 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com

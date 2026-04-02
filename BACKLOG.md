@@ -1,3 +1,13 @@
+## Status Summary (2026-04-02 17:20 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 3269 web + 116 integration + 114 CLI + 12 agent = **8566 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-02-afternoon
+- **Last changes (17:20 UTC):**
+  - [x] **19 maintenance window integration tests** — full CRUD lifecycle against real PostgreSQL: create/read/update/delete, auth guard (401/403), user isolation (403 cross-user), active window detection (isActive flag true/false), future windows excluded from /active endpoint, weekly/daily recurrence fields. Integration: 97 → 116.
+  - [x] **44 public monitor page unit tests** — pure helper coverage for `app/public/monitor/[token]/page.spec.ts`: `formatRelative` (8 boundary tests with fake timers), `formatType` (13: all 11 known types + unknown + empty), `statusMeta` (6: all status values), `levelColor` (3), `buildDayBars` (8: 90 bars, pct/color thresholds, rounding, ordering), `buildSparkPath` (8: null cases, M/L command structure, x-span 0→400, latency skip). Web: 3225 → 3269.
+
+---
+
 ## Status Summary (2026-04-02 16:25 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 3225 web + 97 integration + 114 CLI + 12 agent = **8503 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com

@@ -1,13 +1,62 @@
-## Status Summary (2026-04-02 12:44 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 2680 web + 53 integration + 114 CLI + 12 agent = **7914 tests passing**; 0 vulnerabilities
+## Status Summary (2026-04-02 17:20 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 3269 web + 116 integration + 114 CLI + 12 agent = **8566 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-02-afternoon
+- **Last changes (17:20 UTC):**
+  - [x] **19 maintenance window integration tests** — full CRUD lifecycle against real PostgreSQL: create/read/update/delete, auth guard (401/403), user isolation (403 cross-user), active window detection (isActive flag true/false), future windows excluded from /active endpoint, weekly/daily recurrence fields. Integration: 97 → 116.
+  - [x] **44 public monitor page unit tests** — pure helper coverage for `app/public/monitor/[token]/page.spec.ts`: `formatRelative` (8 boundary tests with fake timers), `formatType` (13: all 11 known types + unknown + empty), `statusMeta` (6: all status values), `levelColor` (3), `buildDayBars` (8: 90 bars, pct/color thresholds, rounding, ordering), `buildSparkPath` (8: null cases, M/L command structure, x-span 0→400, latency skip). Web: 3225 → 3269.
+
+---
+
+## Status Summary (2026-04-02 16:25 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 3225 web + 97 integration + 114 CLI + 12 agent = **8503 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-02-afternoon
+- **Last changes (16:25 UTC):**
+  - [x] **104 new web unit tests across 5 component spec files** — DeleteMonitorConfirm (13): shouldRender guard, loading button label/disabled state, delete message formatting; BadgeModal (22): all 8 embed code builders (markdown/html/direct URL/iframe/card-iframe/script-tag/floating-widget/style-variant); QuickAddModal (23): URL parsing/validation (http+https pass, ftp/mailto fail), countValid, buildPayload folderId coercion; ResponseBodyViewer (20): tryFormatJson object/array/invalid/plain, lineCount, isTall threshold, typeLabel; LinkedIncidentsCard (26): shouldRender, formatDuration all branches, getSeverityClass 4 levels, getStatusDot, sliceIncidents overflow. Web: 3121 → 3225.
+
+---
+
+## Status Summary (2026-04-02 16:19 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 3121 web + 97 integration + 114 CLI + 12 agent = **8399 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-02-afternoon
+- **Last changes (16:19 UTC):**
+  - [x] **170 new web unit tests across 5 spec files** — IncidentModals (32): CreateIncidentModal/EditIncidentModal/PostUpdateModal/DeleteIncidentModal confirm-disable logic, INCIDENT_TEMPLATES structure, status/severity enumerations; MonitorPicker (18): toggle add/remove, isChecked, typeLabel, empty-monitors; alerts/types (42): AlertType union all 16 channels, ChannelSchedule/AlertChannel validation, DeliveryStats contract, CreateFormState fields; versions/constants (44): CHANNEL_TYPE_COLORS, VERSION_NOTIFY_OPTIONS, NOTIFY_ON_LABELS, providerOptions (9 providers), authOptions (3 modes); admin/EditUserModal (34): isSelf, isActiveUser with undefined default, all button/label transitions, canSave guard, AdminUser type structure. Web: 2951 → 3121.
+
+---
+
+## Status Summary (2026-04-02 15:16 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 2951 web + 97 integration + 114 CLI + 12 agent = **8229 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-02-afternoon
+- **Last changes (15:16 UTC):**
+  - [x] **18 API keys integration tests** — CRUD lifecycle (create with name/scope/expiry, list with user isolation, API key auth flow, rotate with invalidation, delete with auth revocation), auth guard (401/403), user isolation (user B can't rotate/delete user A's keys). Integration: 79 → 97.
+  - [x] **22 DigestQueueCard unit tests** — `formatRelative` (12 cases: just now/Nm ago/Nh ago/Nd ago with fake timers), `EVENT_LABELS` structure (5 tests), `EVENT_COLORS` structure (5 tests). Web: 2929 → 2951.
+
+---
+
+## Status Summary (2026-04-02 14:16 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 2929 web + 79 integration + 114 CLI + 12 agent = **8189 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com (HTML + sampled CSS/JS assets return 200)
+- **Branch:** heartbeat/2026-04-02-afternoon
+- **Last changes (14:16 UTC):**
+  - [x] **241 new web unit tests across 10 component spec files** — TwoFactorCard (39), GrafanaIntegrationCard (25), ProfileCard (20), NotificationPrefsCard (27), DeleteChannelConfirm (14), DeliveryHistoryModal (22), CreateChannelModal (42), CtLogTab (24), DomainTab (32), TransactionTab (36). Web tests: 2688 → 2929. Spec files: 125 → 135.
+
+---
+
+## Status Summary (2026-04-02 13:05 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 2680 web + 79 integration + 114 CLI + 12 agent = **7940 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com (HTML + sampled CSS/JS assets return 200)
 - **Branch:** heartbeat/2026-04-02-noon (merged midnight → dev, deleted old branch)
-- **Last changes (12:44 UTC):**
-  - [x] **14 new web route/SEO tests** — added specs for `app/api/[...path]/route.ts` (proxy behavior, body forwarding, header dedupe, Set-Cookie passthrough), `app/api/check-url/route.ts` (validation, status mapping, timeout/error handling), `sitemap.ts`, and `robots.ts`. Web tests: 2666 → 2680.
-  - [x] **Fix CLI strict TypeScript build blockers** — typed all implicit `any` callback params in CLI command specs and removed unused spy variable so `npm run build` passes across all workspaces.
-  - [x] **Full pipeline verification** — `npm run build` + `npm run test` completed successfully; web restarted after build.
-  - [x] **73 new web tests** — `status-pages/[id]/edit/components/constants.spec.ts` covering WIDGET_PALETTE/contracts.
-  - [x] **Release hygiene** — backfilled and pushed missing git tags `v0.7.0` through `v1.6.0` to origin.
+- **Branch:** heartbeat/2026-04-02-afternoon
+- **Last changes (13:05 UTC):**
+  - [x] **26 new integration tests** — `test/status-pages.integration.spec.ts`: CRUD lifecycle, slug auto-generation, publish toggle, user isolation (403), public route access, auth guard. Integration tests: 53 → 79.
+  - [x] **Branch management** — merged heartbeat/2026-04-02-noon → dev, deleted old branch, created heartbeat/2026-04-02-afternoon.
+  - [x] **14 new web route/SEO tests** — proxy, check-url, sitemap, robots specs.
+  - [x] **Fix CLI strict TypeScript build blockers** — typed implicit `any` callback params + removed unused spy.
+  - [x] **73 new web tests** — `status-pages/[id]/edit/components/constants.spec.ts`.
+  - [x] **Release hygiene** — backfilled missing git tags `v0.7.0` through `v1.6.0`.
 
 ---
 
@@ -174,6 +223,8 @@
 - [x] **Upgrade path documentation** - `docs/UPGRADING.md` covers all 5 pending major upgrades with risk assessment, breaking changes, and strategy. *(2026-03-30)*
 
 - [x] **CHANGELOG cleanup** - Merged 3 stale "Unreleased" sections into v1.1.0. All 18 releases properly versioned with comparison links. *(2026-03-30)*
+
+- [x] **Web auth session utility coverage** - ✅ Done (2026-04-02). Added `apps/web/components/auth.spec.ts` with 8 tests validating local session persistence/cache hydration, malformed storage tolerance, deprecated token getter behavior, logout API contract, and network-failure-safe `clearSession` semantics.
 
 ---
 

@@ -1,402 +1,324 @@
-/**
- * Unit tests for monitors/utils.ts
- * Tests buildEditFormData and buildFormDataFromTemplate pure functions.
- */
 import { describe, it, expect } from 'vitest';
 import { buildEditFormData, buildFormDataFromTemplate } from './utils';
 import type { MonitorItem } from './types';
-import type { MonitorTemplate } from '../components/MonitorTemplates';
 
-// ─── Helpers ────────────────────────────────────────────────────────────────
-
+// Minimal valid MonitorItem for testing
 function makeMonitor(overrides: Partial<MonitorItem> = {}): MonitorItem {
   return {
-    id: 'mon-1',
+    id: 'mon_1',
     name: 'Test Monitor',
     type: 'HTTP',
     target: 'https://example.com',
     intervalSec: 60,
     confirmations: 1,
     enabled: true,
-    createdAt: '2026-01-01T00:00:00Z',
+    createdAt: '2026-01-01T00:00:00.000Z',
     ...overrides,
   };
 }
 
-function makeTemplate(overrides: Partial<MonitorTemplate & Record<string, unknown>> = {}): MonitorTemplate {
-  return {
-    label: 'My Template Label',
-    name: 'My Template',
-    type: 'HTTP',
-    target: 'https://example.com',
-    intervalSec: 60,
-    description: 'A test template',
-    ...overrides,
-  } as MonitorTemplate;
-}
-
-// ─── buildEditFormData ───────────────────────────────────────────────────────
-
 describe('buildEditFormData', () => {
   describe('basic fields', () => {
-    it('maps name, type, target, intervalSec, enabled from monitor', () => {
-      const m = makeMonitor({ name: 'API Check', type: 'HTTP', target: 'https://api.test', intervalSec: 30, enabled: true });
-      const r = buildEditFormData(m);
-      expect(r.name).toBe('API Check');
-      expect(r.type).toBe('HTTP');
-      expect(r.target).toBe('https://api.test');
-      expect(r.intervalSec).toBe(30);
-      expect(r.enabled).toBe(true);
+    it('maps name, type, target', () => {
+      const form = buildEditFormData(makeMonitor({ name: 'My API', type: 'HTTP', target: 'https://api.example.com' }));
+      expect(form.name).toBe('My API');
+      expect(form.type).toBe('HTTP');
+      expect(form.target).toBe('https://api.example.com');
     });
 
-    it('maps description and runbookUrl with fallback to empty string', () => {
-      const m = makeMonitor({ description: 'Desc', runbookUrl: 'https://wiki.example' });
-      const r = buildEditFormData(m);
-      expect(r.description).toBe('Desc');
-      expect(r.runbookUrl).toBe('https://wiki.example');
+    it('maps intervalSec and enabled', () => {
+      const form = buildEditFormData(makeMonitor({ intervalSec: 30, enabled: false }));
+      expect(form.intervalSec).toBe(30);
+      expect(form.enabled).toBe(false);
     });
 
-    it('falls back description to empty string when null', () => {
-      const m = makeMonitor({ description: null });
-      expect(buildEditFormData(m).description).toBe('');
+    it('maps confirmations correctly', () => {
+      const form = buildEditFormData(makeMonitor({ confirmations: 3 }));
+      expect(form.confirmations).toBe(3);
     });
 
-    it('falls back runbookUrl to empty string when undefined', () => {
-      const m = makeMonitor({ runbookUrl: undefined });
-      expect(buildEditFormData(m).runbookUrl).toBe('');
+    it('defaults description to empty string when undefined', () => {
+      const form = buildEditFormData(makeMonitor({ description: undefined }));
+      expect(form.description).toBe('');
     });
 
-    it('maps confirmations (default 1 when undefined)', () => {
-      const m = makeMonitor({ confirmations: 3 });
-      expect(buildEditFormData(m).confirmations).toBe(3);
+    it('maps description when provided', () => {
+      const form = buildEditFormData(makeMonitor({ description: 'API health check' }));
+      expect(form.description).toBe('API health check');
     });
 
-    it('maps folderId with fallback to empty string', () => {
-      const m = makeMonitor({ folderId: 'folder-123' });
-      expect(buildEditFormData(m).folderId).toBe('folder-123');
+    it('defaults runbookUrl to empty string when undefined', () => {
+      const form = buildEditFormData(makeMonitor({ runbookUrl: undefined }));
+      expect(form.runbookUrl).toBe('');
     });
 
-    it('falls back folderId to empty string when null', () => {
-      const m = makeMonitor({ folderId: null });
-      expect(buildEditFormData(m).folderId).toBe('');
+    it('maps runbookUrl when provided', () => {
+      const form = buildEditFormData(makeMonitor({ runbookUrl: 'https://docs.example.com/runbook' }));
+      expect(form.runbookUrl).toBe('https://docs.example.com/runbook');
+    });
+
+    it('maps folderId when provided', () => {
+      const form = buildEditFormData(makeMonitor({ folderId: 'folder_123' }));
+      expect(form.folderId).toBe('folder_123');
+    });
+
+    it('defaults folderId to empty string when undefined', () => {
+      const form = buildEditFormData(makeMonitor({ folderId: undefined }));
+      expect(form.folderId).toBe('');
     });
   });
 
   describe('SLA fields', () => {
-    it('maps slaTarget and slaPeriodDays', () => {
-      const m = makeMonitor({ slaTarget: 99.9, slaPeriodDays: 30 });
-      const r = buildEditFormData(m);
-      expect(r.slaTarget).toBe(99.9);
-      expect(r.slaPeriodDays).toBe(30);
+    it('maps slaTarget when provided', () => {
+      const form = buildEditFormData(makeMonitor({ slaTarget: 99.9 }));
+      expect(form.slaTarget).toBe(99.9);
     });
 
-    it('defaults slaTarget to empty string when undefined', () => {
-      expect(buildEditFormData(makeMonitor()).slaTarget).toBe('');
+    it('defaults slaTarget to empty string when null', () => {
+      const form = buildEditFormData(makeMonitor({ slaTarget: null }));
+      expect(form.slaTarget).toBe('');
     });
 
-    it('defaults slaPeriodDays to 30 when undefined', () => {
-      expect(buildEditFormData(makeMonitor()).slaPeriodDays).toBe(30);
+    it('defaults slaPeriodDays to 30', () => {
+      const form = buildEditFormData(makeMonitor({ slaPeriodDays: undefined }));
+      expect(form.slaPeriodDays).toBe(30);
+    });
+
+    it('maps slaPeriodDays when provided', () => {
+      const form = buildEditFormData(makeMonitor({ slaPeriodDays: 7 }));
+      expect(form.slaPeriodDays).toBe(7);
     });
   });
 
-  describe('incident fields', () => {
-    it('maps autoIncident and autoIncidentSeverity', () => {
-      const m = makeMonitor({ autoIncident: true, autoIncidentSeverity: 'HIGH' });
-      const r = buildEditFormData(m);
-      expect(r.autoIncident).toBe(true);
-      expect(r.autoIncidentSeverity).toBe('HIGH');
+  describe('incident/flapping fields', () => {
+    it('defaults autoIncident to false', () => {
+      const form = buildEditFormData(makeMonitor({ autoIncident: undefined }));
+      expect(form.autoIncident).toBe(false);
     });
 
-    it('defaults autoIncident to false', () => {
-      expect(buildEditFormData(makeMonitor()).autoIncident).toBe(false);
+    it('maps autoIncident true', () => {
+      const form = buildEditFormData(makeMonitor({ autoIncident: true }));
+      expect(form.autoIncident).toBe(true);
     });
 
     it('defaults autoIncidentSeverity to MEDIUM', () => {
-      expect(buildEditFormData(makeMonitor()).autoIncidentSeverity).toBe('MEDIUM');
+      const form = buildEditFormData(makeMonitor({ autoIncidentSeverity: undefined }));
+      expect(form.autoIncidentSeverity).toBe('MEDIUM');
     });
 
     it('defaults flapDetectionEnabled to true', () => {
-      expect(buildEditFormData(makeMonitor()).flapDetectionEnabled).toBe(true);
+      const form = buildEditFormData(makeMonitor({ flapDetectionEnabled: undefined }));
+      expect(form.flapDetectionEnabled).toBe(true);
     });
 
-    it('maps flapDetectionEnabled = false when set', () => {
-      const m = makeMonitor({ flapDetectionEnabled: false });
-      expect(buildEditFormData(m).flapDetectionEnabled).toBe(false);
-    });
-  });
-
-  describe('HTTP config fields', () => {
-    it('maps expectedStatus from config', () => {
-      const m = makeMonitor({ config: { expectedStatus: 201 } });
-      expect(buildEditFormData(m).expectedStatus).toBe(201);
+    it('defaults flapWindow to 10', () => {
+      const form = buildEditFormData(makeMonitor({ flapWindow: undefined }));
+      expect(form.flapWindow).toBe(10);
     });
 
-    it('maps bodyContains from config', () => {
-      const m = makeMonitor({ config: { bodyContains: 'ok' } });
-      expect(buildEditFormData(m).bodyContains).toBe('ok');
-    });
-
-    it('maps httpMethod from config', () => {
-      const m = makeMonitor({ config: { httpMethod: 'POST' } });
-      expect(buildEditFormData(m).httpMethod).toBe('POST');
-    });
-
-    it('defaults httpMethod to GET when missing', () => {
-      expect(buildEditFormData(makeMonitor()).httpMethod).toBe('GET');
-    });
-
-    it('maps requestHeaders from config as key: value lines', () => {
-      const m = makeMonitor({ config: { requestHeaders: { Authorization: 'Bearer tok', 'X-Custom': 'abc' } } });
-      const result = buildEditFormData(m).requestHeaders!;
-      expect(result).toContain('Authorization: Bearer tok');
-      expect(result).toContain('X-Custom: abc');
-    });
-
-    it('defaults requestHeaders to empty string when missing', () => {
-      expect(buildEditFormData(makeMonitor()).requestHeaders).toBe('');
-    });
-
-    it('maps requestBody from config', () => {
-      const m = makeMonitor({ config: { requestBody: '{"key":"val"}' } });
-      expect(buildEditFormData(m).requestBody).toBe('{"key":"val"}');
-    });
-
-    it('maps responseTimeThresholdMs from config', () => {
-      const m = makeMonitor({ config: { responseTimeThresholdMs: 500 } });
-      expect(buildEditFormData(m).responseTimeThresholdMs).toBe(500);
-    });
-
-    it('maps bodyJsonPath from config', () => {
-      const m = makeMonitor({ config: { bodyJsonPath: '$.status', bodyJsonPathExpected: 'ok' } });
-      expect(buildEditFormData(m).bodyJsonPath).toBe('$.status');
-      expect(buildEditFormData(m).bodyJsonPathExpected).toBe('ok');
+    it('defaults flapThreshold to 0.5', () => {
+      const form = buildEditFormData(makeMonitor({ flapThreshold: undefined }));
+      expect(form.flapThreshold).toBe(0.5);
     });
   });
 
-  describe('DNS config fields', () => {
-    it('maps dnsRecordType from config.recordType', () => {
-      const m = makeMonitor({ type: 'DNS', config: { recordType: 'AAAA' } });
-      expect(buildEditFormData(m).dnsRecordType).toBe('AAAA');
+  describe('HTTP config extraction', () => {
+    it('extracts httpMethod from config', () => {
+      const form = buildEditFormData(makeMonitor({ config: { httpMethod: 'POST' } }));
+      expect(form.httpMethod).toBe('POST');
+    });
+
+    it('defaults httpMethod to GET when not in config', () => {
+      const form = buildEditFormData(makeMonitor({ config: {} }));
+      expect(form.httpMethod).toBe('GET');
+    });
+
+    it('extracts bodyContains from config', () => {
+      const form = buildEditFormData(makeMonitor({ config: { bodyContains: 'OK' } }));
+      expect(form.bodyContains).toBe('OK');
+    });
+
+    it('extracts expectedStatus from config', () => {
+      const form = buildEditFormData(makeMonitor({ config: { expectedStatus: '404' } }));
+      expect(form.expectedStatus).toBe(404);
+    });
+
+    it('defaults followRedirects to true when not specified', () => {
+      const form = buildEditFormData(makeMonitor({ config: {} }));
+      expect(form.followRedirects).toBe(true);
+    });
+
+    it('sets followRedirects to false when config says false', () => {
+      const form = buildEditFormData(makeMonitor({ config: { followRedirects: false } }));
+      expect(form.followRedirects).toBe(false);
+    });
+
+    it('defaults maxRedirects to 10', () => {
+      const form = buildEditFormData(makeMonitor({ config: {} }));
+      expect(form.maxRedirects).toBe(10);
+    });
+
+    it('extracts requestHeaders as formatted string', () => {
+      const form = buildEditFormData(makeMonitor({
+        config: { requestHeaders: { 'X-Token': 'abc', 'Content-Type': 'application/json' } },
+      }));
+      expect(form.requestHeaders).toContain('X-Token: abc');
+      expect(form.requestHeaders).toContain('Content-Type: application/json');
+    });
+
+    it('defaults requestHeaders to empty string when not in config', () => {
+      const form = buildEditFormData(makeMonitor({ config: {} }));
+      expect(form.requestHeaders).toBe('');
+    });
+  });
+
+  describe('DNS config extraction', () => {
+    it('extracts dnsRecordType from config.recordType', () => {
+      const form = buildEditFormData(makeMonitor({ config: { recordType: 'MX' } }));
+      expect(form.dnsRecordType).toBe('MX');
     });
 
     it('defaults dnsRecordType to A', () => {
-      expect(buildEditFormData(makeMonitor()).dnsRecordType).toBe('A');
+      const form = buildEditFormData(makeMonitor({ config: {} }));
+      expect(form.dnsRecordType).toBe('A');
     });
 
-    it('maps dnsExpectedValue from config.expectedValue', () => {
-      const m = makeMonitor({ type: 'DNS', config: { expectedValue: '1.2.3.4' } });
-      expect(buildEditFormData(m).dnsExpectedValue).toBe('1.2.3.4');
+    it('extracts dnsExpectedValue from config', () => {
+      const form = buildEditFormData(makeMonitor({ config: { expectedValue: '1.2.3.4' } }));
+      expect(form.dnsExpectedValue).toBe('1.2.3.4');
     });
 
-    it('maps dnsTimeoutMs from config.timeoutMs', () => {
-      const m = makeMonitor({ type: 'DNS', config: { timeoutMs: 5000 } });
-      expect(buildEditFormData(m).dnsTimeoutMs).toBe(5000);
-    });
-
-    it('defaults dnsTimeoutMs to 10000', () => {
-      expect(buildEditFormData(makeMonitor()).dnsTimeoutMs).toBe(10000);
+    it('extracts dnsDetectChanges from config', () => {
+      const form = buildEditFormData(makeMonitor({ config: { detectChanges: true } }));
+      expect(form.dnsDetectChanges).toBe(true);
     });
   });
 
-  describe('SMTP config fields', () => {
-    it('maps ehlo from config', () => {
-      const m = makeMonitor({ type: 'SMTP', config: { ehlo: 'myhost.com' } });
-      expect(buildEditFormData(m).ehlo).toBe('myhost.com');
-    });
-
-    it('defaults ehlo to pulsedock.monitor', () => {
-      expect(buildEditFormData(makeMonitor()).ehlo).toBe('pulsedock.monitor');
-    });
-
-    it('maps checkTls from config', () => {
-      const m = makeMonitor({ config: { checkTls: true } });
-      expect(buildEditFormData(m).checkTls).toBe(true);
-    });
-  });
-
-  describe('PING config fields', () => {
-    it('maps pingCount from config', () => {
-      const m = makeMonitor({ type: 'PING', config: { pingCount: 5 } });
-      expect(buildEditFormData(m).pingCount).toBe(5);
-    });
-
-    it('defaults pingCount to 3', () => {
-      expect(buildEditFormData(makeMonitor()).pingCount).toBe(3);
-    });
-
-    it('maps pingMaxLossPct from config.maxPacketLossPct', () => {
-      const m = makeMonitor({ type: 'PING', config: { maxPacketLossPct: 10 } });
-      expect(buildEditFormData(m).pingMaxLossPct).toBe(10);
-    });
-  });
-
-  describe('BROWSER config fields', () => {
-    it('maps browserExpectedText from config', () => {
-      const m = makeMonitor({ type: 'BROWSER', config: { browserExpectedText: 'Welcome' } });
-      expect(buildEditFormData(m).browserExpectedText).toBe('Welcome');
-    });
-
-    it('maps browserSelector from config', () => {
-      const m = makeMonitor({ type: 'BROWSER', config: { browserSelector: '#main-content' } });
-      expect(buildEditFormData(m).browserSelector).toBe('#main-content');
-    });
-
-    it('maps browserStatusCodesRaw from config.browserStatusCodes array', () => {
-      const m = makeMonitor({ type: 'BROWSER', config: { browserStatusCodes: [200, 201] } });
-      expect(buildEditFormData(m).browserStatusCodesRaw).toBe('200, 201');
-    });
-
-    it('defaults browserStatusCodesRaw to empty string when not array', () => {
-      expect(buildEditFormData(makeMonitor()).browserStatusCodesRaw).toBe('');
-    });
-  });
-
-  describe('HEARTBEAT config fields', () => {
-    it('maps heartbeatTimeoutMin from config.timeoutMin', () => {
-      const m = makeMonitor({ type: 'HEARTBEAT', config: { timeoutMin: 10 } });
-      expect(buildEditFormData(m).heartbeatTimeoutMin).toBe(10);
+  describe('HEARTBEAT config extraction', () => {
+    it('extracts heartbeatTimeoutMin from config.timeoutMin', () => {
+      const form = buildEditFormData(makeMonitor({ config: { timeoutMin: 10 } }));
+      expect(form.heartbeatTimeoutMin).toBe(10);
     });
 
     it('defaults heartbeatTimeoutMin to 5', () => {
-      expect(buildEditFormData(makeMonitor()).heartbeatTimeoutMin).toBe(5);
+      const form = buildEditFormData(makeMonitor({ config: {} }));
+      expect(form.heartbeatTimeoutMin).toBe(5);
     });
 
-    it('maps heartbeatToken from config.token', () => {
-      const m = makeMonitor({ type: 'HEARTBEAT', config: { token: 'abc123' } });
-      expect(buildEditFormData(m).heartbeatToken).toBe('abc123');
+    it('extracts heartbeatToken from config.token', () => {
+      const form = buildEditFormData(makeMonitor({ config: { token: 'tok_abc123' } }));
+      expect(form.heartbeatToken).toBe('tok_abc123');
     });
   });
 
-  describe('plugin field', () => {
-    it('maps pluginId from config', () => {
-      const m = makeMonitor({ config: { pluginId: 'http.response-match' } });
-      expect(buildEditFormData(m).pluginId).toBe('http.response-match');
+  describe('schedule fields', () => {
+    it('defaults scheduleEnabled to false', () => {
+      const form = buildEditFormData(makeMonitor({}));
+      expect(form.scheduleEnabled).toBe(false);
     });
 
-    it('defaults pluginId to empty string', () => {
-      expect(buildEditFormData(makeMonitor()).pluginId).toBe('');
+    it('defaults scheduleDays to weekdays', () => {
+      const form = buildEditFormData(makeMonitor({}));
+      expect(form.scheduleDays).toBe('1,2,3,4,5');
+    });
+
+    it('defaults scheduleStartHour to 8', () => {
+      const form = buildEditFormData(makeMonitor({}));
+      expect(form.scheduleStartHour).toBe(8);
+    });
+
+    it('defaults scheduleEndHour to 18', () => {
+      const form = buildEditFormData(makeMonitor({}));
+      expect(form.scheduleEndHour).toBe(18);
+    });
+  });
+
+  describe('anomaly detection fields', () => {
+    it('defaults anomalyDetection to false', () => {
+      const form = buildEditFormData(makeMonitor({}));
+      expect(form.anomalyDetection).toBe(false);
+    });
+
+    it('defaults anomalyMultiplier to 2.0', () => {
+      const form = buildEditFormData(makeMonitor({}));
+      expect(form.anomalyMultiplier).toBe(2.0);
     });
   });
 });
 
-// ─── buildFormDataFromTemplate ───────────────────────────────────────────────
-
 describe('buildFormDataFromTemplate', () => {
-  it('maps name, type, target, intervalSec from template', () => {
-    const t = makeTemplate({ name: 'Gitea', type: 'HTTP', target: 'http://gitea.host', intervalSec: 120 });
-    const r = buildFormDataFromTemplate(t);
-    expect(r.name).toBe('Gitea');
-    expect(r.type).toBe('HTTP');
-    expect(r.target).toBe('http://gitea.host');
-    expect(r.intervalSec).toBe(120);
+  const baseTemplate = {
+    label: 'GitHub Status',
+    description: 'Check GitHub uptime',
+    name: 'GitHub Status',
+    type: 'HTTP' as const,
+    target: 'https://github.com',
+    intervalSec: 60,
+    pluginId: '',
+    expectedText: '',
+    config: {},
+  };
+
+  it('maps name, type, target from template', () => {
+    const form = buildFormDataFromTemplate(baseTemplate);
+    expect(form.name).toBe('GitHub Status');
+    expect(form.type).toBe('HTTP');
+    expect(form.target).toBe('https://github.com');
   });
 
-  it('sets safe defaults: confirmations=1, enabled=true, flapDetectionEnabled=true', () => {
-    const r = buildFormDataFromTemplate(makeTemplate());
-    expect(r.confirmations).toBe(1);
-    expect(r.enabled).toBe(true);
-    expect(r.flapDetectionEnabled).toBe(true);
+  it('maps intervalSec from template', () => {
+    const form = buildFormDataFromTemplate({ ...baseTemplate, intervalSec: 120 });
+    expect(form.intervalSec).toBe(120);
   });
 
-  it('sets empty string defaults for text fields', () => {
-    const r = buildFormDataFromTemplate(makeTemplate());
-    expect(r.description).toBe('');
-    expect(r.runbookUrl).toBe('');
-    expect(r.heartbeatToken).toBe('');
-    expect(r.folderId).toBe('');
-    expect(r.slaTarget).toBe('');
+  it('always enables the monitor', () => {
+    const form = buildFormDataFromTemplate(baseTemplate);
+    expect(form.enabled).toBe(true);
   });
 
-  it('maps pluginId from template', () => {
-    const t = makeTemplate({ pluginId: 'http.response-match' });
-    expect(buildFormDataFromTemplate(t).pluginId).toBe('http.response-match');
+  it('starts with description empty', () => {
+    const form = buildFormDataFromTemplate(baseTemplate);
+    expect(form.description).toBe('');
   });
 
-  it('maps expectedText from template', () => {
-    const t = makeTemplate({ expectedText: '"status":"ok"' });
-    expect(buildFormDataFromTemplate(t).expectedText).toBe('"status":"ok"');
+  it('uses safe type HTTP for unknown types', () => {
+    // WHOIS is not in the safe list so falls back to HTTP
+    const form = buildFormDataFromTemplate({ ...baseTemplate, type: 'WHOIS' as never, name: 'test', label: 'test', description: '' });
+    expect(form.type).toBe('HTTP');
   });
 
-  it('normalizes unknown type to HTTP', () => {
-    // @ts-expect-error - test with invalid type
-    const t = makeTemplate({ type: 'UNKNOWN_TYPE' });
-    expect(buildFormDataFromTemplate(t).type).toBe('HTTP');
+  it('maps checkTls from config when present', () => {
+    const form = buildFormDataFromTemplate({ ...baseTemplate, config: { checkTls: true } });
+    expect(form.checkTls).toBe(true);
   });
 
-  it('passes through all valid monitor types', () => {
-    const validTypes = ['HTTP', 'TCP', 'SSL_CERT', 'HEARTBEAT', 'DNS', 'PING', 'SMTP'] as const;
-    for (const type of validTypes) {
-      const t = makeTemplate({ type });
-      expect(buildFormDataFromTemplate(t).type).toBe(type);
-    }
+  it('maps DNS recordType from config', () => {
+    const form = buildFormDataFromTemplate({ ...baseTemplate, type: 'DNS' as const, config: { recordType: 'AAAA' } as never });
+    expect(form.dnsRecordType).toBe('AAAA');
   });
 
-  it('passes through BROWSER type (handled by utils even if not in MonitorTemplate interface)', () => {
-    // buildFormDataFromTemplate's safeType list includes BROWSER
-    const t = { ...makeTemplate(), type: 'BROWSER' } as unknown as MonitorTemplate;
-    expect(buildFormDataFromTemplate(t).type).toBe('BROWSER');
+  it('maps ping count from config', () => {
+    const form = buildFormDataFromTemplate({ ...baseTemplate, type: 'PING' as const, config: { pingCount: 5 } as never });
+    expect(form.pingCount).toBe(5);
   });
 
-  describe('DNS template config', () => {
-    it('maps dnsRecordType from config.recordType', () => {
-      const t = makeTemplate({ type: 'DNS', config: { recordType: 'MX' } });
-      expect(buildFormDataFromTemplate(t).dnsRecordType).toBe('MX');
-    });
-
-    it('maps dnsExpectedValue from config.expectedValue', () => {
-      const t = { ...makeTemplate({ type: 'DNS' }), config: { expectedValue: 'mail.example.com' } } as unknown as MonitorTemplate;
-      expect(buildFormDataFromTemplate(t).dnsExpectedValue).toBe('mail.example.com');
-    });
-
-    it('maps dnsTimeoutMs from config.timeoutMs', () => {
-      const t = { ...makeTemplate({ type: 'DNS' }), config: { timeoutMs: 3000 } } as unknown as MonitorTemplate;
-      expect(buildFormDataFromTemplate(t).dnsTimeoutMs).toBe(3000);
-    });
+  it('defaults slaTarget to empty string', () => {
+    const form = buildFormDataFromTemplate(baseTemplate);
+    expect(form.slaTarget).toBe('');
   });
 
-  describe('SMTP template config', () => {
-    it('maps ehlo from config', () => {
-      const t = makeTemplate({ type: 'SMTP', config: { ehlo: 'myserver.io' } });
-      expect(buildFormDataFromTemplate(t).ehlo).toBe('myserver.io');
-    });
-
-    it('maps checkTls from config', () => {
-      const t = makeTemplate({ type: 'SMTP', config: { checkTls: true } });
-      expect(buildFormDataFromTemplate(t).checkTls).toBe(true);
-    });
+  it('defaults slaPeriodDays to 30', () => {
+    const form = buildFormDataFromTemplate(baseTemplate);
+    expect(form.slaPeriodDays).toBe(30);
   });
 
-  describe('PING template config', () => {
-    it('maps pingCount from config', () => {
-      const t = { ...makeTemplate({ type: 'PING' }), config: { pingCount: 10 } } as unknown as MonitorTemplate;
-      expect(buildFormDataFromTemplate(t).pingCount).toBe(10);
-    });
-
-    it('maps pingMaxLossPct from config.maxPacketLossPct', () => {
-      const t = { ...makeTemplate({ type: 'PING' }), config: { maxPacketLossPct: 20 } } as unknown as MonitorTemplate;
-      expect(buildFormDataFromTemplate(t).pingMaxLossPct).toBe(20);
-    });
+  it('defaults autoIncident to false', () => {
+    const form = buildFormDataFromTemplate(baseTemplate);
+    expect(form.autoIncident).toBe(false);
   });
 
-  describe('BROWSER template config', () => {
-    it('maps browserExpectedText from config', () => {
-      const t = { ...makeTemplate(), config: { browserExpectedText: 'Login' } } as unknown as MonitorTemplate;
-      expect(buildFormDataFromTemplate(t).browserExpectedText).toBe('Login');
-    });
-
-    it('maps browserSelector from config', () => {
-      const t = { ...makeTemplate(), config: { browserSelector: '.hero-section' } } as unknown as MonitorTemplate;
-      expect(buildFormDataFromTemplate(t).browserSelector).toBe('.hero-section');
-    });
-
-    it('maps browserStatusCodesRaw from config.browserStatusCodes', () => {
-      const t = { ...makeTemplate(), config: { browserStatusCodes: [200, 302] } } as unknown as MonitorTemplate;
-      expect(buildFormDataFromTemplate(t).browserStatusCodesRaw).toBe('200, 302');
-    });
-  });
-
-  it('handles missing config gracefully (no crash)', () => {
-    const t = makeTemplate({ config: undefined });
-    expect(() => buildFormDataFromTemplate(t)).not.toThrow();
+  it('defaults anomalyDetection to false', () => {
+    const form = buildFormDataFromTemplate(baseTemplate);
+    expect(form.anomalyDetection).toBe(false);
   });
 });

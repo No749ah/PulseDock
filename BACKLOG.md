@@ -1,13 +1,13 @@
-## Status Summary (2026-04-02 12:34 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 2666 web + 53 integration + 114 CLI + 12 agent = **7900 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+## Status Summary (2026-04-02 12:44 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 2680 web + 53 integration + 114 CLI + 12 agent = **7914 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com (HTML + sampled CSS/JS assets return 200)
 - **Branch:** heartbeat/2026-04-02-noon (merged midnight → dev, deleted old branch)
-- **Last changes (12:34 UTC):**
-  - [x] **73 new web tests** — `status-pages/[id]/edit/components/constants.spec.ts` covering WIDGET_PALETTE shape/count/uniqueness, category derivation, grid constants, monitor-config sets disjointness, and template gallery shape contracts. Web tests: 2633 → 2666.
-  - [x] **Release hygiene** — backfilled and pushed missing git tags `v0.7.0` through `v1.6.0` to origin so CHANGELOG history now matches tagged releases.
-  - [x] **38 more web tests** — status/[slug]/widgets/shared.spec.ts expanded: timeAgo (11), formatRelative (12), isNoConfig (11), levelLabel (4).
-  - [x] **102 new CLI tests** — monitors.spec.ts (16), config.spec.ts (28), check.spec.ts (25).
-  - [x] **Fix stale spec assertions** — types.spec.ts SloReport errorBudget field, CountdownWidget.spec.ts literal variable fix.
+- **Last changes (12:44 UTC):**
+  - [x] **14 new web route/SEO tests** — added specs for `app/api/[...path]/route.ts` (proxy behavior, body forwarding, header dedupe, Set-Cookie passthrough), `app/api/check-url/route.ts` (validation, status mapping, timeout/error handling), `sitemap.ts`, and `robots.ts`. Web tests: 2666 → 2680.
+  - [x] **Fix CLI strict TypeScript build blockers** — typed all implicit `any` callback params in CLI command specs and removed unused spy variable so `npm run build` passes across all workspaces.
+  - [x] **Full pipeline verification** — `npm run build` + `npm run test` completed successfully; web restarted after build.
+  - [x] **73 new web tests** — `status-pages/[id]/edit/components/constants.spec.ts` covering WIDGET_PALETTE/contracts.
+  - [x] **Release hygiene** — backfilled and pushed missing git tags `v0.7.0` through `v1.6.0` to origin.
 
 ---
 

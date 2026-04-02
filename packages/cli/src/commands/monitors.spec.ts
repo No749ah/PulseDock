@@ -89,7 +89,7 @@ describe('monitors list — JSON output', () => {
   it('outputs JSON when --json flag set', async () => {
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'monitors', 'list', '--json']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     const parsed = JSON.parse(output);
     expect(parsed.data).toHaveLength(2);
     expect(parsed.meta.total).toBe(2);
@@ -98,7 +98,7 @@ describe('monitors list — JSON output', () => {
   it('uses config defaultFormat=json when no --json flag', async () => {
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'monitors', 'list']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     expect(output).toContain('"data"');
   });
 
@@ -126,7 +126,7 @@ describe('monitors list — pretty output', () => {
   it('prints table-style output', async () => {
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'monitors', 'list']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     expect(output).toContain('API Server');
   });
 
@@ -134,7 +134,7 @@ describe('monitors list — pretty output', () => {
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'monitors', 'list']);
     // printInfo writes to stderr
-    const output = stderrSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stderrSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     expect(output).toContain('2 of 2 monitors');
   });
 
@@ -142,7 +142,7 @@ describe('monitors list — pretty output', () => {
     apiRequestSpy.mockResolvedValue({ data: [], meta: { total: 0, page: 1, limit: 20, pages: 0 } });
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'monitors', 'list']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     expect(output).toContain('No monitors found');
   });
 
@@ -154,7 +154,7 @@ describe('monitors list — pretty output', () => {
     });
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'monitors', 'list']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     // truncated target should appear with ellipsis
     expect(output).toContain('...');
   });
@@ -190,7 +190,7 @@ describe('monitors check — JSON output', () => {
   it('outputs JSON result', async () => {
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'monitors', 'check', 'mon-001', '--json']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     const parsed = JSON.parse(output);
     expect(parsed.status).toBe(200);
     expect(parsed.ok).toBe(true);
@@ -206,7 +206,7 @@ describe('monitors check — pretty output', () => {
   it('prints monitor ID and result status', async () => {
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'monitors', 'check', 'mon-001']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     expect(output).toContain('mon-001');
     expect(output).toContain('UP');
   });
@@ -222,7 +222,7 @@ describe('monitors check — pretty output', () => {
     apiRequestSpy.mockResolvedValue({ ...MOCK_CHECK_RESULT, message: 'Connection timeout' });
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'monitors', 'check', 'mon-001']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     expect(output).toContain('Connection timeout');
   });
 });

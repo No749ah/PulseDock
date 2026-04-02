@@ -22,14 +22,13 @@ const MOCK_CONFIG = {
 
 let loadConfigSpy: ReturnType<typeof vi.spyOn>;
 let saveConfigSpy: ReturnType<typeof vi.spyOn>;
-let getConfigPathSpy: ReturnType<typeof vi.spyOn>;
 let stdoutSpy: ReturnType<typeof vi.spyOn>;
 let exitSpy: ReturnType<typeof vi.spyOn>;
 
 beforeEach(() => {
   loadConfigSpy = vi.spyOn(configModule, 'loadConfig').mockReturnValue({ ...MOCK_CONFIG });
   saveConfigSpy = vi.spyOn(configModule, 'saveConfig').mockImplementation(() => {});
-  getConfigPathSpy = vi.spyOn(configModule, 'getConfigPath').mockReturnValue('/home/user/.pulsedock/config.json');
+  vi.spyOn(configModule, 'getConfigPath').mockReturnValue('/home/user/.pulsedock/config.json');
   stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation(() => true);
   exitSpy = vi.spyOn(process, 'exit').mockImplementation((() => {}) as never);
 });
@@ -127,21 +126,21 @@ describe('config get — pretty output', () => {
   it('shows config file path', async () => {
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'config', 'get']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     expect(output).toContain('/home/user/.pulsedock/config.json');
   });
 
   it('shows API URL', async () => {
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'config', 'get']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     expect(output).toContain('https://api.example.com');
   });
 
   it('redacts api key showing only last 4 chars', async () => {
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'config', 'get']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     // Should show ***1234 (last 4 chars of pdck_testapikey1234)
     expect(output).toContain('***1234');
     expect(output).not.toContain('pdck_testapikey1234');
@@ -151,7 +150,7 @@ describe('config get — pretty output', () => {
     loadConfigSpy.mockReturnValue({ apiKey: 'pdck_key', defaultFormat: 'pretty' });
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'config', 'get']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     expect(output).toContain('(not set)');
   });
 
@@ -159,7 +158,7 @@ describe('config get — pretty output', () => {
     loadConfigSpy.mockReturnValue({ apiUrl: 'https://api.example.com', defaultFormat: 'pretty' });
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'config', 'get']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     expect(output).toContain('(not set)');
   });
 });
@@ -168,7 +167,7 @@ describe('config get — JSON output', () => {
   it('outputs JSON with redacted api key', async () => {
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'config', 'get', '--json']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     const parsed = JSON.parse(output);
     expect(parsed.apiUrl).toBe('https://api.example.com');
     expect(parsed.apiKey).toBe('***1234');
@@ -179,7 +178,7 @@ describe('config get — JSON output', () => {
     loadConfigSpy.mockReturnValue({ apiUrl: 'https://api.example.com', defaultFormat: 'json' });
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'config', 'get', '--json']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     const parsed = JSON.parse(output);
     expect(parsed.apiKey).toBeUndefined();
   });

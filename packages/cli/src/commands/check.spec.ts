@@ -107,7 +107,7 @@ describe('check — JSON output', () => {
   it('outputs JSON result', async () => {
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'check', 'https://api.example.com/health', '--json']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     const parsed = JSON.parse(output);
     expect(parsed.status).toBe(200);
     expect(parsed.ok).toBe(true);
@@ -137,28 +137,28 @@ describe('check — pretty output', () => {
   it('shows URL in output', async () => {
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'check', 'https://api.example.com/health']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     expect(output).toContain('https://api.example.com/health');
   });
 
   it('shows status code', async () => {
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'check', 'https://api.example.com/health']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     expect(output).toContain('200');
   });
 
   it('shows duration', async () => {
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'check', 'https://api.example.com/health']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     expect(output).toContain('42');
   });
 
   it('shows content size when contentLength is set', async () => {
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'check', 'https://api.example.com/health']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     // 128 bytes → formatBytes output
     expect(output).toMatch(/128\s*B/);
   });
@@ -166,7 +166,7 @@ describe('check — pretty output', () => {
   it('shows content type', async () => {
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'check', 'https://api.example.com/health']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     expect(output).toContain('application/json');
   });
 
@@ -174,7 +174,7 @@ describe('check — pretty output', () => {
     httpCheckSpy.mockResolvedValue(MOCK_CHECK_REDIRECT);
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'check', 'http://example.com']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     expect(output).toContain('https://example.com/');
   });
 
@@ -182,7 +182,7 @@ describe('check — pretty output', () => {
     httpCheckSpy.mockResolvedValue(MOCK_CHECK_CONN_ERROR);
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'check', 'https://unreachable.example.com']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     expect(output).toContain('ECONNREFUSED');
   });
 
@@ -190,7 +190,7 @@ describe('check — pretty output', () => {
     httpCheckSpy.mockResolvedValue(MOCK_CHECK_CONN_ERROR);
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'check', 'https://unreachable.example.com']);
-    const output = stdoutSpy.mock.calls.map((c) => c[0]).join('');
+    const output = stdoutSpy.mock.calls.map((c: unknown[]) => c[0]).join('');
     expect(output).toContain('CONNECTION ERROR');
   });
 
@@ -205,7 +205,7 @@ describe('check — pretty output', () => {
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'check', 'https://api.example.com/health']);
     // exit should NOT have been called with 1
-    const calledWith1 = exitSpy.mock.calls.some((c) => c[0] === 1);
+    const calledWith1 = exitSpy.mock.calls.some((c: unknown[]) => c[0] === 1);
     expect(calledWith1).toBe(false);
   });
 });
@@ -295,7 +295,7 @@ describe('check — --expect status code', () => {
   it('does not exit 1 when status matches expected', async () => {
     const program = makeProgram();
     await program.parseAsync(['node', 'pulsedock', 'check', 'https://api.example.com/health', '-e', '200']);
-    const calledWith1 = exitSpy.mock.calls.some((c) => c[0] === 1);
+    const calledWith1 = exitSpy.mock.calls.some((c: unknown[]) => c[0] === 1);
     expect(calledWith1).toBe(false);
   });
 

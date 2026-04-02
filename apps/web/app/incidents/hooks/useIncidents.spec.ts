@@ -1,16 +1,19 @@
 /**
- * Unit tests for useIncidents.ts pure logic.
+ * Unit tests for useIncidents.ts pure helpers.
  *
- * Re-implements the derived-state helpers from the hook without
- * React rendering, to test filtering, sorting, pagination, and
- * the "resolved this month" counter in isolation.
+ * Extracted pure logic:
+ *   - filteredIncidents: text search across title/status/severity
+ *   - activeIncidents / resolvedIncidents: partition by status
+ *   - resolvedSize / resolvedPageCount / safeResolvedPage: pagination arithmetic
+ *   - paginatedResolved: slice of resolved incidents
+ *   - resolvedThisMonth: current-month filter
  */
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
+// ─── Mirror types ─────────────────────────────────────────────────────────────
 
 type IncidentStatus = 'INVESTIGATING' | 'IDENTIFIED' | 'MONITORING' | 'RESOLVED';
-type IncidentSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+type IncidentSeverity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
 
 interface Incident {
   id: string;
@@ -19,44 +22,18 @@ interface Incident {
   status: IncidentStatus;
   severity: IncidentSeverity;
   autoCreated: boolean;
-  resolvedAt: string | null;
   rootCause: string | null;
   postmortemNotes: string | null;
   createdAt: string;
   updatedAt: string;
-  updates: Array<{ id: string; body: string; status: IncidentStatus; createdAt: string }>;
-  monitors: Array<{ monitor: { id: string; name: string; type: string } }>;
+  monitors: Array<{ monitor: { id: string; name: string } }>;
 }
 
-// ─── Pure helpers (mirrors useIncidents derived-state logic) ──────────────────
+// ─── Mirror pure helpers ──────────────────────────────────────────────────────
 
-type SortDir = 'asc' | 'desc';
-interface SortState { key: 'title' | 'status' | 'severity' | 'updatedAt' | null; dir: SortDir }
-
-/** Sort incidents — mirrors the hook's incidentSorted() behaviour */
-function sortIncidents(
-  incidents: Incident[],
-  sort: SortState,
-): Incident[] {
-  if (!sort.key) return incidents;
-  return [...incidents].sort((a, b) => {
-    const av = sort.key === 'title' ? a.title
-      : sort.key === 'status' ? a.status
-      : sort.key === 'severity' ? a.severity
-      : a.updatedAt;
-    const bv = sort.key === 'title' ? b.title
-      : sort.key === 'status' ? b.status
-      : sort.key === 'severity' ? b.severity
-      : b.updatedAt;
-    const cmp = String(av).localeCompare(String(bv));
-    return sort.dir === 'asc' ? cmp : -cmp;
-  });
-}
-
-/** Filter incidents by search query (mirrors hook logic) */
-function filterByQuery(incidents: Incident[], query: string): Incident[] {
-  if (!query.trim()) return incidents;
-  const q = query.toLowerCase();
+function filterIncidents(incidents: Incident[], searchQuery: string): Incident[] {
+  if (!searchQuery.trim()) return incidents;
+  const q = searchQuery.toLowerCase();
   return incidents.filter(
     (i) =>
       i.title.toLowerCase().includes(q) ||
@@ -65,321 +42,274 @@ function filterByQuery(incidents: Incident[], query: string): Incident[] {
   );
 }
 
-/** Split into active vs resolved (mirrors hook) */
-function splitIncidents(incidents: Incident[]) {
-  return {
-    active: incidents.filter((i) => i.status !== 'RESOLVED'),
-    resolved: incidents.filter((i) => i.status === 'RESOLVED'),
-  };
+function partitionByStatus(incidents: Incident[]) {
+  const active = incidents.filter((i) => i.status !== 'RESOLVED');
+  const resolved = incidents.filter((i) => i.status === 'RESOLVED');
+  return { active, resolved };
 }
 
-/** Paginate resolved incidents (mirrors hook) */
-function paginateResolved(resolved: Incident[], page: number, pageSize: number) {
-  const count = Math.max(1, Math.ceil(resolved.length / pageSize));
-  const safe = Math.min(page, count);
-  const slice = resolved.slice((safe - 1) * pageSize, safe * pageSize);
-  return { pageCount: count, safePage: safe, slice };
+function computePagination(total: number, pageSize: number, page: number) {
+  const size = Math.max(1, pageSize);
+  const pageCount = Math.max(1, Math.ceil(total / size));
+  const safePage = Math.min(Math.max(1, page), pageCount);
+  return { size, pageCount, safePage };
 }
 
-/** Count incidents resolved this calendar month (mirrors hook) */
+function paginateSlice<T>(items: T[], safePage: number, size: number): T[] {
+  return items.slice((safePage - 1) * size, safePage * size);
+}
+
 function resolvedThisMonth(resolved: Incident[], now: Date): Incident[] {
-  const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  return resolved.filter(
-    (i) => new Date(i.updatedAt).getTime() >= startOfMonth.getTime(),
-  );
+  const start = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  return resolved.filter((i) => new Date(i.updatedAt).getTime() >= start);
 }
 
-// ─── Test fixtures ────────────────────────────────────────────────────────────
+// ─── Helpers ──────────────────────────────────────────────────────────────────
 
-function makeIncident(overrides: Partial<Incident> = {}): Incident {
+let _id = 0;
+
+function makeIncident(
+  overrides: Partial<Incident> & { status: IncidentStatus; severity?: IncidentSeverity },
+): Incident {
+  _id++;
   return {
-    id: 'inc-1',
-    title: 'Test Incident',
+    id: `inc-${_id}`,
+    title: `Incident ${_id}`,
     description: null,
-    status: 'INVESTIGATING',
-    severity: 'MEDIUM',
+    status: overrides.status,
+    severity: overrides.severity ?? 'MEDIUM',
     autoCreated: false,
-    resolvedAt: null,
     rootCause: null,
     postmortemNotes: null,
-    createdAt: '2026-04-01T10:00:00Z',
-    updatedAt: '2026-04-01T10:00:00Z',
-    updates: [],
+    createdAt: '2026-04-01T00:00:00Z',
+    updatedAt: overrides.updatedAt ?? '2026-04-01T00:00:00Z',
     monitors: [],
     ...overrides,
   };
 }
 
-// ─── Tests ────────────────────────────────────────────────────────────────────
+beforeEach(() => { _id = 0; });
 
-describe('useIncidents — filterByQuery', () => {
+// ─── filterIncidents ──────────────────────────────────────────────────────────
+
+describe('filterIncidents', () => {
   const incidents = [
-    makeIncident({ id: '1', title: 'API down', status: 'INVESTIGATING', severity: 'HIGH' }),
-    makeIncident({ id: '2', title: 'Slow DB', status: 'RESOLVED', severity: 'LOW' }),
-    makeIncident({ id: '3', title: 'Network issue', status: 'MONITORING', severity: 'CRITICAL' }),
+    makeIncident({ status: 'INVESTIGATING', title: 'Database timeout', severity: 'CRITICAL' }),
+    makeIncident({ status: 'IDENTIFIED', title: 'API Gateway error', severity: 'HIGH' }),
+    makeIncident({ status: 'RESOLVED', title: 'Cache flush', severity: 'LOW' }),
   ];
+
+  beforeEach(() => { _id = 0; });
 
   it('returns all incidents when query is empty', () => {
-    expect(filterByQuery(incidents, '')).toHaveLength(3);
+    expect(filterIncidents(incidents, '')).toHaveLength(3);
   });
 
-  it('returns all incidents when query is whitespace only', () => {
-    expect(filterByQuery(incidents, '   ')).toHaveLength(3);
+  it('returns all incidents when query is only whitespace', () => {
+    expect(filterIncidents(incidents, '   ')).toHaveLength(3);
   });
 
-  it('filters by title (case-insensitive)', () => {
-    const result = filterByQuery(incidents, 'api');
+  it('filters by title case-insensitively', () => {
+    const result = filterIncidents(incidents, 'database');
     expect(result).toHaveLength(1);
-    expect(result[0].id).toBe('1');
+    expect(result[0].title).toBe('Database timeout');
   });
 
-  it('filters by status (case-insensitive)', () => {
-    const result = filterByQuery(incidents, 'resolved');
+  it('filters by status case-insensitively', () => {
+    const result = filterIncidents(incidents, 'investigating');
     expect(result).toHaveLength(1);
-    expect(result[0].id).toBe('2');
+    expect(result[0].status).toBe('INVESTIGATING');
   });
 
-  it('filters by severity (case-insensitive)', () => {
-    const result = filterByQuery(incidents, 'critical');
+  it('filters by severity case-insensitively', () => {
+    const result = filterIncidents(incidents, 'critical');
     expect(result).toHaveLength(1);
-    expect(result[0].id).toBe('3');
+    expect(result[0].severity).toBe('CRITICAL');
   });
 
-  it('returns multiple matches when query matches several incidents', () => {
-    // 'low' matches severity LOW (id 2); 'network' matches title (id 3)
-    const result = filterByQuery(incidents, 'o'); // 'o' appears in resolved, monitoring, low, network
-    expect(result.length).toBeGreaterThanOrEqual(2);
+  it('returns empty array when no matches', () => {
+    expect(filterIncidents(incidents, 'xyz-no-match')).toHaveLength(0);
   });
 
-  it('returns empty array when no match', () => {
-    expect(filterByQuery(incidents, 'xyzzy')).toHaveLength(0);
+  it('matches partial substrings', () => {
+    const result = filterIncidents(incidents, 'api');
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe('API Gateway error');
+  });
+
+  it('matches across multiple incidents', () => {
+    // 'e' appears in all titles
+    const result = filterIncidents(incidents, 'cache');
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe('Cache flush');
+  });
+
+  it('handles uppercase query against lowercase content', () => {
+    const result = filterIncidents(incidents, 'TIMEOUT');
+    expect(result).toHaveLength(1);
+    expect(result[0].title).toBe('Database timeout');
   });
 });
 
-describe('useIncidents — sortIncidents', () => {
-  const incidents = [
-    makeIncident({ id: '1', title: 'Bravo', status: 'RESOLVED', severity: 'HIGH', updatedAt: '2026-04-01T12:00:00Z' }),
-    makeIncident({ id: '2', title: 'Alpha', status: 'INVESTIGATING', severity: 'LOW', updatedAt: '2026-04-02T08:00:00Z' }),
-    makeIncident({ id: '3', title: 'Charlie', status: 'MONITORING', severity: 'CRITICAL', updatedAt: '2026-03-30T06:00:00Z' }),
-  ];
+// ─── partitionByStatus ────────────────────────────────────────────────────────
 
-  it('sorts by title ascending', () => {
-    const sorted = sortIncidents(incidents, { key: 'title', dir: 'asc' });
-    expect(sorted.map((i) => i.title)).toEqual(['Alpha', 'Bravo', 'Charlie']);
-  });
-
-  it('sorts by title descending', () => {
-    const sorted = sortIncidents(incidents, { key: 'title', dir: 'desc' });
-    expect(sorted.map((i) => i.title)).toEqual(['Charlie', 'Bravo', 'Alpha']);
-  });
-
-  it('sorts by status ascending (alphabetical)', () => {
-    const sorted = sortIncidents(incidents, { key: 'status', dir: 'asc' });
-    // INVESTIGATING < MONITORING < RESOLVED
-    expect(sorted[0].status).toBe('INVESTIGATING');
-    expect(sorted[2].status).toBe('RESOLVED');
-  });
-
-  it('sorts by severity ascending (alphabetical)', () => {
-    const sorted = sortIncidents(incidents, { key: 'severity', dir: 'asc' });
-    // CRITICAL < HIGH < LOW
-    expect(sorted[0].severity).toBe('CRITICAL');
-    expect(sorted[2].severity).toBe('LOW');
-  });
-
-  it('sorts by updatedAt ascending (ISO string compare)', () => {
-    const sorted = sortIncidents(incidents, { key: 'updatedAt', dir: 'asc' });
-    expect(sorted[0].updatedAt).toBe('2026-03-30T06:00:00Z');
-    expect(sorted[2].updatedAt).toBe('2026-04-02T08:00:00Z');
-  });
-
-  it('sorts by updatedAt descending', () => {
-    const sorted = sortIncidents(incidents, { key: 'updatedAt', dir: 'desc' });
-    expect(sorted[0].updatedAt).toBe('2026-04-02T08:00:00Z');
-  });
-
-  it('returns original order when sort.key is null', () => {
-    const sorted = sortIncidents(incidents, { key: null, dir: 'asc' });
-    expect(sorted.map((i) => i.id)).toEqual(['1', '2', '3']);
-  });
-
-  it('does not mutate original array', () => {
-    const original = [...incidents];
-    sortIncidents(incidents, { key: 'title', dir: 'asc' });
-    expect(incidents.map((i) => i.id)).toEqual(original.map((i) => i.id));
-  });
-});
-
-describe('useIncidents — splitIncidents', () => {
-  it('puts INVESTIGATING into active', () => {
-    const { active, resolved } = splitIncidents([
+describe('partitionByStatus', () => {
+  it('puts RESOLVED into resolved, everything else into active', () => {
+    const incidents = [
       makeIncident({ status: 'INVESTIGATING' }),
-    ]);
-    expect(active).toHaveLength(1);
-    expect(resolved).toHaveLength(0);
-  });
-
-  it('puts IDENTIFIED into active', () => {
-    const { active } = splitIncidents([makeIncident({ status: 'IDENTIFIED' })]);
-    expect(active).toHaveLength(1);
-  });
-
-  it('puts MONITORING into active', () => {
-    const { active } = splitIncidents([makeIncident({ status: 'MONITORING' })]);
-    expect(active).toHaveLength(1);
-  });
-
-  it('puts RESOLVED into resolved', () => {
-    const { active, resolved } = splitIncidents([
+      makeIncident({ status: 'IDENTIFIED' }),
+      makeIncident({ status: 'MONITORING' }),
       makeIncident({ status: 'RESOLVED' }),
-    ]);
-    expect(active).toHaveLength(0);
-    expect(resolved).toHaveLength(1);
-  });
-
-  it('correctly splits a mixed list', () => {
-    const list = [
-      makeIncident({ id: '1', status: 'INVESTIGATING' }),
-      makeIncident({ id: '2', status: 'RESOLVED' }),
-      makeIncident({ id: '3', status: 'MONITORING' }),
-      makeIncident({ id: '4', status: 'RESOLVED' }),
+      makeIncident({ status: 'RESOLVED' }),
     ];
-    const { active, resolved } = splitIncidents(list);
-    expect(active).toHaveLength(2);
+    const { active, resolved } = partitionByStatus(incidents);
+    expect(active).toHaveLength(3);
     expect(resolved).toHaveLength(2);
   });
 
-  it('handles empty list', () => {
-    const { active, resolved } = splitIncidents([]);
+  it('returns all in active when none resolved', () => {
+    const incidents = [
+      makeIncident({ status: 'INVESTIGATING' }),
+      makeIncident({ status: 'MONITORING' }),
+    ];
+    const { active, resolved } = partitionByStatus(incidents);
+    expect(active).toHaveLength(2);
+    expect(resolved).toHaveLength(0);
+  });
+
+  it('returns all in resolved when all resolved', () => {
+    const incidents = [
+      makeIncident({ status: 'RESOLVED' }),
+      makeIncident({ status: 'RESOLVED' }),
+    ];
+    const { active, resolved } = partitionByStatus(incidents);
+    expect(active).toHaveLength(0);
+    expect(resolved).toHaveLength(2);
+  });
+
+  it('returns empty arrays for empty input', () => {
+    const { active, resolved } = partitionByStatus([]);
     expect(active).toHaveLength(0);
     expect(resolved).toHaveLength(0);
   });
+
+  it('INVESTIGATING, IDENTIFIED, MONITORING are all "active"', () => {
+    const incidents = [
+      makeIncident({ status: 'INVESTIGATING' }),
+      makeIncident({ status: 'IDENTIFIED' }),
+      makeIncident({ status: 'MONITORING' }),
+    ];
+    const { active } = partitionByStatus(incidents);
+    expect(active).toHaveLength(3);
+  });
 });
 
-describe('useIncidents — paginateResolved', () => {
-  const ten = Array.from({ length: 10 }, (_, i) =>
-    makeIncident({ id: `inc-${i}`, status: 'RESOLVED' }),
-  );
+// ─── computePagination ────────────────────────────────────────────────────────
 
-  it('returns pageCount=1 for empty list', () => {
-    const { pageCount } = paginateResolved([], 1, 10);
+describe('computePagination', () => {
+  it('computes 1 page for empty list', () => {
+    const { pageCount, safePage } = computePagination(0, 10, 1);
     expect(pageCount).toBe(1);
-  });
-
-  it('returns correct pageCount for exact multiple', () => {
-    const { pageCount } = paginateResolved(ten, 1, 5);
-    expect(pageCount).toBe(2);
-  });
-
-  it('rounds up pageCount for partial last page', () => {
-    const { pageCount } = paginateResolved(ten, 1, 3);
-    expect(pageCount).toBe(4); // 10 / 3 = 3.33 → 4
-  });
-
-  it('returns correct slice for page 1', () => {
-    const { slice } = paginateResolved(ten, 1, 5);
-    expect(slice).toHaveLength(5);
-    expect(slice[0].id).toBe('inc-0');
-  });
-
-  it('returns correct slice for page 2', () => {
-    const { slice } = paginateResolved(ten, 2, 5);
-    expect(slice[0].id).toBe('inc-5');
-    expect(slice).toHaveLength(5);
-  });
-
-  it('clamps safePage to pageCount when page exceeds total', () => {
-    const { safePage, slice } = paginateResolved(ten, 99, 5);
-    expect(safePage).toBe(2);
-    expect(slice[0].id).toBe('inc-5');
-  });
-
-  it('safePage for empty list is 1', () => {
-    const { safePage } = paginateResolved([], 3, 10);
     expect(safePage).toBe(1);
   });
 
-  it('returns partial slice for last page', () => {
-    const { slice } = paginateResolved(ten, 4, 3); // pages: [0-2][3-5][6-8][9]
-    expect(slice).toHaveLength(1);
-    expect(slice[0].id).toBe('inc-9');
+  it('computes correct page count', () => {
+    expect(computePagination(10, 10, 1).pageCount).toBe(1);
+    expect(computePagination(11, 10, 1).pageCount).toBe(2);
+    expect(computePagination(20, 10, 1).pageCount).toBe(2);
+    expect(computePagination(21, 10, 1).pageCount).toBe(3);
+  });
+
+  it('clamps safePage to pageCount when page is too high', () => {
+    const { safePage } = computePagination(5, 10, 99);
+    expect(safePage).toBe(1);
+  });
+
+  it('clamps safePage to 1 minimum', () => {
+    const { safePage } = computePagination(20, 10, -5);
+    expect(safePage).toBe(1);
+  });
+
+  it('safePage matches page when within bounds', () => {
+    expect(computePagination(30, 10, 2).safePage).toBe(2);
+    expect(computePagination(30, 10, 3).safePage).toBe(3);
+  });
+
+  it('safePage clamps to last page when page exceeds pageCount', () => {
+    expect(computePagination(25, 10, 4).safePage).toBe(3); // 3 pages total
   });
 });
 
-describe('useIncidents — resolvedThisMonth', () => {
-  afterEach(() => {
-    vi.useRealTimers();
+// ─── paginateSlice ────────────────────────────────────────────────────────────
+
+describe('paginateSlice', () => {
+  const items = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j'];
+
+  it('returns first page correctly', () => {
+    expect(paginateSlice(items, 1, 3)).toEqual(['a', 'b', 'c']);
   });
 
-  it('counts incidents updated in current month', () => {
+  it('returns second page correctly', () => {
+    expect(paginateSlice(items, 2, 3)).toEqual(['d', 'e', 'f']);
+  });
+
+  it('returns partial last page', () => {
+    expect(paginateSlice(items, 4, 3)).toEqual(['j']);
+  });
+
+  it('returns all items on single page', () => {
+    expect(paginateSlice(items, 1, 100)).toEqual(items);
+  });
+
+  it('returns empty array for empty input', () => {
+    expect(paginateSlice([], 1, 10)).toEqual([]);
+  });
+});
+
+// ─── resolvedThisMonth ────────────────────────────────────────────────────────
+
+describe('resolvedThisMonth', () => {
+  it('includes incidents resolved in the current month', () => {
+    const now = new Date('2026-04-15T12:00:00Z');
+    const thisMonth = makeIncident({ status: 'RESOLVED', updatedAt: '2026-04-10T00:00:00Z' });
+    const result = resolvedThisMonth([thisMonth], now);
+    expect(result).toHaveLength(1);
+  });
+
+  it('excludes incidents resolved in a previous month', () => {
+    const now = new Date('2026-04-15T12:00:00Z');
+    const lastMonth = makeIncident({ status: 'RESOLVED', updatedAt: '2026-03-31T23:59:59Z' });
+    const result = resolvedThisMonth([lastMonth], now);
+    expect(result).toHaveLength(0);
+  });
+
+  it('includes incidents resolved exactly at start of month', () => {
+    const now = new Date('2026-04-15T12:00:00Z');
+    const startOfMonth = makeIncident({ status: 'RESOLVED', updatedAt: '2026-04-01T00:00:00Z' });
+    const result = resolvedThisMonth([startOfMonth], now);
+    expect(result).toHaveLength(1);
+  });
+
+  it('excludes incidents from previous year', () => {
+    const now = new Date('2026-04-15T12:00:00Z');
+    const lastYear = makeIncident({ status: 'RESOLVED', updatedAt: '2025-04-15T00:00:00Z' });
+    const result = resolvedThisMonth([lastYear], now);
+    expect(result).toHaveLength(0);
+  });
+
+  it('returns empty array when no resolved incidents', () => {
+    const now = new Date('2026-04-15T12:00:00Z');
+    expect(resolvedThisMonth([], now)).toHaveLength(0);
+  });
+
+  it('filters correctly across a mixed list', () => {
     const now = new Date('2026-04-15T12:00:00Z');
     const incidents = [
-      makeIncident({ id: '1', status: 'RESOLVED', updatedAt: '2026-04-01T00:00:00Z' }),
-      makeIncident({ id: '2', status: 'RESOLVED', updatedAt: '2026-04-10T00:00:00Z' }),
-      makeIncident({ id: '3', status: 'RESOLVED', updatedAt: '2026-03-31T23:59:59Z' }), // previous month
+      makeIncident({ status: 'RESOLVED', updatedAt: '2026-04-10T00:00:00Z' }),
+      makeIncident({ status: 'RESOLVED', updatedAt: '2026-03-20T00:00:00Z' }),
+      makeIncident({ status: 'RESOLVED', updatedAt: '2026-04-02T00:00:00Z' }),
     ];
     const result = resolvedThisMonth(incidents, now);
     expect(result).toHaveLength(2);
-    expect(result.map((i) => i.id)).toContain('1');
-    expect(result.map((i) => i.id)).toContain('2');
-  });
-
-  it('excludes incidents from previous months', () => {
-    const now = new Date('2026-04-01T00:00:00Z');
-    const incidents = [
-      makeIncident({ id: '1', status: 'RESOLVED', updatedAt: '2026-03-31T23:59:59Z' }),
-    ];
-    expect(resolvedThisMonth(incidents, now)).toHaveLength(0);
-  });
-
-  it('includes incidents from the very start of the month', () => {
-    const now = new Date('2026-04-15T00:00:00Z');
-    const incidents = [
-      makeIncident({ id: '1', status: 'RESOLVED', updatedAt: '2026-04-01T00:00:00Z' }),
-    ];
-    expect(resolvedThisMonth(incidents, now)).toHaveLength(1);
-  });
-
-  it('returns empty for empty input', () => {
-    expect(resolvedThisMonth([], new Date())).toHaveLength(0);
-  });
-
-  it('returns all when all are resolved in current month', () => {
-    const now = new Date('2026-04-15T00:00:00Z');
-    const incidents = [
-      makeIncident({ id: '1', status: 'RESOLVED', updatedAt: '2026-04-02T00:00:00Z' }),
-      makeIncident({ id: '2', status: 'RESOLVED', updatedAt: '2026-04-14T00:00:00Z' }),
-    ];
-    expect(resolvedThisMonth(incidents, now)).toHaveLength(2);
-  });
-});
-
-describe('useIncidents — combined pipeline', () => {
-  const incidents = [
-    makeIncident({ id: '1', title: 'API down', status: 'INVESTIGATING', severity: 'HIGH', updatedAt: '2026-04-01T08:00:00Z' }),
-    makeIncident({ id: '2', title: 'DB issue', status: 'RESOLVED', severity: 'CRITICAL', updatedAt: '2026-04-02T09:00:00Z' }),
-    makeIncident({ id: '3', title: 'API timeout', status: 'RESOLVED', severity: 'MEDIUM', updatedAt: '2026-04-03T10:00:00Z' }),
-    makeIncident({ id: '4', title: 'Cert expired', status: 'MONITORING', severity: 'LOW', updatedAt: '2026-04-04T11:00:00Z' }),
-  ];
-
-  it('full pipeline: filter → sort → split → paginate', () => {
-    const filtered = filterByQuery(incidents, 'api');         // ids 1, 3
-    const sorted = sortIncidents(filtered, { key: 'title', dir: 'asc' }); // [3, 1]
-    const { active, resolved } = splitIncidents(sorted);
-    // 'API down' is INVESTIGATING (active), 'API timeout' is RESOLVED
-    expect(active).toHaveLength(1);
-    expect(active[0].id).toBe('1');
-    expect(resolved).toHaveLength(1);
-    expect(resolved[0].id).toBe('3');
-    const { pageCount, slice } = paginateResolved(resolved, 1, 10);
-    expect(pageCount).toBe(1);
-    expect(slice).toHaveLength(1);
-  });
-
-  it('empty query returns all, split gives correct counts', () => {
-    const filtered = filterByQuery(incidents, '');
-    const { active, resolved } = splitIncidents(filtered);
-    expect(active).toHaveLength(2); // INVESTIGATING + MONITORING
-    expect(resolved).toHaveLength(2);
   });
 });

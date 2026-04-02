@@ -1,11 +1,13 @@
-## Status Summary (2026-04-02 02:40 UTC)
-- **Build/Test:** ✅ Build clean; 4858 API + 776 web + 10 CLI + 12 agent tests passing; 0 vulnerabilities
+## Status Summary (2026-04-02 02:56 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 776 web + 10 CLI + 12 agent tests passing; 0 vulnerabilities; 8/8 quality checks
 - **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
 - **Branch:** heartbeat/2026-04-02-midnight
-- **Last changes (02:40 UTC):**
-  - [x] **Alert delivery/routing service tests** — 52 new tests (alerts-delivery: 27, alerts-routing: 25). API: 4692 → 4744.
-  - [x] **Monitor sub-service tests** — 114 new tests (monitors-sla: 32, monitors-crud: 22, monitors-export: 22, monitors-analytics: 24, alerts-analysis: 14). API: 4744 → 4858.
-  - [ ] **Monitor controller specs** — 9 controllers with zero tests; spawned subagent to cover them.
+- **Coverage status:** Every service and controller now has a spec file (zero missing specs).
+- **Last changes (02:56 UTC):**
+  - [x] **Alert delivery/routing service tests** — 52 new tests. API: 4692 → 4744.
+  - [x] **Monitor sub-service tests** — 114 new tests (monitors-sla, monitors-crud, monitors-export, monitors-analytics, alerts-analysis). API: 4744 → 4858.
+  - [x] **Monitor controller specs** — 197 new tests across all 9 previously-untested controllers. API: 4858 → 5055.
+  - [x] **TS fix** — Resolved TS2345 in monitors-export.controller.spec.ts (missing required baseUrl field in mock). Code quality: 8/8.
 
 ---
 

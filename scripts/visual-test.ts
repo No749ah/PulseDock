@@ -15,6 +15,8 @@ import { mkdirSync, existsSync } from 'fs';
 import { join } from 'path';
 
 const BASE_URL = process.argv.find((a) => a.startsWith('--base-url='))?.split('=')[1] ?? 'http://localhost:1234';
+const AUTH_EMAIL = process.argv.find((a) => a.startsWith('--email='))?.split('=')[1] ?? process.env.VISUAL_TEST_EMAIL ?? '';
+const AUTH_PASSWORD = process.argv.find((a) => a.startsWith('--password='))?.split('=')[1] ?? process.env.VISUAL_TEST_PASSWORD ?? '';
 
 const VIEWPORTS = {
   desktop: { width: 1440, height: 900 },
@@ -57,6 +59,25 @@ interface ScreenshotResult {
   httpStatus?: number;
 }
 
+async function maybeLogin(page: Page): Promise<boolean> {
+  if (!AUTH_EMAIL || !AUTH_PASSWORD) return false;
+
+  try {
+    const resp = await page.goto(`${BASE_URL}/login`, { waitUntil: 'domcontentloaded', timeout: 15000 });
+    if (!resp || resp.status() >= 400) return false;
+
+    await page.fill('#email', AUTH_EMAIL);
+    await page.fill('#password', AUTH_PASSWORD);
+    await page.keyboard.press('Enter');
+    await page.waitForLoadState('networkidle', { timeout: 15000 });
+
+    // Successful login should navigate away from /login
+    return !page.url().includes('/login');
+  } catch {
+    return false;
+  }
+}
+
 function printPlaywrightDependencyHint(err: unknown): void {
   const message = err instanceof Error ? err.message : String(err);
 
@@ -96,6 +117,9 @@ async function captureScreenshot(
     });
 
     const httpStatus = response?.status() ?? 0;
+    const finalUrl = page.url();
+    const isAuthPage = AUTH_PAGES.some((p) => p.path === pagePath);
+    const redirectedToLogin = isAuthPage && finalUrl.includes('/login');
 
     // Wait a bit for animations to settle
     await page.waitForTimeout(500);
@@ -110,8 +134,9 @@ async function captureScreenshot(
       viewport,
       theme,
       file: fileName,
-      status: httpStatus >= 400 ? 'error' : 'ok',
+      status: httpStatus >= 400 || redirectedToLogin ? 'error' : 'ok',
       httpStatus,
+      ...(redirectedToLogin ? { error: `redirected to login (${finalUrl})` } : {}),
     };
   } catch (err) {
     return {
@@ -143,6 +168,13 @@ async function run() {
 
   const context = await browser.newContext();
   const page = await context.newPage();
+
+  const loggedIn = await maybeLogin(page);
+  if (AUTH_EMAIL && AUTH_PASSWORD) {
+    console.log(loggedIn ? '🔐 Auth login succeeded for visual capture' : '⚠️ Auth login failed; authenticated pages may capture login redirect');
+  } else {
+    console.log('ℹ️ No VISUAL_TEST_EMAIL/VISUAL_TEST_PASSWORD provided; authenticated pages may capture login redirect');
+  }
 
   const results: ScreenshotResult[] = [];
   const allPages = [...PUBLIC_PAGES, ...AUTH_PAGES];

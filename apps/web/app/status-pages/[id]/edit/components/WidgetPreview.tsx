@@ -127,7 +127,22 @@ export function WidgetPreview({ type, config, w, liveData }: { type: string; con
 
     // ── Version ───────────────────────────────────────────────────────────
     case "version-timeline":
-      return (<div className="space-y-1 text-[10px]"><span className="text-text-secondary">{label||"Version Timeline"}</span>{[{v:"v2.39.0",d:"Mar 18",t:"success"},{v:"v2.38.1",d:"Mar 10",t:"warning"},{v:"v2.38.0",d:"Mar 2",t:"text-muted"}].map(e=>(<div key={e.v} className="flex items-center gap-2"><div className={`h-1.5 w-1.5 rounded-full bg-${e.t}`}/><span className="font-mono text-text-primary">{e.v}</span><span className="text-text-muted ml-auto">{e.d}</span></div>))}</div>);
+      return (
+        <div className="space-y-1 text-[10px]">
+          <span className="text-text-secondary">{label || "Version Timeline"}</span>
+          {[
+            { v: "v2.39.0", d: "Mar 18", dotClassName: "bg-success" },
+            { v: "v2.38.1", d: "Mar 10", dotClassName: "bg-warning" },
+            { v: "v2.38.0", d: "Mar 2", dotClassName: "bg-text-muted" },
+          ].map((entry) => (
+            <div key={entry.v} className="flex items-center gap-2">
+              <div className={`h-1.5 w-1.5 rounded-full ${entry.dotClassName}`} />
+              <span className="font-mono text-text-primary">{entry.v}</span>
+              <span className="ml-auto text-text-muted">{entry.d}</span>
+            </div>
+          ))}
+        </div>
+      );
     case "outdated-components-alert":
       return (<div className="space-y-1">{[{n:"GitLab",c:"18.7",l:"18.9"},{n:"SonarQube",c:"25.x",l:"26.x"}].map(c=>(<div key={c.n} className="flex items-center gap-2 text-[10px] px-2 py-1 rounded bg-warning/10 border border-warning/20"><div className="h-1.5 w-1.5 rounded-full bg-warning shrink-0"/><span className="text-text-primary">{c.n}</span><span className="ml-auto text-warning font-mono">{c.c} → {c.l}</span></div>))}</div>);
     case "version-comparison-table":

@@ -511,6 +511,17 @@ function getWidgetConfigHints(widgetType: string): string[] {
         "Select a monitor first, then tune metric + chart type.",
         "Use line/area for trends and bar for discrete comparisons.",
       ];
+    case "version-comparison-table":
+    case "outdated-components-alert":
+      return [
+        "Works best with version-check (GIT_RELEASE) monitor types.",
+        "Switch scope to 'All monitors' to auto-include all version monitors.",
+      ];
+    case "metric-comparison-row":
+      return [
+        "Aggregates uptime / latency metrics across selected monitors.",
+        "Switch scope to 'All monitors' to compare your entire fleet at once.",
+      ];
     default:
       return [];
   }
@@ -618,10 +629,29 @@ describe('getWidgetConfigHints', () => {
     expect(hints[0]).toContain('monitor first');
   });
 
+  it('returns hints for version-comparison-table', () => {
+    const hints = getWidgetConfigHints('version-comparison-table');
+    expect(hints).toHaveLength(2);
+    expect(hints[0]).toContain('GIT_RELEASE');
+  });
+
+  it('returns same hints for outdated-components-alert and version-comparison-table', () => {
+    expect(getWidgetConfigHints('outdated-components-alert')).toEqual(
+      getWidgetConfigHints('version-comparison-table'),
+    );
+  });
+
+  it('returns hints for metric-comparison-row', () => {
+    const hints = getWidgetConfigHints('metric-comparison-row');
+    expect(hints).toHaveLength(2);
+    expect(hints[0]).toContain('uptime');
+  });
+
   it('all hint arrays contain non-empty strings', () => {
     const types = ['embed-iframe', 'security-advisory', 'dependency-map', 'multi-environment-status',
       'region-status-map', 'third-party-dependencies', 'table-of-contents', 'tab-container',
-      'column-layout', 'custom-metric-chart'];
+      'column-layout', 'custom-metric-chart', 'version-comparison-table',
+      'outdated-components-alert', 'metric-comparison-row'];
     for (const type of types) {
       const hints = getWidgetConfigHints(type);
       expect(hints.length).toBeGreaterThan(0);

@@ -1,32 +1,14 @@
-## Status Summary (2026-04-01 12:20 UTC)
-- **Build/Test:** ✅ 4673 API + 757 web + 22 package tests passing; build clean; 0 TS errors
-- **Security/Audit:** ✅ 0 vulnerabilities
-- **Deployment:** ✅ API + web running; public URL 200; all pages HTTP 200
-- **Branch:** heartbeat/2026-04-01-noon
-- **Last changes (12:20 UTC):**
-  - [x] **Visual browser testing unblocked in rootless environments** — Added `scripts/visual-test-docker.sh` + `npm run test:visual:docker`. Runner now works without host bind mounts (uses `docker cp`) and without root-level `install-deps`.
-  - [x] **Visual regression run completed** — `npm run test:visual:docker` against `https://oc-dev-test.no749ah.com`: 90/90 screenshots passed (all pages × desktop/tablet/mobile × light/dark).
-  - [x] **Developer guidance updated** — `scripts/visual-test.ts` now prints Docker fallback hint; troubleshooting docs include rootless visual-test path.
-
-## Status Summary (2026-04-01 09:12 UTC)
-- **Build/Test:** ✅ Build clean; tests passing; 0 vulnerabilities
-- **Security/Audit:** ✅ 0 high vulnerabilities (`npm audit --audit-level=high`)
-- **Branch:** heartbeat/2026-03-30-afternoon
-- **Last changes (09:12 UTC):**
-  - [x] **Heartbeat health check** — `git pull origin dev`, `npm run build`, `npm run test`, `npm audit` all successful.
-  - [x] **Visual test unblock attempt** — Installed Playwright browser binaries (`npx playwright install chromium`).
-  - [x] **Visual test diagnostics improved** — `scripts/visual-test.ts` now detects missing shared library runtime failures and prints explicit root-level fix instructions (`npx playwright install-deps chromium`).
-  - [x] **Restart + post-deploy verification** — Restarted API/Web via `npm run restart`; API `/health` and web `/login` healthy; auth-protected endpoints correctly enforce token checks.
-  - [x] **Frontend audit** — Local and reverse-proxy pages `/login`, `/dashboard`, `/monitors`, `/alerts`, `/account`, `/projects`, `/versions`, `/admin` all return HTTP 200.
-
-## Status Summary (2026-03-30 12:30 UTC)
-- **Build/Test:** ✅ 4598 API + 757 web + 22 package tests passing; build clean; 0 TS errors
-- **Security/Audit:** ✅ 0 vulnerabilities
-- **Deployment:** ✅ API v1.6.0 + web running; public URL 200; all 13 pages HTTP 200
-- **Branch:** heartbeat/2026-03-30-midnight
-- **Last changes (11:17 UTC):**
-  - [x] **Consolidate v2 shared types** — Extracted AuthenticatedRequest + JwtUser to common/auth.types.ts. Created v2/v2.types.ts with PaginatedEnvelope, parsePagination, buildMeta helpers. Removed 7x duplicated interfaces across controllers. 14 new unit tests for helpers.
-  - [x] **Visual regression test script** — scripts/visual-test.ts for automated screenshot capture across desktop/tablet/mobile × light/dark. Requires Playwright (chromium deps not available in container).
+## Status Summary (2026-04-01 22:10 UTC)
+- **Build/Test:** ✅ Build clean; 4712 API + 776 web + 10 CLI + 12 agent tests passing; 0 vulnerabilities
+- **Deployment:** ✅ Restarted API + web (`npm run restart`); `/health` 200, `/login` 200, all audited routes 200 locally + via `https://oc-dev-test.no749ah.com`
+- **Branch:** heartbeat/2026-04-01-afternoon
+- **Last changes (22:10 UTC):**
+  - [x] **Fix missing reportHtml module** — Created `apps/web/app/monitors/sla/components/reportHtml.ts` resolving TS2307 that silently broke the SLA compliance report download button. Generates printable HTML with summary cards, fleet stats, per-monitor detail tables, monthly breakdown, sorted by compliance status. XSS-safe (all user strings escaped).
+  - [x] **Add 16 tests for reportHtml** — Full coverage: HTML structure, period dates, summary counts, status badges, HTML escaping, empty-state, sort order, null rendering, print button. Web tests: 760 → 776.
+  - [x] **MonitorFormModal.tsx refactor** — 2581→216 lines; split into type-specific form sections under `monitors/components/form/*`.
+  - [x] **OverviewTab.tsx refactor** — extracted overview cards into `monitors/[id]/components/overview/*` for maintainability.
+  - [x] **Changelog page** — Added missing v1.1.0–v1.6.0 entries (6 releases absent from web UI).
+  - [x] **package.json license** — Fixed Apache-2.0 → MIT (matches LICENSE file and README badge).
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
@@ -40,71 +22,77 @@
 
 ## Next Up (Priority Order)
 
-### 🔴 P0 — Architecture & Code Quality
+### 🔴 P0 - Architecture & Code Quality
 
-- [x] **Refactor monitors.service.ts (9613 lines → modular)** — ✅ Done (2026-03-30). Split into 6 sub-services:
-  - `monitors-crud.service.ts` — CRUD, list, clone, bulk operations
-  - `monitors-analytics.service.ts` — fleet report, trends, correlation, anomaly, failure prediction, heatmaps
-  - `monitors-sla.service.ts` — SLA dashboard, compliance, forecast, error budget, burn rate
-  - `monitors-diagnostics.service.ts` — health scores, coverage, check rate, schedule, interval optimizer
-  - `monitors-export.service.ts` — export/import, config, OpenAPI import, Docker Compose import
-  - `monitors-comparison.service.ts` — compare, latency distribution, period comparison
+- [x] **Refactor monitors.service.ts (9613 lines → modular)** - ✅ Done (2026-03-30). Split into 6 sub-services:
+  - `monitors-crud.service.ts` - CRUD, list, clone, bulk operations
+  - `monitors-analytics.service.ts` - fleet report, trends, correlation, anomaly, failure prediction, heatmaps
+  - `monitors-sla.service.ts` - SLA dashboard, compliance, forecast, error budget, burn rate
+  - `monitors-diagnostics.service.ts` - health scores, coverage, check rate, schedule, interval optimizer
+  - `monitors-export.service.ts` - export/import, config, OpenAPI import, Docker Compose import
+  - `monitors-comparison.service.ts` - compare, latency distribution, period comparison
   - `monitors.service.ts` is now a thin facade. All 1044 monitor tests passing.
 
-- [x] **Refactor monitors.controller.ts** — ✅ Already split into 10 sub-controllers (2510 lines total across alerts, analytics, comparison, details, diagnostics, export, runs, sla, state + main controller). Each handles its domain routes.
+- [x] **Refactor monitors.controller.ts** - ✅ Already split into 10 sub-controllers (2510 lines total across alerts, analytics, comparison, details, diagnostics, export, runs, sla, state + main controller). Each handles its domain routes.
 
-- [x] **Refactor alerts.service.ts** — ✅ Already split into sub-services:
-  - `alerts-delivery.service.ts` (1079 lines) — channel dispatch, retry, batching
-  - `alerts-routing.service.ts` (683 lines) — routing rules, escalation
-  - `alerts.service.ts` (219 lines) — thin facade
+- [x] **Refactor alerts.service.ts** - ✅ Already split into sub-services:
+  - `alerts-delivery.service.ts` (1079 lines) - channel dispatch, retry, batching
+  - `alerts-routing.service.ts` (683 lines) - routing rules, escalation
+  - `alerts.service.ts` (219 lines) - thin facade
 
-- [x] **API integration tests with real database** — ✅ Done (2026-03-30). 57 integration tests across 5 files running against real PostgreSQL:
-  - `auth.integration.spec.ts` (9 tests) — registration, login, lockout, token validation
-  - `monitors-crud.integration.spec.ts` (12 tests) — full CRUD, types, auth isolation
-  - `alerts-channels.integration.spec.ts` (12 tests) — channel CRUD, ownership isolation
-  - `incidents.integration.spec.ts` (14 tests) — lifecycle, timeline, insights
-  - `check-execution.integration.spec.ts` (6 tests) — check persistence, auto-incidents
+- [x] **API integration tests with real database** - ✅ Done (2026-03-30). 57 integration tests across 5 files running against real PostgreSQL:
+  - `auth.integration.spec.ts` (9 tests) - registration, login, lockout, token validation
+  - `monitors-crud.integration.spec.ts` (12 tests) - full CRUD, types, auth isolation
+  - `alerts-channels.integration.spec.ts` (12 tests) - channel CRUD, ownership isolation
+  - `incidents.integration.spec.ts` (14 tests) - lifecycle, timeline, insights
+  - `check-execution.integration.spec.ts` (6 tests) - check persistence, auto-incidents
   - Also fixed production bug: incidents controller used `req.user.sub` instead of `req.user.id`
 
-- [x] **Database query optimization audit** — ✅ Done (2026-03-30). Added 9 missing @@index([userId]) indexes. Batched SLA service queries (slaDashboard, slaComplianceReport, getSloSummary). Batched health score leaderboard (2N+1 → 2 queries). All hot paths optimized.
+- [x] **Database query optimization audit** - ✅ Done (2026-03-30). Added 9 missing @@index([userId]) indexes. Batched SLA service queries (slaDashboard, slaComplianceReport, getSloSummary). Batched health score leaderboard (2N+1 → 2 queries). All hot paths optimized.
 
-### 🟠 P1 — UX & Polish
+- [x] **Fix global search monitor type filtering** - ✅ Done (2026-04-01). Replaced invalid `VERSION_CHECK` literal with proper enum filters (`type: { notIn: [GIT_RELEASE, DOCKER_IMAGE] }` for uptime monitors and `type: { in: [...] }` for version monitors). Added targeted unit coverage + integration coverage for `/v1/search` (auth, limits, isolation, result mapping).
 
-- [x] **Visual browser testing** — ✅ Done (2026-04-01). Added rootless runner `scripts/visual-test-docker.sh` + `npm run test:visual:docker`; verified with 90/90 passing screenshots across all target pages × 3 viewports × 2 themes.
+- [x] **Normalize API path expectations in ops checks/docs** - ✅ Done (2026-04-01). `scripts/verify-deployment.sh` is the canonical verification script with all three access paths documented (direct API port 4321, web proxy port 1234, public reverse proxy). Path anti-pattern guard included.
 
-- [x] **Unit tests for monitor sub-services (comparison + diagnostics)** — ✅ Done (2026-04-01). 74 new unit tests for MonitorsComparisonService (pearsonCorrelation, compareMonitors, getLatencyDistribution, getPeriodComparison, getStatusTransitions) and MonitorsDiagnosticsService (getHealthScore: all 4 scoring dimensions, grade thresholds A–F). API test total: 4598 → 4672.
+### 🟠 P1 - UX & Polish
 
-- [x] **Status page widget preview coverage** — ✅ Done (2026-04-01). All 82 widget palette types now have editor canvas previews. Fixed 11 missing widget cases + 3 type aliases. Zero fallthrough to default.
+- [x] **Visual browser testing** - ✅ Done (2026-04-01). Added rootless runner `scripts/visual-test-docker.sh` + `npm run test:visual:docker`; verified with 90/90 passing screenshots across all target pages × 3 viewports × 2 themes.
 
-- [ ] **Status page widget visual audit (browser)** — Visual quality inspection via browser/editor interaction (layout balance, spacing, typography, empty-state fidelity). Automation unblocked; perform manual qualitative pass and record findings.
+- [x] **Unit tests for monitor sub-services (comparison + diagnostics)** - ✅ Done (2026-04-01). 74 new unit tests for MonitorsComparisonService (pearsonCorrelation, compareMonitors, getLatencyDistribution, getPeriodComparison, getStatusTransitions) and MonitorsDiagnosticsService (getHealthScore: all 4 scoring dimensions, grade thresholds A-F). API test total: 4598 → 4672.
 
-- [x] **Loading performance audit** — ✅ Done (2026-03-30). Dashboard JS reduced 24% (1314KB → 1001KB). Chart.js removed from critical path (lazy-loaded only on monitor detail). Deleted unused BarChartCJS. TTFB <21ms on all pages. Gzipped dashboard JS ~300KB via reverse proxy.
+- [x] **Status page widget preview coverage** - ✅ Done (2026-04-01). All 82 widget palette types now have editor canvas previews. Fixed 11 missing widget cases + 3 type aliases. Zero fallthrough to default.
 
-- [x] **Monitor detail page UX** — ✅ Done (2026-03-30). Replaced flat 17-tab scrollbar with primary tabs + "More" dropdown. Extracted MonitorTabBar component. 4 primary tabs always visible, 13 secondary in dropdown.
+- [x] **Status page widget visual audit (browser)** - ✅ Done (2026-04-01). Executed visual sweep (`npm run test:visual:docker`, 90/90 pass), validated widget coverage (`npm run widget:audit`, 82/82), fixed `version-timeline` preview color-dot rendering defect, and documented qualitative findings in `docs/STATUS_PAGE_WIDGET_VISUAL_AUDIT_2026-04-01.md`.
 
-- [x] **Sidebar navigation UX** — ✅ Done (2026-03-30). Reorganized into categorized sub-sections with labels. Monitoring group: 3 primary + 5 sub-sections (Real-time, Performance, Intelligence, Infrastructure, Versions). Progressive disclosure preserved.
+- [x] **Loading performance audit** - ✅ Done (2026-03-30). Dashboard JS reduced 24% (1314KB → 1001KB). Chart.js removed from critical path (lazy-loaded only on monitor detail). Deleted unused BarChartCJS. TTFB <21ms on all pages. Gzipped dashboard JS ~300KB via reverse proxy.
 
-### 🟡 P2 — Features & Enhancements
+- [x] **Remove invalid Next.js config warning** - ✅ Done (2026-04-01). Removed deprecated/invalid `optimizePackageImports` root key from `apps/web/next.config.mjs` so `npm run build` no longer emits config warnings.
 
-- [x] **GraphQL monitor improvements** — ✅ Done (2026-03-30). Added: template variable substitution ({{VAR_NAME}}), introspection validation with schema hash, schema change detection (previousSchemaHash comparison), latency threshold support (yellow/degraded). 22 tests covering all features.
+- [x] **Monitor detail page UX** - ✅ Done (2026-03-30). Replaced flat 17-tab scrollbar with primary tabs + "More" dropdown. Extracted MonitorTabBar component. 4 primary tabs always visible, 13 secondary in dropdown.
 
-- [x] **Webhook signature verification docs** — `docs/WEBHOOKS.md` with payload format, HMAC-SHA256 examples in Node.js, Python, Go, PHP. *(2026-03-30)*
+- [x] **Sidebar navigation UX** - ✅ Done (2026-03-30). Reorganized into categorized sub-sections with labels. Monitoring group: 3 primary + 5 sub-sections (Real-time, Performance, Intelligence, Infrastructure, Versions). Progressive disclosure preserved.
 
-- [x] **Status page custom CSS** — ✅ Already implemented. Custom CSS textarea in status page editor settings panel (max 10,000 chars), injected into public page `<head>` via `<style>`. Works in both live pages and preview mode.
+### 🟡 P2 - Features & Enhancements
 
-- [x] **Monitor grouping hierarchy** — ✅ Done (2026-03-30). Nested folder hierarchy (max 5 levels) with self-referencing Folder tree. Cycle detection, stats aggregation bubbling up, new `/flat` + `/move` endpoints. Mute/unmute cascades to subfolders. Frontend tree view with indentation + parent selector in create modal. 25 unit tests.
+- [x] **GraphQL monitor improvements** - ✅ Done (2026-03-30). Added: template variable substitution ({{VAR_NAME}}), introspection validation with schema hash, schema change detection (previousSchemaHash comparison), latency threshold support (yellow/degraded). 22 tests covering all features.
 
-- [x] **Batch notification digest improvements** — Added weekly_digest option (cron: Mon 07:05 UTC). Trend data in digests deferred (requires significant mailer template rework). *(2026-03-30)*
+- [x] **Webhook signature verification docs** - `docs/WEBHOOKS.md` with payload format, HMAC-SHA256 examples in Node.js, Python, Go, PHP. *(2026-03-30)*
 
-### 🟢 P3 — Maintenance & Cleanup
+- [x] **Status page custom CSS** - ✅ Already implemented. Custom CSS textarea in status page editor settings panel (max 10,000 chars), injected into public page `<head>` via `<style>`. Works in both live pages and preview mode.
 
-- [ ] **Prune old status summaries from git history** — BACKLOG.md accumulated 800+ lines of redundant status summaries. Cleaned in this cycle but git history still carries them.
+- [x] **Monitor grouping hierarchy** - ✅ Done (2026-03-30). Nested folder hierarchy (max 5 levels) with self-referencing Folder tree. Cycle detection, stats aggregation bubbling up, new `/flat` + `/move` endpoints. Mute/unmute cascades to subfolders. Frontend tree view with indentation + parent selector in create modal. 25 unit tests.
 
-- [x] **Consolidate duplicate API endpoints** — ✅ Done (2026-03-30). Extracted shared v2 types (PaginatedEnvelope, AuthenticatedRequest, parsePagination, buildMeta) into v2/v2.types.ts and common/auth.types.ts. v1 and v2 are complementary (v2 adds pagination), not duplicates. 14 unit tests added.
+- [x] **Batch notification digest improvements** - Added weekly_digest option (cron: Mon 07:05 UTC). Trend data in digests deferred (requires significant mailer template rework). *(2026-03-30)*
 
-- [x] **Upgrade path documentation** — `docs/UPGRADING.md` covers all 5 pending major upgrades with risk assessment, breaking changes, and strategy. *(2026-03-30)*
+### 🟢 P3 - Maintenance & Cleanup
 
-- [x] **CHANGELOG cleanup** — Merged 3 stale "Unreleased" sections into v1.1.0. All 18 releases properly versioned with comparison links. *(2026-03-30)*
+- [x] **Prune old status summaries from backlog file** - ✅ Done (2026-04-01). Removed redundant top-of-file status blocks and kept a single current status summary. (Note: git commit history itself is immutable and intentionally unchanged.)
+
+- [x] **Consolidate duplicate API endpoints** - ✅ Done (2026-03-30). Extracted shared v2 types (PaginatedEnvelope, AuthenticatedRequest, parsePagination, buildMeta) into v2/v2.types.ts and common/auth.types.ts. v1 and v2 are complementary (v2 adds pagination), not duplicates. 14 unit tests added.
+
+- [x] **Upgrade path documentation** - `docs/UPGRADING.md` covers all 5 pending major upgrades with risk assessment, breaking changes, and strategy. *(2026-03-30)*
+
+- [x] **CHANGELOG cleanup** - Merged 3 stale "Unreleased" sections into v1.1.0. All 18 releases properly versioned with comparison links. *(2026-03-30)*
 
 ---
 

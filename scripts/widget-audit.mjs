@@ -47,16 +47,27 @@ function extractNoConfigResolverTypes(content) {
 
 const typesFile = 'apps/api/src/status-pages/status-pages.types.ts';
 const editorFile = 'apps/web/app/status-pages/[id]/edit/page.tsx';
+const constantsFile = 'apps/web/app/status-pages/[id]/edit/components/constants.ts';
 const rendererFile = 'apps/web/app/status/[slug]/widgets/index.tsx';
 const resolverFile = 'apps/api/src/status-pages/status-pages.service.ts';
+const resolverDir = 'apps/api/src/status-pages/resolvers';
 
 const typesContent = read(typesFile);
 const editorContent = read(editorFile);
+const constantsContent = fs.existsSync(path.join(ROOT, constantsFile)) ? read(constantsFile) : '';
 const rendererContent = read(rendererFile);
-const resolverContent = read(resolverFile);
+const resolverContent = [
+  fs.existsSync(path.join(ROOT, resolverFile)) ? read(resolverFile) : '',
+  ...fs.readdirSync(path.join(ROOT, resolverDir))
+    .filter(f => f.endsWith('.ts') && !f.endsWith('.spec.ts'))
+    .map(f => read(path.join(resolverDir, f)))
+].join('\n');
 
 const widgetTypes = new Set(extract(typesContent, /\| '([^']+)'/g));
-const paletteTypes = new Set(extract(editorContent, /\{\s*type:\s*"([a-z0-9-]+)"/g));
+// Check palette types in both page.tsx (inline) and constants.ts (WIDGET_PALETTE array)
+const paletteTypesInPage = new Set(extract(editorContent, /\{\s*type:\s*"([a-z0-9-]+)"/g));
+const paletteTypesInConstants = new Set(extract(constantsContent, /type:\s*"([a-z0-9-]+)"/g));
+const paletteTypes = new Set([...paletteTypesInPage, ...paletteTypesInConstants]);
 const rendererCases = new Set(extract(rendererContent, /case "([a-z0-9-]+)":/g));
 const resolverCases = new Set(
   extract(resolverContent, /case '([a-z0-9-]+)'/g).filter(
@@ -67,9 +78,12 @@ const resolverCases = new Set(
 const allowedResolverMissing = new Set([]);
 
 const noConfigResolverTypes = extractNoConfigResolverTypes(resolverContent);
+// Config warning coverage: check both page.tsx and constants.ts for NEEDS_MONITOR* sets
+const combinedEditorContent = editorContent + '\n' + constantsContent;
 const configWarningCoveredTypes = new Set([
-  ...extract(extractSetBody(editorContent, 'NEEDS_MONITOR_TYPES'), /'([^']+)'/g),
-  ...extract(extractSetBody(editorContent, 'NEEDS_MONITORS_TYPES'), /'([^']+)'/g),
+  ...extract(extractSetBody(combinedEditorContent, 'NEEDS_MONITOR_TYPES'), /'([^']+)'/g),
+  ...extract(extractSetBody(combinedEditorContent, 'NEEDS_MONITORS_TYPES'), /'([^']+)'/g),
+  ...extract(extractSetBody(combinedEditorContent, 'NO_MONITOR_NEEDED_TYPES'), /'([^']+)'/g),
   ...extract(editorContent, /widget\.type === "([a-z0-9-]+)"/g),
 ]);
 

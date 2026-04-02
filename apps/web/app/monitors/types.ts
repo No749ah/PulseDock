@@ -1,3 +1,22 @@
+// Transaction monitor step types (mirrors backend TransactionStep)
+export interface TransactionStepAssertion {
+  type: "status" | "body_contains" | "json_path" | "header_exists" | "latency_lt";
+  value: string;
+  expected?: string;
+}
+
+export interface TransactionStep {
+  id: string;
+  name: string;
+  method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  url: string;
+  headers?: Record<string, string>;
+  body?: string;
+  extract?: Record<string, string>;
+  assertions?: TransactionStepAssertion[];
+  timeoutMs?: number;
+}
+
 export interface MonitorTag {
   id: string;
   name: string;

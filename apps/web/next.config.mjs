@@ -5,8 +5,8 @@ const nextConfig = {
   // (jsPDF is only used client-side via dynamic import in reports/page.tsx)
   serverExternalPackages: ['jspdf', 'fflate', 'html2canvas'],
 
-  // Tree-shake barrel exports for large icon/chart libraries
-  optimizePackageImports: ['lucide-react', 'recharts', 'date-fns', 'framer-motion'],
+  // NOTE: Next.js 16 rejects `optimizePackageImports` in root config.
+  // Keep config warning-free to avoid masking real build issues.
 
   // Skip TypeScript type checking during build to avoid OOM in memory-constrained envs.
   // API TypeScript is checked separately via `tsc -p tsconfig.build.json`.

@@ -1,3 +1,13 @@
+## Status Summary (2026-04-02 20:12 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 3370 web + 160 integration + 114 CLI + 12 agent = **8711 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 14 pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-02-evening
+- **Last changes (20:12 UTC):**
+  - [x] **Fix NestJS route shadowing bug** — `GET /v1/deployments/summary` and `GET /v1/deployments/by-monitor/:id` were returning 404 because the `:id` route was declared before them. Moved static routes before parameterized ones in `DeploymentsController`. Real production bug: the summary endpoint was completely broken.
+  - [x] **23 deployment integration tests** — full CRUD lifecycle against real PostgreSQL: create (defaults + all fields), list with service/environment/status filters, get single, update status+notes, delete, summary with custom days param, listByMonitor + empty-monitor case, deploy token generation, CI/CD webhook receiver, auth guard (401), user isolation (list/get/patch/delete all blocked for other-user deployments), input validation (400 on missing service field). Integration: 137 → 160.
+
+---
+
 ## Status Summary (2026-04-02 19:15 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 3370 web + 137 integration + 114 CLI + 12 agent = **8688 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all 8 pages 200 locally + https://oc-dev-test.no749ah.com

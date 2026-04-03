@@ -1,3 +1,13 @@
+## Status Summary (2026-04-03 22:18 UTC)
+- **Build/Test:** ✅ Build clean; `npm run test` passing (5055 API + 4965 web + 114 CLI + 12 agent = **10,146 tests**); targeted integration `apps/api/test/v2-api.integration.spec.ts` **37/37 passing**; 0 vulnerabilities (`npm audit`)
+- **Deployment:** ✅ API + web restarted; `/health` 200, `/login` 200, `/api/v1/monitors` auth-guard path verified (401 with bearer header), public `https://oc-dev-test.no749ah.com/login` 200
+- **Frontend audit:** ✅ No 5xx on local/public route sweep (35 routes); only expected `404 /settings` on both origins
+- **Branch:** heartbeat/2026-04-03-noon
+- **Last changes (22:18 UTC):**
+  - [x] **Hardened v2 alert-channel integration coverage** — seeded deterministic cross-user channels in `v2-api.integration.spec.ts` and added assertions for strict isolation by channel id
+  - [x] **Added secret-redaction integration checks** — verifies `webhookUrl` is host-only redacted (`https://hooks.example.com/[redacted]`) and `botToken` is masked as `[redacted]`
+  - [x] **Improved test determinism** — replaced flaky channel setup via API payload ambiguity with direct Prisma seeding in integration setup
+
 ## Status Summary (2026-04-03 21:14 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 4965 web + 753 integration + 114 CLI + 12 agent = **10,899 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com

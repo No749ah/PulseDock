@@ -9,6 +9,7 @@ import { Button } from "../../components/Button";
 import { getUser } from "../../../components/auth";
 import { api } from "../../../lib/api";
 import { useToast } from "../../../components/ui/toast";
+import { PRESET_COLORS, getTagMonitorCount } from "./helpers";
 
 interface TagItem {
   id: string;
@@ -16,11 +17,6 @@ interface TagItem {
   color: string;
   createdAt: string;
 }
-
-const PRESET_COLORS = [
-  "#6366f1", "#3b82f6", "#14b8a6", "#22c55e", "#f59e0b",
-  "#ef4444", "#ec4899", "#8b5cf6", "#06b6d4", "#84cc16",
-];
 
 function ColorPicker({ value, onChange }: { value: string; onChange: (c: string) => void }) {
   return (
@@ -71,8 +67,6 @@ export default function TagsPage() {
       .finally(() => setLoading(false));
   }, [router]);
 
-  const getTagMonitorCount = (tagId: string) =>
-    monitors.filter((m) => m.tags?.some((t) => t.id === tagId)).length;
 
   const handleCreate = async () => {
     if (!newName.trim()) return;
@@ -184,7 +178,7 @@ export default function TagsPage() {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {tags.map((tag) => {
-              const monitorCount = getTagMonitorCount(tag.id);
+              const monitorCount = getTagMonitorCount(tag.id, monitors);
               const isEditing = editingId === tag.id;
               return (
                 <Card key={tag.id} className="p-4">

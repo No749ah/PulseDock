@@ -11,10 +11,9 @@ import { Badge } from '../../components/Badge';
 import { getUser } from '../../../components/auth';
 import { api } from '../../../lib/api';
 import { useToast } from '../../../components/ui/toast';
+import { computeLayout, statusBg, statusColor, statusTextClass, type MonitorStatus } from './helpers';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-type MonitorStatus = 'up' | 'down' | 'degraded' | 'paused' | 'no-data';
 
 interface GraphNode {
   id: string;
@@ -48,127 +47,7 @@ interface DependencyGraph {
   generatedAt: string;
 }
 
-// ─── Layout Algorithm ─────────────────────────────────────────────────────────
-
-function computeLayout(nodes: GraphNode[], edges: GraphEdge[]): Map<string, { x: number; y: number }> {
-  const positions = new Map<string, { x: number; y: number }>();
-  if (nodes.length === 0) return positions;
-
-  const NODE_W = 180;
-  const NODE_H = 60;
-  const H_GAP = 80;
-  const V_GAP = 50;
-
-  // Compute layers: nodes with no dependencies (nothing they depend on) are at layer 0
-  const layers = new Map<string, number>();
-  const nodeIds = new Set(nodes.map(n => n.id));
-
-  // outDegree > 0 means this node depends on others (target)
-  // Find root nodes: those that are not depended upon by anyone (inDegree == 0) but have outDegree
-  // Actually layer by: roots = no dependencies (outDegree === 0 or no outgoing edges)
-  // leaf = depends on others (has outgoing edges)
-
-  // Simple topological layering
-  const edgesOut = new Map<string, Set<string>>(); // source → targets
-  const edgesIn = new Map<string, Set<string>>();  // target → sources
-
-  for (const node of nodes) {
-    edgesOut.set(node.id, new Set());
-    edgesIn.set(node.id, new Set());
-  }
-  for (const edge of edges) {
-    if (nodeIds.has(edge.source) && nodeIds.has(edge.target)) {
-      edgesOut.get(edge.source)?.add(edge.target);
-      edgesIn.get(edge.target)?.add(edge.source);
-    }
-  }
-
-  // BFS layering from nodes with no incoming edges
-  const queue: string[] = [];
-  for (const node of nodes) {
-    const inCount = edgesIn.get(node.id)?.size ?? 0;
-    if (inCount === 0) {
-      layers.set(node.id, 0);
-      queue.push(node.id);
-    }
-  }
-
-  while (queue.length > 0) {
-    const nodeId = queue.shift()!;
-    const currentLayer = layers.get(nodeId) ?? 0;
-    for (const target of edgesOut.get(nodeId) ?? []) {
-      const existingLayer = layers.get(target) ?? 0;
-      const newLayer = Math.max(existingLayer, currentLayer + 1);
-      layers.set(target, newLayer);
-      queue.push(target);
-    }
-  }
-
-  // Assign remaining unvisited nodes to layer 0
-  for (const node of nodes) {
-    if (!layers.has(node.id)) {
-      layers.set(node.id, 0);
-    }
-  }
-
-  // Group by layer
-  const byLayer = new Map<number, string[]>();
-  const maxLayer = Math.max(...Array.from(layers.values()), 0);
-  for (let i = 0; i <= maxLayer; i++) byLayer.set(i, []);
-  for (const [id, layer] of layers) {
-    byLayer.get(layer)?.push(id);
-  }
-
-  // Position nodes
-  for (let layer = 0; layer <= maxLayer; layer++) {
-    const layerNodes = byLayer.get(layer) ?? [];
-    const totalH = layerNodes.length * NODE_H + (layerNodes.length - 1) * V_GAP;
-    let startY = -totalH / 2;
-    for (const id of layerNodes) {
-      positions.set(id, {
-        x: layer * (NODE_W + H_GAP),
-        y: startY,
-      });
-      startY += NODE_H + V_GAP;
-    }
-  }
-
-  return positions;
-}
-
 // ─── Colors ───────────────────────────────────────────────────────────────────
-
-function statusColor(status: MonitorStatus): string {
-  switch (status) {
-    case 'up': return '#22c55e';
-    case 'degraded': return '#eab308';
-    case 'down': return '#ef4444';
-    case 'paused': return '#6b7280';
-    case 'no-data': return '#374151';
-    default: return '#374151';
-  }
-}
-
-function statusBg(status: MonitorStatus): string {
-  switch (status) {
-    case 'up': return '#052e16';
-    case 'degraded': return '#1c1400';
-    case 'down': return '#1c0000';
-    case 'paused': return '#111827';
-    case 'no-data': return '#111827';
-    default: return '#111827';
-  }
-}
-
-function statusTextClass(status: MonitorStatus): string {
-  switch (status) {
-    case 'up': return 'text-green-400';
-    case 'degraded': return 'text-yellow-400';
-    case 'down': return 'text-red-400';
-    case 'paused': return 'text-gray-400';
-    case 'no-data': return 'text-gray-500';
-  }
-}
 
 const statusIcon: Record<MonitorStatus, React.FC<{ className?: string }>> = {
   up: CheckCircle2,

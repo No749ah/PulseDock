@@ -5,6 +5,7 @@ import { Award, X, Copy, ExternalLink, Check, AlertTriangle } from "lucide-react
 import { api } from "../../../../lib/api";
 import { getUser } from "../../../../components/auth";
 import type { MonitorItem } from "./types";
+import { PERIOD_OPTIONS, complianceColor, complianceLabel, formatPct, type PeriodDays } from "./certificateHelpers";
 
 interface CertificateData {
   certificateId: string;
@@ -30,14 +31,6 @@ interface CertificateData {
   title: string;
 }
 
-type PeriodDays = 7 | 30 | 90 | 365;
-
-const PERIOD_OPTIONS: { label: string; value: PeriodDays }[] = [
-  { label: "7d", value: 7 },
-  { label: "30d", value: 30 },
-  { label: "90d", value: 90 },
-  { label: "365d", value: 365 },
-];
 
 interface CertificateModalProps {
   monitor: MonitorItem;
@@ -107,21 +100,8 @@ export function CertificateModal({ monitor, onClose, onGenerateShareToken }: Cer
     }
   };
 
-  const formatPct = (n: number) => `${n.toFixed(3)}%`;
-
-  const complianceColor =
-    certData?.slaCompliant === true
-      ? "text-green-400 bg-green-500/10 border-green-500/30"
-      : certData?.slaCompliant === false
-        ? "text-red-400 bg-red-500/10 border-red-500/30"
-        : "text-zinc-400 bg-zinc-500/10 border-zinc-500/30";
-
-  const complianceLabel =
-    certData?.slaCompliant === true
-      ? "SLA COMPLIANT ✓"
-      : certData?.slaCompliant === false
-        ? "SLA BREACH ✗"
-        : "NO SLA TARGET";
+  const complianceColorClass = complianceColor(certData?.slaCompliant);
+  const complianceLabelText = complianceLabel(certData?.slaCompliant);
 
   return (
     <div
@@ -198,8 +178,8 @@ export function CertificateModal({ monitor, onClose, onGenerateShareToken }: Cer
                   <span className="text-2xl font-bold text-text-primary">
                     {formatPct(certData.uptimePct)}
                   </span>
-                  <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${complianceColor}`}>
-                    {complianceLabel}
+                  <span className={`px-2.5 py-1 rounded-lg text-xs font-bold border ${complianceColorClass}`}>
+                    {complianceLabelText}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">

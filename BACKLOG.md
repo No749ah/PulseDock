@@ -1,3 +1,12 @@
+## Status Summary (2026-04-03 04:17 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 4255 web + 298 integration + 114 CLI + 12 agent = **9734 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-work
+- **Last changes (04:17 UTC):**
+  - [x] **274 new web unit tests across 8 monitor page spec files** — live/page (fmtLatency/fmtSize/fmtAge fake-timers, LEVEL_CONFIG 3-level, levelLabel); downtime-cost/page (formatMinutes, formatUsd, costColor 5-band, costBadgeClass, findWorstMonitor semantics); interval-optimizer/page (formatInterval null/s/m/h, REC_CONFIG 4-type structure, filterMonitors variants); timeline/page (levelColor/levelLabel, uptimeColor thresholds, HOUR_OPTIONS sorted, computeSegmentWidthPct full/half/clipped); services/page (STATUS_MAP 4-status fallback, levelDotClass null/unknown, filterMonitorsBySearch case-insensitive); latency-heatmap/page (GRADE_COLORS/GRADE_TEXT_COLORS 5-grade A-F parity, formatDate/formatMs, computeLabelInterval 4-band); coverage/page (coverageBarColor/scoreBadgeVariant breakpoints, computeStatPct rounding, countGaps); compare/page (MONITOR_COLORS hex/distinct, DAYS_OPTIONS ascending, statusDotColor, interpLabels +/−, correlationBadgeColor 5-band); timing-breakdown/page (PHASE_CONFIG 5-phase color parity, formatMs, computeWaterfallPct min-1, sumPhases null-as-zero). Web: 3981 → 4255. Spec files: 176 → 185.
+
+---
+
 ## Status Summary (2026-04-03 03:15 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 3981 web + 298 integration + 114 CLI + 12 agent = **9460 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all 11 pages 200 locally + https://oc-dev-test.no749ah.com

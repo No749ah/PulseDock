@@ -1,3 +1,13 @@
+## Status Summary (2026-04-03 02:17 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 3816 web + 298 integration + 114 CLI + 12 agent = **9295 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 11 pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-work
+- **Last changes (02:17 UTC):**
+  - [x] **Fix 2 web TypeScript strict errors** — `route.spec.ts`: `unknown` cast on fetchMock call assertion (TS2352); `useIncidents.spec.ts`: remove duplicate `status` property overwritten by spread (TS2783). Both `tsc --noEmit` clean.
+  - [x] **19 playbooks integration tests** — CRUD lifecycle, step validation (empty steps → 400), user isolation (B can't see/update/delete A's playbooks → 404), monitor attach/detach, incident playbook retrieval (source: none), auth guard (401/403). Integration: 279 → 298.
+
+---
+
 ## Status Summary (2026-04-03 01:11 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 3816 web + 279 integration + 114 CLI + 12 agent = **9276 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all 11 pages 200 locally + https://oc-dev-test.no749ah.com

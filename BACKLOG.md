@@ -1,3 +1,14 @@
+## Status Summary (2026-04-03 18:34 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 4965 web + 702 integration + 114 CLI + 12 agent = **10,848 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-noon
+- **Last changes (18:34 UTC):**
+  - [x] **13 new integration tests — monitor comparison endpoints** — added `monitors-comparison.integration.spec.ts` covering `/v1/monitors/compare`, `/:id/latency-distribution`, `/:id/period-comparison`, and `/:id/status-transitions`.
+  - [x] Coverage includes auth guards, ownership isolation (404 for cross-user access), input validation (<2 IDs / >4 IDs), invalid-period fallback (`7d`), and compare-period clamp (`days` max 90).
+  - [x] Integration tests: 689 → 702.
+
+---
+
 ## Status Summary (2026-04-03 18:30 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 4965 web + 689 integration + 114 CLI + 12 agent = **10,835 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com

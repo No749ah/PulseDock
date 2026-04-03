@@ -1,3 +1,12 @@
+## Status Summary (2026-04-03 16:27 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 4965 web + 598 integration + 114 CLI + 12 agent = **10,744 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-noon
+- **Last changes (16:27 UTC):**
+  - [x] **72 new tests — widget index helpers + monitor integration suites** — widgetIndexHelpers.ts (getScopedMonitors 9t, passesVisibilityRule 9t, monitorDetailHref 5t = 21 web tests); monitors-runs.integration.spec.ts (25 tests: paginated history, filters, chart/uptime data); monitors-state.integration.spec.ts (26 tests: mute/pause/pin/priority/clone/bulk); fixed 3 test assertion mismatches against real API response shapes. Integration: 547→598.
+
+---
+
 ## Status Summary (2026-04-03 16:18 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 4944 web + 547 integration + 114 CLI + 12 agent = **10,672 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com

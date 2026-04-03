@@ -1,3 +1,15 @@
+## Status Summary (2026-04-03 23:06 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 5006 web + 870 integration + 114 CLI + 12 agent = **11,057 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted; `/health` 200, `/login` 200, `/api/v1/monitors` proxy auth path verified (401 with bearer header), public `https://oc-dev-test.no749ah.com/login` 200
+- **Frontend audit:** ✅ Local + public route sweep all 200 on: /login, /dashboard, /monitors, /alerts, /account, /projects, /versions, /admin
+- **Branch:** heartbeat/2026-04-04-midnight
+- **Last changes (23:06 UTC):**
+  - [x] **fix(api): import-external endpoint hard-fail bug** — `ImportExternalDto.payload` lacked validator metadata under global whitelist validation, causing `POST /v1/monitors/import-external` to return 400 for valid payloads. Added `@IsOptional()` so payload passes through as intended.
+  - [x] **8 new integration tests — monitors-export** — added coverage for `POST /v1/monitors/import-from-openapi` (auth guard, empty selectedPaths, real monitor creation) and `POST /v1/monitors/import-external` (auth guard, CSV import, uptime-robot/better-uptime empty payload paths). Export suite: 15 → 23 tests.
+  - [x] **11 new integration tests — monitors-diagnostics** — added coverage for `/v1/monitors/security-headers`, `/:id/ct-log-history`, and `/:id/redirect-chain-stats` including auth guards, 404 behavior, isolation, and response-shape assertions. Diagnostics suite: 25 → 36 tests.
+
+---
+
 ## Status Summary (2026-04-04 00:00 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 5006 web + 851 integration + 114 CLI + 12 agent = **11,038 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com

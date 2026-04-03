@@ -32,6 +32,8 @@ describe('V2 API (integration)', () => {
   let monitorId1: string;
   let monitorId2: string;
   let channelId: string;
+  let channelWithTokenId: string;
+  let user2ChannelId: string;
 
   const auth = () => ({ Authorization: `Bearer ${token}` });
   const auth2 = () => ({ Authorization: `Bearer ${token2}` });
@@ -60,22 +62,46 @@ describe('V2 API (integration)', () => {
       .send({ name: 'V2 TCP Monitor', type: 'TCP', target: 'example.com:443', intervalSec: 120 });
     monitorId2 = r2.body.id as string;
 
-    // Create an alert channel for user 1
-    const rc = await request(app.getHttpServer())
-      .post('/v1/alert-channels')
-      .set(auth())
-      .send({
+    // Seed alert channels directly for deterministic v2 response checks
+    const seededWebhookChannel = await prisma.alertChannel.create({
+      data: {
+        userId,
         name: 'V2 Test Channel',
-        type: 'WEBHOOK',
-        config: { url: 'https://hooks.example.com/xyz/secret-token' },
-      });
-    channelId = rc.body.id as string;
+        type: 'webhook',
+        configJson: { webhookUrl: 'https://hooks.example.com/xyz/secret-token' },
+      },
+    });
+    channelId = seededWebhookChannel.id;
+
+    // Additional channel with token-like secret to verify redaction in v2 payload
+    const seededTokenChannel = await prisma.alertChannel.create({
+      data: {
+        userId,
+        name: 'V2 Token Channel',
+        type: 'telegram',
+        configJson: {
+          botToken: 'telegram-super-secret-token',
+          chatId: '123456789',
+        },
+      },
+    });
+    channelWithTokenId = seededTokenChannel.id;
 
     // Create a monitor for user 2 (isolation baseline)
     await request(app.getHttpServer())
       .post('/v1/monitors')
       .set(auth2())
       .send({ name: 'User2 Monitor', type: 'HTTP', target: 'https://other.com', intervalSec: 300 });
+
+    const user2Channel = await prisma.alertChannel.create({
+      data: {
+        userId: userId2,
+        name: 'User2 Private Channel',
+        type: 'webhook',
+        configJson: { webhookUrl: 'https://hooks.user2.example/private/token' },
+      },
+    });
+    user2ChannelId = user2Channel.id;
   }, 45000);
 
   afterAll(async () => {
@@ -257,15 +283,15 @@ describe('V2 API (integration)', () => {
     });
 
     it('returns only user 1\'s channels (isolation)', async () => {
-      // channelId may be undefined if channel creation failed; guard with a graceful check
       const res = await request(app.getHttpServer())
         .get('/v2/alert-channels')
         .set(auth())
         .expect(200);
 
-      expect(res.body.meta.total).toBeGreaterThanOrEqual(0);
-      // All returned channels belong to user 1 (checked implicitly by meta.total >= data.length)
-      expect(res.body.data.length).toBeLessThanOrEqual(res.body.meta.total);
+      const ids = (res.body.data as Array<{ id: string }>).map((c) => c.id);
+      expect(ids).toContain(channelId);
+      expect(ids).toContain(channelWithTokenId);
+      expect(ids).not.toContain(user2ChannelId);
     });
 
     it('user 2 does not see user 1\'s channels', async () => {
@@ -276,6 +302,33 @@ describe('V2 API (integration)', () => {
 
       const ids = (res.body.data as Array<{ id: string }>).map((c) => c.id);
       expect(ids).not.toContain(channelId);
+      expect(ids).toContain(user2ChannelId);
+    });
+
+    it('redacts webhookUrl to protocol + host only', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/v2/alert-channels')
+        .set(auth())
+        .expect(200);
+
+      const webhook = (res.body.data as Array<{ id: string; config?: { webhookUrl?: string } }>).
+        find((c) => c.id === channelId);
+
+      expect(webhook).toBeDefined();
+      expect(webhook?.config?.webhookUrl).toBe('https://hooks.example.com/[redacted]');
+    });
+
+    it('redacts botToken values in channel config', async () => {
+      const res = await request(app.getHttpServer())
+        .get('/v2/alert-channels')
+        .set(auth())
+        .expect(200);
+
+      const tokenChannel = (res.body.data as Array<{ id: string; config?: { botToken?: string } }>).
+        find((c) => c.id === channelWithTokenId);
+
+      expect(tokenChannel).toBeDefined();
+      expect(tokenChannel?.config?.botToken).toBe('[redacted]');
     });
 
     it('filters by type (lowercase, as required by v2 DTO)', async () => {

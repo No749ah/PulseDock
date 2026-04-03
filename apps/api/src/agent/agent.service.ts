@@ -95,6 +95,7 @@ export class AgentService {
         status: 200,
         latencyMs: 0,
         message: `Agent reported version ${cleanVersion}${hostname ? ` from ${hostname}` : ''}`,
+        redirectChain: [],
       },
     });
 

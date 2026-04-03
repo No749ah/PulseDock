@@ -1,3 +1,63 @@
+## Status Summary (2026-04-03 22:18 UTC)
+- **Build/Test:** ✅ Build clean; `npm run test` passing (5055 API + 4965 web + 114 CLI + 12 agent = **10,146 tests**); targeted integration `apps/api/test/v2-api.integration.spec.ts` **37/37 passing**; 0 vulnerabilities (`npm audit`)
+- **Deployment:** ✅ API + web restarted; `/health` 200, `/login` 200, `/api/v1/monitors` auth-guard path verified (401 with bearer header), public `https://oc-dev-test.no749ah.com/login` 200
+- **Frontend audit:** ✅ No 5xx on local/public route sweep (35 routes); only expected `404 /settings` on both origins
+- **Branch:** heartbeat/2026-04-03-noon
+- **Last changes (22:18 UTC):**
+  - [x] **Hardened v2 alert-channel integration coverage** — seeded deterministic cross-user channels in `v2-api.integration.spec.ts` and added assertions for strict isolation by channel id
+  - [x] **Added secret-redaction integration checks** — verifies `webhookUrl` is host-only redacted (`https://hooks.example.com/[redacted]`) and `botToken` is masked as `[redacted]`
+  - [x] **Improved test determinism** — replaced flaky channel setup via API payload ambiguity with direct Prisma seeding in integration setup
+
+## Status Summary (2026-04-03 21:14 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 4965 web + 753 integration + 114 CLI + 12 agent = **10,899 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-noon
+- **Last changes (21:14 UTC):**
+  - [x] **32 new integration tests — monitors-alerts + monitors-export** — monitors-alerts.integration.spec.ts (17: auth guards, empty/assign/unassign lifecycle, PATCH notifyOn/repeatIntervalMin/escalationPolicyId, simulate-alerts result shape, deliveries empty list, cross-user isolation); monitors-export.integration.spec.ts (15: JSON export shape + contents + user isolation + ids filter, YAML export, bulk import empty/valid, import-config 401/400/200, import-from-compose array response, import-from-openapi/preview suggestions shape). Integration: 721 → 753.
+  - [x] **Committed 2 previously-untracked integration specs** — invites.integration.spec.ts (15 tests) + plugins.integration.spec.ts (4 tests). Integration: 702 → 721.
+
+---
+
+## Status Summary (2026-04-03 18:34 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 4965 web + 702 integration + 114 CLI + 12 agent = **10,848 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-noon
+- **Last changes (18:34 UTC):**
+  - [x] **13 new integration tests — monitor comparison endpoints** — added `monitors-comparison.integration.spec.ts` covering `/v1/monitors/compare`, `/:id/latency-distribution`, `/:id/period-comparison`, and `/:id/status-transitions`.
+  - [x] Coverage includes auth guards, ownership isolation (404 for cross-user access), input validation (<2 IDs / >4 IDs), invalid-period fallback (`7d`), and compare-period clamp (`days` max 90).
+  - [x] Integration tests: 689 → 702.
+
+---
+
+## Status Summary (2026-04-03 18:30 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 4965 web + 689 integration + 114 CLI + 12 agent = **10,835 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-noon
+- **Last changes (18:30 UTC):**
+  - [x] **fix: route shadowing bug** — analytics/SLA/diagnostics/export/comparison controllers now registered BEFORE MonitorsController in app.module.ts; previously all static routes like /fleet-report, /trends, /correlation were shadowed by @Get(':id') and returning 404
+  - [x] **fix: monitors-sla.service uptimeCertificate throws NotFoundException** (was plain Error → 500; now 404)
+  - [x] **91 new integration tests** — feedback.integration.spec.ts (9), public-endpoints.integration.spec.ts (8), monitors-analytics.integration.spec.ts (43), monitors-sla.integration.spec.ts (31). Integration: 598→689, all passing.
+
+---
+
+## Status Summary (2026-04-03 16:27 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 4965 web + 598 integration + 114 CLI + 12 agent = **10,744 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-noon
+- **Last changes (16:27 UTC):**
+  - [x] **72 new tests — widget index helpers + monitor integration suites** — widgetIndexHelpers.ts (getScopedMonitors 9t, passesVisibilityRule 9t, monitorDetailHref 5t = 21 web tests); monitors-runs.integration.spec.ts (25 tests: paginated history, filters, chart/uptime data); monitors-state.integration.spec.ts (26 tests: mute/pause/pin/priority/clone/bulk); fixed 3 test assertion mismatches against real API response shapes. Integration: 547→598.
+
+---
+
+## Status Summary (2026-04-03 16:18 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 4944 web + 547 integration + 114 CLI + 12 agent = **10,672 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-noon
+- **Last changes (16:18 UTC):**
+  - [x] **29 new web unit tests** — performanceWidgetHelpers (apdexRatingColor, computeSharePct); rangePickerHelpers (RANGES, isValidRange, getDefaultRange); landingHelpers (STATUS_DOT_COLORS, statusDotColor). Web spec files: 220→223.
+
+---
+
 ## Status Summary (2026-04-03 06:20 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 4600 web + 298 integration + 114 CLI + 12 agent = **10,079 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
@@ -13,6 +73,18 @@
 - **Branch:** heartbeat/2026-04-03-work
 - **Last changes (09:20 UTC):**
   - [x] **44 new integration tests — team & settings endpoints** — team.integration.spec.ts (26: auth guard GET/POST, empty lists, invite existing user → direct TeamMember, duplicate/self/OWNER-role rejection, role update, cross-user isolation on PATCH/DELETE, member removal, token-invite for unknown email, public preview route, invite cancellation); settings.integration.spec.ts (18: auth guard 4 endpoints, retention defaults, PUT 30/90 days + rollup toggle, invalid/missing retentionDays → 400, full user isolation, storage stats shape, workspace GET/PUT name+slug+website, name maxLength 400, cross-user isolation). Integration: 298 → 372.
+
+---
+
+## Status Summary (2026-04-03 12:20 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 4957 web + 493 integration + 114 CLI + 12 agent = **10,631 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-noon
+- **Last changes (12:20 UTC):**
+  - [x] **fix(agent): missing redirectChain:[] in MonitorRun.create** — real production bug; POST /v1/agent/report was throwing P2011 null constraint violation every time it tried to write a MonitorRun record. Now fixed.
+  - [x] **fix(test): deleteUser audit assertion** — test expected old 3-arg signature; impl correctly uses null targetUserId + metadata object. Updated assertion.
+  - [x] **Branch management** — merged heartbeat/2026-04-03-work → dev, deleted old branch, created heartbeat/2026-04-03-noon
+  - [x] **33 new integration tests** — agent.integration.spec.ts (13: report via monitorId/toolId, v-prefix strip, hostname, auth, validation, user isolation, GET status); plan-feedback.integration.spec.ts (20: plan shape/usage/limits/check, feedback POST/GET, auth guards, truncation, admin vs user isolation). Integration: 460 → 493.
 
 ---
 

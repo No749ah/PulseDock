@@ -209,6 +209,7 @@ export class MonitorsStateController {
   // ─── Baseline Resets ──────────────────────────────────────────────────
 
   @Post(':id/dns-baseline/reset')
+  @HttpCode(200)
   @RequireScope(ApiKeyScope.WRITE)
   @ApiOperation({ summary: 'Reset DNS record baseline', description: 'Clears the stored DNS record baseline for a DNS monitor with change detection enabled. The next successful check will establish a new baseline.' })
   @ApiParam({ name: 'id', description: 'Monitor ID' })
@@ -233,6 +234,7 @@ export class MonitorsStateController {
   }
 
   @Post(':id/content-baseline/reset')
+  @HttpCode(200)
   @RequireScope(ApiKeyScope.WRITE)
   @ApiOperation({ summary: 'Reset content change baseline', description: 'Clears the stored content hash baseline for an HTTP/BROWSER monitor with content change detection enabled. The next successful check will establish a new baseline.' })
   @ApiParam({ name: 'id', description: 'Monitor ID' })
@@ -257,6 +259,7 @@ export class MonitorsStateController {
   }
 
   @Post(':id/header-baseline/reset')
+  @HttpCode(200)
   @RequireScope(ApiKeyScope.WRITE)
   @ApiOperation({ summary: 'Reset response header baseline', description: 'Clears the stored response header baseline for an HTTP/BROWSER monitor with header tracking enabled. The next successful check will establish a new baseline.' })
   @ApiParam({ name: 'id', description: 'Monitor ID' })

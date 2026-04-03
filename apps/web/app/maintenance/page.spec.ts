@@ -5,7 +5,7 @@
  * (minutes/hours/hours+mins), formatEndsIn (branches), recurrenceLabel
  * (NONE/DAILY/WEEKLY/MONTHLY), toDatetimeLocal.
  */
-import { describe, it, expect, vi, afterEach } from 'vitest';
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 

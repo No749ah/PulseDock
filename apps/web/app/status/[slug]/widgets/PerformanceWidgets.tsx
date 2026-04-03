@@ -1,5 +1,6 @@
 // Performance widgets — response time charts, latency, apdex, throughput
 import React from "react";
+import { apdexRatingColor, computeSharePct } from "./performanceWidgetHelpers";
 import { Activity } from "lucide-react";
 import {
   type WidgetProps,
@@ -486,16 +487,10 @@ export function ApdexScore({ widget, extra }: WidgetProps) {
     );
   }
 
-  const ratingColor =
-    data.rating === "Excellent" ? "text-green-400"
-    : data.rating === "Good" ? "text-blue-400"
-    : data.rating === "Fair" ? "text-yellow-400"
-    : data.rating === "Poor" ? "text-orange-400"
-    : "text-red-400";
-
-  const satisfiedPct = data.total > 0 ? (data.satisfied / data.total) * 100 : 0;
-  const toleratingPct = data.total > 0 ? (data.tolerating / data.total) * 100 : 0;
-  const frustratedPct = data.total > 0 ? (data.frustrated / data.total) * 100 : 0;
+  const ratingColor = apdexRatingColor(data.rating);
+  const satisfiedPct = computeSharePct(data.satisfied, data.total);
+  const toleratingPct = computeSharePct(data.tolerating, data.total);
+  const frustratedPct = computeSharePct(data.frustrated, data.total);
 
   return (
     <div className="rounded-xl border border-border bg-surface p-4">

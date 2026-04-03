@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { AnnotationsController } from './annotations.controller';
 
 function makeReq(userId = 'user-1') {
-  return { user: { userId } };
+  return { user: { id: userId } };
 }
 
 function makeAnnotation(overrides = {}) {

@@ -1081,7 +1081,7 @@ export class MonitorsSlaService {
       },
     });
 
-    if (!monitor) throw new Error('Monitor not found');
+    if (!monitor) throw new NotFoundException('Monitor not found');
 
     // Count checks in the period
     const runs = await this.prisma.monitorRun.findMany({

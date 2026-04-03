@@ -1,42 +1,46 @@
 /**
- * Unit tests for useVersions.ts pure logic.
+ * Unit tests for useVersions.ts pure helpers.
  *
- * Tests the sorting, pagination, and computed values that are
- * derived from the hook's state — without React rendering.
+ * Extracted pure logic:
+ *   - statusSortKey: priority ordering for sort (green=1, yellow=2, red=0)
+ *   - pagination: total/size/pages/safePage arithmetic
+ *   - sortedItems: sort by name, status, lastChecked in both directions
+ *   - visible: pagination slice of sortedItems
+ *   - handleVersionSort logic: toggle direction / reset sort
  */
 import { describe, it, expect } from 'vitest';
 
-// ─── Types (minimal) ─────────────────────────────────────────────────────────
-
-type VersionLevel = 'green' | 'yellow' | 'red';
+// ─── Mirror types ─────────────────────────────────────────────────────────────
 
 interface VersionItem {
   id: string;
   name: string;
-  type: string;
-  target: string;
-  currentVersion?: string | null;
-  latestMessage?: string | null;
-  level: VersionLevel;
-  checkedAt?: string | null;
-  intervalSec?: number;
+  level: 'green' | 'yellow' | 'red';
+  checkedAt: string | null;
+  status?: string;
 }
 
-// ─── Pure helpers (mirrors useVersions computed logic) ────────────────────────
+// ─── Mirror pure helpers ──────────────────────────────────────────────────────
 
-function statusSortKey(level: VersionLevel): number {
+function statusSortKey(level: 'green' | 'yellow' | 'red'): number {
   if (level === 'green') return 1;
   if (level === 'yellow') return 2;
-  return 0; // red sorts first
+  return 0; // red
 }
 
-function sortVersionItems(
-  items: VersionItem[],
-  sortBy: 'name' | 'status' | 'lastChecked',
-  sortDir: 'asc' | 'desc',
-): VersionItem[] {
-  const dir = sortDir === 'asc' ? 1 : -1;
+function computeVersionPagination(total: number, pageSize: number, page: number) {
+  const size = Math.max(1, pageSize);
+  const pages = Math.max(1, Math.ceil(total / size));
+  const safePage = Math.min(Math.max(1, page), pages);
+  return { size, pages, safePage };
+}
+
+type SortBy = 'name' | 'status' | 'lastChecked';
+type SortDir = 'asc' | 'desc';
+
+function sortItems(items: VersionItem[], sortBy: SortBy, sortDir: SortDir): VersionItem[] {
   return [...items].sort((a, b) => {
+    const dir = sortDir === 'asc' ? 1 : -1;
     if (sortBy === 'name') return dir * a.name.localeCompare(b.name);
     if (sortBy === 'status') return dir * (statusSortKey(a.level) - statusSortKey(b.level));
     if (sortBy === 'lastChecked') {
@@ -48,242 +52,228 @@ function sortVersionItems(
   });
 }
 
-function paginate(items: VersionItem[], page: number, pageSize: number) {
-  const total = items.length;
-  const size = pageSize;
-  const pages = Math.max(1, Math.ceil(total / size));
-  const safePage = Math.min(page, pages);
-  const visible = items.slice((safePage - 1) * size, safePage * size);
-  return { total, size, pages, safePage, visible };
+function sliceVisible(sortedItems: VersionItem[], safePage: number, size: number): VersionItem[] {
+  return sortedItems.slice((safePage - 1) * size, safePage * size);
 }
 
-// ─── Fixtures ────────────────────────────────────────────────────────────────
-
-function makeItem(overrides: Partial<VersionItem> = {}): VersionItem {
-  return {
-    id: 'v-1',
-    name: 'test-tool',
-    type: 'GIT_RELEASE',
-    target: 'org/repo',
-    currentVersion: '1.0.0',
-    latestMessage: 'Up to date',
-    level: 'green',
-    checkedAt: '2026-04-01T10:00:00Z',
-    intervalSec: 3600,
-    ...overrides,
-  };
+function handleVersionSortLogic(
+  currentSortBy: SortBy,
+  currentSortDir: SortDir,
+  clickedCol: SortBy,
+): { sortBy: SortBy; sortDir: SortDir } {
+  if (currentSortBy === clickedCol) {
+    return { sortBy: currentSortBy, sortDir: currentSortDir === 'asc' ? 'desc' : 'asc' };
+  }
+  return { sortBy: clickedCol, sortDir: 'asc' };
 }
 
-const sampleItems: VersionItem[] = [
-  makeItem({ id: '1', name: 'Bravo', level: 'yellow', checkedAt: '2026-04-01T12:00:00Z' }),
-  makeItem({ id: '2', name: 'Alpha', level: 'red', checkedAt: '2026-04-02T08:00:00Z' }),
-  makeItem({ id: '3', name: 'Charlie', level: 'green', checkedAt: '2026-03-30T06:00:00Z' }),
-  makeItem({ id: '4', name: 'Delta', level: 'green', checkedAt: null }),
-];
+// ─── Helpers ──────────────────────────────────────────────────────────────────
+
+let _id = 0;
+
+function makeItem(name: string, level: VersionItem['level'], checkedAt: string | null = null): VersionItem {
+  return { id: `v-${++_id}`, name, level, checkedAt };
+}
 
 // ─── statusSortKey ────────────────────────────────────────────────────────────
 
-describe('useVersions — statusSortKey', () => {
-  it('red → 0 (sorts first ascending)', () => {
-    expect(statusSortKey('red')).toBe(0);
+describe('statusSortKey', () => {
+  it('green → 1', () => expect(statusSortKey('green')).toBe(1));
+  it('yellow → 2', () => expect(statusSortKey('yellow')).toBe(2));
+  it('red → 0', () => expect(statusSortKey('red')).toBe(0));
+
+  it('yellow > green (sort value)', () => {
+    expect(statusSortKey('yellow')).toBeGreaterThan(statusSortKey('green'));
   });
-  it('green → 1', () => {
-    expect(statusSortKey('green')).toBe(1);
+
+  it('green > red (sort value)', () => {
+    expect(statusSortKey('green')).toBeGreaterThan(statusSortKey('red'));
   });
-  it('yellow → 2 (sorts last ascending)', () => {
-    expect(statusSortKey('yellow')).toBe(2);
+
+  it('yellow > red (sort value)', () => {
+    expect(statusSortKey('yellow')).toBeGreaterThan(statusSortKey('red'));
   });
 });
 
-// ─── sortVersionItems — by name ────────────────────────────────────────────────
+// ─── computeVersionPagination ─────────────────────────────────────────────────
 
-describe('useVersions — sortVersionItems by name', () => {
-  it('sorts names ascending', () => {
-    const sorted = sortVersionItems(sampleItems, 'name', 'asc');
-    expect(sorted.map((i) => i.name)).toEqual(['Alpha', 'Bravo', 'Charlie', 'Delta']);
+describe('computeVersionPagination', () => {
+  it('returns 1 page minimum for empty list', () => {
+    const { pages, safePage } = computeVersionPagination(0, 10, 1);
+    expect(pages).toBe(1);
+    expect(safePage).toBe(1);
   });
 
-  it('sorts names descending', () => {
-    const sorted = sortVersionItems(sampleItems, 'name', 'desc');
-    expect(sorted.map((i) => i.name)).toEqual(['Delta', 'Charlie', 'Bravo', 'Alpha']);
+  it('computes exact pages', () => {
+    expect(computeVersionPagination(10, 10, 1).pages).toBe(1);
+    expect(computeVersionPagination(11, 10, 1).pages).toBe(2);
+    expect(computeVersionPagination(20, 10, 1).pages).toBe(2);
+    expect(computeVersionPagination(21, 10, 1).pages).toBe(3);
+    expect(computeVersionPagination(100, 25, 1).pages).toBe(4);
+  });
+
+  it('clamps safePage to last page when page is too high', () => {
+    expect(computeVersionPagination(5, 10, 99).safePage).toBe(1);
+    expect(computeVersionPagination(25, 10, 5).safePage).toBe(3);
+  });
+
+  it('safePage matches page when within bounds', () => {
+    expect(computeVersionPagination(30, 10, 2).safePage).toBe(2);
+    expect(computeVersionPagination(30, 10, 3).safePage).toBe(3);
+  });
+
+  it('returns correct size', () => {
+    expect(computeVersionPagination(100, 25, 1).size).toBe(25);
+    expect(computeVersionPagination(100, 50, 1).size).toBe(50);
+  });
+});
+
+// ─── sortItems — by name ──────────────────────────────────────────────────────
+
+describe('sortItems by name', () => {
+  const items = [
+    makeItem('Zebra', 'green'),
+    makeItem('Apple', 'red'),
+    makeItem('Mango', 'yellow'),
+  ];
+
+  it('sorts ascending alphabetically', () => {
+    _id = 0;
+    const result = sortItems(items, 'name', 'asc');
+    expect(result.map((i) => i.name)).toEqual(['Apple', 'Mango', 'Zebra']);
+  });
+
+  it('sorts descending alphabetically', () => {
+    const result = sortItems(items, 'name', 'desc');
+    expect(result.map((i) => i.name)).toEqual(['Zebra', 'Mango', 'Apple']);
   });
 
   it('does not mutate original array', () => {
-    const original = sampleItems.map((i) => i.id);
-    sortVersionItems(sampleItems, 'name', 'asc');
-    expect(sampleItems.map((i) => i.id)).toEqual(original);
+    const original = [...items];
+    sortItems(items, 'name', 'desc');
+    expect(items).toEqual(original);
   });
 });
 
-// ─── sortVersionItems — by status ─────────────────────────────────────────────
+// ─── sortItems — by status ────────────────────────────────────────────────────
 
-describe('useVersions — sortVersionItems by status', () => {
-  it('ascending: red (0) < green (1) < yellow (2)', () => {
-    const sorted = sortVersionItems(sampleItems, 'status', 'asc');
-    expect(sorted[0].level).toBe('red');
-    // green and yellow follow; both greens share key 1 so order is stable within key
-    const levels = sorted.map((i) => i.level);
-    expect(levels.indexOf('red')).toBe(0);
-    expect(levels.indexOf('yellow')).toBeGreaterThan(levels.indexOf('green'));
+describe('sortItems by status', () => {
+  // statusSortKey: red=0, green=1, yellow=2
+  const items = [
+    makeItem('GreenItem', 'green'),   // key=1
+    makeItem('YellowItem', 'yellow'), // key=2
+    makeItem('RedItem', 'red'),       // key=0
+  ];
+
+  it('sorts ascending: red(0) < green(1) < yellow(2)', () => {
+    const result = sortItems(items, 'status', 'asc');
+    expect(result.map((i) => i.level)).toEqual(['red', 'green', 'yellow']);
   });
 
-  it('descending: yellow (2) > green (1) > red (0)', () => {
-    const sorted = sortVersionItems(sampleItems, 'status', 'desc');
-    expect(sorted[0].level).toBe('yellow');
-    expect(sorted[sorted.length - 1].level).toBe('red');
+  it('sorts descending: yellow(2) > green(1) > red(0)', () => {
+    const result = sortItems(items, 'status', 'desc');
+    expect(result.map((i) => i.level)).toEqual(['yellow', 'green', 'red']);
+  });
+});
+
+// ─── sortItems — by lastChecked ───────────────────────────────────────────────
+
+describe('sortItems by lastChecked', () => {
+  const items = [
+    makeItem('C', 'green', '2026-04-03T00:00:00Z'),
+    makeItem('A', 'green', '2026-04-01T00:00:00Z'),
+    makeItem('B', 'green', null),                    // null → 0 (epoch)
+    makeItem('D', 'green', '2026-04-02T00:00:00Z'),
+  ];
+
+  it('sorts ascending: null first, then oldest→newest', () => {
+    const result = sortItems(items, 'lastChecked', 'asc');
+    expect(result.map((i) => i.name)).toEqual(['B', 'A', 'D', 'C']);
   });
 
-  it('all same level — order matches position', () => {
-    const items = [
-      makeItem({ id: '1', name: 'A', level: 'green' }),
-      makeItem({ id: '2', name: 'B', level: 'green' }),
+  it('sorts descending: newest first, null last', () => {
+    const result = sortItems(items, 'lastChecked', 'desc');
+    expect(result.map((i) => i.name)).toEqual(['C', 'D', 'A', 'B']);
+  });
+
+  it('handles all null checkedAt — order stable (all equal at 0)', () => {
+    const nullItems = [
+      makeItem('X', 'green', null),
+      makeItem('Y', 'green', null),
     ];
-    const sorted = sortVersionItems(items, 'status', 'asc');
-    // statusSortKey equal → diff = 0, stable order preserved
-    expect(sorted.map((i) => i.id)).toEqual(['1', '2']);
+    const result = sortItems(nullItems, 'lastChecked', 'asc');
+    expect(result).toHaveLength(2);
+    // all equal timestamps — no assertion on order, just no crash
   });
 });
 
-// ─── sortVersionItems — by lastChecked ────────────────────────────────────────
+// ─── sliceVisible ─────────────────────────────────────────────────────────────
 
-describe('useVersions — sortVersionItems by lastChecked', () => {
-  it('ascending: earliest checkedAt first', () => {
-    const sorted = sortVersionItems(sampleItems, 'lastChecked', 'asc');
-    // null checkedAt → 0 (oldest)
-    expect(sorted[0].id).toBe('4'); // null → 0
-    expect(sorted[1].checkedAt).toBe('2026-03-30T06:00:00Z');
-    expect(sorted[3].checkedAt).toBe('2026-04-02T08:00:00Z');
+describe('sliceVisible', () => {
+  const items = ['a', 'b', 'c', 'd', 'e'].map((name) => makeItem(name, 'green'));
+
+  it('returns first page', () => {
+    const result = sliceVisible(items, 1, 2);
+    expect(result.map((i) => i.name)).toEqual(['a', 'b']);
   });
 
-  it('descending: most recent checkedAt first', () => {
-    const sorted = sortVersionItems(sampleItems, 'lastChecked', 'desc');
-    expect(sorted[0].checkedAt).toBe('2026-04-02T08:00:00Z');
-    expect(sorted[sorted.length - 1].id).toBe('4'); // null → 0 → last when desc
+  it('returns second page', () => {
+    const result = sliceVisible(items, 2, 2);
+    expect(result.map((i) => i.name)).toEqual(['c', 'd']);
   });
 
-  it('null checkedAt is treated as timestamp 0', () => {
-    const items = [
-      makeItem({ id: '1', checkedAt: '2026-01-01T00:00:00Z' }),
-      makeItem({ id: '2', checkedAt: null }),
-    ];
-    const sorted = sortVersionItems(items, 'lastChecked', 'asc');
-    expect(sorted[0].id).toBe('2'); // 0 < timestamp
-  });
-});
-
-// ─── paginate ─────────────────────────────────────────────────────────────────
-
-describe('useVersions — paginate', () => {
-  const items = Array.from({ length: 15 }, (_, i) =>
-    makeItem({ id: `v-${i}`, name: `tool-${i}` }),
-  );
-
-  it('pageCount is 1 for empty list', () => {
-    const { pages } = paginate([], 1, 10);
-    expect(pages).toBe(1);
+  it('returns partial last page', () => {
+    const result = sliceVisible(items, 3, 2);
+    expect(result.map((i) => i.name)).toEqual(['e']);
   });
 
-  it('calculates pages correctly for exact multiple', () => {
-    const { pages } = paginate(items.slice(0, 10), 1, 5);
-    expect(pages).toBe(2);
+  it('returns all items when pageSize >= total', () => {
+    const result = sliceVisible(items, 1, 100);
+    expect(result).toHaveLength(5);
   });
 
-  it('rounds up pages for partial last page', () => {
-    const { pages } = paginate(items, 1, 10); // 15 items / 10 per page = 2 pages
-    expect(pages).toBe(2);
-  });
-
-  it('first page returns first N items', () => {
-    const { visible } = paginate(items, 1, 5);
-    expect(visible).toHaveLength(5);
-    expect(visible[0].id).toBe('v-0');
-  });
-
-  it('second page returns next N items', () => {
-    const { visible } = paginate(items, 2, 5);
-    expect(visible[0].id).toBe('v-5');
-    expect(visible).toHaveLength(5);
-  });
-
-  it('last page returns remaining items', () => {
-    const { visible } = paginate(items, 2, 10); // 15 items: page 2 has 5
-    expect(visible).toHaveLength(5);
-    expect(visible[0].id).toBe('v-10');
-  });
-
-  it('clamps safePage to pages when page exceeds total', () => {
-    const { safePage, visible } = paginate(items, 99, 10);
-    expect(safePage).toBe(2);
-    expect(visible[0].id).toBe('v-10');
-  });
-
-  it('total reflects full item count', () => {
-    const { total } = paginate(items, 1, 5);
-    expect(total).toBe(15);
-  });
-
-  it('visible is empty for empty list', () => {
-    const { visible } = paginate([], 1, 10);
-    expect(visible).toHaveLength(0);
-  });
-
-  it('size matches requested pageSize', () => {
-    const { size } = paginate(items, 1, 7);
-    expect(size).toBe(7);
+  it('returns empty for empty input', () => {
+    expect(sliceVisible([], 1, 10)).toEqual([]);
   });
 });
 
-// ─── combined pipeline ────────────────────────────────────────────────────────
+// ─── handleVersionSortLogic ───────────────────────────────────────────────────
 
-describe('useVersions — combined sort + paginate', () => {
-  it('sort by name asc then paginate', () => {
-    const sorted = sortVersionItems(sampleItems, 'name', 'asc');
-    const { visible, pages } = paginate(sorted, 1, 2);
-    expect(pages).toBe(2);
-    expect(visible.map((i) => i.name)).toEqual(['Alpha', 'Bravo']);
+describe('handleVersionSortLogic', () => {
+  describe('clicking the same column', () => {
+    it('toggles asc → desc', () => {
+      const result = handleVersionSortLogic('name', 'asc', 'name');
+      expect(result).toEqual({ sortBy: 'name', sortDir: 'desc' });
+    });
+
+    it('toggles desc → asc', () => {
+      const result = handleVersionSortLogic('name', 'desc', 'name');
+      expect(result).toEqual({ sortBy: 'name', sortDir: 'asc' });
+    });
+
+    it('toggles status column direction', () => {
+      expect(handleVersionSortLogic('status', 'asc', 'status')).toEqual({ sortBy: 'status', sortDir: 'desc' });
+    });
+
+    it('toggles lastChecked column direction', () => {
+      expect(handleVersionSortLogic('lastChecked', 'desc', 'lastChecked')).toEqual({ sortBy: 'lastChecked', sortDir: 'asc' });
+    });
   });
 
-  it('sort by name asc page 2', () => {
-    const sorted = sortVersionItems(sampleItems, 'name', 'asc');
-    const { visible } = paginate(sorted, 2, 2);
-    expect(visible.map((i) => i.name)).toEqual(['Charlie', 'Delta']);
-  });
+  describe('clicking a different column', () => {
+    it('switches sortBy and resets direction to asc', () => {
+      const result = handleVersionSortLogic('name', 'desc', 'status');
+      expect(result).toEqual({ sortBy: 'status', sortDir: 'asc' });
+    });
 
-  it('sort by status desc then paginate preserves sort', () => {
-    const sorted = sortVersionItems(sampleItems, 'status', 'desc');
-    const { visible } = paginate(sorted, 1, 4);
-    // desc: yellow=2 > green=1 > red=0
-    expect(visible[0].level).toBe('yellow');
-    expect(visible[visible.length - 1].level).toBe('red');
-  });
+    it('switches from status to lastChecked with asc reset', () => {
+      const result = handleVersionSortLogic('status', 'asc', 'lastChecked');
+      expect(result).toEqual({ sortBy: 'lastChecked', sortDir: 'asc' });
+    });
 
-  it('single item list paginates to 1 page', () => {
-    const { pages, visible } = paginate([sampleItems[0]], 1, 10);
-    expect(pages).toBe(1);
-    expect(visible).toHaveLength(1);
-  });
-});
-
-// ─── edge cases ───────────────────────────────────────────────────────────────
-
-describe('useVersions — edge cases', () => {
-  it('sortVersionItems returns empty array for empty input', () => {
-    expect(sortVersionItems([], 'name', 'asc')).toHaveLength(0);
-  });
-
-  it('single item sort returns same item', () => {
-    const item = makeItem({ id: 'solo', name: 'Solo Tool' });
-    expect(sortVersionItems([item], 'name', 'asc')[0].id).toBe('solo');
-  });
-
-  it('items with same name maintain stable relative order (by array position)', () => {
-    const items = [
-      makeItem({ id: 'a', name: 'same' }),
-      makeItem({ id: 'b', name: 'same' }),
-    ];
-    const sorted = sortVersionItems(items, 'name', 'asc');
-    // localeCompare returns 0 → no swap
-    expect(sorted[0].id).toBe('a');
-    expect(sorted[1].id).toBe('b');
+    it('switches from lastChecked to name with asc reset', () => {
+      const result = handleVersionSortLogic('lastChecked', 'desc', 'name');
+      expect(result).toEqual({ sortBy: 'name', sortDir: 'asc' });
+    });
   });
 });

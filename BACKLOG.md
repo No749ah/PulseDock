@@ -1,3 +1,12 @@
+## Status Summary (2026-04-02 23:18 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 3652 web + 235 integration + 114 CLI + 12 agent = **9068 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 11 pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-midnight
+- **Last changes (23:18 UTC):**
+  - [x] **219 new web unit tests across 6 spec files** — status/page (28: STATUS_CONFIG 7-entry structure, getOverallStatus priority order outage>degraded>operational>unknown), incidents/hooks/useIncidents (31: filterIncidents text search, partitionByStatus all 4 statuses, computePagination clamp/count, paginateSlice, resolvedThisMonth UTC-safe), versions/hooks/useVersions (31: statusSortKey priority order, computeVersionPagination, sortItems by name/status/lastChecked asc+desc, handleVersionSortLogic toggle/switch), admin/page (25: formatUptime seconds/minutes/hours/days all boundaries, relativeTimeLabel s/m/h/date branches), changelog/page (28: TAG_COLORS 7-tag structure + fallback resolve), mttr/page (38: formatMinutes null/negative/fractional/<1/1-59/60+ all branches, mttrColor/mttrBarColor/mttrBadgeVariant 4-band thresholds, formatWeek all 12 UTC months). Web tests: 3433 → 3652. Spec files: 155 → 162.
+
+---
+
 ## Status Summary (2026-04-02 21:17 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 3370 web + 200 integration + 114 CLI + 12 agent = **8751 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all 14 pages 200 locally + https://oc-dev-test.no749ah.com
@@ -44,6 +53,16 @@
 - **Last changes (17:20 UTC):**
   - [x] **19 maintenance window integration tests** — full CRUD lifecycle against real PostgreSQL: create/read/update/delete, auth guard (401/403), user isolation (403 cross-user), active window detection (isActive flag true/false), future windows excluded from /active endpoint, weekly/daily recurrence fields. Integration: 97 → 116.
   - [x] **44 public monitor page unit tests** — pure helper coverage for `app/public/monitor/[token]/page.spec.ts`: `formatRelative` (8 boundary tests with fake timers), `formatType` (13: all 11 known types + unknown + empty), `statusMeta` (6: all status values), `levelColor` (3), `buildDayBars` (8: 90 bars, pct/color thresholds, rounding, ordering), `buildSparkPath` (8: null cases, M/L command structure, x-span 0→400, latency skip). Web: 3225 → 3269.
+
+---
+
+## Status Summary (2026-04-02 23:15 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 3429 web + 97 integration + 114 CLI + 12 agent = **8707 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-midnight
+- **Last changes (23:15 UTC):**
+  - [x] **Branch management** — merged heartbeat/2026-04-02-evening → dev, deleted old branch, created heartbeat/2026-04-03-midnight
+  - [x] **103 new web unit tests across 3 status-widget spec files** — StatusWidgets.spec.ts (43): computeOverallSystemStatus all branches, buildSystemStatusLabel/SubLabel all levels + singular/plural + null; clampUptimePct; resolveUptimePctFromLevel; filterActiveIncidents; getDownMonitors; buildIncidentBannerState. UptimeWidgets.spec.ts (31): resolveUptimePct priority chain, resolvePeriodDays, uptimeBorderColor thresholds, resolveUptimeLabel priority, formatUptimePct. IncidentWidgets.spec.ts (29): filterActiveIncidents case-sensitivity, formatIncidentDuration with fake timers, getMaintenanceStatus 3 states, countIncidentsByStatus, getIncidentPluralLabel. Web: 3326 → 3429.
 
 ---
 

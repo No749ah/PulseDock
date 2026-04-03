@@ -217,8 +217,11 @@ describe('Service Groups (integration)', () => {
         monitorId: monitor.id,
         userId,
         ok: true,
-        statusCode: 200,
+        level: 'green',
+        status: 200,
+        message: 'OK',
         latencyMs: 50,
+        redirectChain: [],
         checkedAt: new Date(),
       },
     });

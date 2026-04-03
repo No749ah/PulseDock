@@ -262,11 +262,12 @@ describe('Dependencies (integration)', () => {
     expect(depIds).toContain(monitorC); // C still present
   });
 
-  it('returns 404 when removing non-existent dependency', async () => {
+  it('returns 200 (idempotent) when removing non-existent dependency', async () => {
+    // deleteMany is idempotent — no-op if dep doesn't exist, returns ok:true
     await request(app.getHttpServer())
       .delete(`/v1/monitors/${monitorA}/dependencies/non-existent-id`)
       .set(auth())
-      .expect(404);
+      .expect(200);
   });
 
   // ─── Replace dependencies (set again) ────────────────────────────────────

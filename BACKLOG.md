@@ -7,6 +7,15 @@
 
 ---
 
+## Status Summary (2026-04-03 09:20 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 4738 web + 372 integration + 114 CLI + 12 agent = **10,291 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-work
+- **Last changes (09:20 UTC):**
+  - [x] **44 new integration tests — team & settings endpoints** — team.integration.spec.ts (26: auth guard GET/POST, empty lists, invite existing user → direct TeamMember, duplicate/self/OWNER-role rejection, role update, cross-user isolation on PATCH/DELETE, member removal, token-invite for unknown email, public preview route, invite cancellation); settings.integration.spec.ts (18: auth guard 4 endpoints, retention defaults, PUT 30/90 days + rollup toggle, invalid/missing retentionDays → 400, full user isolation, storage stats shape, workspace GET/PUT name+slug+website, name maxLength 400, cross-user isolation). Integration: 298 → 372.
+
+---
+
 ## Status Summary (2026-04-03 07:38 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 4469 web + 298 integration + 114 CLI + 12 agent = **9948 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com

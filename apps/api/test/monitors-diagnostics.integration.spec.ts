@@ -3,7 +3,8 @@
  *
  * Covers: /health-score, /check-rate, /coverage, /health-summary, /health-scores,
  *         /health-scores/leaderboard, /check-schedule, /interval-optimizer,
- *         /ssl-summary, auth guards, user isolation.
+ *         /ssl-summary, /security-headers, /:id/ct-log-history, /:id/redirect-chain-stats,
+ *         auth guards, user isolation.
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { INestApplication } from '@nestjs/common';
@@ -359,5 +360,161 @@ describe('Monitors Diagnostics (integration)', () => {
     expect(res.body).toHaveProperty('certs');
     expect(Array.isArray(res.body.certs)).toBe(true);
     expect(res.body).toHaveProperty('total');
+  });
+
+  // ─── Security headers summary ─────────────────────────────────────────────
+
+  it('GET /v1/monitors/security-headers → 401 unauthenticated', async () => {
+    await request(app.getHttpServer())
+      .get('/v1/monitors/security-headers')
+      .expect(401);
+  });
+
+  it('GET /v1/monitors/security-headers → returns security headers summary shape', async () => {
+    const { user, token } = await createTestUser(prisma, module);
+    createdUserIds.push(user.id);
+
+    const res = await request(app.getHttpServer())
+      .get('/v1/monitors/security-headers')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(res.body).toHaveProperty('total');
+    expect(res.body).toHaveProperty('gradeA');
+    expect(res.body).toHaveProperty('gradeB');
+    expect(res.body).toHaveProperty('gradeC');
+    expect(res.body).toHaveProperty('gradeD');
+    expect(res.body).toHaveProperty('gradeF');
+    expect(res.body).toHaveProperty('noData');
+    expect(res.body).toHaveProperty('headerCoverage');
+    expect(Array.isArray(res.body.headerCoverage)).toBe(true);
+    expect(res.body).toHaveProperty('monitors');
+    expect(Array.isArray(res.body.monitors)).toBe(true);
+  });
+
+  it('GET /v1/monitors/security-headers → user isolation: user B sees own monitors only', async () => {
+    const { user: userA, token: tokenA } = await createTestUser(prisma, module);
+    createdUserIds.push(userA.id);
+    const { user: userB, token: tokenB } = await createTestUser(prisma, module);
+    createdUserIds.push(userB.id);
+
+    await createMonitor(userA.id, { type: 'HTTP' });
+
+    const resA = await request(app.getHttpServer())
+      .get('/v1/monitors/security-headers')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .expect(200);
+
+    const resB = await request(app.getHttpServer())
+      .get('/v1/monitors/security-headers')
+      .set('Authorization', `Bearer ${tokenB}`)
+      .expect(200);
+
+    // User A has a monitor, user B does not — totals must differ or B's total = 0
+    expect(resB.body.total).toBe(0);
+    expect(resA.body.total).toBeGreaterThanOrEqual(1);
+  });
+
+  // ─── CT log history ───────────────────────────────────────────────────────
+
+  it('GET /v1/monitors/:id/ct-log-history → 401 unauthenticated', async () => {
+    await request(app.getHttpServer())
+      .get('/v1/monitors/some-id/ct-log-history')
+      .expect(401);
+  });
+
+  it('GET /v1/monitors/:id/ct-log-history → 404 for nonexistent monitor', async () => {
+    const { user, token } = await createTestUser(prisma, module);
+    createdUserIds.push(user.id);
+
+    await request(app.getHttpServer())
+      .get('/v1/monitors/nonexistent-id/ct-log-history')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(404);
+  });
+
+  it('GET /v1/monitors/:id/ct-log-history → 404 for another user\'s monitor', async () => {
+    const { user: userA } = await createTestUser(prisma, module);
+    createdUserIds.push(userA.id);
+    const { user: userB, token: tokenB } = await createTestUser(prisma, module);
+    createdUserIds.push(userB.id);
+
+    const monitor = await createMonitor(userA.id);
+
+    await request(app.getHttpServer())
+      .get(`/v1/monitors/${monitor.id}/ct-log-history`)
+      .set('Authorization', `Bearer ${tokenB}`)
+      .expect(404);
+  });
+
+  it('GET /v1/monitors/:id/ct-log-history → returns entries array for own monitor', async () => {
+    const { user, token } = await createTestUser(prisma, module);
+    createdUserIds.push(user.id);
+
+    const monitor = await createMonitor(user.id);
+
+    const res = await request(app.getHttpServer())
+      .get(`/v1/monitors/${monitor.id}/ct-log-history`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(res.body).toHaveProperty('entries');
+    expect(Array.isArray(res.body.entries)).toBe(true);
+    // No runs seeded → entries should be empty
+    expect(res.body.entries).toHaveLength(0);
+  });
+
+  // ─── Redirect chain stats ─────────────────────────────────────────────────
+
+  it('GET /v1/monitors/:id/redirect-chain-stats → 401 unauthenticated', async () => {
+    await request(app.getHttpServer())
+      .get('/v1/monitors/some-id/redirect-chain-stats')
+      .expect(401);
+  });
+
+  it('GET /v1/monitors/:id/redirect-chain-stats → 404 for nonexistent monitor', async () => {
+    const { user, token } = await createTestUser(prisma, module);
+    createdUserIds.push(user.id);
+
+    await request(app.getHttpServer())
+      .get('/v1/monitors/nonexistent-id/redirect-chain-stats')
+      .set('Authorization', `Bearer ${token}`)
+      .expect(404);
+  });
+
+  it('GET /v1/monitors/:id/redirect-chain-stats → 404 for another user\'s monitor', async () => {
+    const { user: userA } = await createTestUser(prisma, module);
+    createdUserIds.push(userA.id);
+    const { user: userB, token: tokenB } = await createTestUser(prisma, module);
+    createdUserIds.push(userB.id);
+
+    const monitor = await createMonitor(userA.id);
+
+    await request(app.getHttpServer())
+      .get(`/v1/monitors/${monitor.id}/redirect-chain-stats`)
+      .set('Authorization', `Bearer ${tokenB}`)
+      .expect(404);
+  });
+
+  it('GET /v1/monitors/:id/redirect-chain-stats → returns stats for own monitor (no runs)', async () => {
+    const { user, token } = await createTestUser(prisma, module);
+    createdUserIds.push(user.id);
+
+    const monitor = await createMonitor(user.id);
+
+    const res = await request(app.getHttpServer())
+      .get(`/v1/monitors/${monitor.id}/redirect-chain-stats`)
+      .set('Authorization', `Bearer ${token}`)
+      .expect(200);
+
+    expect(res.body).toHaveProperty('hasRedirects');
+    expect(res.body).toHaveProperty('avgRedirects');
+    expect(res.body).toHaveProperty('maxRedirects');
+    expect(res.body).toHaveProperty('commonChains');
+    expect(Array.isArray(res.body.commonChains)).toBe(true);
+    // No runs → no redirects
+    expect(res.body.hasRedirects).toBe(false);
+    expect(res.body.avgRedirects).toBe(0);
+    expect(res.body.maxRedirects).toBe(0);
   });
 });

@@ -1,3 +1,14 @@
+## Status Summary (2026-04-03 18:30 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 4965 web + 689 integration + 114 CLI + 12 agent = **10,835 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-noon
+- **Last changes (18:30 UTC):**
+  - [x] **fix: route shadowing bug** — analytics/SLA/diagnostics/export/comparison controllers now registered BEFORE MonitorsController in app.module.ts; previously all static routes like /fleet-report, /trends, /correlation were shadowed by @Get(':id') and returning 404
+  - [x] **fix: monitors-sla.service uptimeCertificate throws NotFoundException** (was plain Error → 500; now 404)
+  - [x] **91 new integration tests** — feedback.integration.spec.ts (9), public-endpoints.integration.spec.ts (8), monitors-analytics.integration.spec.ts (43), monitors-sla.integration.spec.ts (31). Integration: 598→689, all passing.
+
+---
+
 ## Status Summary (2026-04-03 16:27 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 4965 web + 598 integration + 114 CLI + 12 agent = **10,744 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com

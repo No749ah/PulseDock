@@ -120,7 +120,7 @@ export default function FoldersPage() {
     setLoading(true);
     try {
       const tree = await api<FolderNode[]>('/v1/folders');
-      setFolders(flattenTree(tree));
+      setFolders(flattenTree(tree) as LocalFolderNode[]);
     } catch {
       router.push('/login');
     } finally {

@@ -76,7 +76,6 @@ function makeIncident(
     id: `inc-${_id}`,
     title: `Incident ${_id}`,
     description: null,
-    status: overrides.status,
     severity: overrides.severity ?? 'MEDIUM',
     autoCreated: false,
     rootCause: null,

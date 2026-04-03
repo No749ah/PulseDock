@@ -90,9 +90,11 @@ export class AdminController {
     if (id === req.user.id) throw new ForbiddenException('Cannot delete your own account via admin panel');
     const user = await this.prisma.user.findUnique({ where: { id } });
     if (!user) throw new NotFoundException('user not found');
+    // Audit BEFORE delete — AuditLog.targetUserId has a FK to User,
+    // so logging after deletion triggers a P2003 constraint violation.
+    await this.audit.log('admin.user.delete', req.user.id, null, { targetUserId: id, email: user.email });
     // Cascade: sessions, monitors, alerts, invites etc. handled by Prisma relations
     await this.prisma.user.delete({ where: { id } });
-    await this.audit.log('admin.user.delete', req.user.id, id, { email: user.email });
     return { ok: true };
   }
 

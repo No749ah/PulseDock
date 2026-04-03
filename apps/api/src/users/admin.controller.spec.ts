@@ -392,7 +392,7 @@ describe('AdminController', () => {
       const req = { user: { id: 'admin-1' } };
       const result = await controller.deleteUser(req as never, 'user-1');
       expect(result.ok).toBe(true);
-      expect(audit.log).toHaveBeenCalledWith('admin.user.delete', 'admin-1', 'user-1', expect.any(Object));
+      expect(audit.log).toHaveBeenCalledWith('admin.user.delete', 'admin-1', null, expect.objectContaining({ targetUserId: 'user-1' }));
     });
 
     it('throws ForbiddenException when deleting own account', async () => {

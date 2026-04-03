@@ -117,12 +117,15 @@ import { DependenciesService } from './dependencies/dependencies.service';
     MonitorsRunsController,
     MonitorsDetailsController,
     MonitorsStateController,
-    MonitorsController,
+    // Analytics/SLA/Diagnostics/Export/Comparison controllers MUST be registered
+    // before MonitorsController (which has @Get(':id')) to avoid route shadowing.
+    // NestJS resolves routes in registration order — static routes must come first.
     MonitorsAnalyticsController,
     MonitorsSlaController,
     MonitorsDiagnosticsController,
     MonitorsExportController,
     MonitorsComparisonController,
+    MonitorsController,
     MonitorsAlertsController,
     AlertsController,
     AlertRoutingController,

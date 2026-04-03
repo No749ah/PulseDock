@@ -159,7 +159,7 @@ describe('Dashboard (integration)', () => {
         userId: user.id,
         title: 'Test outage',
         status: 'INVESTIGATING',
-        severity: 'MAJOR',
+        severity: 'HIGH',
       },
     });
 
@@ -182,7 +182,7 @@ describe('Dashboard (integration)', () => {
         userId: user.id,
         title: 'Resolved outage',
         status: 'RESOLVED',
-        severity: 'MINOR',
+        severity: 'LOW',
       },
     });
 

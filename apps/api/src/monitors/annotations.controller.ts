@@ -59,16 +59,16 @@ export class AnnotationsController {
   @ApiParam({ name: 'id', description: 'Monitor ID' })
   @ApiResponse({ status: 200, description: 'Annotation list' })
   @ApiResponse({ status: 404, description: 'Monitor not found' })
-  async list(@Req() req: { user: { userId: string } }, @Param('id') monitorId: string) {
+  async list(@Req() req: { user: { id: string } }, @Param('id') monitorId: string) {
     // Verify ownership
     const monitor = await this.prisma.monitor.findFirst({
-      where: { id: monitorId, userId: req.user.userId },
+      where: { id: monitorId, userId: req.user.id },
       select: { id: true },
     });
     if (!monitor) return { error: 'Monitor not found', statusCode: 404 };
 
     const annotations = await this.prisma.monitorAnnotation.findMany({
-      where: { monitorId, userId: req.user.userId },
+      where: { monitorId, userId: req.user.id },
       orderBy: { annotatedAt: 'desc' },
     });
     return { annotations };
@@ -81,12 +81,12 @@ export class AnnotationsController {
   @ApiResponse({ status: 201, description: 'Annotation created' })
   @ApiResponse({ status: 404, description: 'Monitor not found' })
   async create(
-    @Req() req: { user: { userId: string } },
+    @Req() req: { user: { id: string } },
     @Param('id') monitorId: string,
     @Body() dto: CreateAnnotationDto,
   ) {
     const monitor = await this.prisma.monitor.findFirst({
-      where: { id: monitorId, userId: req.user.userId },
+      where: { id: monitorId, userId: req.user.id },
       select: { id: true },
     });
     if (!monitor) return { error: 'Monitor not found', statusCode: 404 };
@@ -94,7 +94,7 @@ export class AnnotationsController {
     const annotation = await this.prisma.monitorAnnotation.create({
       data: {
         monitorId,
-        userId: req.user.userId,
+        userId: req.user.id,
         text: dto.text,
         color: dto.color ?? 'blue',
         annotatedAt: new Date(dto.annotatedAt),
@@ -111,13 +111,13 @@ export class AnnotationsController {
   @ApiResponse({ status: 200, description: 'Annotation updated' })
   @ApiResponse({ status: 404, description: 'Annotation not found' })
   async update(
-    @Req() req: { user: { userId: string } },
+    @Req() req: { user: { id: string } },
     @Param('id') monitorId: string,
     @Param('annotationId') annotationId: string,
     @Body() dto: UpdateAnnotationDto,
   ) {
     const existing = await this.prisma.monitorAnnotation.findFirst({
-      where: { id: annotationId, monitorId, userId: req.user.userId },
+      where: { id: annotationId, monitorId, userId: req.user.id },
     });
     if (!existing) return { error: 'Annotation not found', statusCode: 404 };
 
@@ -141,12 +141,12 @@ export class AnnotationsController {
   @ApiResponse({ status: 204, description: 'Annotation deleted' })
   @ApiResponse({ status: 404, description: 'Annotation not found' })
   async remove(
-    @Req() req: { user: { userId: string } },
+    @Req() req: { user: { id: string } },
     @Param('id') monitorId: string,
     @Param('annotationId') annotationId: string,
   ) {
     const existing = await this.prisma.monitorAnnotation.findFirst({
-      where: { id: annotationId, monitorId, userId: req.user.userId },
+      where: { id: annotationId, monitorId, userId: req.user.id },
     });
     if (!existing) return;
 

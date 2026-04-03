@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Req, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Req, UnauthorizedException, UseGuards, HttpCode, HttpStatus } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { GrafanaService, TimeseriesResult, TableResult, AnnotationResult } from './grafana.service';
@@ -50,6 +50,7 @@ export class GrafanaController {
    * Supports optional query filter.
    */
   @Post('search')
+  @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Search available metrics',
@@ -66,6 +67,7 @@ export class GrafanaController {
    * Used by Grafana to populate panels.
    */
   @Post('query')
+  @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Query time-series or table data',
@@ -80,6 +82,7 @@ export class GrafanaController {
    * Returns annotation events (incidents, downtime) for Grafana timeline overlay.
    */
   @Post('annotations')
+  @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
   @ApiOperation({
     summary: 'Get annotation events',
@@ -94,6 +97,7 @@ export class GrafanaController {
    * Returns available tag keys for variable filtering.
    */
   @Post('tag-keys')
+  @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get tag keys for Grafana variable filtering.' })
   @ApiResponse({ status: 200, description: 'Tag keys returned.' })
@@ -109,6 +113,7 @@ export class GrafanaController {
    * Returns available tag values for a given tag key.
    */
   @Post('tag-values')
+  @HttpCode(HttpStatus.OK)
   @UseGuards(JwtAuthGuard)
   @ApiOperation({ summary: 'Get tag values for Grafana variable filtering.' })
   @ApiResponse({ status: 200, description: 'Tag values returned.' })

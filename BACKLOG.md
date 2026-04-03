@@ -7,6 +7,15 @@
 
 ---
 
+## Status Summary (2026-04-03 06:22 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 4442 web + 298 integration + 114 CLI + 12 agent = **9921 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-work
+- **Last changes (06:22 UTC):**
+  - [x] **21 new web unit tests — pure helper extraction across 4 files** — embed/[monitorId]/helpers.ts (statusColor/statusLabel/formatUptime/formatLatency, 4 tests); monitors/dependencies/helpers.ts (computeLayout 6 cases + statusColor/statusBg/statusTextClass, 9 tests); monitors/[id]/components/certificateHelpers.ts (formatPct/complianceColor/complianceLabel/PERIOD_OPTIONS, 4 tests); monitors/tags/helpers.ts (PRESET_COLORS/getTagMonitorCount, 4 tests). Web spec files: 194 → 198. Web tests: 4421 → 4442.
+
+---
+
 ## Status Summary (2026-04-03 05:25 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 4421 web + 298 integration + 114 CLI + 12 agent = **9900 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com

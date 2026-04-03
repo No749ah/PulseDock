@@ -16,6 +16,18 @@
 
 ---
 
+## Status Summary (2026-04-03 12:20 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 4957 web + 493 integration + 114 CLI + 12 agent = **10,631 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-noon
+- **Last changes (12:20 UTC):**
+  - [x] **fix(agent): missing redirectChain:[] in MonitorRun.create** — real production bug; POST /v1/agent/report was throwing P2011 null constraint violation every time it tried to write a MonitorRun record. Now fixed.
+  - [x] **fix(test): deleteUser audit assertion** — test expected old 3-arg signature; impl correctly uses null targetUserId + metadata object. Updated assertion.
+  - [x] **Branch management** — merged heartbeat/2026-04-03-work → dev, deleted old branch, created heartbeat/2026-04-03-noon
+  - [x] **33 new integration tests** — agent.integration.spec.ts (13: report via monitorId/toolId, v-prefix strip, hostname, auth, validation, user isolation, GET status); plan-feedback.integration.spec.ts (20: plan shape/usage/limits/check, feedback POST/GET, auth guards, truncation, admin vs user isolation). Integration: 460 → 493.
+
+---
+
 ## Status Summary (2026-04-03 11:28 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 4957 web + 460 integration + 114 CLI + 12 agent = **10598 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com

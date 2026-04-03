@@ -10,16 +10,12 @@ function makeMonitor(overrides: Partial<MonitorSummary> & { id: string }): Monit
     name: overrides.name ?? `Monitor ${overrides.id}`,
     type: overrides.type ?? 'HTTP',
     level: overrides.level ?? 'green',
-    status: overrides.status ?? 'up',
-    uptimePct: overrides.uptimePct ?? 99.9,
-    responseMs: overrides.responseMs ?? 100,
     lastChecked: overrides.lastChecked ?? null,
-    enabled: overrides.enabled ?? true,
+    latencyMs: overrides.latencyMs ?? null,
+    message: overrides.message ?? null,
     tags: overrides.tags ?? [],
     folderId: overrides.folderId ?? null,
-    message: overrides.message ?? null,
-    shareToken: overrides.shareToken ?? null,
-  } as MonitorSummary;
+  };
 }
 
 function makeWidget(config: Record<string, unknown> = {}): Widget {

@@ -205,4 +205,58 @@ describe('Monitor Details (integration)', () => {
       .set(auth())
       .expect(404);
   });
+
+  // ─── Security advisories ───────────────────────────────────────────────
+
+  it('GET security returns {supported, advisories} for own monitor', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/v1/monitors/${monitorId}/security`)
+      .set(auth())
+      .expect(200);
+
+    // HTTP monitors return supported:false (not a version monitor)
+    expect(res.body).toHaveProperty('supported');
+    expect(res.body).toHaveProperty('advisories');
+    expect(Array.isArray(res.body.advisories)).toBe(true);
+  });
+
+  it('GET security returns 404 for cross-user monitor', async () => {
+    await request(app.getHttpServer())
+      .get(`/v1/monitors/${monitorId}/security`)
+      .set(authB())
+      .expect(404);
+  });
+
+  it('GET security 404 for nonexistent monitor', async () => {
+    await request(app.getHttpServer())
+      .get('/v1/monitors/nonexistent-id/security')
+      .set(auth())
+      .expect(404);
+  });
+
+  // ─── Release notes ────────────────────────────────────────────────────
+
+  it('GET release-notes returns shape for own monitor', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/v1/monitors/${monitorId}/release-notes`)
+      .set(auth())
+      .expect(200);
+
+    // HTTP monitors have no release notes; still returns a valid object
+    expect(res.body).toBeDefined();
+  });
+
+  it('GET release-notes returns 404 for cross-user monitor', async () => {
+    await request(app.getHttpServer())
+      .get(`/v1/monitors/${monitorId}/release-notes`)
+      .set(authB())
+      .expect(404);
+  });
+
+  it('GET release-notes 404 for nonexistent monitor', async () => {
+    await request(app.getHttpServer())
+      .get('/v1/monitors/nonexistent-id/release-notes')
+      .set(auth())
+      .expect(404);
+  });
 });

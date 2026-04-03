@@ -1,3 +1,114 @@
+## Status Summary (2026-04-03 06:20 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 4600 web + 298 integration + 114 CLI + 12 agent = **10,079 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-work
+- **Last changes (06:20 UTC):**
+  - [x] **179 new web unit tests across 6 page spec files** — alerts/response-time/page (17: formatMs null/ms/s rounding, latencyColor 4-band, formatDate); alerts/history/page (32: relativeTime fake-timers 4 branches, channelTypeBadgeClass 12 types+fallback, filterDeliveries status+search+null+combined, computeSuccessRate rounding); monitors/security/page (37: gradeColor/gradeBg/gradeBadgeVariant A-F+null+unknown+case-insensitive, coveragePctColor/coverageBarColor 3-band parity, relativeTime just-now/min/hr/day); monitors/fleet/page (29: gradeCircleColor A-F+fallback, severityBadgeClass 3-level distinct, tierTotal/tierBarWidth, tierColorClass/tierTextColorClass 5-color parity, sparklineHeight/minHeight); monitors/correlation/page (26: similarityColor/Label/BarColor 4-band+cross-parity, similarityBarPct rounding); status/analytics/page (17: formatRelativeTime null/just-now/min/hr/day+capitalization, totalViews/publishedCount/mostViewed). Web tests: 4421 → 4600. Spec files: 191 → 197.
+
+---
+
+## Status Summary (2026-04-03 09:20 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 4738 web + 372 integration + 114 CLI + 12 agent = **10,291 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-work
+- **Last changes (09:20 UTC):**
+  - [x] **44 new integration tests — team & settings endpoints** — team.integration.spec.ts (26: auth guard GET/POST, empty lists, invite existing user → direct TeamMember, duplicate/self/OWNER-role rejection, role update, cross-user isolation on PATCH/DELETE, member removal, token-invite for unknown email, public preview route, invite cancellation); settings.integration.spec.ts (18: auth guard 4 endpoints, retention defaults, PUT 30/90 days + rollup toggle, invalid/missing retentionDays → 400, full user isolation, storage stats shape, workspace GET/PUT name+slug+website, name maxLength 400, cross-user isolation). Integration: 298 → 372.
+
+---
+
+## Status Summary (2026-04-03 11:28 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 4957 web + 460 integration + 114 CLI + 12 agent = **10598 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-work
+- **Last changes (11:28 UTC):**
+  - [x] **67 new web unit tests — widget helpers** — versionWidgetHelpers (parseVersionFromMessage 7t, classifyVersionDiff 8t); contentWidgetHelpers SOCIAL_CONFIG 8 platforms (19t); eventsTimelineHelpers EVENT_TYPE_COLORS (8t); openApiImportHelpers METHOD_COLORS 6 methods (9t); slaWidgetHelpers formatMinutes/computeBudgetUsed (16t). Web spec files: 215→220.
+  - [x] **~88 new integration tests** — admin, dependencies, service-groups integration suites (372→460). Fixed 2 test assertions (idempotent delete → 200; monitorRun.create missing fields).
+
+---
+
+## Status Summary (2026-04-03 09:33 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 4793 web + 372 integration + 114 CLI + 12 agent = **10346 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-work
+- **Last changes (09:33 UTC):**
+  - [x] **131 new tests — web helpers + API integration** — alertChannelsCardHelpers (12 web tests); deliveryHistoryHelpers (16 web tests); invite/[token]/helpers (10 web tests); projects/helpers flattenTree/uptimeBarColor/STATUS_LABELS (17 web tests); maintenance/sla/reports-digest/status-slug page specs (+new web); annotations.integration.spec.ts + escalation.integration.spec.ts (integration: 298→372 +74). Web spec files: 209→213. Web tests: 4738→ 4793. Total: 10346.
+
+---
+
+## Status Summary (2026-04-03 07:38 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 4469 web + 298 integration + 114 CLI + 12 agent = **9948 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-work
+- **Last changes (07:38 UTC):**
+  - [x] **27 new web unit tests — 4 helper modules extracted** — playgroundHelpers.ts (METHODS/statusColor/hasBody, 6 tests); incidents/playbooks/helpers.ts (SEVERITIES/severityColors/stepTypeColors, 4 tests); alerts/channels/helpers.ts (STATUS_LABELS/COLORS/BG/relativeTime, 8 tests); checkRunsHelpers.ts (buildTimingPhases/computeTotal/computeBarWidth, 9 tests). Web spec files: 198 → 202. Web tests: 4442 → 4469.
+
+---
+
+## Status Summary (2026-04-03 06:22 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 4442 web + 298 integration + 114 CLI + 12 agent = **9921 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-work
+- **Last changes (06:22 UTC):**
+  - [x] **21 new web unit tests — pure helper extraction across 4 files** — embed/[monitorId]/helpers.ts (statusColor/statusLabel/formatUptime/formatLatency, 4 tests); monitors/dependencies/helpers.ts (computeLayout 6 cases + statusColor/statusBg/statusTextClass, 9 tests); monitors/[id]/components/certificateHelpers.ts (formatPct/complianceColor/complianceLabel/PERIOD_OPTIONS, 4 tests); monitors/tags/helpers.ts (PRESET_COLORS/getTagMonitorCount, 4 tests). Web spec files: 194 → 198. Web tests: 4421 → 4442.
+
+---
+
+## Status Summary (2026-04-03 05:25 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 4421 web + 298 integration + 114 CLI + 12 agent = **9900 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-work
+- **Last changes (05:25 UTC):**
+  - [x] **166 new web unit tests across 6 spec files** — MonitorConfigCard/page (63: extractHost/Port all 12 monitor types, sslWarnDays, dnsTimeout/recordType, smtpTimeout/starttls, ping loss label, browser codes/timeout, http status array join, ftp/imap/pop3 tls labels, heartbeat token/timeout); AdvancedSettingsCard/page (60: hasSettings 20-branch guard incl. null/0/empty edge cases, businessHoursLabel/DaysLabel all-days/defaults/custom, anomalyMultiplierLabel decimal/null, autoIncidentSeverityLabel 5 severities, confirmations/retry/latency labels); DependenciesCard/page (15: getSelectableMonitors excludes self+existing+disabled, isAddButtonDisabled edge cases); AlertPanel (22: getRepeatInterval 6-case priority chain, getUnassigned/AvailableChannels immutability+ordering); AlertChannelPanel/versions (26: getAvailableChannels, CHANNEL_TYPE_COLORS structure, VERSION_NOTIFY_OPTIONS); BackupRestoreCard (30: filename generation, ISO date slice, totalCreated/Skipped, visibleErrors slice-5, overflowCount, hasErrors). Web tests: 4255 → 4421. Spec files: 185 → 191.
+
+---
+
+## Status Summary (2026-04-03 04:17 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 4255 web + 298 integration + 114 CLI + 12 agent = **9734 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-work
+- **Last changes (04:17 UTC):**
+  - [x] **274 new web unit tests across 8 monitor page spec files** — live/page (fmtLatency/fmtSize/fmtAge fake-timers, LEVEL_CONFIG 3-level, levelLabel); downtime-cost/page (formatMinutes, formatUsd, costColor 5-band, costBadgeClass, findWorstMonitor semantics); interval-optimizer/page (formatInterval null/s/m/h, REC_CONFIG 4-type structure, filterMonitors variants); timeline/page (levelColor/levelLabel, uptimeColor thresholds, HOUR_OPTIONS sorted, computeSegmentWidthPct full/half/clipped); services/page (STATUS_MAP 4-status fallback, levelDotClass null/unknown, filterMonitorsBySearch case-insensitive); latency-heatmap/page (GRADE_COLORS/GRADE_TEXT_COLORS 5-grade A-F parity, formatDate/formatMs, computeLabelInterval 4-band); coverage/page (coverageBarColor/scoreBadgeVariant breakpoints, computeStatPct rounding, countGaps); compare/page (MONITOR_COLORS hex/distinct, DAYS_OPTIONS ascending, statusDotColor, interpLabels +/−, correlationBadgeColor 5-band); timing-breakdown/page (PHASE_CONFIG 5-phase color parity, formatMs, computeWaterfallPct min-1, sumPhases null-as-zero). Web: 3981 → 4255. Spec files: 176 → 185.
+
+---
+
+## Status Summary (2026-04-03 03:15 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 3981 web + 298 integration + 114 CLI + 12 agent = **9460 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 11 pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-work
+- **Last changes (03:15 UTC):**
+  - [x] **165 new web unit tests across 7 page spec files** — alerts/noise/page (12: noiseScoreConfig 4-band severity palette, unique labels+classes); alerts/analytics/page (17: formatDate UTC 8 cases, successRateColor 3-band, reliabilityBarColor 3-band); monitors/anomaly/page (34: SEVERITY_CONFIG 4-level, ANOMALY_TYPE_LABELS 7-entry, formatHours 3 periods, uptimeColor+latencyColor null/boundary); monitors/health-scores/page (28: GRADE_COLORS/GRADE_BAR 5-grade structure, scoreToGrade A–F threshold ladder); monitors/latency-bench/page (28: GRADE_COLORS emerald/blue variant, GRADE_BAR_COLORS, GRADE_LABELS range strings, fmtMs null/ms/s precision); monitors/schedule/page (34: fmtInterval s/m/h/d rounding, fmtCountdown null/Now/negative/m+s branches, heatBarColor 4-band); alerts/routing/page (12: MONITOR_TYPES 14 entries, ALERT_LEVELS 3 entries, toggle semantics). Web tests: 3816 → 3981. Spec files: 169 → 176.
+
+---
+
+## Status Summary (2026-04-03 02:17 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 3816 web + 298 integration + 114 CLI + 12 agent = **9295 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 11 pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-work
+- **Last changes (02:17 UTC):**
+  - [x] **Fix 2 web TypeScript strict errors** — `route.spec.ts`: `unknown` cast on fetchMock call assertion (TS2352); `useIncidents.spec.ts`: remove duplicate `status` property overwritten by spread (TS2783). Both `tsc --noEmit` clean.
+  - [x] **19 playbooks integration tests** — CRUD lifecycle, step validation (empty steps → 400), user isolation (B can't see/update/delete A's playbooks → 404), monitor attach/detach, incident playbook retrieval (source: none), auth guard (401/403). Integration: 279 → 298.
+
+---
+
+## Status Summary (2026-04-03 01:11 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 3816 web + 279 integration + 114 CLI + 12 agent = **9276 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 11 pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-work
+- **Last changes (01:11 UTC):**
+  - [x] **164 new web unit tests across 7 new page spec files** — reliability/page (28: scoreColor/scoreTextColor 5-band thresholds, formatWeek UTC zero-pad); heatmap/page (25: cellColor 6-band uptime thresholds, formatDate/formatShortDate, overallUptime aggregation+null); tag-analytics/page (21: healthColor/healthBg 3 statuses, uptimeColor boundary, formatLatency ms/s/null); predictions/page (27: riskColor/riskTextColor/fleetRiskColor 4-band risk, verified fleetRiskColor==riskTextColor); incidents/insights/page (17: formatMinutes all branches, formatWeek); versions/drift/page (19: KIND_CONFIG 5-kind structure+labels+colors, formatRelativeTime with fake timers); monitors/trends/page (27: deltaColorClass invertColors, uptimePctColorClass/latencyColorClass 3-band, formatDelta sign-strip). Web tests: 3652 → 3816. Spec files: 162 → 169.
+
+---
+
+## Status Summary (2026-04-03 00:24 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 3652 web + 279 integration + 114 CLI + 12 agent = **9112 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 11 pages 200 locally + https://oc-dev-test.no749ah.com
+- **Branch:** heartbeat/2026-04-03-work
+- **Last changes (00:24 UTC):**
+  - [x] **Branch management** — merged heartbeat/2026-04-03-midnight → dev, deleted old branch, created heartbeat/2026-04-03-work
+  - [x] **44 new integration tests across 2 new spec files** — tags.integration.spec.ts (18: CRUD lifecycle, alphabetical ordering, monitorCount field, duplicate-name rejection 409, auth guard 401, cross-user isolation update/delete 404/403, same name allowed for different users); alert-routing.integration.spec.ts (26: full CRUD lifecycle, toggle enabled/disabled, reorder with priority assignment, user isolation 403, cross-user reorder rejection, simulate endpoint — no rules→fallback, catch-all match, level mismatch, monitor-id match, invalid level 400, nonexistent monitor 404, empty channelIds validation 400). Integration: 235 → 279.
+
+---
+
 ## Status Summary (2026-04-02 23:18 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 3652 web + 235 integration + 114 CLI + 12 agent = **9068 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all 11 pages 200 locally + https://oc-dev-test.no749ah.com

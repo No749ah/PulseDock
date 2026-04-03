@@ -9,6 +9,7 @@ export const dynamic = 'force-dynamic';
 
 import type { Metadata } from 'next';
 import { brand } from '../../../lib/brand';
+import { formatLatency, formatUptime, statusColor, statusLabel, type EmbedStatus } from './helpers';
 
 export const metadata: Metadata = {
   robots: 'noindex, nofollow',
@@ -22,7 +23,7 @@ const API_BASE =
 interface EmbedData {
   monitorId: string;
   name: string;
-  status: 'up' | 'down' | 'degraded' | 'paused';
+  status: EmbedStatus;
   uptimePct: number;
   responseMs: number | null;
   lastChecked: string | null;
@@ -48,34 +49,6 @@ async function fetchEmbedData(monitorId: string): Promise<EmbedData | null> {
   }
 }
 
-function statusColor(status: EmbedData['status']): string {
-  switch (status) {
-    case 'up': return '#3fb950';
-    case 'degraded': return '#d29922';
-    case 'down': return '#f85149';
-    case 'paused': return '#9ca3af';
-    default: return '#9ca3af';
-  }
-}
-
-function statusLabel(status: EmbedData['status']): string {
-  switch (status) {
-    case 'up': return 'Operational';
-    case 'degraded': return 'Degraded';
-    case 'down': return 'Down';
-    case 'paused': return 'Paused';
-    default: return 'Unknown';
-  }
-}
-
-function formatUptime(pct: number): string {
-  return `${pct.toFixed(2)}%`;
-}
-
-function formatLatency(ms: number | null): string {
-  if (ms === null) return '—';
-  return ms < 1000 ? `${ms}ms` : `${(ms / 1000).toFixed(1)}s`;
-}
 
 export default async function EmbedPage({ params, searchParams }: Props) {
   const { monitorId } = await params;

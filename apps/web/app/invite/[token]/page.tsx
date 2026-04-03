@@ -6,6 +6,7 @@ import Link from "next/link";
 import { api } from "../../../lib/api";
 import { Monitor, Users, CheckCircle, AlertCircle, Loader2, Shield } from "lucide-react";
 import { brand } from "../../../lib/brand";
+import { ROLE_COLORS, ROLE_DESC } from "./helpers";
 
 type InviteInfo = {
   invite: {
@@ -21,20 +22,6 @@ type InviteInfo = {
 };
 
 type PageState = "loading" | "preview" | "accepting" | "accepted" | "error";
-
-const ROLE_COLORS: Record<string, string> = {
-  OWNER: "text-yellow-400 bg-yellow-400/10 border-yellow-400/20",
-  ADMIN: "text-purple-400 bg-purple-400/10 border-purple-400/20",
-  EDITOR: "text-blue-400 bg-blue-400/10 border-blue-400/20",
-  VIEWER: "text-slate-400 bg-slate-400/10 border-slate-400/20",
-};
-
-const ROLE_DESC: Record<string, string> = {
-  OWNER: "Full control of the workspace",
-  ADMIN: "Manage monitors, alerts, and team members",
-  EDITOR: "Create and edit monitors and status pages",
-  VIEWER: "Read-only access to monitors and dashboards",
-};
 
 export default function InvitePage() {
   const { token } = useParams<{ token: string }>();

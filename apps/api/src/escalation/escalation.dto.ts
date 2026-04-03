@@ -1,9 +1,11 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsNotEmpty, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsInt, IsNotEmpty, IsOptional, IsString, Min, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class EscalationStepDto {
   @ApiProperty({ description: 'Minutes after alert fires before this step triggers', example: 5 })
+  @IsInt()
+  @Min(0)
   delayMinutes!: number;
 
   @ApiProperty({ description: 'Alert channel ID to notify at this step', example: 'clxxxx' })

@@ -32,7 +32,7 @@ describe('api proxy route', () => {
     const res = await mod.GET(req, { params: Promise.resolve({ path: ['v1', 'health'] }) });
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
-    const [url, init] = fetchMock.mock.calls[0] as [string, RequestInit];
+    const [url, init] = fetchMock.mock.calls[0] as unknown as [string, RequestInit];
     expect(url).toBe('http://localhost:4321/v1/health?full=1');
     expect(init.method).toBe('GET');
     const headers = init.headers as Headers;

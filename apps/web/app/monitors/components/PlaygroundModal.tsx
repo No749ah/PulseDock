@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { Button } from "../../components/Button";
 import { api } from "../../../lib/api";
+import { METHODS, statusColor, hasBody as methodHasBody } from "./playgroundHelpers";
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -71,10 +72,6 @@ interface PlaygroundModalProps {
   }) => void;
 }
 
-// ─── HTTP Methods ────────────────────────────────────────────────────────────
-
-const METHODS = ["GET", "POST", "PUT", "DELETE", "PATCH"] as const;
-
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function PlaygroundModal({ onClose, onCreateMonitor }: PlaygroundModalProps) {
@@ -98,7 +95,7 @@ export function PlaygroundModal({ onClose, onCreateMonitor }: PlaygroundModalPro
   const [result, setResult] = useState<PlaygroundResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const hasBody = ["POST", "PUT", "PATCH"].includes(method);
+  const hasBody = methodHasBody(method);
 
   const handleRun = async () => {
     if (!url.trim() || running) return;
@@ -155,14 +152,6 @@ export function PlaygroundModal({ onClose, onCreateMonitor }: PlaygroundModalPro
       bodyJsonPath: jsonPath.trim() || undefined,
       bodyJsonPathExpected: jsonPathExpected.trim() || undefined,
     });
-  };
-
-  // ─── Rendering helpers ─────────────────────────────────────────────────────
-
-  const statusColor = (code: number) => {
-    if (code >= 200 && code < 300) return "bg-emerald-500/20 text-emerald-400 border-emerald-500/30";
-    if (code >= 300 && code < 400) return "bg-amber-500/20 text-amber-400 border-amber-500/30";
-    return "bg-red-500/20 text-red-400 border-red-500/30";
   };
 
   const hasAssertions = result && (result.assertions.statusOk !== undefined || result.assertions.bodyContainsOk !== undefined || result.assertions.bodyJsonPathOk !== undefined);

@@ -31,6 +31,7 @@ import { getUser } from '../../components/auth';
 import { api } from '../../lib/api';
 import Link from 'next/link';
 import { useToast } from '../../components/ui/toast';
+import { flattenTree, uptimeBarColor, STATUS_LABELS, type OverallStatus, type FolderNode } from './helpers';
 
 type FolderStats = {
   totalMonitors: number;
@@ -42,44 +43,29 @@ type FolderStats = {
   overallStatus: 'operational' | 'degraded' | 'outage' | 'empty';
 };
 
-type FolderNode = {
-  id: string;
+type LocalFolderNode = FolderNode & {
   parentId: string | null;
-  name: string;
   position: number;
   createdAt: string;
   depth: number;
   path: string[];
   stats?: FolderStats;
-  children: FolderNode[];
 };
 
-/** Flatten tree to list with depth for table/grid rendering */
-function flattenTree(nodes: FolderNode[]): FolderNode[] {
-  const result: FolderNode[] = [];
-  const walk = (items: FolderNode[]) => {
-    for (const n of items) {
-      result.push(n);
-      walk(n.children);
-    }
-  };
-  walk(nodes);
-  return result;
-}
-
-type Folder = FolderNode;
+type Folder = LocalFolderNode;
 
 const inputClass =
   'w-full px-4 py-3 bg-surface border border-border rounded-lg text-text-primary placeholder-text-secondary focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent';
 
 function StatusBadge({ status }: { status: FolderStats['overallStatus'] }) {
-  const map: Record<FolderStats['overallStatus'], { label: string; cls: string; Icon: typeof CheckCircle2 }> = {
-    operational: { label: 'Operational', cls: 'bg-success/15 text-success border border-success/30', Icon: CheckCircle2 },
-    degraded: { label: 'Degraded', cls: 'bg-warning/15 text-warning border border-warning/30', Icon: AlertTriangle },
-    outage: { label: 'Outage', cls: 'bg-danger/15 text-danger border border-danger/30', Icon: XCircle },
-    empty: { label: 'No monitors', cls: 'bg-surface-elevated text-text-secondary border border-border', Icon: Activity },
+  const map: Record<OverallStatus, { cls: string; Icon: typeof CheckCircle2 }> = {
+    operational: { cls: 'bg-success/15 text-success border border-success/30', Icon: CheckCircle2 },
+    degraded: { cls: 'bg-warning/15 text-warning border border-warning/30', Icon: AlertTriangle },
+    outage: { cls: 'bg-danger/15 text-danger border border-danger/30', Icon: XCircle },
+    empty: { cls: 'bg-surface-elevated text-text-secondary border border-border', Icon: Activity },
   };
-  const { label, cls, Icon } = map[status];
+  const { cls, Icon } = map[status];
+  const label = STATUS_LABELS[status];
   return (
     <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold ${cls}`}>
       <Icon className="w-3 h-3" />
@@ -90,7 +76,7 @@ function StatusBadge({ status }: { status: FolderStats['overallStatus'] }) {
 
 function UptimeBar({ pct }: { pct: number | null }) {
   if (pct === null) return <span className="text-xs text-text-secondary">—</span>;
-  const color = pct >= 99 ? 'bg-success' : pct >= 95 ? 'bg-warning' : 'bg-danger';
+  const color = uptimeBarColor(pct);
   return (
     <div className="flex items-center gap-2">
       <div className="flex-1 h-1.5 rounded-full bg-surface-elevated overflow-hidden max-w-[80px]">

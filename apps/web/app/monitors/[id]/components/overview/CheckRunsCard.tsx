@@ -8,24 +8,16 @@ import { Table, TableHead, TableBody, TableRow, TableHeader, TableCell } from ".
 import { relativeTime } from "../../../../components/timeUtils";
 import type { MonitorItem, MonitorRun, RunTimings } from "../types";
 import nextDynamic from "next/dynamic";
+import { buildTimingPhases, computeTotal, computeBarWidth } from "./checkRunsHelpers";
 
 const ResponseBodyViewer = nextDynamic(
   () => import("../ResponseBodyViewer").then((m) => ({ default: m.ResponseBodyViewer })),
   { ssr: false }
 );
 
-// ── Timing Waterfall ─────────────────────────────────────────────────────────
-interface TimingPhase { label: string; value: number | null; color: string; }
-
 function TimingWaterfall({ timings, totalMs }: { timings: RunTimings; totalMs: number | null }) {
-  const phases: TimingPhase[] = [
-    { label: "DNS", value: timings.dnsMs, color: "bg-blue-500" },
-    { label: "TCP", value: timings.tcpMs, color: "bg-green-500" },
-    { label: "TLS", value: timings.tlsMs, color: "bg-purple-500" },
-    { label: "TTFB", value: timings.ttfbMs, color: "bg-orange-500" },
-    { label: "Download", value: timings.downloadMs, color: "bg-cyan-500" },
-  ];
-  const total = totalMs ?? phases.reduce((sum, p) => sum + (p.value ?? 0), 0);
+  const phases = buildTimingPhases(timings);
+  const total = computeTotal(phases, totalMs);
   const maxMs = Math.max(...phases.map((p) => p.value ?? 0), 1);
   return (
     <div className="my-2 p-3 rounded-lg bg-surface-elevated border border-border text-xs">
@@ -38,7 +30,7 @@ function TimingWaterfall({ timings, totalMs }: { timings: RunTimings; totalMs: n
               {phase.value !== null ? (
                 <>
                   <div className="flex-1 bg-surface rounded-full h-2 overflow-hidden">
-                    <div className={`${phase.color} h-2 rounded-full transition-all`} style={{ width: `${Math.max(2, (phase.value / maxMs) * 100)}%` }} />
+                    <div className={`${phase.color} h-2 rounded-full transition-all`} style={{ width: `${computeBarWidth(phase.value, maxMs)}%` }} />
                   </div>
                   <span className="text-text-primary font-mono w-14 text-right shrink-0">{phase.value}ms</span>
                 </>

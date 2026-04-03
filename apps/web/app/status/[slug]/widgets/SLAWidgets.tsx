@@ -9,6 +9,7 @@ import {
   TrendArrow,
   WidgetCard,
 } from "./shared";
+import { formatMinutes, computeBudgetUsed } from "./slaWidgetHelpers";
 
 export function SLASummary({ widget, monitors, extra }: WidgetProps) {
   if (isNoConfig(extra.widgetDataById[widget.id])) return <NoConfigPlaceholder label="SLA Summary" />; 
@@ -38,18 +39,8 @@ export function SLASummary({ widget, monitors, extra }: WidgetProps) {
   const allowedDownMin = widgetData?.allowedDownMinutes ?? null;
 
 
-  function formatMinutes(min: number): string {
-    if (min < 1) return `${Math.round(min * 60)}s`;
-    if (min < 60) return `${Math.round(min)}m`;
-    const h = Math.floor(min / 60);
-    const m = Math.round(min % 60);
-    return m > 0 ? `${h}h ${m}m` : `${h}h`;
-  }
-
   // Progress bar: how much of the allowed downtime budget is used
-  const budgetUsed = allowedDownMin !== null && remainingDownMin !== null && allowedDownMin > 0
-    ? Math.min(100, Math.round(((allowedDownMin - remainingDownMin) / allowedDownMin) * 100))
-    : null;
+  const budgetUsed = computeBudgetUsed(allowedDownMin, remainingDownMin);
 
   return (
     <div className="rounded-xl border border-border bg-surface p-4">

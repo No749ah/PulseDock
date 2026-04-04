@@ -58,6 +58,7 @@ import { V2AlertsController } from './v2/alerts/alerts.controller';
 import { V2ChecksController } from './v2/checks/checks.controller';
 import { V2IncidentsController } from './v2/incidents/incidents.controller';
 import { V2DeploymentsController } from './v2/deployments/deployments.controller';
+import { V2StatusPagesController } from './v2/status-pages/status-pages.controller';
 import { TagsController } from './tags/tags.controller';
 import { ToolRegistryController } from './tool-registry/tool-registry.controller';
 import { TagsService } from './tags/tags.service';
@@ -145,6 +146,7 @@ import { DependenciesService } from './dependencies/dependencies.service';
     V2ChecksController,
     V2IncidentsController,
     V2DeploymentsController,
+    V2StatusPagesController,
     TagsController,
     ToolRegistryController,
     NotificationsController,

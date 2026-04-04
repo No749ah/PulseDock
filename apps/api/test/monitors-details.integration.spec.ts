@@ -259,4 +259,136 @@ describe('Monitor Details (integration)', () => {
       .set(auth())
       .expect(404);
   });
+
+  // ─── Dependencies ─────────────────────────────────────────────────────
+
+  it('GET dependencies returns empty array initially', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/v1/monitors/${monitorId}/dependencies`)
+      .set(auth())
+      .expect(200);
+
+    expect(Array.isArray(res.body)).toBe(true);
+  });
+
+  it('POST dependency adds a dependsOn link', async () => {
+    // Create a second monitor to depend on
+    const depRes = await request(app.getHttpServer())
+      .post('/v1/monitors')
+      .set(auth())
+      .send({
+        name: 'Dep Monitor',
+        type: 'HTTP',
+        target: 'https://dep.example.com',
+        intervalSec: 60,
+        timeoutMs: 5000,
+      })
+      .expect(201);
+    const depId = depRes.body.id;
+
+    const addRes = await request(app.getHttpServer())
+      .post(`/v1/monitors/${monitorId}/dependencies/${depId}`)
+      .set(auth());
+    expect([200, 201]).toContain(addRes.status);
+
+    const listRes = await request(app.getHttpServer())
+      .get(`/v1/monitors/${monitorId}/dependencies`)
+      .set(auth())
+      .expect(200);
+
+    const ids = listRes.body.map((d: { id: string }) => d.id);
+    expect(ids).toContain(depId);
+  });
+
+  it('DELETE dependency removes the link', async () => {
+    // Create a fresh monitor pair
+    const depRes = await request(app.getHttpServer())
+      .post('/v1/monitors')
+      .set(auth())
+      .send({
+        name: 'Dep Monitor Delete',
+        type: 'HTTP',
+        target: 'https://dep2.example.com',
+        intervalSec: 60,
+        timeoutMs: 5000,
+      })
+      .expect(201);
+    const depId = depRes.body.id;
+
+    const addRes2 = await request(app.getHttpServer())
+      .post(`/v1/monitors/${monitorId}/dependencies/${depId}`)
+      .set(auth());
+    expect([200, 201]).toContain(addRes2.status);
+
+    await request(app.getHttpServer())
+      .delete(`/v1/monitors/${monitorId}/dependencies/${depId}`)
+      .set(auth())
+      .expect(200);
+
+    const listRes = await request(app.getHttpServer())
+      .get(`/v1/monitors/${monitorId}/dependencies`)
+      .set(auth())
+      .expect(200);
+
+    const ids = listRes.body.map((d: { id: string }) => d.id);
+    expect(ids).not.toContain(depId);
+  });
+
+  it('GET dependencies returns 404 for cross-user monitor', async () => {
+    await request(app.getHttpServer())
+      .get(`/v1/monitors/${monitorId}/dependencies`)
+      .set(authB())
+      .expect(404);
+  });
+
+  it('GET dependencies requires auth', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/v1/monitors/${monitorId}/dependencies`);
+    expect([401, 403]).toContain(res.status);
+  });
+
+  // ─── Certificate ──────────────────────────────────────────────────────
+
+  it('GET certificate returns cert data for SSL monitor', async () => {
+    const sslRes = await request(app.getHttpServer())
+      .post('/v1/monitors')
+      .set(auth())
+      .send({
+        name: 'SSL Test Monitor',
+        type: 'SSL_CERT',
+        target: 'https://example.com',
+        intervalSec: 3600,
+        timeoutMs: 10000,
+      })
+      .expect(201);
+    const sslId = sslRes.body.id;
+
+    const res = await request(app.getHttpServer())
+      .get(`/v1/monitors/${sslId}/certificate`)
+      .set(auth())
+      .expect(200);
+
+    // Certificate endpoint returns { supported, ... }
+    expect(res.body).toHaveProperty('supported');
+  });
+
+  it('GET certificate returns 404 for cross-user monitor', async () => {
+    await request(app.getHttpServer())
+      .get(`/v1/monitors/${monitorId}/certificate`)
+      .set(authB())
+      .expect(404);
+  });
+
+  it('GET certificate requires auth', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/v1/monitors/${monitorId}/certificate`);
+    expect([401, 403]).toContain(res.status);
+  });
+
+  it('GET certificate returns 404 for nonexistent monitor', async () => {
+    await request(app.getHttpServer())
+      .get('/v1/monitors/nonexistent-id/certificate')
+      .set(auth())
+      .expect(404);
+  });
 });

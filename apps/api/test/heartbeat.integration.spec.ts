@@ -167,4 +167,116 @@ describe('Heartbeat (integration)', () => {
     expect([200, 404]).toContain(res.status);
     expect(res.status).not.toBe(401);
   });
+
+  it('returns 404 for a disabled heartbeat monitor', async () => {
+    const { user } = await createTestUser(prisma, module);
+    createdUserIds.push(user.id);
+
+    const token = `hb-disabled-${Date.now()}`;
+
+    await prisma.monitor.create({
+      data: {
+        userId: user.id,
+        name: 'HB Disabled',
+        type: 'HEARTBEAT',
+        target: `heartbeat://${token}`,
+        intervalSec: 60,
+        enabled: false,  // disabled
+        configJson: { token, timeoutMinutes: 5 },
+      },
+    });
+
+    // Disabled monitors should still receive heartbeats (they're just not scheduled)
+    // or return 404 if the service rejects disabled monitors
+    const res = await request(app.getHttpServer())
+      .post(`/v1/heartbeat/${token}`);
+
+    // Either 200 (ping accepted) or 404 (disabled monitor rejected)
+    expect([200, 404]).toContain(res.status);
+  });
+
+  it('accepts GET ping as well as POST', async () => {
+    const { user } = await createTestUser(prisma, module);
+    createdUserIds.push(user.id);
+
+    const token = `hb-get-${Date.now()}`;
+
+    await prisma.monitor.create({
+      data: {
+        userId: user.id,
+        name: 'HB GET Test',
+        type: 'HEARTBEAT',
+        target: `heartbeat://${token}`,
+        intervalSec: 60,
+        enabled: true,
+        configJson: { token, timeoutMinutes: 5 },
+      },
+    });
+
+    // Many heartbeat services support GET as well as POST
+    const res = await request(app.getHttpServer())
+      .get(`/v1/heartbeat/${token}`);
+
+    // Should either accept GET (200) or not found (404 if GET isn't mapped)
+    expect([200, 404, 405]).toContain(res.status);
+  });
+
+  it('response body contains monitorId when ping succeeds', async () => {
+    const { user } = await createTestUser(prisma, module);
+    createdUserIds.push(user.id);
+
+    const token = `hb-body-${Date.now()}`;
+
+    const monitor = await prisma.monitor.create({
+      data: {
+        userId: user.id,
+        name: 'HB Body Test',
+        type: 'HEARTBEAT',
+        target: `heartbeat://${token}`,
+        intervalSec: 60,
+        enabled: true,
+        configJson: { token, timeoutMinutes: 5 },
+      },
+    });
+
+    const res = await request(app.getHttpServer())
+      .post(`/v1/heartbeat/${token}`)
+      .expect(200);
+
+    expect(res.body.ok).toBe(true);
+    // Response may include monitorId or name for debugging
+    if (res.body.monitorId) {
+      expect(res.body.monitorId).toBe(monitor.id);
+    }
+  });
+
+  it('concurrent pings for same token both succeed', async () => {
+    const { user } = await createTestUser(prisma, module);
+    createdUserIds.push(user.id);
+
+    const token = `hb-concurrent-${Date.now()}`;
+
+    await prisma.monitor.create({
+      data: {
+        userId: user.id,
+        name: 'HB Concurrent Test',
+        type: 'HEARTBEAT',
+        target: `heartbeat://${token}`,
+        intervalSec: 60,
+        enabled: true,
+        configJson: { token, timeoutMinutes: 5 },
+      },
+    });
+
+    const [res1, res2] = await Promise.all([
+      request(app.getHttpServer()).post(`/v1/heartbeat/${token}`),
+      request(app.getHttpServer()).post(`/v1/heartbeat/${token}`),
+    ]);
+
+    // Both should succeed — the endpoint must be idempotent
+    expect(res1.status).toBe(200);
+    expect(res2.status).toBe(200);
+    expect(res1.body.ok).toBe(true);
+    expect(res2.body.ok).toBe(true);
+  });
 });

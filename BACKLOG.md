@@ -1,3 +1,14 @@
+## Status Summary (2026-04-04 12:15 UTC)
+- **Build/Test:** ✅ Build clean; 5161 API + 5679 web + 1032 integration + 114 CLI + 12 agent = **11,998 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 local + public `https://oc-dev-test.no749ah.com`
+- **Branch:** heartbeat/2026-04-04-noon (merged heartbeat/2026-04-04-night → dev, deleted old branch)
+- **Last changes (12:15 UTC):**
+  - [x] **feat(api): v2/folders endpoint** — GET /v2/folders: flat paginated folders with depth, path (ancestor names), monitorCount, stats (healthy/degraded/down/overallStatus). Filters: parentId ('root' for top-level, id for children), search. Sorts: name/createdAt/position/monitorCount (in-memory for monitorCount sort). 30 unit tests.
+  - [x] **test(api): 31 v2/folders integration tests** — auth guard, envelope shape, meta, user isolation, depth/path for root/child/grandchild, parentId filter, search (case-insensitive, no-match), all sort combos, pagination, monitorCount, overallStatus, invalid params → 400. Integration: 1001 → 1032.
+  - [x] **Branch management** — merged heartbeat/2026-04-04-night → dev, deleted old branch, created heartbeat/2026-04-04-noon
+
+---
+
 ## Status Summary (2026-04-04 07:20 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 5679 web + 951 integration + 114 CLI + 12 agent = **11,811 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all pages 200 local + public `https://oc-dev-test.no749ah.com`

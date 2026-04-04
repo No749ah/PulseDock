@@ -5,7 +5,7 @@
   <p>
     <a href="https://github.com/No749ah/PulseDock/actions"><img src="https://github.com/No749ah/PulseDock/actions/workflows/ci.yml/badge.svg" alt="CI" /></a>
     <a href="https://github.com/No749ah/PulseDock/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-MIT-blue.svg" alt="License: MIT" /></a>
-    <img src="https://img.shields.io/badge/tests-11%2C000%2B%20passing-brightgreen" alt="Tests: 11,000+ passing" />
+    <img src="https://img.shields.io/badge/tests-11%2C300%2B%20passing-brightgreen" alt="Tests: 11,300+ passing" />
     <img src="https://img.shields.io/badge/tools-5000%2B-orange" alt="5000+ tools" />
     <img src="https://img.shields.io/badge/self--hosted-free%20forever-success" alt="Self-hosted" />
     <img src="https://img.shields.io/badge/TypeScript-strict-blue" alt="TypeScript strict" />
@@ -165,7 +165,7 @@ npm run restart           # Restart both services (API → Web)
 
 # Build & Test
 npm run build             # Build everything (web + api + cli + extension)
-npm run test              # Run all tests (11,000+ tests)
+npm run test              # Run all tests (11,300+ tests)
 npm audit                 # Security vulnerability check
 
 # Database
@@ -223,7 +223,7 @@ git commit -m "feat: add your feature"
 
 ## Testing
 
-PulseDock has **11,000+ tests** across the full stack:
+PulseDock has **11,300+ tests** across the full stack:
 
 ```bash
 npm run test                        # All tests
@@ -231,7 +231,7 @@ npm run test -w @pulsedock/api      # API unit tests (5055+ tests)
 npm run test -w @pulsedock/web      # Web unit tests (5006+ tests)
 npm run test -w @pulsedock/agent    # Agent tests only
 npm run test -w @pulsedock/cli      # CLI tests only
-npm run test:integration            # Integration tests against real DB (870+ tests)
+npm run test:integration            # Integration tests against real DB (888+ tests)
 ```
 
 Coverage: 480+ test files, TypeScript strict mode throughout, zero `any` types.

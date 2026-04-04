@@ -7,12 +7,13 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ---
 
-## [Unreleased] — 2026-04-04
+## [1.7.0] — 2026-04-04
 
 ### Added
-- **Comprehensive Integration Test Suite** — 870+ real-database integration tests across 48 spec files covering every API module: auth, monitors (CRUD/state/runs/analytics/SLA/diagnostics/comparison/export/alerts/details), alerts (channels/analytics/routing), incidents, teams, organizations, settings, status pages, tools, versions, admin, grafana, heartbeat, agent, webhooks, escalation, playbooks, maintenance, deployments, folders, tags, annotations, notifications, search, reports, plan, service groups, dependencies, and more.
+- **Comprehensive Integration Test Suite** — 888+ real-database integration tests across 49 spec files covering every API module: auth, monitors (CRUD/state/runs/analytics/SLA/diagnostics/comparison/export/alerts/details), alerts (channels/analytics/routing/actions), incidents, teams, organizations, settings, status pages, tools, versions, admin, grafana, heartbeat, agent, webhooks, escalation, playbooks, maintenance, deployments, folders, tags, annotations, notifications, search, reports, plan, service groups, dependencies, and more.
 - **V2 API Hardened** — Paginated list endpoints for monitors, alert channels, and checks with filtering, sorting, and search. Secret redaction on all webhook/bot token fields. Cross-user isolation verified in integration.
 - **System & Health Integration Tests** — `/health`, `/health/live`, `/health/ready`, `/metrics`, `/v2/system/info`, `/v2/system/versions`.
+- **Web Unit Test Coverage Blitz** — 5147 web unit tests across 230+ spec files. All helper modules, hooks, components, and page sections have pure-function unit test coverage.
 
 ### Fixed
 - **`ImportExternalDto` payload whitelist** — Added `@IsOptional()` so `POST /v1/monitors/import-external` no longer returns 400 for valid CSV/provider payloads.
@@ -23,8 +24,8 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 - **SLA service `uptimeCertificate` throws 500** — Was throwing plain `Error` instead of `NotFoundException`. Now returns proper 404.
 
 ### Tests
-- **11,000+ tests passing** (5055 API + 5006 web + 870 integration + 114 CLI + 12 agent) — up from 5350+ in v1.6.0
-- 480+ test files across API, web, CLI, agent, and integration suites
+- **11,300+ tests passing** (5055 API + 5147 web + 888 integration + 114 CLI + 12 agent) — up from 5350+ in v1.6.0
+- 490+ test files across API, web, CLI, agent, and integration suites
 - All web helper modules have unit test coverage (pure function extraction pattern)
 - Integration tests run against real PostgreSQL with isolated user cleanup per suite
 

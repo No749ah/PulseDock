@@ -1,3 +1,12 @@
+## Status Summary (2026-04-04 04:20 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 5416 web + 904 integration + 114 CLI + 12 agent = **11,501 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; `/health` 200, all pages 200 local + public `https://oc-dev-test.no749ah.com`
+- **Branch:** heartbeat/2026-04-04-night
+- **Last changes (04:20 UTC):**
+  - [x] **64 new web tests — createVersionModalHelpers extracted** — `createVersionModalHelpers.ts` with 7 pure functions: `normalizeToolQuery`, `scoreToolMatch` (exact/prefix/substring/id/tag/desc scoring), `filterTools` (filter+rank+sort verified-first), `closeMatchTools` (fallback suggestions), `modalProgress` (4-step wizard %), `providerFromSourceType` (10 provider mappings), `buildDockerRunSnippet`/`buildDockerComposeSnippet`/`buildShellSnippet` (agent install code generators). Web: 5352 → 5416.
+
+---
+
 ## Status Summary (2026-04-04 02:15 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 5206 web + 870 integration + 114 CLI + 12 agent = **11,257 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web restarted; `/health` 200, all pages 200 local + public `https://oc-dev-test.no749ah.com`

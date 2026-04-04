@@ -12,6 +12,7 @@ import { V2FoldersController } from './folders/folders.controller';
 import { V2MaintenanceController } from './maintenance/maintenance.controller';
 import { V2ServiceGroupsController } from './service-groups/service-groups.controller';
 import { V2EscalationPoliciesController } from './escalation-policies/escalation-policies.controller';
+import { V2ApiKeysController } from './api-keys/api-keys.controller';
 import { MonitorsService } from '../monitors/monitors.service';
 import { MonitorsCrudService } from '../monitors/monitors-crud.service';
 import { MonitorsAnalyticsService } from '../monitors/monitors-analytics.service';
@@ -50,7 +51,7 @@ import { AuditService } from '../common/audit.service';
  *   - GET /v2/activity             — paginated audit log with action prefix + date-range filters
  */
 @Module({
-  controllers: [V2ActivityController, V2MonitorsController, V2AlertsController, V2ChecksController, V2SystemController, V2IncidentsController, V2DeploymentsController, V2StatusPagesController, V2TagsController, V2FoldersController, V2MaintenanceController, V2ServiceGroupsController, V2EscalationPoliciesController],
+  controllers: [V2ActivityController, V2MonitorsController, V2AlertsController, V2ChecksController, V2SystemController, V2IncidentsController, V2DeploymentsController, V2StatusPagesController, V2TagsController, V2FoldersController, V2MaintenanceController, V2ServiceGroupsController, V2EscalationPoliciesController, V2ApiKeysController],
   providers: [MonitorsService, MonitorsCrudService, MonitorsAnalyticsService, MonitorsSlaService, MonitorsDiagnosticsService, MonitorsExportService, MonitorsComparisonService, ChecksService, AuditService],
 })
 export class V2Module {}

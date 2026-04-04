@@ -20,10 +20,18 @@ export class V2ListAlertChannelsQuery {
 
   @ApiPropertyOptional({
     description: 'Filter by channel type',
-    enum: ['webhook', 'discord', 'slack', 'telegram', 'email'],
+    enum: [
+      'webhook', 'discord', 'slack', 'telegram', 'email',
+      'pagerduty', 'opsgenie', 'sms', 'teams', 'ntfy',
+      'gotify', 'matrix', 'rocketchat', 'apprise', 'mattermost', 'zulip',
+    ],
   })
   @IsOptional()
-  @IsIn(['webhook', 'discord', 'slack', 'telegram', 'email'])
+  @IsIn([
+    'webhook', 'discord', 'slack', 'telegram', 'email',
+    'pagerduty', 'opsgenie', 'sms', 'teams', 'ntfy',
+    'gotify', 'matrix', 'rocketchat', 'apprise', 'mattermost', 'zulip',
+  ])
   type?: string;
 
   @ApiPropertyOptional({

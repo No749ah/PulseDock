@@ -1,3 +1,14 @@
+## Status Summary (2026-04-04 13:21 UTC)
+- **Build/Test:** ✅ Build clean; 5161 API + 5679 web + 1078 integration + 114 CLI + 12 agent = **12,044 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 local + public `https://oc-dev-test.no749ah.com`
+- **Branch:** heartbeat/2026-04-04-afternoon (merged heartbeat/2026-04-04-noon → dev, deleted old branch)
+- **Last changes (13:21 UTC):**
+  - [x] **fix(api): v2/alert-channels type filter — expanded from 5 → 16 channel types** — DTO `IsIn` enum only allowed webhook/discord/slack/telegram/email; now includes all 16: pagerduty, opsgenie, sms, teams, ntfy, gotify, matrix, rocketchat, apprise, mattermost, zulip. Previously `?type=pagerduty` → 400; now correctly filters.
+  - [x] **test(api): 46 new v2-checks-alerts integration tests** — GET /v2/checks: auth guard, envelope, user isolation, meta.total, monitorId filter, level filters (green/red/yellow), combined monitorId+level, since/until/date-range filters, limit/page/cross-page, default sort desc, run shape, empty unknown monitorId, default limit=50, meta.pages calc. GET /v2/alert-channels: auth guard, envelope, user isolation, channel shape, webhookUrl redaction (Slack + Discord paths), botToken redaction, usedByCount=1/0, type filters (all types), case-insensitive search, sort name asc/desc, sort createdAt asc/desc, limit/page/page-beyond-total, combined type+search. Integration: 1032 → 1078.
+  - [x] **Branch management** — merged heartbeat/2026-04-04-noon → dev, deleted old branch, created heartbeat/2026-04-04-afternoon
+
+---
+
 ## Status Summary (2026-04-04 12:15 UTC)
 - **Build/Test:** ✅ Build clean; 5161 API + 5679 web + 1032 integration + 114 CLI + 12 agent = **11,998 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all pages 200 local + public `https://oc-dev-test.no749ah.com`

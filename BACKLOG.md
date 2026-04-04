@@ -1,3 +1,12 @@
+## Status Summary (2026-04-04 02:15 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 5206 web + 870 integration + 114 CLI + 12 agent = **11,257 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted; `/health` 200, all pages 200 local + public `https://oc-dev-test.no749ah.com`
+- **Branch:** heartbeat/2026-04-04-night
+- **Last changes (02:15 UTC):**
+  - [x] **59 new web tests — overviewHelpers + shareTokenHelpers** — extracted pure logic from OverviewTab into `overviewHelpers.ts` (EVENT_COLORS, build90DayBuckets, fillDayBuckets, calendarCellColor, calendarCellTooltip, buildCalendarWeeks, computeChartAvg, computeChartP95, findClosestPoint, buildChartMarks — 46 tests); extracted ShareTokenCard logic into `shareTokenHelpers.ts` (buildShareTokenPath, buildShareJsonPath, copyButtonLabel, isTokenActionDisabled, generateButtonLabel — 13 tests). Web: 5147 → 5206.
+
+---
+
 ## Status Summary (2026-04-04 00:45 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 5147 web + 870 integration + 114 CLI + 12 agent = **11,198 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; `/health` 200, `/login` 200, public `https://oc-dev-test.no749ah.com/login` 200

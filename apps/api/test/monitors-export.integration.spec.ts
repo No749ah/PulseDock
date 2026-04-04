@@ -249,4 +249,124 @@ services:
     // Returns { suggestions: [...] }
     expect(Array.isArray(res.body.suggestions)).toBe(true);
   });
+
+  // ─── Import from OpenAPI (actual import) ───────────────────────────────────
+
+  it('POST /v1/monitors/import-from-openapi → 401 unauthenticated', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/v1/monitors/import-from-openapi')
+      .send({ specJson: '{}', baseUrl: 'https://api.example.com', selectedPaths: [] });
+    expect([401, 403]).toContain(res.status);
+  });
+
+  it('POST /v1/monitors/import-from-openapi → creates no monitors when selectedPaths is empty', async () => {
+    const openApiSpec = JSON.stringify({
+      openapi: '3.0.0',
+      info: { title: 'Test API', version: '1.0.0' },
+      servers: [{ url: 'https://api.example.com' }],
+      paths: {
+        '/health': { get: { summary: 'Health check', responses: { '200': { description: 'OK' } } } },
+      },
+    });
+
+    const res = await request(app.getHttpServer())
+      .post('/v1/monitors/import-from-openapi')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ specJson: openApiSpec, baseUrl: 'https://api.example.com', selectedPaths: [] })
+      .expect(200);
+
+    expect(res.body).toHaveProperty('created');
+    expect(res.body.created).toBe(0);
+    expect(Array.isArray(res.body.monitors)).toBe(true);
+    expect(res.body.monitors).toHaveLength(0);
+  });
+
+  it('POST /v1/monitors/import-from-openapi → creates monitors for selected paths', async () => {
+    const openApiSpec = JSON.stringify({
+      openapi: '3.0.0',
+      info: { title: 'Test API', version: '1.0.0' },
+      servers: [{ url: 'https://api.example.com' }],
+      paths: {
+        '/status': { get: { summary: 'Status check', responses: { '200': { description: 'OK' } } } },
+        '/ping': { get: { summary: 'Ping', responses: { '200': { description: 'OK' } } } },
+      },
+    });
+
+    // First preview to get available path keys
+    const preview = await request(app.getHttpServer())
+      .post('/v1/monitors/import-from-openapi/preview')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ specJson: openApiSpec, baseUrl: 'https://api.example.com' })
+      .expect(200);
+
+    expect(preview.body.suggestions.length).toBeGreaterThanOrEqual(1);
+    const firstKey = preview.body.suggestions[0].key as string;
+
+    // Import just the first path
+    const res = await request(app.getHttpServer())
+      .post('/v1/monitors/import-from-openapi')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ specJson: openApiSpec, baseUrl: 'https://api.example.com', selectedPaths: [firstKey] })
+      .expect(200);
+
+    expect(res.body).toHaveProperty('created');
+    expect(res.body.created).toBeGreaterThanOrEqual(1);
+    expect(Array.isArray(res.body.monitors)).toBe(true);
+    expect(res.body.monitors.length).toBe(res.body.created);
+  });
+
+  // ─── Import from external service ──────────────────────────────────────────────
+
+  it('POST /v1/monitors/import-external → 401 unauthenticated', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/v1/monitors/import-external')
+      .send({ source: 'csv', payload: '' });
+    expect([401, 403]).toContain(res.status);
+  });
+
+  it('POST /v1/monitors/import-external → empty CSV returns zero imported', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/v1/monitors/import-external')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ source: 'csv', payload: '' })
+      .expect(200);
+
+    expect(res.body).toHaveProperty('imported');
+    expect(res.body.imported).toBe(0);
+  });
+
+  it('POST /v1/monitors/import-external → CSV with valid entry imports monitor', async () => {
+    const csv = 'name,url\nMy Monitor,https://example.com/check';
+
+    const res = await request(app.getHttpServer())
+      .post('/v1/monitors/import-external')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ source: 'csv', payload: csv })
+      .expect(200);
+
+    expect(res.body).toHaveProperty('imported');
+    expect(res.body.imported).toBeGreaterThanOrEqual(1);
+    expect(res.body).toHaveProperty('skipped');
+    expect(Array.isArray(res.body.errors)).toBe(true);
+  });
+
+  it('POST /v1/monitors/import-external → uptime-robot empty payload returns zero imported', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/v1/monitors/import-external')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ source: 'uptime-robot', payload: { monitors: [] } })
+      .expect(200);
+
+    expect(res.body.imported).toBe(0);
+  });
+
+  it('POST /v1/monitors/import-external → better-uptime empty payload returns zero imported', async () => {
+    const res = await request(app.getHttpServer())
+      .post('/v1/monitors/import-external')
+      .set('Authorization', `Bearer ${tokenA}`)
+      .send({ source: 'better-uptime', payload: { data: [] } })
+      .expect(200);
+
+    expect(res.body.imported).toBe(0);
+  });
 });

@@ -296,8 +296,8 @@ describe('Monitor Details (integration)', () => {
       .set(auth())
       .expect(200);
 
-    const ids = listRes.body.map((d: { id: string }) => d.id);
-    expect(ids).toContain(depId);
+    const dependsOnIds = listRes.body.map((d: { dependsOnId: string }) => d.dependsOnId);
+    expect(dependsOnIds).toContain(depId);
   });
 
   it('DELETE dependency removes the link', async () => {

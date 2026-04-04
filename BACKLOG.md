@@ -1,3 +1,12 @@
+## Status Summary (2026-04-04 05:31 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 5679 web + 904 integration + 114 CLI + 12 agent = **11,764 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; `/health` 200, `/login` 200 local
+- **Branch:** heartbeat/2026-04-04-night
+- **Last changes (05:31 UTC):**
+  - [x] **263 new web tests — 16 helper files fully covered** — Added spec files for all previously untested helper modules: monitors/tags, projects, status-pages (+ extracted statusPagesHelpers.ts), embed/[monitorId], incidents/playbooks, monitors/dependencies, monitors/[id]/overview (events, alertChannels, deliveryHistory), monitors/components (playground, openApiImport), status/[slug]/widgets (content, performance, widgetIndex, rangePicker), invite/[token]. Web: 5416 → 5679.
+
+---
+
 ## Status Summary (2026-04-04 04:20 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 5416 web + 904 integration + 114 CLI + 12 agent = **11,501 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; `/health` 200, all pages 200 local + public `https://oc-dev-test.no749ah.com`

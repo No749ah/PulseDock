@@ -64,6 +64,7 @@ import { V2FoldersController } from './v2/folders/folders.controller';
 import { V2MaintenanceController } from './v2/maintenance/maintenance.controller';
 import { V2ServiceGroupsController } from './v2/service-groups/service-groups.controller';
 import { V2EscalationPoliciesController } from './v2/escalation-policies/escalation-policies.controller';
+import { V2ActivityController } from './v2/activity/activity.controller';
 import { TagsController } from './tags/tags.controller';
 import { ToolRegistryController } from './tool-registry/tool-registry.controller';
 import { TagsService } from './tags/tags.service';
@@ -157,6 +158,7 @@ import { DependenciesService } from './dependencies/dependencies.service';
     V2MaintenanceController,
     V2ServiceGroupsController,
     V2EscalationPoliciesController,
+    V2ActivityController,
     TagsController,
     ToolRegistryController,
     NotificationsController,

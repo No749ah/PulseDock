@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { V2ActivityController } from './activity/activity.controller';
 import { V2MonitorsController } from './monitors/monitors.controller';
 import { V2SystemController } from './system/system.controller';
 import { V2AlertsController } from './alerts/alerts.controller';
@@ -46,9 +47,10 @@ import { AuditService } from '../common/audit.service';
  *   - GET /v2/maintenance         — paginated maintenance windows with recurrence/activeOnly filtering
  *   - GET /v2/service-groups       — paginated service groups with monitorCount derived field
  *   - GET /v2/escalation-policies  — paginated escalation policies with stepCount derived field
+ *   - GET /v2/activity             — paginated audit log with action prefix + date-range filters
  */
 @Module({
-  controllers: [V2MonitorsController, V2AlertsController, V2ChecksController, V2SystemController, V2IncidentsController, V2DeploymentsController, V2StatusPagesController, V2TagsController, V2FoldersController, V2MaintenanceController, V2ServiceGroupsController, V2EscalationPoliciesController],
+  controllers: [V2ActivityController, V2MonitorsController, V2AlertsController, V2ChecksController, V2SystemController, V2IncidentsController, V2DeploymentsController, V2StatusPagesController, V2TagsController, V2FoldersController, V2MaintenanceController, V2ServiceGroupsController, V2EscalationPoliciesController],
   providers: [MonitorsService, MonitorsCrudService, MonitorsAnalyticsService, MonitorsSlaService, MonitorsDiagnosticsService, MonitorsExportService, MonitorsComparisonService, ChecksService, AuditService],
 })
 export class V2Module {}

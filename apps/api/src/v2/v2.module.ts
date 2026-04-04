@@ -9,6 +9,8 @@ import { V2StatusPagesController } from './status-pages/status-pages.controller'
 import { V2TagsController } from './tags/tags.controller';
 import { V2FoldersController } from './folders/folders.controller';
 import { V2MaintenanceController } from './maintenance/maintenance.controller';
+import { V2ServiceGroupsController } from './service-groups/service-groups.controller';
+import { V2EscalationPoliciesController } from './escalation-policies/escalation-policies.controller';
 import { MonitorsService } from '../monitors/monitors.service';
 import { MonitorsCrudService } from '../monitors/monitors-crud.service';
 import { MonitorsAnalyticsService } from '../monitors/monitors-analytics.service';
@@ -42,9 +44,11 @@ import { AuditService } from '../common/audit.service';
  *   - GET /v2/tags               — paginated tags with monitorCount, sortable by monitorCount
  *   - GET /v2/folders             — flat paginated folders with depth, path, stats (healthy/degraded/down)
  *   - GET /v2/maintenance         — paginated maintenance windows with recurrence/activeOnly filtering
+ *   - GET /v2/service-groups       — paginated service groups with monitorCount derived field
+ *   - GET /v2/escalation-policies  — paginated escalation policies with stepCount derived field
  */
 @Module({
-  controllers: [V2MonitorsController, V2AlertsController, V2ChecksController, V2SystemController, V2IncidentsController, V2DeploymentsController, V2StatusPagesController, V2TagsController, V2FoldersController, V2MaintenanceController],
+  controllers: [V2MonitorsController, V2AlertsController, V2ChecksController, V2SystemController, V2IncidentsController, V2DeploymentsController, V2StatusPagesController, V2TagsController, V2FoldersController, V2MaintenanceController, V2ServiceGroupsController, V2EscalationPoliciesController],
   providers: [MonitorsService, MonitorsCrudService, MonitorsAnalyticsService, MonitorsSlaService, MonitorsDiagnosticsService, MonitorsExportService, MonitorsComparisonService, ChecksService, AuditService],
 })
 export class V2Module {}

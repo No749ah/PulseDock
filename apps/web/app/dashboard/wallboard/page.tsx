@@ -8,6 +8,27 @@ import { api } from "../../../lib/api";
 import { getUser } from "../../../components/auth";
 import { relativeTime } from "../../components/timeUtils";
 import { brand } from "../../../lib/brand";
+import {
+  statusOrder,
+  cardBorderColor,
+  cardGlowColor,
+  cardBgColor,
+  cardDotColor,
+  cardStatusLabel,
+  cardStatusTextColor,
+  formatTypeBadge,
+  parseRefreshInterval,
+  parseColsParam,
+  colsClass,
+  deriveLevelFromRun,
+  computeUptime24h,
+  computeAvgLatency24h,
+  downBannerLabel,
+  computeWallboardStats,
+  latencyTextColor,
+  uptimeTextColor,
+  type WallboardLevel,
+} from "./wallboardHelpers";
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -34,18 +55,9 @@ interface MonitorRun {
 interface WallboardMonitor {
   monitor: Monitor;
   latestRun: MonitorRun | null;
-  level: "green" | "yellow" | "red" | "unknown";
+  level: WallboardLevel;
   uptime24h: number | null;
   avgLatency24h: number | null;
-}
-
-// ── Status sort order ─────────────────────────────────────────────────────────
-
-function statusOrder(level: string): number {
-  if (level === "red") return 0;
-  if (level === "yellow") return 1;
-  if (level === "green") return 2;
-  return 3; // unknown
 }
 
 // ── Card Component ────────────────────────────────────────────────────────────
@@ -60,56 +72,14 @@ function WallboardCard({
   const { monitor, latestRun, level, uptime24h, avgLatency24h } = item;
   const isDown = level === "red";
   const isDegraded = level === "yellow";
-  const isUp = level === "green";
 
-  const borderColor = isDown
-    ? "border-red-500/70"
-    : isDegraded
-    ? "border-yellow-500/70"
-    : isUp
-    ? "border-green-500/40"
-    : "border-white/10";
-
-  const glowColor = isDown
-    ? "shadow-[0_0_20px_rgba(239,68,68,0.25)]"
-    : isDegraded
-    ? "shadow-[0_0_16px_rgba(234,179,8,0.2)]"
-    : isUp
-    ? "shadow-[0_0_12px_rgba(34,197,94,0.15)]"
-    : "";
-
-  const bgColor = isDown
-    ? "bg-red-950/30"
-    : isDegraded
-    ? "bg-yellow-950/20"
-    : "bg-white/[0.03]";
-
-  const dotColor = isDown
-    ? "bg-red-500"
-    : isDegraded
-    ? "bg-yellow-400"
-    : isUp
-    ? "bg-green-500"
-    : "bg-gray-500";
-
-  const statusLabel = isDown
-    ? "DOWN"
-    : isDegraded
-    ? "DEGRADED"
-    : isUp
-    ? "UP"
-    : "UNKNOWN";
-
-  const statusTextColor = isDown
-    ? "text-red-400"
-    : isDegraded
-    ? "text-yellow-400"
-    : isUp
-    ? "text-green-400"
-    : "text-gray-400";
-
-  // Type badge label
-  const typeBadge = monitor.type.replace("_", " ");
+  const borderColor = cardBorderColor(level);
+  const glowColor = cardGlowColor(level);
+  const bgColor = cardBgColor(level);
+  const dotColor = cardDotColor(level);
+  const statusLabel = cardStatusLabel(level);
+  const statusTextColor = cardStatusTextColor(level);
+  const typeBadge = formatTypeBadge(monitor.type);
 
   return (
     <div
@@ -172,15 +142,7 @@ function WallboardCard({
           <span
             className={`font-bold tabular-nums ${
               isLarge ? "text-2xl" : "text-lg"
-            } ${
-              uptime24h === null
-                ? "text-white/30"
-                : uptime24h >= 99
-                ? "text-green-400"
-                : uptime24h >= 95
-                ? "text-yellow-400"
-                : "text-red-400"
-            }`}
+            } ${uptimeTextColor(uptime24h)}`}
           >
             {uptime24h !== null ? `${uptime24h.toFixed(1)}%` : "—"}
           </span>
@@ -194,15 +156,7 @@ function WallboardCard({
           <span
             className={`font-bold tabular-nums ${
               isLarge ? "text-2xl" : "text-lg"
-            } ${
-              avgLatency24h === null
-                ? "text-white/30"
-                : avgLatency24h < 200
-                ? "text-green-400"
-                : avgLatency24h < 1000
-                ? "text-yellow-400"
-                : "text-red-400"
-            }`}
+            } ${latencyTextColor(avgLatency24h)}`}
           >
             {avgLatency24h !== null
               ? avgLatency24h >= 1000
@@ -237,12 +191,10 @@ export default function WallboardPage() {
   const searchParams = useSearchParams();
 
   // URL params
-  const rawRefresh = parseInt(searchParams.get("refresh") ?? "30", 10);
-  const refreshInterval = Math.max(5, Math.min(300, isNaN(rawRefresh) ? 30 : rawRefresh));
+  const refreshInterval = parseRefreshInterval(searchParams.get("refresh"));
   const folderFilter = searchParams.get("folder") ?? null;
   const tagFilter = searchParams.get("tag") ?? null;
-  const rawCols = parseInt(searchParams.get("cols") ?? "0", 10);
-  const colsParam = isNaN(rawCols) ? 0 : Math.max(0, Math.min(6, rawCols));
+  const colsParam = parseColsParam(searchParams.get("cols"));
 
   // State
   const [wallboard, setWallboard] = useState<WallboardMonitor[]>([]);
@@ -313,45 +265,15 @@ export default function WallboardPage() {
         }
 
         // Compute per-monitor stats
-        const now = Date.now();
         const items: WallboardMonitor[] = filtered.map((monitor) => {
           const monitorRuns = runs.filter(
             (r) => r.monitorId === monitor.id
           );
           const latestRun = monitorRuns[0] ?? null;
 
-          // Level: from latest run
-          let level: WallboardMonitor["level"] = "unknown";
-          if (latestRun) {
-            if (latestRun.level) {
-              level =
-                latestRun.level === "red"
-                  ? "red"
-                  : latestRun.level === "yellow"
-                  ? "yellow"
-                  : "green";
-            } else {
-              level = latestRun.ok ? "green" : "red";
-            }
-          }
-
-          // Uptime 24h
-          const uptime24h =
-            monitorRuns.length > 0
-              ? (monitorRuns.filter((r) => r.ok).length /
-                  monitorRuns.length) *
-                100
-              : null;
-
-          // Avg latency 24h
-          const withLatency = monitorRuns.filter(
-            (r) => r.latencyMs != null && r.latencyMs > 0
-          );
-          const avgLatency24h =
-            withLatency.length > 0
-              ? withLatency.reduce((sum, r) => sum + (r.latencyMs ?? 0), 0) /
-                withLatency.length
-              : null;
+          const level = deriveLevelFromRun(latestRun);
+          const uptime24h = computeUptime24h(monitorRuns);
+          const avgLatency24h = computeAvgLatency24h(monitorRuns);
 
           return { monitor, latestRun, level, uptime24h, avgLatency24h };
         });
@@ -406,25 +328,11 @@ export default function WallboardPage() {
   });
 
   // Stats
-  const downCount = wallboard.filter((w) => w.level === "red").length;
-  const degradedCount = wallboard.filter((w) => w.level === "yellow").length;
-  const upCount = wallboard.filter((w) => w.level === "green").length;
-  const totalCount = wallboard.length;
+  const { up: upCount, degraded: degradedCount, down: downCount, total: totalCount } =
+    computeWallboardStats(wallboard);
 
   // Grid columns
-  const colsClass =
-    colsParam === 2
-      ? "grid-cols-2"
-      : colsParam === 3
-      ? "grid-cols-3"
-      : colsParam === 4
-      ? "grid-cols-4"
-      : colsParam === 5
-      ? "grid-cols-5"
-      : colsParam === 6
-      ? "grid-cols-6"
-      : // Auto: responsive
-        "grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4";
+  const gridClass = colsClass(colsParam);
 
   if (loading) {
     return (
@@ -560,7 +468,7 @@ export default function WallboardPage() {
             <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500" />
           </div>
           <span className="text-red-300 font-semibold text-sm">
-            {downCount} monitor{downCount !== 1 ? "s" : ""} down
+            {downBannerLabel(downCount)}
           </span>
           <span className="text-red-400/60 text-xs">
             {wallboard
@@ -590,7 +498,7 @@ export default function WallboardPage() {
             </Link>
           </div>
         ) : (
-          <div className={`grid ${colsClass} gap-4 auto-rows-fr`}>
+          <div className={`grid ${gridClass} gap-4 auto-rows-fr`}>
             {wallboard.map((item) => (
               <WallboardCard
                 key={item.monitor.id}

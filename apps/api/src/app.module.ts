@@ -56,6 +56,11 @@ import { V2MonitorsController } from './v2/monitors/monitors.controller';
 import { V2SystemController } from './v2/system/system.controller';
 import { V2AlertsController } from './v2/alerts/alerts.controller';
 import { V2ChecksController } from './v2/checks/checks.controller';
+import { V2IncidentsController } from './v2/incidents/incidents.controller';
+import { V2DeploymentsController } from './v2/deployments/deployments.controller';
+import { V2StatusPagesController } from './v2/status-pages/status-pages.controller';
+import { V2TagsController } from './v2/tags/tags.controller';
+import { V2FoldersController } from './v2/folders/folders.controller';
 import { TagsController } from './tags/tags.controller';
 import { ToolRegistryController } from './tool-registry/tool-registry.controller';
 import { TagsService } from './tags/tags.service';
@@ -141,6 +146,11 @@ import { DependenciesService } from './dependencies/dependencies.service';
     V2SystemController,
     V2AlertsController,
     V2ChecksController,
+    V2IncidentsController,
+    V2DeploymentsController,
+    V2StatusPagesController,
+    V2TagsController,
+    V2FoldersController,
     TagsController,
     ToolRegistryController,
     NotificationsController,

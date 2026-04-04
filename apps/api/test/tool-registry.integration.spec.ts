@@ -152,6 +152,50 @@ describe('Tool Registry (integration)', () => {
 
   // ─── No Auth Required ───
 
+  // ─── Validate ───
+
+  it('GET /v1/tool-registry/validate/:id returns 404 for unknown tool', async () => {
+    await request(app.getHttpServer())
+      .get('/v1/tool-registry/validate/nonexistent-tool-xyz-999')
+      .expect(404);
+  });
+
+  it('GET /v1/tool-registry/validate/:id returns validate result shape for known tool', async () => {
+    // Use a tool with versionSource type 'none' so no network call is made
+    // Find any tool from the list first
+    const list = await request(app.getHttpServer())
+      .get('/v1/tool-registry')
+      .expect(200);
+
+    const toolId = list.body.tools[0]?.id;
+    if (!toolId) return;
+
+    const res = await request(app.getHttpServer())
+      .get(`/v1/tool-registry/validate/${toolId}`)
+      .expect(200);
+
+    // Should return the validate result shape regardless of status
+    expect(res.body.toolId).toBe(toolId);
+    expect(res.body.toolName).toBeDefined();
+    expect(res.body.status).toBeDefined();
+    expect(typeof res.body.message).toBe('string');
+  });
+
+  it('GET /v1/tool-registry/validate/:id does not require authentication', async () => {
+    const list = await request(app.getHttpServer())
+      .get('/v1/tool-registry')
+      .expect(200);
+
+    const toolId = list.body.tools[0]?.id;
+    if (!toolId) return;
+
+    const res = await request(app.getHttpServer())
+      .get(`/v1/tool-registry/validate/${toolId}`);
+
+    expect(res.status).not.toBe(401);
+    expect(res.status).not.toBe(403);
+  });
+
   it('tool registry endpoints do not require authentication', async () => {
     // All three endpoints should work without Authorization header
     const listRes = await request(app.getHttpServer()).get('/v1/tool-registry');

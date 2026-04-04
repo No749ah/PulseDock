@@ -1,3 +1,49 @@
+## Status Summary (2026-04-04 07:20 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 5679 web + 951 integration + 114 CLI + 12 agent = **11,811 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 local + public `https://oc-dev-test.no749ah.com`
+- **Branch:** heartbeat/2026-04-04-night
+- **Last changes (07:20 UTC):**
+  - [x] **feat(api): new v2/incidents + v2/deployments endpoints** — GET /v2/incidents (paginated, filter by status/severity/search/sort, derived updateCount+monitorCount+latestUpdateStatus); GET /v2/deployments (paginated, filter by service/environment/status/search, derived monitorCount). Registered in app.module.ts + v2.module.ts.
+  - [x] **31 new integration tests** — `v2-incidents-deployments.integration.spec.ts`: auth guard, pagination meta, field shape, all filter combos, search, sort, user isolation, invalid enum → 400 (both endpoints). Integration: 904 → 951.
+  - [x] **fix(test): dependency list assertion** — `monitors-details.integration.spec.ts` was checking `d.id` (MonitorDependency record ID) instead of `d.dependsOnId` (linked monitor ID). Fixed + all 32 tests passing.
+
+---
+
+## Status Summary (2026-04-04 05:31 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 5679 web + 904 integration + 114 CLI + 12 agent = **11,764 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; `/health` 200, `/login` 200 local
+- **Branch:** heartbeat/2026-04-04-night
+- **Last changes (05:31 UTC):**
+  - [x] **263 new web tests — 16 helper files fully covered** — Added spec files for all previously untested helper modules: monitors/tags, projects, status-pages (+ extracted statusPagesHelpers.ts), embed/[monitorId], incidents/playbooks, monitors/dependencies, monitors/[id]/overview (events, alertChannels, deliveryHistory), monitors/components (playground, openApiImport), status/[slug]/widgets (content, performance, widgetIndex, rangePicker), invite/[token]. Web: 5416 → 5679.
+
+---
+
+## Status Summary (2026-04-04 04:20 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 5416 web + 904 integration + 114 CLI + 12 agent = **11,501 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; `/health` 200, all pages 200 local + public `https://oc-dev-test.no749ah.com`
+- **Branch:** heartbeat/2026-04-04-night
+- **Last changes (04:20 UTC):**
+  - [x] **64 new web tests — createVersionModalHelpers extracted** — `createVersionModalHelpers.ts` with 7 pure functions: `normalizeToolQuery`, `scoreToolMatch` (exact/prefix/substring/id/tag/desc scoring), `filterTools` (filter+rank+sort verified-first), `closeMatchTools` (fallback suggestions), `modalProgress` (4-step wizard %), `providerFromSourceType` (10 provider mappings), `buildDockerRunSnippet`/`buildDockerComposeSnippet`/`buildShellSnippet` (agent install code generators). Web: 5352 → 5416.
+
+---
+
+## Status Summary (2026-04-04 02:15 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 5206 web + 870 integration + 114 CLI + 12 agent = **11,257 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted; `/health` 200, all pages 200 local + public `https://oc-dev-test.no749ah.com`
+- **Branch:** heartbeat/2026-04-04-night
+- **Last changes (02:15 UTC):**
+  - [x] **59 new web tests — overviewHelpers + shareTokenHelpers** — extracted pure logic from OverviewTab into `overviewHelpers.ts` (EVENT_COLORS, build90DayBuckets, fillDayBuckets, calendarCellColor, calendarCellTooltip, buildCalendarWeeks, computeChartAvg, computeChartP95, findClosestPoint, buildChartMarks — 46 tests); extracted ShareTokenCard logic into `shareTokenHelpers.ts` (buildShareTokenPath, buildShareJsonPath, copyButtonLabel, isTokenActionDisabled, generateButtonLabel — 13 tests). Web: 5147 → 5206.
+
+---
+
+## Status Summary (2026-04-04 00:45 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 5147 web + 870 integration + 114 CLI + 12 agent = **11,198 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; `/health` 200, `/login` 200, public `https://oc-dev-test.no749ah.com/login` 200
+- **Branch:** heartbeat/2026-04-04-night
+- **Status:** 🎉 BACKLOG FULLY CLEARED — All items done. Proposed **CronDock** to Noah via Discord. Awaiting repo creation.
+
+---
+
 ## Status Summary (2026-04-04 00:40 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 5147 web + 870 integration + 114 CLI + 12 agent = **11,198 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; `/health` 200, `/login` 200, public `https://oc-dev-test.no749ah.com/login` 200

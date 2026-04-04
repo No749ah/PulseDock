@@ -11,6 +11,15 @@ import { PasswordStrength, passwordMeetsPolicy } from "../components/PasswordStr
 import { LocaleSwitcher } from "../components/LocaleSwitcher";
 import { useI18n } from "../../components/i18n-provider";
 import { brand } from "../../lib/brand";
+import {
+  subtitleKey,
+  buttonLabelKey,
+  resolveSubmitAction,
+  validateSetupPasswords,
+  deriveDisplayName,
+  isEmailNotVerifiedError,
+  extractErrorMessage,
+} from "./loginHelpers";
 
 type LoginUser = {
   id: string;
@@ -126,7 +135,7 @@ export default function LoginPage() {
     if (rememberUser && !isFirstLogin)
       localStorage.setItem("pulsedock_remembered_user", email.trim().toLowerCase());
     else localStorage.removeItem("pulsedock_remembered_user");
-    const name = (res.user.email?.split("@")[0] || "user").trim() || "user";
+    const name = deriveDisplayName(res.user.email ?? "");
     setSession(res.accessToken, res.refreshToken, { ...res.user, name });
     router.push("/dashboard");
   }
@@ -169,8 +178,8 @@ export default function LoginPage() {
 
       completeLogin(res as { accessToken: string; refreshToken: string; user: LoginUser });
     } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : "Login failed";
-      if (msg === "email_not_verified") {
+      const msg = extractErrorMessage(e, "Login failed");
+      if (isEmailNotVerifiedError(msg)) {
         setNeedsVerification(true);
         setError("");
       } else {
@@ -258,22 +267,20 @@ export default function LoginPage() {
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (totpStep) return void verifyTotp();
-    if (inInviteFlow) return void acceptInvite();
-    if (inResetFlow) return void confirmReset();
-    if (forgotMode) return void requestReset();
+    const action = resolveSubmitAction({ inInviteFlow, inResetFlow, forgotMode, totpStep });
+    if (action === "verifyTotp") return void verifyTotp();
+    if (action === "acceptInvite") return void acceptInvite();
+    if (action === "confirmReset") return void confirmReset();
+    if (action === "requestReset") return void requestReset();
     return void login();
   }
 
   async function handleSetup(e: React.FormEvent) {
     e.preventDefault();
     setSetupError("");
-    if (setupPassword !== setupConfirm) {
-      setSetupError("Passwords do not match");
-      return;
-    }
-    if (!passwordMeetsPolicy(setupPassword)) {
-      setSetupError("Password does not meet the security policy");
+    const setupValidationError = validateSetupPasswords(setupPassword, setupConfirm, passwordMeetsPolicy);
+    if (setupValidationError) {
+      setSetupError(setupValidationError);
       return;
     }
     setSetupSubmitting(true);
@@ -295,31 +302,19 @@ export default function LoginPage() {
           body: JSON.stringify({ email: setupEmail, password: setupPassword }),
         },
       );
-      const name = (loginRes.user.email?.split("@")[0] || "user").trim() || "user";
+      const name = deriveDisplayName(loginRes.user.email ?? "");
       setSession(loginRes.accessToken, loginRes.refreshToken, { ...loginRes.user, name });
       router.push("/dashboard");
     } catch (err: unknown) {
-      setSetupError(err instanceof Error ? err.message : "Setup failed");
+      setSetupError(extractErrorMessage(err, "Setup failed"));
     } finally {
       setSetupSubmitting(false);
     }
   }
 
-  const subtitle = inInviteFlow
-    ? t("login.subtitleInvite")
-    : inResetFlow
-      ? t("login.subtitleReset")
-      : forgotMode
-        ? t("login.subtitleForgot")
-        : t("login.subtitleSignIn");
-
-  const buttonLabel = inInviteFlow
-    ? t("login.acceptInvite")
-    : inResetFlow
-      ? t("login.setNewPassword")
-      : forgotMode
-        ? t("login.requestResetLink")
-        : t("login.signIn");
+  const flowState = { inInviteFlow, inResetFlow, forgotMode, totpStep };
+  const subtitle = t(subtitleKey(flowState));
+  const buttonLabel = t(buttonLabelKey(flowState));
 
   if (setupLoading) {
     return (

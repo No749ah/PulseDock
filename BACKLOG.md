@@ -1,3 +1,14 @@
+## Status Summary (2026-04-04 07:20 UTC)
+- **Build/Test:** ✅ Build clean; 5055 API + 5679 web + 951 integration + 114 CLI + 12 agent = **11,811 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 local + public `https://oc-dev-test.no749ah.com`
+- **Branch:** heartbeat/2026-04-04-night
+- **Last changes (07:20 UTC):**
+  - [x] **feat(api): new v2/incidents + v2/deployments endpoints** — GET /v2/incidents (paginated, filter by status/severity/search/sort, derived updateCount+monitorCount+latestUpdateStatus); GET /v2/deployments (paginated, filter by service/environment/status/search, derived monitorCount). Registered in app.module.ts + v2.module.ts.
+  - [x] **31 new integration tests** — `v2-incidents-deployments.integration.spec.ts`: auth guard, pagination meta, field shape, all filter combos, search, sort, user isolation, invalid enum → 400 (both endpoints). Integration: 904 → 951.
+  - [x] **fix(test): dependency list assertion** — `monitors-details.integration.spec.ts` was checking `d.id` (MonitorDependency record ID) instead of `d.dependsOnId` (linked monitor ID). Fixed + all 32 tests passing.
+
+---
+
 ## Status Summary (2026-04-04 05:31 UTC)
 - **Build/Test:** ✅ Build clean; 5055 API + 5679 web + 904 integration + 114 CLI + 12 agent = **11,764 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; `/health` 200, `/login` 200 local

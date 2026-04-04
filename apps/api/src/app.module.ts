@@ -61,6 +61,7 @@ import { V2DeploymentsController } from './v2/deployments/deployments.controller
 import { V2StatusPagesController } from './v2/status-pages/status-pages.controller';
 import { V2TagsController } from './v2/tags/tags.controller';
 import { V2FoldersController } from './v2/folders/folders.controller';
+import { V2MaintenanceController } from './v2/maintenance/maintenance.controller';
 import { TagsController } from './tags/tags.controller';
 import { ToolRegistryController } from './tool-registry/tool-registry.controller';
 import { TagsService } from './tags/tags.service';
@@ -151,6 +152,7 @@ import { DependenciesService } from './dependencies/dependencies.service';
     V2StatusPagesController,
     V2TagsController,
     V2FoldersController,
+    V2MaintenanceController,
     TagsController,
     ToolRegistryController,
     NotificationsController,

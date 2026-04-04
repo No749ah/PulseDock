@@ -8,6 +8,7 @@ import { V2DeploymentsController } from './deployments/deployments.controller';
 import { V2StatusPagesController } from './status-pages/status-pages.controller';
 import { V2TagsController } from './tags/tags.controller';
 import { V2FoldersController } from './folders/folders.controller';
+import { V2MaintenanceController } from './maintenance/maintenance.controller';
 import { MonitorsService } from '../monitors/monitors.service';
 import { MonitorsCrudService } from '../monitors/monitors-crud.service';
 import { MonitorsAnalyticsService } from '../monitors/monitors-analytics.service';
@@ -40,9 +41,10 @@ import { AuditService } from '../common/audit.service';
  *   - GET /v2/status-pages       — paginated status pages with subscriberCount + widgetCount
  *   - GET /v2/tags               — paginated tags with monitorCount, sortable by monitorCount
  *   - GET /v2/folders             — flat paginated folders with depth, path, stats (healthy/degraded/down)
+ *   - GET /v2/maintenance         — paginated maintenance windows with recurrence/activeOnly filtering
  */
 @Module({
-  controllers: [V2MonitorsController, V2AlertsController, V2ChecksController, V2SystemController, V2IncidentsController, V2DeploymentsController, V2StatusPagesController, V2TagsController, V2FoldersController],
+  controllers: [V2MonitorsController, V2AlertsController, V2ChecksController, V2SystemController, V2IncidentsController, V2DeploymentsController, V2StatusPagesController, V2TagsController, V2FoldersController, V2MaintenanceController],
   providers: [MonitorsService, MonitorsCrudService, MonitorsAnalyticsService, MonitorsSlaService, MonitorsDiagnosticsService, MonitorsExportService, MonitorsComparisonService, ChecksService, AuditService],
 })
 export class V2Module {}

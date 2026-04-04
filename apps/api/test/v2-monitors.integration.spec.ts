@@ -1,7 +1,8 @@
 /**
- * Integration tests: GET /v2/monitors — extended coverage.
+ * Integration tests: GET /v2/monitors, GET /v2/monitors/summary, GET /v2/monitors/:id
  *
  * Covers:
+ *   GET /v2/monitors:
  *   - Auth guard (401 without token)
  *   - Paginated envelope shape (data + meta)
  *   - User isolation (user B cannot see user A's monitors)
@@ -18,6 +19,21 @@
  *   - Invalid sortBy → 400
  *   - Invalid sortDir → 400
  *   - Invalid page/limit bounds → 400
+ *
+ *   GET /v2/monitors/summary:
+ *   - Auth guard (401 without token)
+ *   - Returns total / enabled / disabled / byType
+ *   - User isolation
+ *   - byType includes all monitor types for the user
+ *
+ *   GET /v2/monitors/:id:
+ *   - Auth guard (401 without token)
+ *   - Returns monitor fields
+ *   - Redacts secrets
+ *   - 404 for nonexistent id
+ *   - 404 when accessing another user's monitor
+ *   - alertChannelIds populated
+ *   - folderId present
  */
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
 import type { INestApplication } from '@nestjs/common';
@@ -487,5 +503,253 @@ describe('GET /v2/monitors (integration)', () => {
     res.body.data.forEach((m: { name: string }) => {
       expect(m.name).not.toBe('HTTP Alpha');
     });
+  });
+});
+
+// ─── GET /v2/monitors/summary ─────────────────────────────────────────────────────
+
+describe('GET /v2/monitors/summary (integration)', () => {
+  let app: INestApplication;
+  let prisma: PrismaService;
+  let module: TestingModule;
+  let token: string;
+  let userId: string;
+  let token2: string;
+  let userId2: string;
+
+  beforeAll(async () => {
+    ({ app, prisma, module } = await createTestApp());
+
+    const u1 = await createTestUser(prisma, module);
+    token = u1.token;
+    userId = u1.user.id;
+
+    const u2 = await createTestUser(prisma, module);
+    token2 = u2.token;
+    userId2 = u2.user.id;
+
+    // Seed monitors for user 1
+    await prisma.monitor.createMany({
+      data: [
+        { userId, name: 'Summary HTTP 1', type: 'HTTP', target: 'https://a.com', enabled: true, intervalSec: 60, timeoutMs: 5000, configJson: {} },
+        { userId, name: 'Summary HTTP 2', type: 'HTTP', target: 'https://b.com', enabled: true, intervalSec: 60, timeoutMs: 5000, configJson: {} },
+        { userId, name: 'Summary DNS 1', type: 'DNS', target: 'a.com', enabled: false, intervalSec: 300, timeoutMs: 5000, configJson: {} },
+      ],
+    });
+
+    // Seed monitor for user 2
+    await prisma.monitor.create({
+      data: { userId: userId2, name: 'User2 Summary Monitor', type: 'TCP', target: 'tcp://x:80', enabled: true, intervalSec: 60, timeoutMs: 5000, configJson: {} },
+    });
+  }, 45000);
+
+  afterAll(async () => {
+    await cleanupTestUser(prisma, userId);
+    await cleanupTestUser(prisma, userId2);
+    await destroyTestApp(app);
+  }, 15000);
+
+  it('requires auth — 401 without token', async () => {
+    await request(app.getHttpServer()).get('/v2/monitors/summary').expect(401);
+  });
+
+  it('returns total, enabled, disabled, byType', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/v2/monitors/summary')
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    expect(res.body).toHaveProperty('total');
+    expect(res.body).toHaveProperty('enabled');
+    expect(res.body).toHaveProperty('disabled');
+    expect(res.body).toHaveProperty('byType');
+    expect(res.body.total).toBe(3);
+    expect(res.body.enabled).toBe(2);
+    expect(res.body.disabled).toBe(1);
+  });
+
+  it('byType counts per type', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/v2/monitors/summary')
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    expect(res.body.byType.HTTP).toBe(2);
+    expect(res.body.byType.DNS).toBe(1);
+    expect(res.body.byType.TCP).toBeUndefined();
+  });
+
+  it('user isolation — user 2 sees only their monitors', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/v2/monitors/summary')
+      .set({ Authorization: `Bearer ${token2}` })
+      .expect(200);
+    expect(res.body.total).toBe(1);
+    expect(res.body.enabled).toBe(1);
+    expect(res.body.disabled).toBe(0);
+    expect(res.body.byType.TCP).toBe(1);
+    expect(res.body.byType.HTTP).toBeUndefined();
+  });
+
+  it('disabled = total - enabled', async () => {
+    const res = await request(app.getHttpServer())
+      .get('/v2/monitors/summary')
+      .set({ Authorization: `Bearer ${token}` })
+      .expect(200);
+    expect(res.body.disabled).toBe(res.body.total - res.body.enabled);
+  });
+});
+
+// ─── GET /v2/monitors/:id ───────────────────────────────────────────────────────────
+
+describe('GET /v2/monitors/:id (integration)', () => {
+  let app: INestApplication;
+  let prisma: PrismaService;
+  let module: TestingModule;
+  let token: string;
+  let userId: string;
+  let token2: string;
+  let userId2: string;
+  let monitorId: string;
+  let channelId: string;
+  let folderId: string;
+  let gitMonitorId: string;
+
+  beforeAll(async () => {
+    ({ app, prisma, module } = await createTestApp());
+
+    const u1 = await createTestUser(prisma, module);
+    token = u1.token;
+    userId = u1.user.id;
+
+    const u2 = await createTestUser(prisma, module);
+    token2 = u2.token;
+    userId2 = u2.user.id;
+
+    // Seed folder
+    const folder = await prisma.folder.create({ data: { userId, name: 'GetOne Folder', position: 0 } });
+    folderId = folder.id;
+
+    // Seed alert channel
+    const channel = await prisma.alertChannel.create({
+      data: { userId, name: 'GetOne Channel', type: 'webhook', configJson: { webhookUrl: 'https://hooks.example.com/getone' } },
+    });
+    channelId = channel.id;
+
+    // Main monitor (with folder + channel link)
+    const m = await prisma.monitor.create({
+      data: {
+        userId,
+        name: 'GetOne HTTP Monitor',
+        type: 'HTTP',
+        target: 'https://getone.example.com',
+        enabled: true,
+        intervalSec: 60,
+        timeoutMs: 10000,
+        folderId,
+        configJson: {},
+      },
+    });
+    monitorId = m.id;
+    await prisma.monitorAlert.create({ data: { monitorId, alertChannelId: channelId, notifyOn: 'DOWN' } });
+
+    // GIT_RELEASE monitor with secrets
+    const git = await prisma.monitor.create({
+      data: {
+        userId,
+        name: 'GetOne Git Monitor',
+        type: 'GIT_RELEASE',
+        target: 'No749ah/PulseDock',
+        enabled: true,
+        intervalSec: 3600,
+        timeoutMs: 10000,
+        configJson: { token: 'ghp_secret', appToken: 'app_secret' },
+      },
+    });
+    gitMonitorId = git.id;
+
+    // Monitor for user 2
+    await prisma.monitor.create({
+      data: { userId: userId2, name: 'User2 GetOne Monitor', type: 'HTTP', target: 'https://u2.example.com', enabled: true, intervalSec: 60, timeoutMs: 5000, configJson: {} },
+    });
+  }, 45000);
+
+  afterAll(async () => {
+    await cleanupTestUser(prisma, userId);
+    await cleanupTestUser(prisma, userId2);
+    await destroyTestApp(app);
+  }, 15000);
+
+  const auth = () => ({ Authorization: `Bearer ${token}` });
+  const auth2 = () => ({ Authorization: `Bearer ${token2}` });
+
+  it('requires auth — 401 without token', async () => {
+    await request(app.getHttpServer()).get(`/v2/monitors/${monitorId}`).expect(401);
+  });
+
+  it('returns monitor by id with all expected fields', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/v2/monitors/${monitorId}`)
+      .set(auth())
+      .expect(200);
+    expect(res.body).toHaveProperty('id', monitorId);
+    expect(res.body).toHaveProperty('name', 'GetOne HTTP Monitor');
+    expect(res.body).toHaveProperty('type', 'HTTP');
+    expect(res.body).toHaveProperty('target', 'https://getone.example.com');
+    expect(res.body).toHaveProperty('enabled', true);
+    expect(res.body).toHaveProperty('intervalSec', 60);
+    expect(res.body).toHaveProperty('timeoutMs', 10000);
+    expect(res.body).toHaveProperty('config');
+    expect(res.body).toHaveProperty('alertChannelIds');
+    expect(res.body).toHaveProperty('createdAt');
+  });
+
+  it('folderId is populated for monitor in a folder', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/v2/monitors/${monitorId}`)
+      .set(auth())
+      .expect(200);
+    expect(res.body.folderId).toBe(folderId);
+  });
+
+  it('alertChannelIds includes linked channel', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/v2/monitors/${monitorId}`)
+      .set(auth())
+      .expect(200);
+    expect(Array.isArray(res.body.alertChannelIds)).toBe(true);
+    expect(res.body.alertChannelIds).toContain(channelId);
+  });
+
+  it('redacts token and appToken from GIT_RELEASE config', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/v2/monitors/${gitMonitorId}`)
+      .set(auth())
+      .expect(200);
+    expect(res.body.config.token).toBeUndefined();
+    expect(res.body.config.appToken).toBeUndefined();
+    expect(res.body.config.hasRepoToken).toBe(true);
+    expect(res.body.config.hasAppToken).toBe(true);
+  });
+
+  it('returns 404 for nonexistent monitor id', async () => {
+    await request(app.getHttpServer())
+      .get('/v2/monitors/nonexistent-id-xyz')
+      .set(auth())
+      .expect(404);
+  });
+
+  it('returns 404 when accessing another user\'s monitor', async () => {
+    // user 2 tries to access user 1's monitor
+    await request(app.getHttpServer())
+      .get(`/v2/monitors/${monitorId}`)
+      .set(auth2())
+      .expect(404);
+  });
+
+  it('createdAt is a valid ISO 8601 timestamp', async () => {
+    const res = await request(app.getHttpServer())
+      .get(`/v2/monitors/${monitorId}`)
+      .set(auth())
+      .expect(200);
+    expect(new Date(res.body.createdAt).toISOString()).toBe(res.body.createdAt);
   });
 });

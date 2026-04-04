@@ -1,6 +1,14 @@
 import { IsIn, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
+import type { MonitorType } from '../../types';
+
+/** All valid MonitorType values (kept in sync with types.ts). */
+export const ALL_MONITOR_TYPES: MonitorType[] = [
+  'HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT',
+  'DNS', 'PING', 'SMTP', 'BROWSER', 'WHOIS', 'FTP', 'IMAP', 'POP3',
+  'CT_LOG', 'GRAPHQL', 'TRANSACTION',
+];
 
 export class V2ListMonitorsQuery {
   @ApiPropertyOptional({ description: 'Page number (1-based)', default: 1, minimum: 1 })
@@ -18,10 +26,13 @@ export class V2ListMonitorsQuery {
   @Type(() => Number)
   limit?: number = 20;
 
-  @ApiPropertyOptional({ description: 'Filter by monitor type', enum: ['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT'] })
+  @ApiPropertyOptional({
+    description: 'Filter by monitor type',
+    enum: ALL_MONITOR_TYPES,
+  })
   @IsOptional()
-  @IsIn(['HTTP', 'GIT_RELEASE', 'DOCKER_IMAGE', 'TCP', 'SSL_CERT', 'HEARTBEAT'])
-  type?: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE' | 'TCP' | 'SSL_CERT' | 'HEARTBEAT';
+  @IsIn(ALL_MONITOR_TYPES)
+  type?: MonitorType;
 
   @ApiPropertyOptional({ description: 'Filter by enabled state' })
   @IsOptional()

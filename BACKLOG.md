@@ -1,3 +1,13 @@
+## Status Summary (2026-04-04 14:21 UTC)
+- **Build/Test:** ✅ Build clean; 5173 API + 5690 web + 1097 integration + 114 CLI + 12 agent = **12,086 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 local + public `https://oc-dev-test.no749ah.com`
+- **Branch:** heartbeat/2026-04-04-afternoon
+- **Last changes (14:21 UTC):**
+  - [x] **feat(api): GET /v2/maintenance endpoint** — paginated maintenance windows with recurrence filter (NONE/DAILY/WEEKLY/MONTHLY), activeOnly=true filter, search (name+desc), sort by startsAt/endsAt/name/createdAt/monitorCount. Response includes `isActive` computed flag and `monitorCount`. Registered in app.module.ts + v2.module.ts.
+  - [x] **test(api): 12 v2/maintenance unit tests** — controller spec: empty list meta, field shape, isActive true/false for active/past NONE window, activeOnly filter (true/false), monitorCount sort asc/desc, recurrenceEndsAt null/ISO, userId isolation, meta.pages ceil. API: 5161 → 5173.
+  - [x] **test(api): 19 v2/maintenance integration tests** — auth guard, envelope shape, field shape (all fields), isActive flag (active/past), user isolation, pagination (total/limit=1/cross-page), recurrence=DAILY filter, activeOnly=true filter, search (name case-insensitive / no-match), sort name asc/desc, invalid sortBy/sortDir/recurrence → 400, page-beyond-total. Integration: 1078 → 1097.
+  - [x] **test(web): 11 shareTokenHelpers unit tests** — buildShareTokenPath (path structure, special chars, empty), buildShareJsonPath (full path), copyButtonLabel (copied/not), isTokenActionDisabled (loading/not), generateButtonLabel (loading/not). Web: 5679 → 5690.
+
 ## Status Summary (2026-04-04 13:21 UTC)
 - **Build/Test:** ✅ Build clean; 5161 API + 5679 web + 1078 integration + 114 CLI + 12 agent = **12,044 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all pages 200 local + public `https://oc-dev-test.no749ah.com`

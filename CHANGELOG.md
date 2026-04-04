@@ -7,6 +7,29 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ---
 
+## [Unreleased] — 2026-04-04
+
+### Added
+- **Comprehensive Integration Test Suite** — 870+ real-database integration tests across 48 spec files covering every API module: auth, monitors (CRUD/state/runs/analytics/SLA/diagnostics/comparison/export/alerts/details), alerts (channels/analytics/routing), incidents, teams, organizations, settings, status pages, tools, versions, admin, grafana, heartbeat, agent, webhooks, escalation, playbooks, maintenance, deployments, folders, tags, annotations, notifications, search, reports, plan, service groups, dependencies, and more.
+- **V2 API Hardened** — Paginated list endpoints for monitors, alert channels, and checks with filtering, sorting, and search. Secret redaction on all webhook/bot token fields. Cross-user isolation verified in integration.
+- **System & Health Integration Tests** — `/health`, `/health/live`, `/health/ready`, `/metrics`, `/v2/system/info`, `/v2/system/versions`.
+
+### Fixed
+- **`ImportExternalDto` payload whitelist** — Added `@IsOptional()` so `POST /v1/monitors/import-external` no longer returns 400 for valid CSV/provider payloads.
+- **Agent `redirectChain:[]` missing** — `MonitorRun.create` was missing the required field, causing P2011 null constraint violations on every agent report. Fixed.
+- **Route shadowing in analytics/SLA/diagnostics/export/comparison** — Static routes (`/fleet-report`, `/trends`, `/correlation`, etc.) were shadowed by `:id` param routes. Now controllers are registered before the main MonitorsController.
+- **Organizations controller userId bug** — Controller typed `req.user` as `{ sub: string }` but `AuthGuard` populates it as `{ id: string }`. All org writes passed `undefined` as userId. Fixed.
+- **Deployments controller route shadowing** — `/summary` and `/by-monitor/:id` were returning 404 because `:id` was declared before them. Moved static routes first.
+- **SLA service `uptimeCertificate` throws 500** — Was throwing plain `Error` instead of `NotFoundException`. Now returns proper 404.
+
+### Tests
+- **11,000+ tests passing** (5055 API + 5006 web + 870 integration + 114 CLI + 12 agent) — up from 5350+ in v1.6.0
+- 480+ test files across API, web, CLI, agent, and integration suites
+- All web helper modules have unit test coverage (pure function extraction pattern)
+- Integration tests run against real PostgreSQL with isolated user cleanup per suite
+
+---
+
 ## [1.6.0] — 2026-03-29
 
 ### Added

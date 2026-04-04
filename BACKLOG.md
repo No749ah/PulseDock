@@ -1,3 +1,13 @@
+## Status Summary (2026-04-04 17:20 UTC)
+- **Build/Test:** ✅ Build clean; 5199 API + 5690 web + 1131 integration + 114 CLI + 12 agent = **12,146 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 local + public `https://oc-dev-test.no749ah.com`
+- **Branch:** heartbeat/2026-04-04-afternoon
+- **Last changes (17:20 UTC):**
+  - [x] **feat(api): GET /v2/service-groups endpoint** — paginated service groups with search (name+desc), sort by name/createdAt/monitorCount (in-memory for monitorCount), derived monitorCount field. Auth guard, user isolation, invalid params → 400.
+  - [x] **feat(api): GET /v2/escalation-policies endpoint** — paginated escalation policies with search (name), sort by name/createdAt/stepCount (in-memory for stepCount), derived stepCount field. Auth guard, user isolation, invalid params → 400.
+  - [x] **test(api): 26 unit tests** — service-groups.controller.spec.ts (12), escalation-policies.controller.spec.ts (14). API: 5173 → 5199.
+  - [x] **test(api): 34 integration tests** — v2-service-groups-escalation.integration.spec.ts: auth guard, envelope shape, user isolation, derived fields, search (name+desc), all sort combos, pagination, invalid params → 400. Integration: 1097 → 1131.
+
 ## Status Summary (2026-04-04 14:21 UTC)
 - **Build/Test:** ✅ Build clean; 5173 API + 5690 web + 1097 integration + 114 CLI + 12 agent = **12,086 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all pages 200 local + public `https://oc-dev-test.no749ah.com`

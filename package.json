@@ -36,6 +36,7 @@
     "heartbeat:bootstrap": "bash ./scripts/heartbeat-bootstrap.sh",
     "heartbeat:check": "bash ./scripts/heartbeat-check.sh",
     "heartbeat:check:prod": "bash ./scripts/heartbeat-check.sh --public",
+    "backlog:prune": "bash ./scripts/prune-backlog-status.sh",
     "perf": "bash ./scripts/perf-check.sh",
     "perf:prod": "bash ./scripts/perf-check.sh https://oc-dev-test.no749ah.com https://oc-dev-test.no749ah.com/api",
     "quality": "bash ./scripts/code-quality.sh",

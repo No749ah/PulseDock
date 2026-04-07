@@ -52,12 +52,22 @@ section() { echo -e "\n${BOLD}${CYAN}$1${RESET}"; }
 check_route() {
   local base="$1"
   local route="$2"
-  local code
-  code=$(curl -so /dev/null -w "%{http_code}" --max-time 10 "$base$route" 2>/dev/null || echo "000")
-  if [[ "$code" == "200" ]]; then
-    ok "$base$route → HTTP 200"
-  else
+  local code effective_url result normalized_effective
+
+  result=$(curl -sL -o /dev/null -w "%{http_code}|%{url_effective}" --max-time 10 --connect-timeout 5 "$base$route" 2>/dev/null || echo "000|")
+  code="${result%%|*}"
+  effective_url="${result#*|}"
+  normalized_effective="${effective_url%%\?*}"
+
+  if [[ "$code" != "200" ]]; then
     fail_ "$base$route → expected 200, got $code"
+    return
+  fi
+
+  if [[ "$normalized_effective" == "$base$route" || "$normalized_effective" == "$base$route/" ]]; then
+    ok "$base$route → HTTP 200 (no redirect drift)"
+  else
+    fail_ "$base$route → redirected to $effective_url"
   fi
 }
 

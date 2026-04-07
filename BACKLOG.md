@@ -1,3 +1,12 @@
+## Status Summary (2026-04-07 22:06 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ Services healthy; frontend audit passing locally after route-redirect hardening (`npm run audit:frontend`)
+- **Branch:** heartbeat/2026-04-07-afternoon
+- **Last changes (22:06 UTC):**
+  - [x] **fix(devx): fail frontend audits on silent route redirect drift** — `scripts/audit-frontend-pages.sh` now follows redirects and validates each required route resolves to itself (not an auth/error fallback URL), while still enforcing HTTP 200.
+
+---
+
 ## Status Summary (2026-04-07 21:18 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
 - **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks (including authenticated API + web `/api` proxy validation) and frontend route+asset audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
@@ -192,6 +201,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Fail frontend heartbeat audit on redirect drift** - ✅ Done (2026-04-07). `scripts/audit-frontend-pages.sh` now follows redirects and fails when required routes resolve to a different URL (for example, hidden auth fallback to `/login`) even if status remains 200.
 - [x] **Automate full heartbeat validation pipeline** - ✅ Done (2026-04-07). Added `scripts/heartbeat-check.sh` with npm scripts `heartbeat:check` and `heartbeat:check:prod` to run build/test/audit + post-deploy + frontend route checks in one command.
 - [x] **Add strict-auth mode to heartbeat check pipeline** - ✅ Done (2026-04-07). Enhanced `scripts/heartbeat-check.sh` to support `--strict-auth` (compatible with `--public`) and added npm scripts `heartbeat:check:strict` and `heartbeat:check:strict:prod`.
 - [x] **Automate full heartbeat execution pipeline with restart gate** - ✅ Done (2026-04-07). Added `scripts/heartbeat-cycle.sh` + npm scripts `heartbeat:cycle*` to enforce the complete sequence (bootstrap, build, test, audit, mandatory restart, deploy audit, frontend audit), including optional public and strict-auth modes.

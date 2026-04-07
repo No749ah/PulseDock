@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { V2ApiKeysController } from './api-keys.controller';
 import { PrismaService } from '../../common/prisma.service';
 

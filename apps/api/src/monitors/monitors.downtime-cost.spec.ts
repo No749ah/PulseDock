@@ -211,6 +211,8 @@ describe('MonitorsService.downtimeCostReport', () => {
 
 describe('MonitorsService.downtimeCostHistory', () => {
   it('8. daily breakdown returns correct structure and sums', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(NOW);
     const monitor = {
       id: 'm1',
       name: 'API',
@@ -240,5 +242,6 @@ describe('MonitorsService.downtimeCostHistory', () => {
     // 3 fails * 60s = 3min = 0.05h → cost = 0.05 * 60 = $3
     expect(todayEntry!.downtimeMinutes).toBe(3);
     expect(todayEntry!.estimatedCost).toBe(3);
+    vi.useRealTimers();
   });
 });

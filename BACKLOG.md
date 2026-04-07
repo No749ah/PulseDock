@@ -1,3 +1,10 @@
+## Status Summary (2026-04-07 09:44 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; build + tests + `npm audit --audit-level=high` passing; 0 vulnerabilities
+- **Branch:** heartbeat/2026-04-04-afternoon
+- **Last changes (09:44 UTC):**
+  - [x] **chore(devx): add frontend route audit script** — added `scripts/audit-frontend-pages.sh` to verify all required heartbeat frontend routes (`/login`, `/dashboard`, `/monitors`, `/alerts`, `/account`, `/projects`, `/versions`, `/admin`) return HTTP 200 for local web and optional public reverse proxy.
+  - [x] **chore(npm): add frontend audit npm scripts** — `npm run audit:frontend` (local) and `npm run audit:frontend:prod` (local + public).
+
 ## Status Summary (2026-04-04 17:20 UTC)
 - **Build/Test:** ✅ Build clean; 5199 API + 5690 web + 1131 integration + 114 CLI + 12 agent = **12,146 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all pages 200 local + public `https://oc-dev-test.no749ah.com`
@@ -587,6 +594,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Automate heartbeat frontend route audit** - ✅ Done (2026-04-07). Added `scripts/audit-frontend-pages.sh` + npm scripts `audit:frontend` and `audit:frontend:prod` to enforce local/public 200 checks for required UI routes.
 - [x] **Prune old status summaries from backlog file** - ✅ Done (2026-04-01). Removed redundant top-of-file status blocks and kept a single current status summary. (Note: git commit history itself is immutable and intentionally unchanged.)
 
 - [x] **Consolidate duplicate API endpoints** - ✅ Done (2026-03-30). Extracted shared v2 types (PaginatedEnvelope, AuthenticatedRequest, parsePagination, buildMeta) into v2/v2.types.ts and common/auth.types.ts. v1 and v2 are complementary (v2 adds pagination), not duplicates. 14 unit tests added.

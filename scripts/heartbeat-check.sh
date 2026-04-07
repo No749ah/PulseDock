@@ -46,9 +46,30 @@ sync_with_dev() {
   git pull origin dev
 }
 
+ensure_safe_branch() {
+  local branch
+  branch=$(git branch --show-current)
+
+  if [[ -z "$branch" ]]; then
+    echo "Detached HEAD is not allowed for heartbeat checks. Switch to a heartbeat/* branch first." >&2
+    exit 1
+  fi
+
+  if [[ "$branch" == "main" || "$branch" == "dev" ]]; then
+    echo "Heartbeat checks must run from a heartbeat/* branch, not '$branch'." >&2
+    exit 1
+  fi
+
+  if [[ "$branch" != heartbeat/* ]]; then
+    echo "Heartbeat checks must run from a heartbeat/* branch. Current: '$branch'." >&2
+    exit 1
+  fi
+}
+
 echo -e "${BOLD}PulseDock Heartbeat Check $(date -u '+%Y-%m-%d %H:%M UTC')${RESET}"
 
 run_step "Sync from origin/dev" "sync_with_dev"
+run_step "Branch safety check" "ensure_safe_branch"
 run_step "Environment bootstrap" "npm run heartbeat:bootstrap"
 run_step "Build" "npm run build"
 run_step "Test" "npm run test"

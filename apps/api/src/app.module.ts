@@ -67,6 +67,7 @@ import { V2EscalationPoliciesController } from './v2/escalation-policies/escalat
 import { V2ActivityController } from './v2/activity/activity.controller';
 import { V2ApiKeysController } from './v2/api-keys/api-keys.controller';
 import { V2SearchController } from './v2/search/search.controller';
+import { V2PlaybooksController } from './v2/playbooks/playbooks.controller';
 import { TagsController } from './tags/tags.controller';
 import { ToolRegistryController } from './tool-registry/tool-registry.controller';
 import { TagsService } from './tags/tags.service';
@@ -163,6 +164,7 @@ import { DependenciesService } from './dependencies/dependencies.service';
     V2ActivityController,
     V2ApiKeysController,
     V2SearchController,
+    V2PlaybooksController,
     TagsController,
     ToolRegistryController,
     NotificationsController,

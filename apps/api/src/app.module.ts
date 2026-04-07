@@ -66,6 +66,7 @@ import { V2ServiceGroupsController } from './v2/service-groups/service-groups.co
 import { V2EscalationPoliciesController } from './v2/escalation-policies/escalation-policies.controller';
 import { V2ActivityController } from './v2/activity/activity.controller';
 import { V2ApiKeysController } from './v2/api-keys/api-keys.controller';
+import { V2SearchController } from './v2/search/search.controller';
 import { TagsController } from './tags/tags.controller';
 import { ToolRegistryController } from './tool-registry/tool-registry.controller';
 import { TagsService } from './tags/tags.service';
@@ -161,6 +162,7 @@ import { DependenciesService } from './dependencies/dependencies.service';
     V2EscalationPoliciesController,
     V2ActivityController,
     V2ApiKeysController,
+    V2SearchController,
     TagsController,
     ToolRegistryController,
     NotificationsController,

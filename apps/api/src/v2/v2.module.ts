@@ -13,6 +13,8 @@ import { V2MaintenanceController } from './maintenance/maintenance.controller';
 import { V2ServiceGroupsController } from './service-groups/service-groups.controller';
 import { V2EscalationPoliciesController } from './escalation-policies/escalation-policies.controller';
 import { V2ApiKeysController } from './api-keys/api-keys.controller';
+import { V2SearchController } from './search/search.controller';
+import { SearchService } from '../search/search.service';
 import { MonitorsService } from '../monitors/monitors.service';
 import { MonitorsCrudService } from '../monitors/monitors-crud.service';
 import { MonitorsAnalyticsService } from '../monitors/monitors-analytics.service';
@@ -49,9 +51,10 @@ import { AuditService } from '../common/audit.service';
  *   - GET /v2/service-groups       — paginated service groups with monitorCount derived field
  *   - GET /v2/escalation-policies  — paginated escalation policies with stepCount derived field
  *   - GET /v2/activity             — paginated audit log with action prefix + date-range filters
+ *   - GET /v2/search               — paginated flat search with sortBy (relevance/updatedAt/title) + types filter
  */
 @Module({
-  controllers: [V2ActivityController, V2MonitorsController, V2AlertsController, V2ChecksController, V2SystemController, V2IncidentsController, V2DeploymentsController, V2StatusPagesController, V2TagsController, V2FoldersController, V2MaintenanceController, V2ServiceGroupsController, V2EscalationPoliciesController, V2ApiKeysController],
-  providers: [MonitorsService, MonitorsCrudService, MonitorsAnalyticsService, MonitorsSlaService, MonitorsDiagnosticsService, MonitorsExportService, MonitorsComparisonService, ChecksService, AuditService],
+  controllers: [V2ActivityController, V2MonitorsController, V2AlertsController, V2ChecksController, V2SystemController, V2IncidentsController, V2DeploymentsController, V2StatusPagesController, V2TagsController, V2FoldersController, V2MaintenanceController, V2ServiceGroupsController, V2EscalationPoliciesController, V2ApiKeysController, V2SearchController],
+  providers: [SearchService, MonitorsService, MonitorsCrudService, MonitorsAnalyticsService, MonitorsSlaService, MonitorsDiagnosticsService, MonitorsExportService, MonitorsComparisonService, ChecksService, AuditService],
 })
 export class V2Module {}

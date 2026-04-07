@@ -1,3 +1,14 @@
+## Status Summary (2026-04-07 11:15 UTC)
+- **Build/Test/Audit:** ✅ Build clean; 5285 API + 5690 web + 1287 integration + 114 CLI + 12 agent = **12,388 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 8 pages 200 local + public `https://oc-dev-test.no749ah.com`
+- **Branch:** heartbeat/2026-04-07-morning (merged heartbeat/2026-04-04-afternoon → dev, deleted old branch)
+- **Last changes (11:15 UTC):**
+  - [x] **feat(api): GET /v2/search endpoint** — committed uncommitted work from prior session; paginated flat search (monitors/incidents/status_pages/versions), sortBy: relevance|updatedAt|title, types filter, entityType field. 17 integration tests.
+  - [x] **Branch management** — merged heartbeat/2026-04-04-afternoon → dev, deleted old branch, created heartbeat/2026-04-07-morning
+  - [x] **feat(api): GET /v2/playbooks endpoint** — paginated playbooks with derived stepCount/monitorCount fields, severity filter (case-insensitive), search (name+desc), all sortBy combos (name/createdAt/updatedAt/stepCount/monitorCount), pagination. 17 unit + 27 integration tests. API: 5252 → 5285. Integration: 1260 → 1287.
+
+---
+
 ## Status Summary (2026-04-07 09:44 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; build + tests + `npm audit --audit-level=high` passing; 0 vulnerabilities
 - **Branch:** heartbeat/2026-04-04-afternoon

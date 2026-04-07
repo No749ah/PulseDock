@@ -1,3 +1,13 @@
+## Status Summary (2026-04-07 18:10 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks and frontend route+asset audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
+- **Branch:** heartbeat/2026-04-07-afternoon
+- **Last changes (18:10 UTC):**
+  - [x] **chore(devx): add one-command heartbeat cycle runner** — added `scripts/heartbeat-cycle.sh` to enforce bootstrap → build → test → audit → restart → deploy/frontend audits in strict order, with optional `--public` and `--strict-auth` modes.
+  - [x] **chore(npm): add heartbeat cycle scripts** — added `heartbeat:cycle`, `heartbeat:cycle:prod`, `heartbeat:cycle:strict`, and `heartbeat:cycle:strict:prod`.
+
+---
+
 ## Status Summary (2026-04-07 17:12 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
 - **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks and frontend route+asset audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
@@ -83,26 +93,6 @@
   - [x] **chore(devx): add frontend route audit script** — added `scripts/audit-frontend-pages.sh` to verify all required heartbeat frontend routes (`/login`, `/dashboard`, `/monitors`, `/alerts`, `/account`, `/projects`, `/versions`, `/admin`) return HTTP 200 for local web and optional public reverse proxy.
   - [x] **chore(npm): add frontend audit npm scripts** — `npm run audit:frontend` (local) and `npm run audit:frontend:prod` (local + public).
 
-## Status Summary (2026-04-04 17:20 UTC)
-- **Build/Test:** ✅ Build clean; 5199 API + 5690 web + 1131 integration + 114 CLI + 12 agent = **12,146 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 local + public `https://oc-dev-test.no749ah.com`
-- **Branch:** heartbeat/2026-04-04-afternoon
-- **Last changes (17:20 UTC):**
-  - [x] **feat(api): GET /v2/service-groups endpoint** — paginated service groups with search (name+desc), sort by name/createdAt/monitorCount (in-memory for monitorCount), derived monitorCount field. Auth guard, user isolation, invalid params → 400.
-  - [x] **feat(api): GET /v2/escalation-policies endpoint** — paginated escalation policies with search (name), sort by name/createdAt/stepCount (in-memory for stepCount), derived stepCount field. Auth guard, user isolation, invalid params → 400.
-  - [x] **test(api): 26 unit tests** — service-groups.controller.spec.ts (12), escalation-policies.controller.spec.ts (14). API: 5173 → 5199.
-  - [x] **test(api): 34 integration tests** — v2-service-groups-escalation.integration.spec.ts: auth guard, envelope shape, user isolation, derived fields, search (name+desc), all sort combos, pagination, invalid params → 400. Integration: 1097 → 1131.
-
-## Status Summary (2026-04-04 14:21 UTC)
-- **Build/Test:** ✅ Build clean; 5173 API + 5690 web + 1097 integration + 114 CLI + 12 agent = **12,086 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 local + public `https://oc-dev-test.no749ah.com`
-- **Branch:** heartbeat/2026-04-04-afternoon
-- **Last changes (14:21 UTC):**
-  - [x] **feat(api): GET /v2/maintenance endpoint** — paginated maintenance windows with recurrence filter (NONE/DAILY/WEEKLY/MONTHLY), activeOnly=true filter, search (name+desc), sort by startsAt/endsAt/name/createdAt/monitorCount. Response includes `isActive` computed flag and `monitorCount`. Registered in app.module.ts + v2.module.ts.
-  - [x] **test(api): 12 v2/maintenance unit tests** — controller spec: empty list meta, field shape, isActive true/false for active/past NONE window, activeOnly filter (true/false), monitorCount sort asc/desc, recurrenceEndsAt null/ISO, userId isolation, meta.pages ceil. API: 5161 → 5173.
-  - [x] **test(api): 19 v2/maintenance integration tests** — auth guard, envelope shape, field shape (all fields), isActive flag (active/past), user isolation, pagination (total/limit=1/cross-page), recurrence=DAILY filter, activeOnly=true filter, search (name case-insensitive / no-match), sort name asc/desc, invalid sortBy/sortDir/recurrence → 400, page-beyond-total. Integration: 1078 → 1097.
-  - [x] **test(web): 11 shareTokenHelpers unit tests** — buildShareTokenPath (path structure, special chars, empty), buildShareJsonPath (full path), copyButtonLabel (copied/not), isTokenActionDisabled (loading/not), generateButtonLabel (loading/not). Web: 5679 → 5690.
-
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
 **The project is NOT done. Not even close.**
@@ -180,6 +170,7 @@
 ### 🟢 P3 - Maintenance & Cleanup
 
 - [x] **Automate full heartbeat validation pipeline** - ✅ Done (2026-04-07). Added `scripts/heartbeat-check.sh` with npm scripts `heartbeat:check` and `heartbeat:check:prod` to run build/test/audit + post-deploy + frontend route checks in one command.
+- [x] **Automate full heartbeat execution pipeline with restart gate** - ✅ Done (2026-04-07). Added `scripts/heartbeat-cycle.sh` + npm scripts `heartbeat:cycle*` to enforce the complete sequence (bootstrap, build, test, audit, mandatory restart, deploy audit, frontend audit), including optional public and strict-auth modes.
 
 - [x] **Automate heartbeat frontend route audit** - ✅ Done (2026-04-07). Added `scripts/audit-frontend-pages.sh` + npm scripts `audit:frontend` and `audit:frontend:prod` to enforce local/public 200 checks for required UI routes.
 - [x] **Automate heartbeat frontend static-asset audit** - ✅ Done (2026-04-07). Enhanced `scripts/audit-frontend-pages.sh` to discover and validate Next.js `_next/static` CSS/JS assets from each required route and fail on non-200 asset loads.

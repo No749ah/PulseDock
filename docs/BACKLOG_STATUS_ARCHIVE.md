@@ -496,3 +496,25 @@ Archived status summaries pruned from `BACKLOG.md`.
   - [x] **Changelog page** — Added missing v1.1.0–v1.6.0 entries (6 releases absent from web UI).
   - [x] **package.json license** — Fixed Apache-2.0 → MIT (matches LICENSE file and README badge).
 
+
+## Archive batch 2026-04-07 18:08 UTC
+## Status Summary (2026-04-04 17:20 UTC)
+- **Build/Test:** ✅ Build clean; 5199 API + 5690 web + 1131 integration + 114 CLI + 12 agent = **12,146 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 local + public `https://oc-dev-test.no749ah.com`
+- **Branch:** heartbeat/2026-04-04-afternoon
+- **Last changes (17:20 UTC):**
+  - [x] **feat(api): GET /v2/service-groups endpoint** — paginated service groups with search (name+desc), sort by name/createdAt/monitorCount (in-memory for monitorCount), derived monitorCount field. Auth guard, user isolation, invalid params → 400.
+  - [x] **feat(api): GET /v2/escalation-policies endpoint** — paginated escalation policies with search (name), sort by name/createdAt/stepCount (in-memory for stepCount), derived stepCount field. Auth guard, user isolation, invalid params → 400.
+  - [x] **test(api): 26 unit tests** — service-groups.controller.spec.ts (12), escalation-policies.controller.spec.ts (14). API: 5173 → 5199.
+  - [x] **test(api): 34 integration tests** — v2-service-groups-escalation.integration.spec.ts: auth guard, envelope shape, user isolation, derived fields, search (name+desc), all sort combos, pagination, invalid params → 400. Integration: 1097 → 1131.
+
+## Status Summary (2026-04-04 14:21 UTC)
+- **Build/Test:** ✅ Build clean; 5173 API + 5690 web + 1097 integration + 114 CLI + 12 agent = **12,086 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 local + public `https://oc-dev-test.no749ah.com`
+- **Branch:** heartbeat/2026-04-04-afternoon
+- **Last changes (14:21 UTC):**
+  - [x] **feat(api): GET /v2/maintenance endpoint** — paginated maintenance windows with recurrence filter (NONE/DAILY/WEEKLY/MONTHLY), activeOnly=true filter, search (name+desc), sort by startsAt/endsAt/name/createdAt/monitorCount. Response includes `isActive` computed flag and `monitorCount`. Registered in app.module.ts + v2.module.ts.
+  - [x] **test(api): 12 v2/maintenance unit tests** — controller spec: empty list meta, field shape, isActive true/false for active/past NONE window, activeOnly filter (true/false), monitorCount sort asc/desc, recurrenceEndsAt null/ISO, userId isolation, meta.pages ceil. API: 5161 → 5173.
+  - [x] **test(api): 19 v2/maintenance integration tests** — auth guard, envelope shape, field shape (all fields), isActive flag (active/past), user isolation, pagination (total/limit=1/cross-page), recurrence=DAILY filter, activeOnly=true filter, search (name case-insensitive / no-match), sort name asc/desc, invalid sortBy/sortDir/recurrence → 400, page-beyond-total. Integration: 1078 → 1097.
+  - [x] **test(web): 11 shareTokenHelpers unit tests** — buildShareTokenPath (path structure, special chars, empty), buildShareJsonPath (full path), copyButtonLabel (copied/not), isTokenActionDisabled (loading/not), generateButtonLabel (loading/not). Web: 5679 → 5690.
+

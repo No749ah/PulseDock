@@ -1,3 +1,13 @@
+## Status Summary (2026-04-07 11:45 UTC)
+- **Build/Test/Audit:** ✅ Build clean; 5301 API + 5690 web + 1287 integration + 114 CLI + 12 agent = **12,404 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all 8 pages 200 local + public `https://oc-dev-test.no749ah.com`
+- **Branch:** heartbeat/2026-04-07-noon (merged heartbeat/2026-04-07-morning → dev, deleted old branch)
+- **Last changes (11:45 UTC):**
+  - [x] **feat(api): GET /v2/alert-deliveries endpoint** — paginated delivery log, filter by status/channelId/monitorId/since/until, sortBy createdAt/durationMs/status, user isolation via alertChannel.userId join, channelName+channelType in each record. 16 unit + 28 integration tests. API: 5285 → 5301.
+  - [x] **Branch management** — merged heartbeat/2026-04-07-morning → dev, deleted old branch, created heartbeat/2026-04-07-noon
+
+---
+
 ## Status Summary (2026-04-07 11:15 UTC)
 - **Build/Test/Audit:** ✅ Build clean; 5285 API + 5690 web + 1287 integration + 114 CLI + 12 agent = **12,388 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all 8 pages 200 local + public `https://oc-dev-test.no749ah.com`

@@ -4,12 +4,28 @@
 #   ./scripts/audit-frontend-pages.sh
 #   ./scripts/audit-frontend-pages.sh --public
 
-set -uo pipefail
+set -euo pipefail
 
 WEB_BASE="${WEB_BASE_URL:-http://localhost:1234}"
 PUBLIC_BASE="${PUBLIC_BASE_URL:-https://oc-dev-test.no749ah.com}"
 CHECK_PUBLIC=false
-[[ "${1:-}" == "--public" ]] && CHECK_PUBLIC=true
+
+usage() {
+  echo "Usage: $0 [--public]" >&2
+}
+
+for arg in "$@"; do
+  case "$arg" in
+    --public)
+      CHECK_PUBLIC=true
+      ;;
+    *)
+      echo "Unknown argument: $arg" >&2
+      usage
+      exit 1
+      ;;
+  esac
+done
 
 ROUTES=(
   "/login"
@@ -62,6 +78,28 @@ check_asset_url() {
   fi
 }
 
+check_html_for_runtime_errors() {
+  local route_url="$1"
+  local html="$2"
+
+  local marker
+  local markers=(
+    "id=\"__next_error__\""
+    "Application error: a server-side exception has occurred"
+    "A server error has occurred"
+    "Internal Server Error"
+  )
+
+  for marker in "${markers[@]}"; do
+    if grep -Fq "$marker" <<< "$html"; then
+      fail_ "$route_url → runtime error marker detected: $marker"
+      return 1
+    fi
+  done
+
+  ok "$route_url → no runtime error markers detected"
+}
+
 audit_assets_for_origin() {
   local base="$1"
   section "Static asset audit: $base"
@@ -73,6 +111,8 @@ audit_assets_for_origin() {
       fail_ "asset discovery failed for $base$route (empty response body)"
       continue
     fi
+
+    check_html_for_runtime_errors "$base$route" "$html" || true
 
     rel_assets=$(echo "$html" | grep -Eo '"/_next/static/[^"]+\.(css|js)"' | tr -d '"' || true)
     abs_assets=$(echo "$html" | grep -Eo '"https?://[^" ]+/_next/static/[^" ]+\.(css|js)"' | tr -d '"' || true)

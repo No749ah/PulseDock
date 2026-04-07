@@ -31,6 +31,8 @@
     "audit:deploy:prod": "bash ./scripts/audit-deploy.sh --public",
     "audit:frontend": "bash ./scripts/audit-frontend-pages.sh",
     "audit:frontend:prod": "bash ./scripts/audit-frontend-pages.sh --public",
+    "heartbeat:check": "bash ./scripts/heartbeat-check.sh",
+    "heartbeat:check:prod": "bash ./scripts/heartbeat-check.sh --public",
     "perf": "bash ./scripts/perf-check.sh",
     "perf:prod": "bash ./scripts/perf-check.sh https://oc-dev-test.no749ah.com https://oc-dev-test.no749ah.com/api",
     "quality": "bash ./scripts/code-quality.sh",

@@ -1,3 +1,12 @@
+## Status Summary (2026-04-07 13:12 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks + frontend audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
+- **Branch:** heartbeat/2026-04-07-afternoon
+- **Last changes (13:12 UTC):**
+  - [x] **chore(devx): add full heartbeat check runner** — added `scripts/heartbeat-check.sh` plus npm scripts `heartbeat:check` and `heartbeat:check:prod` to run full heartbeat validation in one command (build, test, audit, post-deploy audit, frontend route audit).
+
+---
+
 ## Status Summary (2026-04-07 12:09 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
 - **Deployment:** ✅ Restarted API + web via `npm run restart`; local + public smoke tests passing; post-deploy and frontend route audits all green
@@ -624,6 +633,8 @@
 - [x] **Batch notification digest improvements** - Added weekly_digest option (cron: Mon 07:05 UTC). Trend data in digests deferred (requires significant mailer template rework). *(2026-03-30)*
 
 ### 🟢 P3 - Maintenance & Cleanup
+
+- [x] **Automate full heartbeat validation pipeline** - ✅ Done (2026-04-07). Added `scripts/heartbeat-check.sh` with npm scripts `heartbeat:check` and `heartbeat:check:prod` to run build/test/audit + post-deploy + frontend route checks in one command.
 
 - [x] **Automate heartbeat frontend route audit** - ✅ Done (2026-04-07). Added `scripts/audit-frontend-pages.sh` + npm scripts `audit:frontend` and `audit:frontend:prod` to enforce local/public 200 checks for required UI routes.
 - [x] **Prune old status summaries from backlog file** - ✅ Done (2026-04-01). Removed redundant top-of-file status blocks and kept a single current status summary. (Note: git commit history itself is immutable and intentionally unchanged.)

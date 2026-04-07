@@ -1,3 +1,12 @@
+## Status Summary (2026-04-07 15:10 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ Web restarted during build; frontend route+asset audit passing locally (all required pages 200 + discovered `_next/static` CSS/JS assets 200)
+- **Branch:** heartbeat/2026-04-07-afternoon
+- **Last changes (15:10 UTC):**
+  - [x] **chore(devx): harden heartbeat frontend audit with static asset checks** — extended `scripts/audit-frontend-pages.sh` to crawl required pages, discover Next.js `_next/static` CSS/JS assets, dedupe URLs, and fail on any non-200 asset response.
+
+---
+
 ## Status Summary (2026-04-07 14:12 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
 - **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks + frontend audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
@@ -647,6 +656,7 @@
 - [x] **Automate full heartbeat validation pipeline** - ✅ Done (2026-04-07). Added `scripts/heartbeat-check.sh` with npm scripts `heartbeat:check` and `heartbeat:check:prod` to run build/test/audit + post-deploy + frontend route checks in one command.
 
 - [x] **Automate heartbeat frontend route audit** - ✅ Done (2026-04-07). Added `scripts/audit-frontend-pages.sh` + npm scripts `audit:frontend` and `audit:frontend:prod` to enforce local/public 200 checks for required UI routes.
+- [x] **Automate heartbeat frontend static-asset audit** - ✅ Done (2026-04-07). Enhanced `scripts/audit-frontend-pages.sh` to discover and validate Next.js `_next/static` CSS/JS assets from each required route and fail on non-200 asset loads.
 - [x] **Automate heartbeat environment bootstrap checks** - ✅ Done (2026-04-07). Added `scripts/heartbeat-bootstrap.sh` + npm script `heartbeat:bootstrap`; wired bootstrap as the first step in `heartbeat:check`.
 - [x] **Prune old status summaries from backlog file** - ✅ Done (2026-04-01). Removed redundant top-of-file status blocks and kept a single current status summary. (Note: git commit history itself is immutable and intentionally unchanged.)
 

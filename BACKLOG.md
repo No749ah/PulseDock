@@ -1,9 +1,10 @@
 ## Status Summary (2026-04-07 21:18 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ Pending restart + post-deploy/public audits for latest heartbeat commit
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks (including authenticated API + web `/api` proxy validation) and frontend route+asset audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
 - **Branch:** heartbeat/2026-04-07-afternoon
 - **Last changes (21:18 UTC):**
   - [x] **chore(devx): harden frontend audit runtime-error detection + CLI parsing** — `scripts/audit-frontend-pages.sh` now uses strict argument parsing (unknown flags fail fast with usage output) and scans each required route body for known Next.js runtime error markers (`__next_error__`, server exception strings) before static-asset checks.
+  - [x] **fix(devx): keep frontend audit counters stable with strict marker checks** — removed `set -e` from `scripts/audit-frontend-pages.sh` so pass/fail counters remain non-fatal while still collecting full audit results.
 
 ---
 

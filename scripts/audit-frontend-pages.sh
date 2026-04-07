@@ -4,7 +4,7 @@
 #   ./scripts/audit-frontend-pages.sh
 #   ./scripts/audit-frontend-pages.sh --public
 
-set -euo pipefail
+set -uo pipefail
 
 WEB_BASE="${WEB_BASE_URL:-http://localhost:1234}"
 PUBLIC_BASE="${PUBLIC_BASE_URL:-https://oc-dev-test.no749ah.com}"

@@ -21,6 +21,7 @@ run_step() {
 
 echo -e "${BOLD}PulseDock Heartbeat Check $(date -u '+%Y-%m-%d %H:%M UTC')${RESET}"
 
+run_step "Environment bootstrap" "npm run heartbeat:bootstrap"
 run_step "Build" "npm run build"
 run_step "Test" "npm run test"
 run_step "Security audit (high)" "npm audit --audit-level=high"
@@ -34,4 +35,3 @@ else
 fi
 
 echo -e "\n${GREEN}${BOLD}Heartbeat check complete.${RESET}"
-

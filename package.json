@@ -31,6 +31,7 @@
     "audit:deploy:prod": "bash ./scripts/audit-deploy.sh --public",
     "audit:frontend": "bash ./scripts/audit-frontend-pages.sh",
     "audit:frontend:prod": "bash ./scripts/audit-frontend-pages.sh --public",
+    "heartbeat:bootstrap": "bash ./scripts/heartbeat-bootstrap.sh",
     "heartbeat:check": "bash ./scripts/heartbeat-check.sh",
     "heartbeat:check:prod": "bash ./scripts/heartbeat-check.sh --public",
     "perf": "bash ./scripts/perf-check.sh",

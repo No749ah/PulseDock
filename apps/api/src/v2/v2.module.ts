@@ -15,6 +15,7 @@ import { V2EscalationPoliciesController } from './escalation-policies/escalation
 import { V2ApiKeysController } from './api-keys/api-keys.controller';
 import { V2SearchController } from './search/search.controller';
 import { V2PlaybooksController } from './playbooks/playbooks.controller';
+import { V2AlertDeliveriesController } from './alert-deliveries/alert-deliveries.controller';
 import { SearchService } from '../search/search.service';
 import { MonitorsService } from '../monitors/monitors.service';
 import { MonitorsCrudService } from '../monitors/monitors-crud.service';
@@ -54,9 +55,10 @@ import { AuditService } from '../common/audit.service';
  *   - GET /v2/activity             — paginated audit log with action prefix + date-range filters
  *   - GET /v2/search               — paginated flat search with sortBy (relevance/updatedAt/title) + types filter
  *   - GET /v2/playbooks             — paginated incident playbooks with stepCount/monitorCount derived fields, severity filter
+ *   - GET /v2/alert-deliveries       — paginated alert delivery log with status/channelId/monitorId/date-range filters
  */
 @Module({
-  controllers: [V2ActivityController, V2MonitorsController, V2AlertsController, V2ChecksController, V2SystemController, V2IncidentsController, V2DeploymentsController, V2StatusPagesController, V2TagsController, V2FoldersController, V2MaintenanceController, V2ServiceGroupsController, V2EscalationPoliciesController, V2ApiKeysController, V2SearchController, V2PlaybooksController],
+  controllers: [V2ActivityController, V2MonitorsController, V2AlertsController, V2ChecksController, V2SystemController, V2IncidentsController, V2DeploymentsController, V2StatusPagesController, V2TagsController, V2FoldersController, V2MaintenanceController, V2ServiceGroupsController, V2EscalationPoliciesController, V2ApiKeysController, V2SearchController, V2PlaybooksController, V2AlertDeliveriesController],
   providers: [SearchService, MonitorsService, MonitorsCrudService, MonitorsAnalyticsService, MonitorsSlaService, MonitorsDiagnosticsService, MonitorsExportService, MonitorsComparisonService, ChecksService, AuditService],
 })
 export class V2Module {}

@@ -518,3 +518,12 @@ Archived status summaries pruned from `BACKLOG.md`.
   - [x] **test(api): 19 v2/maintenance integration tests** — auth guard, envelope shape, field shape (all fields), isActive flag (active/past), user isolation, pagination (total/limit=1/cross-page), recurrence=DAILY filter, activeOnly=true filter, search (name case-insensitive / no-match), sort name asc/desc, invalid sortBy/sortDir/recurrence → 400, page-beyond-total. Integration: 1078 → 1097.
   - [x] **test(web): 11 shareTokenHelpers unit tests** — buildShareTokenPath (path structure, special chars, empty), buildShareJsonPath (full path), copyButtonLabel (copied/not), isTokenActionDisabled (loading/not), generateButtonLabel (loading/not). Web: 5679 → 5690.
 
+
+## Archive batch 2026-04-07 19:12 UTC
+## Status Summary (2026-04-07 09:44 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; build + tests + `npm audit --audit-level=high` passing; 0 vulnerabilities
+- **Branch:** heartbeat/2026-04-04-afternoon
+- **Last changes (09:44 UTC):**
+  - [x] **chore(devx): add frontend route audit script** — added `scripts/audit-frontend-pages.sh` to verify all required heartbeat frontend routes (`/login`, `/dashboard`, `/monitors`, `/alerts`, `/account`, `/projects`, `/versions`, `/admin`) return HTTP 200 for local web and optional public reverse proxy.
+  - [x] **chore(npm): add frontend audit npm scripts** — `npm run audit:frontend` (local) and `npm run audit:frontend:prod` (local + public).
+

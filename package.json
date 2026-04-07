@@ -36,6 +36,8 @@
     "heartbeat:bootstrap": "bash ./scripts/heartbeat-bootstrap.sh",
     "heartbeat:check": "bash ./scripts/heartbeat-check.sh",
     "heartbeat:check:prod": "bash ./scripts/heartbeat-check.sh --public",
+    "heartbeat:check:strict": "bash ./scripts/heartbeat-check.sh --strict-auth",
+    "heartbeat:check:strict:prod": "bash ./scripts/heartbeat-check.sh --public --strict-auth",
     "heartbeat:cycle": "bash ./scripts/heartbeat-cycle.sh",
     "heartbeat:cycle:prod": "bash ./scripts/heartbeat-cycle.sh --public",
     "heartbeat:cycle:strict": "bash ./scripts/heartbeat-cycle.sh --strict-auth",

@@ -3,11 +3,29 @@
 # Usage:
 #   ./scripts/heartbeat-check.sh
 #   ./scripts/heartbeat-check.sh --public
+#   ./scripts/heartbeat-check.sh --strict-auth
+#   ./scripts/heartbeat-check.sh --public --strict-auth
 
 set -euo pipefail
 
 CHECK_PUBLIC=false
-[[ "${1:-}" == "--public" ]] && CHECK_PUBLIC=true
+STRICT_AUTH=false
+
+for arg in "$@"; do
+  case "$arg" in
+    --public)
+      CHECK_PUBLIC=true
+      ;;
+    --strict-auth)
+      STRICT_AUTH=true
+      ;;
+    *)
+      echo "Unknown argument: $arg" >&2
+      echo "Usage: $0 [--public] [--strict-auth]" >&2
+      exit 1
+      ;;
+  esac
+done
 
 GREEN='\033[0;32m'; CYAN='\033[0;36m'; BOLD='\033[1m'; RESET='\033[0m'
 
@@ -26,11 +44,19 @@ run_step "Build" "npm run build"
 run_step "Test" "npm run test"
 run_step "Security audit (high)" "npm audit --audit-level=high"
 
-if $CHECK_PUBLIC; then
+if $CHECK_PUBLIC && $STRICT_AUTH; then
+  run_step "Post-deploy audit (local + public, strict auth)" "npm run audit:deploy:strict:prod"
+elif $CHECK_PUBLIC; then
   run_step "Post-deploy audit (local + public)" "npm run audit:deploy:prod"
-  run_step "Frontend route audit (local + public)" "npm run audit:frontend:prod"
+elif $STRICT_AUTH; then
+  run_step "Post-deploy audit (local, strict auth)" "npm run audit:deploy:strict"
 else
   run_step "Post-deploy audit (local)" "npm run audit:deploy"
+fi
+
+if $CHECK_PUBLIC; then
+  run_step "Frontend route audit (local + public)" "npm run audit:frontend:prod"
+else
   run_step "Frontend route audit (local)" "npm run audit:frontend"
 fi
 

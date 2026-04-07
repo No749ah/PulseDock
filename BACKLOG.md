@@ -1,3 +1,13 @@
+## Status Summary (2026-04-07 19:12 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks and frontend route+asset audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
+- **Branch:** heartbeat/2026-04-07-afternoon
+- **Last changes (19:12 UTC):**
+  - [x] **chore(devx): add strict-auth support to heartbeat check runner** — upgraded `scripts/heartbeat-check.sh` argument parsing to support `--strict-auth` (with `--public` compatibility), plus unknown-flag guard and explicit usage output.
+  - [x] **chore(npm): add strict heartbeat check npm scripts** — added `heartbeat:check:strict` and `heartbeat:check:strict:prod`.
+
+---
+
 ## Status Summary (2026-04-07 18:10 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
 - **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks and frontend route+asset audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
@@ -86,13 +96,6 @@
 
 ---
 
-## Status Summary (2026-04-07 09:44 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; build + tests + `npm audit --audit-level=high` passing; 0 vulnerabilities
-- **Branch:** heartbeat/2026-04-04-afternoon
-- **Last changes (09:44 UTC):**
-  - [x] **chore(devx): add frontend route audit script** — added `scripts/audit-frontend-pages.sh` to verify all required heartbeat frontend routes (`/login`, `/dashboard`, `/monitors`, `/alerts`, `/account`, `/projects`, `/versions`, `/admin`) return HTTP 200 for local web and optional public reverse proxy.
-  - [x] **chore(npm): add frontend audit npm scripts** — `npm run audit:frontend` (local) and `npm run audit:frontend:prod` (local + public).
-
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
 **The project is NOT done. Not even close.**
@@ -170,6 +173,7 @@
 ### 🟢 P3 - Maintenance & Cleanup
 
 - [x] **Automate full heartbeat validation pipeline** - ✅ Done (2026-04-07). Added `scripts/heartbeat-check.sh` with npm scripts `heartbeat:check` and `heartbeat:check:prod` to run build/test/audit + post-deploy + frontend route checks in one command.
+- [x] **Add strict-auth mode to heartbeat check pipeline** - ✅ Done (2026-04-07). Enhanced `scripts/heartbeat-check.sh` to support `--strict-auth` (compatible with `--public`) and added npm scripts `heartbeat:check:strict` and `heartbeat:check:strict:prod`.
 - [x] **Automate full heartbeat execution pipeline with restart gate** - ✅ Done (2026-04-07). Added `scripts/heartbeat-cycle.sh` + npm scripts `heartbeat:cycle*` to enforce the complete sequence (bootstrap, build, test, audit, mandatory restart, deploy audit, frontend audit), including optional public and strict-auth modes.
 
 - [x] **Automate heartbeat frontend route audit** - ✅ Done (2026-04-07). Added `scripts/audit-frontend-pages.sh` + npm scripts `audit:frontend` and `audit:frontend:prod` to enforce local/public 200 checks for required UI routes.

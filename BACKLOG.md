@@ -1,6 +1,6 @@
 ## Status Summary (2026-04-07 14:12 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ⏳ Pending restart + post-deploy checks for this heartbeat commit
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks + frontend audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
 - **Branch:** heartbeat/2026-04-07-afternoon
 - **Last changes (14:12 UTC):**
   - [x] **chore(devx): add heartbeat environment bootstrap automation** — added `scripts/heartbeat-bootstrap.sh` to enforce SSH key symlink repair, Docker/GitHub SSH checks, and PostgreSQL/Redis reachability checks (with auto-start fallback via dind start script).

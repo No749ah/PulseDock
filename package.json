@@ -27,6 +27,8 @@
     "smoke:prod": "bash ./scripts/smoke-test.sh https://oc-dev-test.no749ah.com https://oc-dev-test.no749ah.com/api",
     "verify": "bash ./scripts/verify-deployment.sh",
     "verify:prod": "bash ./scripts/verify-deployment.sh --public",
+    "audit:deploy": "bash ./scripts/audit-deploy.sh",
+    "audit:deploy:prod": "bash ./scripts/audit-deploy.sh --public",
     "audit:frontend": "bash ./scripts/audit-frontend-pages.sh",
     "audit:frontend:prod": "bash ./scripts/audit-frontend-pages.sh --public",
     "perf": "bash ./scripts/perf-check.sh",

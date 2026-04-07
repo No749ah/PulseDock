@@ -37,8 +37,18 @@ run_step() {
   echo -e "${GREEN}✓ ${label}${RESET}"
 }
 
+sync_with_dev() {
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "Not inside a git repository. Run this script from the PulseDock repo root." >&2
+    exit 1
+  fi
+
+  git pull origin dev
+}
+
 echo -e "${BOLD}PulseDock Heartbeat Check $(date -u '+%Y-%m-%d %H:%M UTC')${RESET}"
 
+run_step "Sync from origin/dev" "sync_with_dev"
 run_step "Environment bootstrap" "npm run heartbeat:bootstrap"
 run_step "Build" "npm run build"
 run_step "Test" "npm run test"

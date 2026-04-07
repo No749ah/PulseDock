@@ -25,3 +25,16 @@ NODE_ENV=production NODE_OPTIONS="--max-old-space-size=512" PORT="$WEB_PORT" npx
 WEB_PID=$!
 echo $WEB_PID > "$PID_FILE"
 echo "Started with PID $WEB_PID"
+
+# Wait for web app readiness (up to 45s)
+echo "Waiting for web app to be ready..."
+for i in $(seq 1 45); do
+  if curl -sf "http://localhost:$WEB_PORT/login" > /dev/null 2>&1; then
+    echo "Web app ready on port $WEB_PORT"
+    exit 0
+  fi
+  sleep 1
+done
+
+echo "WARNING: Web app did not become ready within 45s, check logs at $LOG_DIR/pulsedock_web_prod.log"
+exit 1

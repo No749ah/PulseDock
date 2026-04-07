@@ -1,3 +1,13 @@
+## Status Summary (2026-04-07 20:15 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks and frontend route+asset audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
+- **Branch:** heartbeat/2026-04-07-afternoon
+- **Last changes (20:15 UTC):**
+  - [x] **chore(devx): enforce repo sync in heartbeat runners** — `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` now execute `git pull origin dev` first (with git-repo guard), aligning automation with heartbeat step 1.
+  - [x] **fix(devx): wait for web readiness in start-web script** — `scripts/start-web.sh` now blocks until `/login` returns 200 (or fails after timeout), preventing false-negative post-deploy/public 502 audit failures right after restart.
+
+---
+
 ## Status Summary (2026-04-07 19:12 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
 - **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks and frontend route+asset audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
@@ -175,6 +185,8 @@
 - [x] **Automate full heartbeat validation pipeline** - ✅ Done (2026-04-07). Added `scripts/heartbeat-check.sh` with npm scripts `heartbeat:check` and `heartbeat:check:prod` to run build/test/audit + post-deploy + frontend route checks in one command.
 - [x] **Add strict-auth mode to heartbeat check pipeline** - ✅ Done (2026-04-07). Enhanced `scripts/heartbeat-check.sh` to support `--strict-auth` (compatible with `--public`) and added npm scripts `heartbeat:check:strict` and `heartbeat:check:strict:prod`.
 - [x] **Automate full heartbeat execution pipeline with restart gate** - ✅ Done (2026-04-07). Added `scripts/heartbeat-cycle.sh` + npm scripts `heartbeat:cycle*` to enforce the complete sequence (bootstrap, build, test, audit, mandatory restart, deploy audit, frontend audit), including optional public and strict-auth modes.
+- [x] **Make web startup readiness explicit in deployment flow** - ✅ Done (2026-04-07). `scripts/start-web.sh` now waits for `/login` readiness before returning, preventing race conditions right after restart.
+- [x] **Enforce `git pull origin dev` inside heartbeat runners** - ✅ Done (2026-04-07). `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` now perform repo sync as the first pipeline step.
 
 - [x] **Automate heartbeat frontend route audit** - ✅ Done (2026-04-07). Added `scripts/audit-frontend-pages.sh` + npm scripts `audit:frontend` and `audit:frontend:prod` to enforce local/public 200 checks for required UI routes.
 - [x] **Automate heartbeat frontend static-asset audit** - ✅ Done (2026-04-07). Enhanced `scripts/audit-frontend-pages.sh` to discover and validate Next.js `_next/static` CSS/JS assets from each required route and fail on non-200 asset loads.

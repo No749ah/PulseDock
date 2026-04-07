@@ -1,4 +1,5 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { NotFoundException } from '@nestjs/common';
 import { V2MonitorsController } from './monitors.controller';
 import { PrismaService } from '../../common/prisma.service';
 
@@ -19,11 +20,18 @@ function makeMonitor(overrides: Partial<Record<string, unknown>> = {}) {
   };
 }
 
-function makePrisma(monitors: ReturnType<typeof makeMonitor>[] = [makeMonitor()], total = 1) {
+function makePrisma(
+  monitors: ReturnType<typeof makeMonitor>[] = [makeMonitor()],
+  total = 1,
+  findFirstResult: ReturnType<typeof makeMonitor> | null = null,
+  groupByRows: Array<{ type: string; _count: { type: number } }> = [],
+) {
   return {
     monitor: {
       findMany: vi.fn().mockResolvedValue(monitors),
       count: vi.fn().mockResolvedValue(total),
+      findFirst: vi.fn().mockResolvedValue(findFirstResult ?? monitors[0] ?? null),
+      groupBy: vi.fn().mockResolvedValue(groupByRows),
     },
   } as unknown as PrismaService;
 }
@@ -156,6 +164,126 @@ describe('V2MonitorsController', () => {
       controller = new V2MonitorsController(prisma);
       const result = await controller.list(makeReq(), { limit: 20 });
       expect(result.meta.pages).toBe(3);
+    });
+  });
+
+  describe('getOne()', () => {
+    it('returns monitor by id', async () => {
+      const result = await controller.getOne(makeReq(), 'mon-1');
+      expect(result).toMatchObject({
+        id: 'mon-1',
+        name: 'Test Monitor',
+        type: 'http',
+        target: 'https://example.com',
+        enabled: true,
+        intervalSec: 60,
+        timeoutMs: 5000,
+        folderId: null,
+      });
+    });
+
+    it('throws NotFoundException when monitor not found', async () => {
+      prisma = makePrisma([], 0, null);
+      controller = new V2MonitorsController(prisma);
+      await expect(controller.getOne(makeReq(), 'nonexistent')).rejects.toThrow(NotFoundException);
+    });
+
+    it('passes userId filter to findFirst', async () => {
+      await controller.getOne(makeReq('u-1'), 'mon-1');
+      expect(prisma.monitor.findFirst).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ id: 'mon-1', userId: 'u-1' }) }),
+      );
+    });
+
+    it('serializes createdAt to ISO string', async () => {
+      const result = await controller.getOne(makeReq(), 'mon-1') as Record<string, unknown>;
+      expect(result.createdAt).toBe('2026-01-01T00:00:00.000Z');
+    });
+
+    it('maps monitorAlerts to alertChannelIds', async () => {
+      const result = await controller.getOne(makeReq(), 'mon-1') as Record<string, unknown>;
+      expect(result.alertChannelIds).toEqual(['ch-1']);
+    });
+
+    it('redacts token from configJson', async () => {
+      prisma = makePrisma([], 0, makeMonitor({ configJson: { token: 'secret', method: 'GET' } }));
+      controller = new V2MonitorsController(prisma);
+      const result = await controller.getOne(makeReq(), 'mon-1') as Record<string, unknown>;
+      const config = result.config as Record<string, unknown>;
+      expect(config.token).toBeUndefined();
+      expect(config.hasRepoToken).toBe(true);
+    });
+
+    it('redacts appToken from configJson', async () => {
+      prisma = makePrisma([], 0, makeMonitor({ configJson: { appToken: 'app-secret' } }));
+      controller = new V2MonitorsController(prisma);
+      const result = await controller.getOne(makeReq(), 'mon-1') as Record<string, unknown>;
+      const config = result.config as Record<string, unknown>;
+      expect(config.appToken).toBeUndefined();
+      expect(config.hasAppToken).toBe(true);
+    });
+
+    it('handles null configJson gracefully', async () => {
+      prisma = makePrisma([], 0, makeMonitor({ configJson: null }));
+      controller = new V2MonitorsController(prisma);
+      await expect(controller.getOne(makeReq(), 'mon-1')).resolves.not.toThrow();
+    });
+  });
+
+  describe('summary()', () => {
+    it('returns total, enabled, disabled, byType', async () => {
+      // count() is called twice: total and enabled
+      prisma.monitor.count = vi
+        .fn()
+        .mockResolvedValueOnce(10)   // total
+        .mockResolvedValueOnce(7);   // enabled
+      (prisma.monitor.groupBy as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { type: 'HTTP', _count: { type: 6 } },
+        { type: 'DNS', _count: { type: 4 } },
+      ]);
+
+      const result = await controller.summary(makeReq());
+      expect(result).toEqual({
+        total: 10,
+        enabled: 7,
+        disabled: 3,
+        byType: { HTTP: 6, DNS: 4 },
+      });
+    });
+
+    it('returns zeros for user with no monitors', async () => {
+      prisma.monitor.count = vi.fn().mockResolvedValue(0);
+      (prisma.monitor.groupBy as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+      const result = await controller.summary(makeReq());
+      expect(result).toEqual({ total: 0, enabled: 0, disabled: 0, byType: {} });
+    });
+
+    it('passes userId to all queries', async () => {
+      prisma.monitor.count = vi.fn().mockResolvedValue(0);
+      (prisma.monitor.groupBy as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+      await controller.summary(makeReq('u-99'));
+      expect(prisma.monitor.count).toHaveBeenCalledWith(
+        expect.objectContaining({ where: expect.objectContaining({ userId: 'u-99' }) }),
+      );
+    });
+
+    it('correctly computes disabled as total - enabled', async () => {
+      prisma.monitor.count = vi
+        .fn()
+        .mockResolvedValueOnce(20)
+        .mockResolvedValueOnce(5);
+      (prisma.monitor.groupBy as ReturnType<typeof vi.fn>).mockResolvedValue([]);
+      const result = await controller.summary(makeReq());
+      expect(result.disabled).toBe(15);
+    });
+
+    it('handles single monitor type', async () => {
+      prisma.monitor.count = vi.fn().mockResolvedValueOnce(1).mockResolvedValueOnce(1);
+      (prisma.monitor.groupBy as ReturnType<typeof vi.fn>).mockResolvedValue([
+        { type: 'TCP', _count: { type: 1 } },
+      ]);
+      const result = await controller.summary(makeReq());
+      expect(result.byType).toEqual({ TCP: 1 });
     });
   });
 });

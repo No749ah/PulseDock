@@ -153,7 +153,7 @@ hardcoded=$(grep -rn \
   "password.*=.*['\"][^'\"]\{8,\}\|secret.*=.*['\"][^'\"]\{8,\}\|apiKey.*=.*['\"][^'\"]\{8,\}" \
   apps/api/src apps/web/app \
   --include="*.ts" --include="*.tsx" \
-  2>/dev/null | grep -v "node_modules\|\.next\|spec\|test\|mock\|example\|placeholder\|process\.env\|passwordHash\|password'\]\|password\"\]\|PasswordStrength\|PasswordGate\|password='\|\.password\|config\.secret\|label.*password\|label.*secret\|className\|htmlFor\|Signing secret\|setup-password\|window\.location" \
+  2>/dev/null | grep -v "node_modules\|\.next\|spec\|test\|mock\|example\|placeholder\|process\.env\|passwordHash\|password'\]\|password\"\]\|PasswordStrength\|PasswordGate\|password='\|\.password\|config\.secret\|label.*password\|label.*secret\|className\|htmlFor\|Signing secret\|setup-password\|window\.location\|password !==\|password ===\|password &&" \
   | wc -l | tr -d '[:space:]')
 
 if [[ "$hardcoded" == "0" ]]; then

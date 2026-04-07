@@ -61,6 +61,12 @@ import { V2DeploymentsController } from './v2/deployments/deployments.controller
 import { V2StatusPagesController } from './v2/status-pages/status-pages.controller';
 import { V2TagsController } from './v2/tags/tags.controller';
 import { V2FoldersController } from './v2/folders/folders.controller';
+import { V2MaintenanceController } from './v2/maintenance/maintenance.controller';
+import { V2ServiceGroupsController } from './v2/service-groups/service-groups.controller';
+import { V2EscalationPoliciesController } from './v2/escalation-policies/escalation-policies.controller';
+import { V2ActivityController } from './v2/activity/activity.controller';
+import { V2ApiKeysController } from './v2/api-keys/api-keys.controller';
+import { V2SearchController } from './v2/search/search.controller';
 import { TagsController } from './tags/tags.controller';
 import { ToolRegistryController } from './tool-registry/tool-registry.controller';
 import { TagsService } from './tags/tags.service';
@@ -151,6 +157,12 @@ import { DependenciesService } from './dependencies/dependencies.service';
     V2StatusPagesController,
     V2TagsController,
     V2FoldersController,
+    V2MaintenanceController,
+    V2ServiceGroupsController,
+    V2EscalationPoliciesController,
+    V2ActivityController,
+    V2ApiKeysController,
+    V2SearchController,
     TagsController,
     ToolRegistryController,
     NotificationsController,

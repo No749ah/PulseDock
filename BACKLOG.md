@@ -1,3 +1,41 @@
+## Status Summary (2026-04-07 09:44 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; build + tests + `npm audit --audit-level=high` passing; 0 vulnerabilities
+- **Branch:** heartbeat/2026-04-04-afternoon
+- **Last changes (09:44 UTC):**
+  - [x] **chore(devx): add frontend route audit script** — added `scripts/audit-frontend-pages.sh` to verify all required heartbeat frontend routes (`/login`, `/dashboard`, `/monitors`, `/alerts`, `/account`, `/projects`, `/versions`, `/admin`) return HTTP 200 for local web and optional public reverse proxy.
+  - [x] **chore(npm): add frontend audit npm scripts** — `npm run audit:frontend` (local) and `npm run audit:frontend:prod` (local + public).
+
+## Status Summary (2026-04-04 17:20 UTC)
+- **Build/Test:** ✅ Build clean; 5199 API + 5690 web + 1131 integration + 114 CLI + 12 agent = **12,146 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 local + public `https://oc-dev-test.no749ah.com`
+- **Branch:** heartbeat/2026-04-04-afternoon
+- **Last changes (17:20 UTC):**
+  - [x] **feat(api): GET /v2/service-groups endpoint** — paginated service groups with search (name+desc), sort by name/createdAt/monitorCount (in-memory for monitorCount), derived monitorCount field. Auth guard, user isolation, invalid params → 400.
+  - [x] **feat(api): GET /v2/escalation-policies endpoint** — paginated escalation policies with search (name), sort by name/createdAt/stepCount (in-memory for stepCount), derived stepCount field. Auth guard, user isolation, invalid params → 400.
+  - [x] **test(api): 26 unit tests** — service-groups.controller.spec.ts (12), escalation-policies.controller.spec.ts (14). API: 5173 → 5199.
+  - [x] **test(api): 34 integration tests** — v2-service-groups-escalation.integration.spec.ts: auth guard, envelope shape, user isolation, derived fields, search (name+desc), all sort combos, pagination, invalid params → 400. Integration: 1097 → 1131.
+
+## Status Summary (2026-04-04 14:21 UTC)
+- **Build/Test:** ✅ Build clean; 5173 API + 5690 web + 1097 integration + 114 CLI + 12 agent = **12,086 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 local + public `https://oc-dev-test.no749ah.com`
+- **Branch:** heartbeat/2026-04-04-afternoon
+- **Last changes (14:21 UTC):**
+  - [x] **feat(api): GET /v2/maintenance endpoint** — paginated maintenance windows with recurrence filter (NONE/DAILY/WEEKLY/MONTHLY), activeOnly=true filter, search (name+desc), sort by startsAt/endsAt/name/createdAt/monitorCount. Response includes `isActive` computed flag and `monitorCount`. Registered in app.module.ts + v2.module.ts.
+  - [x] **test(api): 12 v2/maintenance unit tests** — controller spec: empty list meta, field shape, isActive true/false for active/past NONE window, activeOnly filter (true/false), monitorCount sort asc/desc, recurrenceEndsAt null/ISO, userId isolation, meta.pages ceil. API: 5161 → 5173.
+  - [x] **test(api): 19 v2/maintenance integration tests** — auth guard, envelope shape, field shape (all fields), isActive flag (active/past), user isolation, pagination (total/limit=1/cross-page), recurrence=DAILY filter, activeOnly=true filter, search (name case-insensitive / no-match), sort name asc/desc, invalid sortBy/sortDir/recurrence → 400, page-beyond-total. Integration: 1078 → 1097.
+  - [x] **test(web): 11 shareTokenHelpers unit tests** — buildShareTokenPath (path structure, special chars, empty), buildShareJsonPath (full path), copyButtonLabel (copied/not), isTokenActionDisabled (loading/not), generateButtonLabel (loading/not). Web: 5679 → 5690.
+
+## Status Summary (2026-04-04 13:21 UTC)
+- **Build/Test:** ✅ Build clean; 5161 API + 5679 web + 1078 integration + 114 CLI + 12 agent = **12,044 tests passing**; 0 vulnerabilities
+- **Deployment:** ✅ API + web running; all pages 200 local + public `https://oc-dev-test.no749ah.com`
+- **Branch:** heartbeat/2026-04-04-afternoon (merged heartbeat/2026-04-04-noon → dev, deleted old branch)
+- **Last changes (13:21 UTC):**
+  - [x] **fix(api): v2/alert-channels type filter — expanded from 5 → 16 channel types** — DTO `IsIn` enum only allowed webhook/discord/slack/telegram/email; now includes all 16: pagerduty, opsgenie, sms, teams, ntfy, gotify, matrix, rocketchat, apprise, mattermost, zulip. Previously `?type=pagerduty` → 400; now correctly filters.
+  - [x] **test(api): 46 new v2-checks-alerts integration tests** — GET /v2/checks: auth guard, envelope, user isolation, meta.total, monitorId filter, level filters (green/red/yellow), combined monitorId+level, since/until/date-range filters, limit/page/cross-page, default sort desc, run shape, empty unknown monitorId, default limit=50, meta.pages calc. GET /v2/alert-channels: auth guard, envelope, user isolation, channel shape, webhookUrl redaction (Slack + Discord paths), botToken redaction, usedByCount=1/0, type filters (all types), case-insensitive search, sort name asc/desc, sort createdAt asc/desc, limit/page/page-beyond-total, combined type+search. Integration: 1032 → 1078.
+  - [x] **Branch management** — merged heartbeat/2026-04-04-noon → dev, deleted old branch, created heartbeat/2026-04-04-afternoon
+
+---
+
 ## Status Summary (2026-04-04 12:15 UTC)
 - **Build/Test:** ✅ Build clean; 5161 API + 5679 web + 1032 integration + 114 CLI + 12 agent = **11,998 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all pages 200 local + public `https://oc-dev-test.no749ah.com`
@@ -556,6 +594,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Automate heartbeat frontend route audit** - ✅ Done (2026-04-07). Added `scripts/audit-frontend-pages.sh` + npm scripts `audit:frontend` and `audit:frontend:prod` to enforce local/public 200 checks for required UI routes.
 - [x] **Prune old status summaries from backlog file** - ✅ Done (2026-04-01). Removed redundant top-of-file status blocks and kept a single current status summary. (Note: git commit history itself is immutable and intentionally unchanged.)
 
 - [x] **Consolidate duplicate API endpoints** - ✅ Done (2026-03-30). Extracted shared v2 types (PaginatedEnvelope, AuthenticatedRequest, parsePagination, buildMeta) into v2/v2.types.ts and common/auth.types.ts. v1 and v2 are complementary (v2 adds pagination), not duplicates. 14 unit tests added.

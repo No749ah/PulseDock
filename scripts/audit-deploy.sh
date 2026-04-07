@@ -3,6 +3,11 @@
 # Usage:
 #   ./scripts/audit-deploy.sh
 #   ./scripts/audit-deploy.sh --public
+# Optional authenticated check:
+#   HEARTBEAT_AUTH_BEARER_TOKEN=<jwt> ./scripts/audit-deploy.sh
+#   HEARTBEAT_AUTH_BEARER_TOKEN=<jwt> ./scripts/audit-deploy.sh --public
+# Strict mode (fail if token missing):
+#   ./scripts/audit-deploy.sh --strict-auth
 
 set -uo pipefail
 
@@ -10,7 +15,12 @@ WEB_BASE="${WEB_BASE_URL:-http://localhost:1234}"
 API_BASE="${API_BASE_URL:-http://localhost:4321}"
 PUBLIC_BASE="${PUBLIC_BASE_URL:-https://oc-dev-test.no749ah.com}"
 CHECK_PUBLIC=false
-[[ "${1:-}" == "--public" ]] && CHECK_PUBLIC=true
+STRICT_AUTH=false
+for arg in "$@"; do
+  [[ "$arg" == "--public" ]] && CHECK_PUBLIC=true
+  [[ "$arg" == "--strict-auth" ]] && STRICT_AUTH=true
+done
+AUTH_BEARER_TOKEN="${HEARTBEAT_AUTH_BEARER_TOKEN:-}"
 
 PASS=0
 FAIL=0
@@ -51,12 +61,26 @@ audit_local() {
   assert_code "$API_BASE/health" "200" "API health"
   assert_code "$WEB_BASE/login" "200" "Web login page"
   assert_code "$WEB_BASE/api/v1/monitors" "401" "Web proxy /api auth guard" "Bearer heartbeat-invalid-token"
+
+  if [[ -n "$AUTH_BEARER_TOKEN" ]]; then
+    assert_code "$WEB_BASE/api/v1/monitors?limit=1" "200" "Web proxy /api authenticated monitors list" "Bearer $AUTH_BEARER_TOKEN"
+  elif $STRICT_AUTH; then
+    fail_ "Missing HEARTBEAT_AUTH_BEARER_TOKEN (required by --strict-auth)"
+  else
+    echo "  - Skipping authenticated API check (set HEARTBEAT_AUTH_BEARER_TOKEN to enable)"
+  fi
 }
 
 audit_public() {
   section "Post-deploy public checks"
   assert_code "$PUBLIC_BASE/login" "200" "Public login page"
   assert_code "$PUBLIC_BASE/api/v1/monitors" "401" "Public /api auth guard" "Bearer heartbeat-invalid-token"
+
+  if [[ -n "$AUTH_BEARER_TOKEN" ]]; then
+    assert_code "$PUBLIC_BASE/api/v1/monitors?limit=1" "200" "Public /api authenticated monitors list" "Bearer $AUTH_BEARER_TOKEN"
+  elif $STRICT_AUTH; then
+    fail_ "Missing HEARTBEAT_AUTH_BEARER_TOKEN (required by --strict-auth)"
+  fi
 }
 
 echo -e "${BOLD}PulseDock Post-Deploy Audit $(date -u '+%Y-%m-%d %H:%M UTC')${RESET}"

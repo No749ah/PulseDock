@@ -1,3 +1,12 @@
+## Status Summary (2026-04-07 16:08 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ Services healthy; post-deploy audit passing locally with auth-guard validation and optional authenticated-path support
+- **Branch:** heartbeat/2026-04-07-afternoon
+- **Last changes (16:08 UTC):**
+  - [x] **chore(devx): add strict optional authenticated checks to heartbeat deploy audit** — enhanced `scripts/audit-deploy.sh` with `HEARTBEAT_AUTH_BEARER_TOKEN` support to validate authenticated `/api/v1/monitors` access (local/public), plus `--strict-auth` mode to fail when token is missing; added npm scripts `audit:deploy:strict` and `audit:deploy:strict:prod`.
+
+---
+
 ## Status Summary (2026-04-07 15:10 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
 - **Deployment:** ✅ Web restarted during build; frontend route+asset audit passing locally (all required pages 200 + discovered `_next/static` CSS/JS assets 200)
@@ -658,6 +667,7 @@
 - [x] **Automate heartbeat frontend route audit** - ✅ Done (2026-04-07). Added `scripts/audit-frontend-pages.sh` + npm scripts `audit:frontend` and `audit:frontend:prod` to enforce local/public 200 checks for required UI routes.
 - [x] **Automate heartbeat frontend static-asset audit** - ✅ Done (2026-04-07). Enhanced `scripts/audit-frontend-pages.sh` to discover and validate Next.js `_next/static` CSS/JS assets from each required route and fail on non-200 asset loads.
 - [x] **Automate heartbeat environment bootstrap checks** - ✅ Done (2026-04-07). Added `scripts/heartbeat-bootstrap.sh` + npm script `heartbeat:bootstrap`; wired bootstrap as the first step in `heartbeat:check`.
+- [x] **Automate optional authenticated heartbeat deploy checks** - ✅ Done (2026-04-07). Enhanced `scripts/audit-deploy.sh` to validate authenticated `/api/v1/monitors` with `HEARTBEAT_AUTH_BEARER_TOKEN`, and added `--strict-auth` plus npm scripts `audit:deploy:strict` and `audit:deploy:strict:prod`.
 - [x] **Prune old status summaries from backlog file** - ✅ Done (2026-04-01). Removed redundant top-of-file status blocks and kept a single current status summary. (Note: git commit history itself is immutable and intentionally unchanged.)
 
 - [x] **Consolidate duplicate API endpoints** - ✅ Done (2026-03-30). Extracted shared v2 types (PaginatedEnvelope, AuthenticatedRequest, parsePagination, buildMeta) into v2/v2.types.ts and common/auth.types.ts. v1 and v2 are complementary (v2 adds pagination), not duplicates. 14 unit tests added.

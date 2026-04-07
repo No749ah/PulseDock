@@ -29,6 +29,8 @@
     "verify:prod": "bash ./scripts/verify-deployment.sh --public",
     "audit:deploy": "bash ./scripts/audit-deploy.sh",
     "audit:deploy:prod": "bash ./scripts/audit-deploy.sh --public",
+    "audit:deploy:strict": "bash ./scripts/audit-deploy.sh --strict-auth",
+    "audit:deploy:strict:prod": "bash ./scripts/audit-deploy.sh --public --strict-auth",
     "audit:frontend": "bash ./scripts/audit-frontend-pages.sh",
     "audit:frontend:prod": "bash ./scripts/audit-frontend-pages.sh --public",
     "heartbeat:bootstrap": "bash ./scripts/heartbeat-bootstrap.sh",

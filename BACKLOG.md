@@ -1,8 +1,8 @@
-## Status Summary (2026-04-08 16:14 UTC)
+## Status Summary (2026-04-08 16:15 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ⏳ Pending in this cycle (will run restart + deploy/frontend audits after commit)
-- **Branch:** heartbeat/2026-04-08-noon (no rotation at 16:14 UTC; scheduled window is 00:00/12:00 UTC)
-- **Last changes (16:14 UTC):**
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, including API health/login/proxy + public checks; authenticated API check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Full frontend route+asset audits passing (`npm run audit:frontend:prod`: 108/108). Explicit HEAD curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` passing on local + public (`npm run audit:frontend:heads:prod`: 16/16).
+- **Branch:** heartbeat/2026-04-08-noon (no rotation at 16:15 UTC; scheduled window is 00:00/12:00 UTC)
+- **Last changes (16:15 UTC):**
   - [x] **chore(security): patch nodemailer SMTP command-injection advisory** — bumped `@pulsedock/api` `nodemailer` from `^8.0.3` to `^8.0.5` (lockfile updated), clearing the moderate advisory from `npm audit`.
 
 ---

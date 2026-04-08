@@ -83,134 +83,30 @@ const navGroups: NavGroup[] = [
     label: 'Overview',
     primary: [
       { href: '/dashboard', label: 'Dashboard', icon: Gauge },
-      { href: '/dashboard/wallboard', label: 'Wallboard', icon: Tv },
-    ],
-  },
-  {
-    label: 'Monitoring',
-    primary: [
-      { href: '/monitors', label: 'Uptime Checks', icon: Activity },
-      { href: '/monitors/fleet', label: 'Fleet Health', icon: Shield },
-      { href: '/monitors/sla', label: 'SLA Dashboard', icon: Target },
-    ],
-    secondary: [
-      {
-        label: 'Real-time',
-        items: [
-          { href: '/monitors/live', label: 'Live Feed', icon: Activity },
-          { href: '/monitors/timeline', label: 'Status Timeline', icon: Layers },
-          { href: '/monitors/heatmap', label: 'Uptime Heatmap', icon: Layers },
-        ],
-      },
-      {
-        label: 'Performance',
-        items: [
-          { href: '/monitors/trends', label: 'Trends', icon: TrendingUp },
-          { href: '/monitors/compare', label: 'Compare', icon: GitCompareArrows },
-          { href: '/monitors/latency-bench', label: 'Latency Benchmarks', icon: Gauge },
-          { href: '/monitors/latency-heatmap', label: 'Latency Heatmap', icon: BarChart3 },
-          { href: '/monitors/timing-breakdown', label: 'Timing Breakdown', icon: Zap },
-          { href: '/monitors/reliability', label: 'Reliability Trends', icon: Sparkles },
-        ],
-      },
-      {
-        label: 'Intelligence',
-        items: [
-          { href: '/monitors/anomaly', label: 'Anomaly Report', icon: AlertTriangle },
-          { href: '/monitors/predictions', label: 'Failure Predictions', icon: Brain },
-          { href: '/monitors/correlation', label: 'Correlation', icon: GitMerge },
-          { href: '/monitors/dependencies', label: 'Dependencies', icon: GitBranch },
-        ],
-      },
-      {
-        label: 'Infrastructure',
-        items: [
-          { href: '/monitors/coverage', label: 'Coverage', icon: ShieldCheck },
-          { href: '/monitors/schedule', label: 'Check Schedule', icon: Clock },
-          { href: '/monitors/interval-optimizer', label: 'Interval Optimizer', icon: Settings },
-          { href: '/monitors/downtime-cost', label: 'Cost Impact', icon: Target },
-          { href: '/monitors/security', label: 'Security Headers', icon: Shield },
-          { href: '/monitors/services', label: 'Service Groups', icon: Layers },
-          { href: '/monitors/tag-analytics', label: 'Tag Analytics', icon: Hash },
-          { href: '/monitors/health-scores', label: 'Health Scores', icon: Medal },
-          { href: '/ssl', label: 'SSL Certificates', icon: ShieldCheck },
-        ],
-      },
-      {
-        label: 'Versions',
-        items: [
-          { href: '/versions', label: 'Version Tracking', icon: GitBranch },
-          { href: '/versions/drift', label: 'Drift Report', icon: GitBranch },
-        ],
-      },
-    ],
-  },
-  {
-    label: 'Alerting',
-    primary: [
-      { href: '/alerts', label: 'Alert Channels', icon: AlertTriangle },
-      { href: '/alerts/routing', label: 'Routing Rules', icon: GitBranch },
+      { href: '/monitors', label: 'Monitors', icon: Activity },
       { href: '/incidents', label: 'Incidents', icon: AlertOctagon },
     ],
     secondary: [
       {
-        label: 'Analytics',
+        label: 'Core',
         items: [
-          { href: '/alerts/analytics', label: 'Alert Analytics', icon: BarChart2 },
-          { href: '/alerts/noise', label: 'Noise Analysis', icon: VolumeX },
-          { href: '/alerts/response-time', label: 'Response Time', icon: Zap },
-          { href: '/alerts/channels', label: 'Channel Health', icon: Activity },
-          { href: '/alerts/history', label: 'Delivery History', icon: ClipboardList },
+          { href: '/alerts', label: 'Alerts', icon: AlertTriangle },
+          { href: '/versions', label: 'Versions', icon: GitBranch },
+          { href: '/status-pages', label: 'Status Pages', icon: Globe },
+          { href: '/reports', label: 'Reports', icon: BarChart2 },
+          { href: '/deployments', label: 'Deployments', icon: Rocket },
         ],
       },
       {
-        label: 'Incident Management',
+        label: 'Workspace',
         items: [
-          { href: '/incidents/insights', label: 'Incident Insights', icon: BarChart2 },
-          { href: '/incidents/playbooks', label: 'Playbooks', icon: BookOpen },
+          { href: '/activity', label: 'Activity', icon: Activity },
+          { href: '/maintenance', label: 'Maintenance', icon: CalendarClock },
+          { href: '/projects', label: 'Projects', icon: Folder },
+          { href: '/account', label: 'Account', icon: User },
+          { href: '/admin', label: 'Admin', icon: Shield, adminOnly: true },
         ],
       },
-    ],
-  },
-  {
-    label: 'Operations',
-    primary: [
-      { href: '/status-pages', label: 'Status Pages', icon: Globe },
-      { href: '/deployments', label: 'Deployments', icon: Rocket },
-      { href: '/maintenance', label: 'Maintenance', icon: CalendarClock },
-      { href: '/projects', label: 'Projects', icon: Folder },
-    ],
-    secondary: [
-      {
-        label: 'Analytics',
-        items: [
-          { href: '/maintenance/effectiveness', label: 'Window Effectiveness', icon: CalendarClock },
-          { href: '/status/analytics', label: 'Page Analytics', icon: BarChart2 },
-        ],
-      },
-    ],
-  },
-  {
-    label: 'Insights',
-    primary: [
-      { href: '/activity', label: 'Activity Feed', icon: Activity },
-      { href: '/mttr', label: 'Reliability Analytics', icon: Timer },
-      { href: '/reports', label: 'Reports', icon: BarChart2 },
-    ],
-    secondary: [
-      {
-        label: 'Scheduled',
-        items: [
-          { href: '/reports/digest', label: 'Digest', icon: BookOpen },
-        ],
-      },
-    ],
-  },
-  {
-    label: 'Administration',
-    primary: [
-      { href: '/admin', label: 'Admin', icon: Shield, adminOnly: true },
-      { href: '/changelog', label: 'Changelog', icon: ScrollText },
     ],
   },
 ];

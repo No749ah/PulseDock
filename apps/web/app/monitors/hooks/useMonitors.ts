@@ -218,7 +218,10 @@ export function useMonitors() {
           api<MonitorItem[]>("/v1/monitors", userId),
           api<MonitorRun[]>("/v1/monitors/runs?limit=20", userId),
           api<AlertChannel[]>("/v1/alert-channels", userId),
-          api<MonitorPlugin[]>("/v1/monitors/plugins", userId),
+          api<MonitorPlugin[]>("/v1/monitors/plugins", userId).catch((error) => {
+            console.error('Failed to load monitor plugins', error);
+            return [] as MonitorPlugin[];
+          }),
           api<TagItem[]>("/v1/tags", userId),
           api<{ id: string; name: string }[]>("/v1/folders", userId),
           api<{ scores: Array<{ monitorId: string; name: string; score: number; grade: string }>; overall: { avg: number } }>("/v1/monitors/health-summary", userId).catch(() => null),

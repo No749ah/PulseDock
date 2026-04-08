@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Environment bootstrap checks for heartbeat runs.
 # - Ensures SSH key symlink exists
-# - Verifies docker + GitHub SSH auth
+# - Verifies Docker CLI availability + GitHub SSH auth
 # - Verifies dind PostgreSQL/Redis reachability
 # - Starts dind services when needed
 
@@ -12,6 +12,7 @@ OPENCLAW_HOME="${OPENCLAW_HOME:-/home/node/.openclaw}"
 SSH_LINK="/home/node/.ssh"
 SSH_TARGET="${OPENCLAW_HOME}/.ssh"
 DIND_START_SCRIPT="${DIND_START_SCRIPT:-${WORKSPACE_ROOT}/scripts/start-dind-services.sh}"
+HEARTBEAT_REQUIRE_DOCKER="${HEARTBEAT_REQUIRE_DOCKER:-false}"
 
 GREEN='\033[0;32m'; YELLOW='\033[0;33m'; CYAN='\033[0;36m'; BOLD='\033[1m'; RESET='\033[0m'
 
@@ -27,14 +28,22 @@ warn() {
   echo -e "${YELLOW}! $1${RESET}"
 }
 
-check_port() {
+is_port_reachable() {
+  local host="$1"
+  local port="$2"
+  node -e "require('net').connect(${port},'${host}').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))" >/dev/null 2>&1
+}
+
+assert_port_reachable() {
   local host="$1"
   local port="$2"
   local name="$3"
-  if node -e "require('net').connect(${port},'${host}').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))"; then
+  if is_port_reachable "${host}" "${port}"; then
     ok "${name} reachable (${host}:${port})"
     return 0
   fi
+
+  echo "Bootstrap failed: ${name} is not reachable on ${host}:${port}" >&2
   return 1
 }
 
@@ -48,15 +57,23 @@ else
 fi
 
 step "Docker CLI"
-docker --version
-ok "Docker CLI available"
+if command -v docker >/dev/null 2>&1; then
+  docker --version
+  ok "Docker CLI available"
+else
+  if [[ "${HEARTBEAT_REQUIRE_DOCKER}" == "true" ]]; then
+    echo "Bootstrap failed: Docker CLI is not installed or not in PATH (set HEARTBEAT_REQUIRE_DOCKER=false to warn instead)." >&2
+    exit 1
+  fi
+  warn "Docker CLI not found in PATH; continuing with dind reachability checks"
+fi
 
 step "GitHub SSH auth"
 ssh -T git@github.com 2>&1 | head -1 || true
 ok "GitHub SSH check complete"
 
 step "dind services (PostgreSQL + Redis)"
-if ! check_port dind 5432 "PostgreSQL" || ! check_port dind 6379 "Redis"; then
+if ! is_port_reachable dind 5432 || ! is_port_reachable dind 6379; then
   warn "dind services unavailable, starting via ${DIND_START_SCRIPT}"
   if [[ ! -x "${DIND_START_SCRIPT}" ]]; then
     echo "Bootstrap failed: start script not executable: ${DIND_START_SCRIPT}" >&2
@@ -65,7 +82,7 @@ if ! check_port dind 5432 "PostgreSQL" || ! check_port dind 6379 "Redis"; then
   bash "${DIND_START_SCRIPT}"
 fi
 
-check_port dind 5432 "PostgreSQL"
-check_port dind 6379 "Redis"
+assert_port_reachable dind 5432 "PostgreSQL"
+assert_port_reachable dind 6379 "Redis"
 
 echo -e "\n${GREEN}${BOLD}Environment bootstrap complete.${RESET}"

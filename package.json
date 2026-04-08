@@ -59,7 +59,8 @@
     "registry:audit:variants": "npx ts-node --project packages/tool-registry/tsconfig.json packages/tool-registry/scripts/variant-audit.ts",
     "registry:audit:verified": "npx ts-node --project packages/tool-registry/tsconfig.json packages/tool-registry/scripts/verified-runtime-audit.ts",
     "registry:audit:verified:check": "npm run registry:audit:verified && npx ts-node --project packages/tool-registry/tsconfig.json packages/tool-registry/scripts/verified-runtime-regression.ts",
-    "registry:verify:runtime:mocks": "npx ts-node --project packages/tool-registry/tsconfig.json packages/tool-registry/scripts/verified-runtime-mock-check.ts"
+    "registry:verify:runtime:mocks": "npx ts-node --project packages/tool-registry/tsconfig.json packages/tool-registry/scripts/verified-runtime-mock-check.ts",
+    "heartbeat:health": "bash ./scripts/heartbeat-health.sh"
   },
   "license": "MIT",
   "dependencies": {

@@ -6,25 +6,44 @@
 #   ./scripts/heartbeat-rotate-branch.sh
 #   ./scripts/heartbeat-rotate-branch.sh --name custom-suffix
 #   ./scripts/heartbeat-rotate-branch.sh --new-branch heartbeat/2026-04-08-midnight
+#   ./scripts/heartbeat-rotate-branch.sh --allow-off-schedule
+#
+# Optional env:
+#   HEARTBEAT_ROTATE_WINDOW_GRACE_MINUTES=5 (default) allows scheduled runs within
+#   the first N minutes of 00:00/12:00 UTC to tolerate scheduler jitter.
 
 set -euo pipefail
 
 CUSTOM_SUFFIX=""
 EXPLICIT_NEW_BRANCH=""
+ALLOW_OFF_SCHEDULE=false
+ROTATION_WINDOW_GRACE_MINUTES="${HEARTBEAT_ROTATE_WINDOW_GRACE_MINUTES:-5}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --name)
-      CUSTOM_SUFFIX="${2:-}"
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "--name requires a non-empty suffix value." >&2
+        exit 1
+      fi
+      CUSTOM_SUFFIX="$2"
       shift 2
       ;;
     --new-branch)
-      EXPLICIT_NEW_BRANCH="${2:-}"
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "--new-branch requires a non-empty heartbeat/* branch name." >&2
+        exit 1
+      fi
+      EXPLICIT_NEW_BRANCH="$2"
       shift 2
+      ;;
+    --allow-off-schedule)
+      ALLOW_OFF_SCHEDULE=true
+      shift
       ;;
     *)
       echo "Unknown argument: $1" >&2
-      echo "Usage: $0 [--name <suffix>] [--new-branch <heartbeat/...>]" >&2
+      echo "Usage: $0 [--name <suffix>] [--new-branch <heartbeat/...>] [--allow-off-schedule]" >&2
       exit 1
       ;;
   esac
@@ -73,6 +92,30 @@ compute_default_suffix() {
   fi
 }
 
+ensure_rotation_window() {
+  if $ALLOW_OFF_SCHEDULE; then
+    return
+  fi
+
+  local hour minute
+  hour="$(date -u +%H)"
+  minute="$(date -u +%M)"
+
+  if ! [[ "$ROTATION_WINDOW_GRACE_MINUTES" =~ ^[0-9]+$ ]]; then
+    echo "HEARTBEAT_ROTATE_WINDOW_GRACE_MINUTES must be a non-negative integer (got '${ROTATION_WINDOW_GRACE_MINUTES}')." >&2
+    exit 1
+  fi
+
+  local minute_value
+  minute_value=$((10#$minute))
+
+  if [[ ( "$hour" != "00" && "$hour" != "12" ) || "$minute_value" -gt "$ROTATION_WINDOW_GRACE_MINUTES" ]]; then
+    echo "Heartbeat branch rotation is only allowed between 00:00-00:${ROTATION_WINDOW_GRACE_MINUTES} or 12:00-12:${ROTATION_WINDOW_GRACE_MINUTES} UTC (current: ${hour}:${minute} UTC)." >&2
+    echo "If this is an emergency/manual run, use --allow-off-schedule." >&2
+    exit 1
+  fi
+}
+
 compute_new_branch() {
   if [[ -n "$EXPLICIT_NEW_BRANCH" ]]; then
     echo "$EXPLICIT_NEW_BRANCH"
@@ -85,6 +128,20 @@ compute_new_branch() {
   echo "heartbeat/${day}-${suffix}"
 }
 
+ensure_new_branch_available() {
+  local branch="$1"
+
+  if git show-ref --verify --quiet "refs/heads/${branch}"; then
+    echo "Local branch already exists: ${branch}" >&2
+    exit 1
+  fi
+
+  if git ls-remote --exit-code --heads origin "${branch}" >/dev/null 2>&1; then
+    echo "Remote branch already exists on origin: ${branch}" >&2
+    exit 1
+  fi
+}
+
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "Not inside a git repository." >&2
   exit 1
@@ -93,6 +150,7 @@ fi
 OLD_BRANCH="$(current_branch)"
 ensure_heartbeat_branch "$OLD_BRANCH"
 require_clean_worktree
+ensure_rotation_window
 
 git fetch origin --prune
 
@@ -109,6 +167,8 @@ if [[ "$NEW_BRANCH" == "$OLD_BRANCH" ]]; then
   echo "New branch equals current branch ($OLD_BRANCH). Use --name or --new-branch." >&2
   exit 1
 fi
+
+ensure_new_branch_available "$NEW_BRANCH"
 
 # Merge old heartbeat branch into dev.
 git checkout dev

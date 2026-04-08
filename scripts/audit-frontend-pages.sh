@@ -10,6 +10,15 @@ WEB_BASE="${WEB_BASE_URL:-http://localhost:1234}"
 PUBLIC_BASE="${PUBLIC_BASE_URL:-https://oc-dev-test.no749ah.com}"
 CHECK_PUBLIC=false
 
+normalize_base() {
+  local base="$1"
+  # Keep scheme intact but trim any trailing slash to avoid //route redirects.
+  echo "${base%/}"
+}
+
+WEB_BASE="$(normalize_base "$WEB_BASE")"
+PUBLIC_BASE="$(normalize_base "$PUBLIC_BASE")"
+
 usage() {
   echo "Usage: $0 [--public]" >&2
 }
@@ -52,19 +61,23 @@ section() { echo -e "\n${BOLD}${CYAN}$1${RESET}"; }
 check_route() {
   local base="$1"
   local route="$2"
-  local code effective_url result normalized_effective
+  local code effective_url result normalized_effective expected_a expected_b
 
   result=$(curl -sL -o /dev/null -w "%{http_code}|%{url_effective}" --max-time 10 --connect-timeout 5 "$base$route" 2>/dev/null || echo "000|")
   code="${result%%|*}"
   effective_url="${result#*|}"
   normalized_effective="${effective_url%%\?*}"
+  normalized_effective="${normalized_effective%%#*}"
+
+  expected_a="$base$route"
+  expected_b="$base$route/"
 
   if [[ "$code" != "200" ]]; then
     fail_ "$base$route → expected 200, got $code"
     return
   fi
 
-  if [[ "$normalized_effective" == "$base$route" || "$normalized_effective" == "$base$route/" ]]; then
+  if [[ "$normalized_effective" == "$expected_a" || "$normalized_effective" == "$expected_b" ]]; then
     ok "$base$route → HTTP 200 (no redirect drift)"
   else
     fail_ "$base$route → redirected to $effective_url"

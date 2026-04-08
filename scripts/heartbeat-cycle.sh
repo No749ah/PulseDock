@@ -37,16 +37,12 @@ run_step() {
   echo -e "${GREEN}✓ ${label}${RESET}"
 }
 
-sync_with_dev() {
+ensure_safe_branch() {
   if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     echo "Not inside a git repository. Run this script from the PulseDock repo root." >&2
     exit 1
   fi
 
-  git pull origin dev
-}
-
-ensure_safe_branch() {
   local branch
   branch=$(git branch --show-current)
 
@@ -68,12 +64,9 @@ ensure_safe_branch() {
 
 echo -e "${BOLD}PulseDock Heartbeat Cycle $(date -u '+%Y-%m-%d %H:%M UTC')${RESET}"
 
-run_step "Sync from origin/dev" "sync_with_dev"
 run_step "Branch safety check" "ensure_safe_branch"
 run_step "Environment bootstrap" "npm run heartbeat:bootstrap"
-run_step "Build" "npm run build"
-run_step "Test" "npm run test"
-run_step "Security audit (high)" "npm audit --audit-level=high"
+run_step "Health check (git pull + build/test/audit tails)" "npm run heartbeat:health"
 run_step "Restart services" "npm run restart"
 
 if $CHECK_PUBLIC && $STRICT_AUTH; then

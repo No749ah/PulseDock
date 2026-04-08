@@ -17,11 +17,19 @@ ALLOW_OFF_SCHEDULE=false
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --name)
-      CUSTOM_SUFFIX="${2:-}"
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "--name requires a non-empty suffix value." >&2
+        exit 1
+      fi
+      CUSTOM_SUFFIX="$2"
       shift 2
       ;;
     --new-branch)
-      EXPLICIT_NEW_BRANCH="${2:-}"
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "--new-branch requires a non-empty heartbeat/* branch name." >&2
+        exit 1
+      fi
+      EXPLICIT_NEW_BRANCH="$2"
       shift 2
       ;;
     --allow-off-schedule)

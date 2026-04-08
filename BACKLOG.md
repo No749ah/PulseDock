@@ -1,3 +1,12 @@
+## Status Summary (2026-04-08 02:08 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5) and full frontend route+asset audits passing locally/publicly (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
+- **Branch:** heartbeat/2026-04-08-midnight (no rotation at 02:00 UTC; scheduled windows are 00:00/12:00 UTC)
+- **Last changes (02:08 UTC):**
+  - [x] **fix(devx): validate required values for heartbeat rotate CLI flags** — `scripts/heartbeat-rotate-branch.sh` now fails fast with explicit errors when `--name` or `--new-branch` are passed without values, preventing ambiguous shell `shift` failures.
+
+---
+
 ## Status Summary (2026-04-08 01:11 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
 - **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5) and full frontend route+asset audits passing locally/publicly (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
@@ -229,6 +238,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Validate required heartbeat rotate flag values** - ✅ Done (2026-04-08). `scripts/heartbeat-rotate-branch.sh` now validates non-empty values for `--name` and `--new-branch` and exits with clear usage errors when missing.
 - [x] **Gate heartbeat branch rotation to scheduled UTC windows** - ✅ Done (2026-04-08). `scripts/heartbeat-rotate-branch.sh` now enforces execution at 00:00/12:00 UTC by default and requires explicit `--allow-off-schedule` override for manual off-cycle rotations.
 - [x] **Automate heartbeat branch rotation workflow** - ✅ Done (2026-04-08). Added `scripts/heartbeat-rotate-branch.sh` + npm script `heartbeat:rotate` to merge current `heartbeat/*` into `dev`, delete old heartbeat branch locally/remotely, and create/push a fresh heartbeat branch from updated `dev`.
 - [x] **Enforce heartbeat branch safety in automation scripts** - ✅ Done (2026-04-07). `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` now require execution from `heartbeat/*` branches and fail on `dev`, `main`, or detached HEAD.

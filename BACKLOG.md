@@ -1,3 +1,12 @@
+## Status Summary (2026-04-08 07:07 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ⏳ Pending restart + post-deploy/frontend audits for this heartbeat cycle
+- **Branch:** heartbeat/2026-04-08-midnight (no rotation at 07:00 UTC; scheduled window is exactly 00:00/12:00 UTC)
+- **Last changes (07:07 UTC):**
+  - [x] **fix(devx): enforce exact-minute heartbeat branch rotation windows** — `scripts/heartbeat-rotate-branch.sh` now permits automatic rotation only at exactly `00:00` or `12:00` UTC (`HH:00`), and reports the real current UTC time in rejection errors.
+
+---
+
 ## Status Summary (2026-04-08 06:10 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
 - **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5) and full frontend route+asset audits passing locally/publicly (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
@@ -274,6 +283,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Enforce exact-minute heartbeat rotation schedule checks** - ✅ Done (2026-04-08). `scripts/heartbeat-rotate-branch.sh` now allows scheduled rotation only at exactly `00:00` or `12:00` UTC (minute must be `00`), and includes real current `HH:MM` UTC in off-schedule errors.
 - [x] **Make heartbeat Docker bootstrap check configurable** - ✅ Done (2026-04-08). `scripts/heartbeat-bootstrap.sh` now handles missing Docker CLI gracefully by default and supports strict failure via `HEARTBEAT_REQUIRE_DOCKER=true` when hard enforcement is needed.
 - [x] **Normalize frontend-audit base URLs before route comparison** - ✅ Done (2026-04-08). `scripts/audit-frontend-pages.sh` now trims trailing `/` from configured base URLs and normalizes effective URLs before route equality checks, preventing false-positive redirect drift failures.
 - [x] **Harden deploy-audit CLI argument parsing** - ✅ Done (2026-04-08). `scripts/audit-deploy.sh` now supports explicit `--help` usage output and fails fast on unknown arguments instead of silently ignoring typos.

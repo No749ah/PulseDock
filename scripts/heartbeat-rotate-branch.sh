@@ -92,11 +92,12 @@ ensure_rotation_window() {
     return
   fi
 
-  local hour
+  local hour minute
   hour="$(date -u +%H)"
+  minute="$(date -u +%M)"
 
-  if [[ "$hour" != "00" && "$hour" != "12" ]]; then
-    echo "Heartbeat branch rotation is only allowed at 00:00 or 12:00 UTC (current: ${hour}:00 UTC)." >&2
+  if [[ "$minute" != "00" || ( "$hour" != "00" && "$hour" != "12" ) ]]; then
+    echo "Heartbeat branch rotation is only allowed exactly at 00:00 or 12:00 UTC (current: ${hour}:${minute} UTC)." >&2
     echo "If this is an emergency/manual run, use --allow-off-schedule." >&2
     exit 1
   fi

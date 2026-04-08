@@ -1,8 +1,8 @@
-## Status Summary (2026-04-08 06:07 UTC)
+## Status Summary (2026-04-08 06:10 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ⏳ Pending in this cycle (will run after commit): restart + post-deploy checks + frontend/public audits
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5) and full frontend route+asset audits passing locally/publicly (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
 - **Branch:** heartbeat/2026-04-08-midnight (no rotation at 06:00 UTC; scheduled windows are 00:00/12:00 UTC)
-- **Last changes (06:07 UTC):**
+- **Last changes (06:10 UTC):**
   - [x] **fix(devx): make heartbeat bootstrap Docker check configurable** — `scripts/heartbeat-bootstrap.sh` now checks Docker CLI presence safely and supports `HEARTBEAT_REQUIRE_DOCKER=true` to fail hard when strict enforcement is required.
 
 ---

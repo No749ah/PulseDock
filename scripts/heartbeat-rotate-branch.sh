@@ -7,12 +7,17 @@
 #   ./scripts/heartbeat-rotate-branch.sh --name custom-suffix
 #   ./scripts/heartbeat-rotate-branch.sh --new-branch heartbeat/2026-04-08-midnight
 #   ./scripts/heartbeat-rotate-branch.sh --allow-off-schedule
+#
+# Optional env:
+#   HEARTBEAT_ROTATE_WINDOW_GRACE_MINUTES=5 (default) allows scheduled runs within
+#   the first N minutes of 00:00/12:00 UTC to tolerate scheduler jitter.
 
 set -euo pipefail
 
 CUSTOM_SUFFIX=""
 EXPLICIT_NEW_BRANCH=""
 ALLOW_OFF_SCHEDULE=false
+ROTATION_WINDOW_GRACE_MINUTES="${HEARTBEAT_ROTATE_WINDOW_GRACE_MINUTES:-5}"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -96,8 +101,16 @@ ensure_rotation_window() {
   hour="$(date -u +%H)"
   minute="$(date -u +%M)"
 
-  if [[ "$minute" != "00" || ( "$hour" != "00" && "$hour" != "12" ) ]]; then
-    echo "Heartbeat branch rotation is only allowed exactly at 00:00 or 12:00 UTC (current: ${hour}:${minute} UTC)." >&2
+  if ! [[ "$ROTATION_WINDOW_GRACE_MINUTES" =~ ^[0-9]+$ ]]; then
+    echo "HEARTBEAT_ROTATE_WINDOW_GRACE_MINUTES must be a non-negative integer (got '${ROTATION_WINDOW_GRACE_MINUTES}')." >&2
+    exit 1
+  fi
+
+  local minute_value
+  minute_value=$((10#$minute))
+
+  if [[ ( "$hour" != "00" && "$hour" != "12" ) || "$minute_value" -gt "$ROTATION_WINDOW_GRACE_MINUTES" ]]; then
+    echo "Heartbeat branch rotation is only allowed between 00:00-00:${ROTATION_WINDOW_GRACE_MINUTES} or 12:00-12:${ROTATION_WINDOW_GRACE_MINUTES} UTC (current: ${hour}:${minute} UTC)." >&2
     echo "If this is an emergency/manual run, use --allow-off-schedule." >&2
     exit 1
   fi

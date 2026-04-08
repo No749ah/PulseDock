@@ -1,3 +1,12 @@
+## Status Summary (2026-04-08 12:18 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, including API health/login/proxy + public checks; authenticated API check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Full frontend route+asset audits passing (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
+- **Branch:** heartbeat/2026-04-08-noon (rotated at 12:00 window with old heartbeat branch deleted local+remote)
+- **Last changes (12:18 UTC):**
+  - [x] **fix(devx): allow scheduled heartbeat branch rotation grace window** — `scripts/heartbeat-rotate-branch.sh` now accepts `HEARTBEAT_ROTATE_WINDOW_GRACE_MINUTES` (default `5`) so scheduled 00:00/12:00 rotations can run within minute jitter without manual override.
+
+---
+
 ## Status Summary (2026-04-08 11:13 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
 - **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, including API health/login/proxy + public checks; authenticated API check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Full frontend route+asset audits passing (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
@@ -319,6 +328,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Allow heartbeat rotation in a small scheduled-window grace period** - ✅ Done (2026-04-08). `scripts/heartbeat-rotate-branch.sh` now supports `HEARTBEAT_ROTATE_WINDOW_GRACE_MINUTES` (default `5`) so 00:00/12:00 UTC rotations tolerate scheduler jitter while still blocking off-window runs.
 - [x] **Enforce heartbeat branch safety in Step-1 health runner** - ✅ Done (2026-04-08). `scripts/heartbeat-health.sh` now hard-fails on `main`, `dev`, detached HEAD, and non-`heartbeat/*` branches before running pull/build/test/audit.
 - [x] **Remove duplicate dind reachability logs in heartbeat bootstrap** - ✅ Done (2026-04-08). `scripts/heartbeat-bootstrap.sh` now runs silent preflight connectivity checks, starts dind services only when needed, then reports PostgreSQL/Redis reachability once with explicit failure output.
 - [x] **Wire concise health-check runner into heartbeat check/cycle pipelines** - ✅ Done (2026-04-08). `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` now run `npm run heartbeat:health` for Step 1 instead of duplicating separate build/test/audit commands.

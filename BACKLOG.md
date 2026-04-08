@@ -1,3 +1,12 @@
+## Status Summary (2026-04-08 10:12 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, including API health/login/proxy + public checks; authenticated API check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Full frontend route+asset audits passing (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
+- **Branch:** heartbeat/2026-04-08-midnight (no rotation at 10:00 UTC; scheduled window is exactly 00:00/12:00 UTC)
+- **Last changes (10:12 UTC):**
+  - [x] **fix(devx): remove duplicate dind reachability logs in heartbeat bootstrap** — `scripts/heartbeat-bootstrap.sh` now performs silent preflight port checks and logs PostgreSQL/Redis reachability once after optional service start, with explicit failure messages if either port remains unreachable.
+
+---
+
 ## Status Summary (2026-04-08 09:09 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
 - **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, including API health/login/proxy + public checks; authenticated API check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Full frontend route+asset audits passing (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
@@ -301,6 +310,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Remove duplicate dind reachability logs in heartbeat bootstrap** - ✅ Done (2026-04-08). `scripts/heartbeat-bootstrap.sh` now runs silent preflight connectivity checks, starts dind services only when needed, then reports PostgreSQL/Redis reachability once with explicit failure output.
 - [x] **Wire concise health-check runner into heartbeat check/cycle pipelines** - ✅ Done (2026-04-08). `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` now run `npm run heartbeat:health` for Step 1 instead of duplicating separate build/test/audit commands.
 - [x] **Add concise heartbeat Step-1 health-check runner** - ✅ Done (2026-04-08). Added `scripts/heartbeat-health.sh` + `npm run heartbeat:health` to run `git pull origin dev`, `npm run build` (tail -3), `npm run test` (tail -5), and `npm audit --audit-level=high` (tail -3) with strict failure propagation.
 - [x] **Enforce exact-minute heartbeat rotation schedule checks** - ✅ Done (2026-04-08). `scripts/heartbeat-rotate-branch.sh` now allows scheduled rotation only at exactly `00:00` or `12:00` UTC (minute must be `00`), and includes real current `HH:MM` UTC in off-schedule errors.

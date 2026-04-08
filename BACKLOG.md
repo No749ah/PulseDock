@@ -1,3 +1,12 @@
+## Status Summary (2026-04-08 04:12 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`./scripts/audit-deploy.sh --public`: 5/5) and full frontend route+asset audits passing locally/publicly (`./scripts/audit-frontend-pages.sh --public`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
+- **Branch:** heartbeat/2026-04-08-midnight (no rotation at 04:00 UTC; scheduled windows are 00:00/12:00 UTC)
+- **Last changes (04:12 UTC):**
+  - [x] **fix(devx): fail deploy-audit on unknown CLI flags** — `scripts/audit-deploy.sh` now provides `--help` usage output and exits on unknown args instead of silently continuing.
+
+---
+
 ## Status Summary (2026-04-08 03:08 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
 - **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5) and full frontend route+asset audits passing locally/publicly (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.

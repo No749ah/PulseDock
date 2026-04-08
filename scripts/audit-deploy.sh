@@ -3,6 +3,8 @@
 # Usage:
 #   ./scripts/audit-deploy.sh
 #   ./scripts/audit-deploy.sh --public
+#   ./scripts/audit-deploy.sh --strict-auth
+#   ./scripts/audit-deploy.sh --public --strict-auth
 # Optional authenticated check:
 #   HEARTBEAT_AUTH_BEARER_TOKEN=<jwt> ./scripts/audit-deploy.sh
 #   HEARTBEAT_AUTH_BEARER_TOKEN=<jwt> ./scripts/audit-deploy.sh --public
@@ -16,9 +18,38 @@ API_BASE="${API_BASE_URL:-http://localhost:4321}"
 PUBLIC_BASE="${PUBLIC_BASE_URL:-https://oc-dev-test.no749ah.com}"
 CHECK_PUBLIC=false
 STRICT_AUTH=false
-for arg in "$@"; do
-  [[ "$arg" == "--public" ]] && CHECK_PUBLIC=true
-  [[ "$arg" == "--strict-auth" ]] && STRICT_AUTH=true
+
+usage() {
+  cat <<'EOF'
+Usage: ./scripts/audit-deploy.sh [--public] [--strict-auth]
+
+Options:
+  --public       Include reverse-proxy checks against PUBLIC_BASE_URL.
+  --strict-auth  Fail if HEARTBEAT_AUTH_BEARER_TOKEN is missing.
+  --help         Show this help message.
+EOF
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --public)
+      CHECK_PUBLIC=true
+      shift
+      ;;
+    --strict-auth)
+      STRICT_AUTH=true
+      shift
+      ;;
+    --help|-h)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      usage >&2
+      exit 1
+      ;;
+  esac
 done
 AUTH_BEARER_TOKEN="${HEARTBEAT_AUTH_BEARER_TOKEN:-}"
 

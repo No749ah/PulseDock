@@ -247,6 +247,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Harden deploy-audit CLI argument parsing** - ✅ Done (2026-04-08). `scripts/audit-deploy.sh` now supports explicit `--help` usage output and fails fast on unknown arguments instead of silently ignoring typos.
 - [x] **Block heartbeat rotation when target branch already exists** - ✅ Done (2026-04-08). `scripts/heartbeat-rotate-branch.sh` now validates that `NEW_BRANCH` does not already exist locally or on `origin` before switching to `dev` and merging.
 - [x] **Validate required heartbeat rotate flag values** - ✅ Done (2026-04-08). `scripts/heartbeat-rotate-branch.sh` now validates non-empty values for `--name` and `--new-branch` and exits with clear usage errors when missing.
 - [x] **Gate heartbeat branch rotation to scheduled UTC windows** - ✅ Done (2026-04-08). `scripts/heartbeat-rotate-branch.sh` now enforces execution at 00:00/12:00 UTC by default and requires explicit `--allow-off-schedule` override for manual off-cycle rotations.

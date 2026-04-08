@@ -1,3 +1,12 @@
+## Status Summary (2026-04-08 21:08 UTC)
+- **Build/Test/Audit:** ✅ Bootstrap + Step-1 health checks passed (`npm run heartbeat:bootstrap`, `git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean)
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, authenticated check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Verified direct API and proxy auth behavior (`/v1/monitors` on API port and `/api/v1/monitors` on web proxy both returned HTTP 401 with Bearer header). Full frontend audits passing (`npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16). Public login check `curl -sI https://oc-dev-test.no749ah.com/login` returned HTTP 200.
+- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 21:08 UTC; allowed windows are 00:00-00:05 and 12:00-12:05 UTC)
+- **Last changes (21:08 UTC):**
+  - [x] **fix(devx): fail heartbeat bootstrap on GitHub SSH auth errors** — `scripts/heartbeat-bootstrap.sh` now validates `ssh -T git@github.com` output and fails fast by default when authentication does not report success (override with `HEARTBEAT_REQUIRE_GITHUB_SSH=false` to warn instead).
+
+---
+
 ## Status Summary (2026-04-08 20:11 UTC)
 - **Build/Test/Audit:** ✅ Bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean)
 - **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, authenticated API check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Full frontend route+asset audits passing (`npm run audit:frontend:prod`: 108/108). Explicit HEAD curl sweep passing (`npm run audit:frontend:heads:prod`: 16/16). Public root check `curl -sI https://oc-dev-test.no749ah.com` returned HTTP 200.
@@ -401,6 +410,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Fail heartbeat bootstrap on GitHub SSH auth errors by default** - ✅ Done (2026-04-08). `scripts/heartbeat-bootstrap.sh` now validates `ssh -T git@github.com` output and fails fast when auth does not report success; opt-out warning mode available via `HEARTBEAT_REQUIRE_GITHUB_SSH=false`.
 - [x] **Validate heartbeat Step-1 timeout env values before command execution** - ✅ Done (2026-04-08). `scripts/heartbeat-health.sh` now validates `HEARTBEAT_BUILD_TIMEOUT_SECONDS`, `HEARTBEAT_TEST_TIMEOUT_SECONDS`, and `HEARTBEAT_AUDIT_TIMEOUT_SECONDS` as positive integers and fails fast with explicit errors for invalid values.
 - [x] **Add timeout guards to heartbeat Step-1 build/test/audit runner** - ✅ Done (2026-04-08). `scripts/heartbeat-health.sh` now supports configurable command timeouts (`HEARTBEAT_BUILD_TIMEOUT_SECONDS`, `HEARTBEAT_TEST_TIMEOUT_SECONDS`, `HEARTBEAT_AUDIT_TIMEOUT_SECONDS`) and surfaces explicit timeout failures instead of hanging indefinitely.
 - [x] **Enforce heartbeat git identity during bootstrap** - ✅ Done (2026-04-08). `scripts/heartbeat-bootstrap.sh` now validates global `git config` identity and auto-sets `user.name`/`user.email` to `No749ah` + `no749ah@users.noreply.github.com` (overrideable via `HEARTBEAT_GIT_USER_NAME` / `HEARTBEAT_GIT_USER_EMAIL`) to prevent misattributed automation commits.

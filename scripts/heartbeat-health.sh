@@ -35,6 +35,14 @@ ensure_safe_branch() {
   fi
 }
 
+ensure_clean_worktree() {
+  if [[ -n "$(git status --porcelain)" ]]; then
+    echo "Working tree is not clean. Commit or stash changes before running heartbeat health checks." >&2
+    git status --short >&2
+    exit 1
+  fi
+}
+
 run_with_tail() {
   local label="$1"
   local lines="$2"
@@ -61,6 +69,10 @@ echo -e "${BOLD}PulseDock Heartbeat Health Check $(date -u '+%Y-%m-%d %H:%M UTC'
 echo -e "\n${BOLD}${CYAN}==> Branch safety check${RESET}"
 ensure_safe_branch
 echo -e "${GREEN}✓ Branch safety check${RESET}"
+
+echo -e "\n${BOLD}${CYAN}==> Working tree check${RESET}"
+ensure_clean_worktree
+echo -e "${GREEN}✓ Working tree check${RESET}"
 
 echo -e "\n${BOLD}${CYAN}==> Git sync${RESET}"
 git pull origin dev

@@ -1,6 +1,6 @@
 ## Status Summary (2026-04-08 01:11 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ⏳ Pending restart + post-deploy/frontend audit (to run after commit)
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5) and full frontend route+asset audits passing locally/publicly (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
 - **Branch:** heartbeat/2026-04-08-midnight
 - **Last changes (01:11 UTC):**
   - [x] **chore(devx): gate heartbeat branch rotation to 00:00/12:00 UTC by default** — `scripts/heartbeat-rotate-branch.sh` now fails outside scheduled windows unless explicitly overridden with `--allow-off-schedule`, preventing accidental off-cycle merge/delete rotations.

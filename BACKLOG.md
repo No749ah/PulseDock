@@ -210,6 +210,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Automate heartbeat branch rotation workflow** - ✅ Done (2026-04-08). Added `scripts/heartbeat-rotate-branch.sh` + npm script `heartbeat:rotate` to merge current `heartbeat/*` into `dev`, delete old heartbeat branch locally/remotely, and create/push a fresh heartbeat branch from updated `dev`.
 - [x] **Enforce heartbeat branch safety in automation scripts** - ✅ Done (2026-04-07). `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` now require execution from `heartbeat/*` branches and fail on `dev`, `main`, or detached HEAD.
 - [x] **Fail frontend heartbeat audit on redirect drift** - ✅ Done (2026-04-07). `scripts/audit-frontend-pages.sh` now follows redirects and fails when required routes resolve to a different URL (for example, hidden auth fallback to `/login`) even if status remains 200.
 - [x] **Automate full heartbeat validation pipeline** - ✅ Done (2026-04-07). Added `scripts/heartbeat-check.sh` with npm scripts `heartbeat:check` and `heartbeat:check:prod` to run build/test/audit + post-deploy + frontend route checks in one command.

@@ -42,6 +42,7 @@
     "heartbeat:cycle:prod": "bash ./scripts/heartbeat-cycle.sh --public",
     "heartbeat:cycle:strict": "bash ./scripts/heartbeat-cycle.sh --strict-auth",
     "heartbeat:cycle:strict:prod": "bash ./scripts/heartbeat-cycle.sh --public --strict-auth",
+    "heartbeat:rotate": "bash ./scripts/heartbeat-rotate-branch.sh",
     "backlog:prune": "bash ./scripts/prune-backlog-status.sh",
     "perf": "bash ./scripts/perf-check.sh",
     "perf:prod": "bash ./scripts/perf-check.sh https://oc-dev-test.no749ah.com https://oc-dev-test.no749ah.com/api",

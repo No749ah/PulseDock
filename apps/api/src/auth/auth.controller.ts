@@ -210,6 +210,16 @@ export class AuthController {
     return { enabled: this.authService.isMailConfigured() };
   }
 
+  @Get('oauth-configured')
+  @ApiOperation({ summary: 'Check which OAuth providers are configured on this instance' })
+  @ApiResponse({ status: 200, description: 'Returns { github: boolean, google: boolean }' })
+  oauthConfigured() {
+    return {
+      github: Boolean(process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET),
+      google: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET),
+    };
+  }
+
   @Post('request-password-reset')
   @ApiOperation({ summary: 'Request password reset email' })
   @ApiResponse({ status: 200, description: 'Reset email sent (or silently no-ops if email unknown).' })

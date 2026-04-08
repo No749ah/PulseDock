@@ -2,8 +2,9 @@
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
 - **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, including API health/login/proxy + public checks; authenticated API check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Full frontend route+asset audits passing (`npm run audit:frontend:prod`: 108/108). Explicit HEAD curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` passing on local + public (`npm run audit:frontend:heads:prod`: 16/16).
 - **Branch:** heartbeat/2026-04-08-noon (no rotation at 14:08 UTC; scheduled window is 00:00/12:00 UTC)
-- **Last changes (14:08 UTC):**
+- **Last changes (14:13 UTC):**
   - [x] **chore(devx): add scheduled no-op heartbeat branch rotation helper** — added `scripts/heartbeat-rotate-if-due.sh` + npm script `heartbeat:rotate:if-due`; wired it into `scripts/heartbeat-cycle.sh` so branch rotation is attempted automatically only during allowed windows and skipped cleanly off-schedule.
+  - [x] **fix(devx): normalize scheduled-window skip output formatting** — `scripts/heartbeat-rotate-if-due.sh` now renders grace-window minutes as zero-padded `HH:MM` (for example `00:05`) for clearer logs.
 
 ---
 

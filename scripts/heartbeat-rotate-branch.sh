@@ -6,11 +6,13 @@
 #   ./scripts/heartbeat-rotate-branch.sh
 #   ./scripts/heartbeat-rotate-branch.sh --name custom-suffix
 #   ./scripts/heartbeat-rotate-branch.sh --new-branch heartbeat/2026-04-08-midnight
+#   ./scripts/heartbeat-rotate-branch.sh --allow-off-schedule
 
 set -euo pipefail
 
 CUSTOM_SUFFIX=""
 EXPLICIT_NEW_BRANCH=""
+ALLOW_OFF_SCHEDULE=false
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -22,9 +24,13 @@ while [[ $# -gt 0 ]]; do
       EXPLICIT_NEW_BRANCH="${2:-}"
       shift 2
       ;;
+    --allow-off-schedule)
+      ALLOW_OFF_SCHEDULE=true
+      shift
+      ;;
     *)
       echo "Unknown argument: $1" >&2
-      echo "Usage: $0 [--name <suffix>] [--new-branch <heartbeat/...>]" >&2
+      echo "Usage: $0 [--name <suffix>] [--new-branch <heartbeat/...>] [--allow-off-schedule]" >&2
       exit 1
       ;;
   esac
@@ -73,6 +79,21 @@ compute_default_suffix() {
   fi
 }
 
+ensure_rotation_window() {
+  if $ALLOW_OFF_SCHEDULE; then
+    return
+  fi
+
+  local hour
+  hour="$(date -u +%H)"
+
+  if [[ "$hour" != "00" && "$hour" != "12" ]]; then
+    echo "Heartbeat branch rotation is only allowed at 00:00 or 12:00 UTC (current: ${hour}:00 UTC)." >&2
+    echo "If this is an emergency/manual run, use --allow-off-schedule." >&2
+    exit 1
+  fi
+}
+
 compute_new_branch() {
   if [[ -n "$EXPLICIT_NEW_BRANCH" ]]; then
     echo "$EXPLICIT_NEW_BRANCH"
@@ -93,6 +114,7 @@ fi
 OLD_BRANCH="$(current_branch)"
 ensure_heartbeat_branch "$OLD_BRANCH"
 require_clean_worktree
+ensure_rotation_window
 
 git fetch origin --prune
 

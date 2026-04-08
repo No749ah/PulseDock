@@ -13,6 +13,7 @@ SSH_LINK="/home/node/.ssh"
 SSH_TARGET="${OPENCLAW_HOME}/.ssh"
 DIND_START_SCRIPT="${DIND_START_SCRIPT:-${WORKSPACE_ROOT}/scripts/start-dind-services.sh}"
 HEARTBEAT_REQUIRE_DOCKER="${HEARTBEAT_REQUIRE_DOCKER:-false}"
+HEARTBEAT_REQUIRE_GITHUB_SSH="${HEARTBEAT_REQUIRE_GITHUB_SSH:-true}"
 HEARTBEAT_GIT_USER_NAME="${HEARTBEAT_GIT_USER_NAME:-No749ah}"
 HEARTBEAT_GIT_USER_EMAIL="${HEARTBEAT_GIT_USER_EMAIL:-no749ah@users.noreply.github.com}"
 
@@ -71,8 +72,17 @@ else
 fi
 
 step "GitHub SSH auth"
-ssh -T git@github.com 2>&1 | head -1 || true
-ok "GitHub SSH check complete"
+github_ssh_output="$(ssh -T git@github.com 2>&1 || true)"
+echo "${github_ssh_output}" | head -1
+
+if [[ "${github_ssh_output}" == *"successfully authenticated"* ]]; then
+  ok "GitHub SSH check complete"
+elif [[ "${HEARTBEAT_REQUIRE_GITHUB_SSH}" == "true" ]]; then
+  echo "Bootstrap failed: GitHub SSH authentication did not succeed (set HEARTBEAT_REQUIRE_GITHUB_SSH=false to warn instead)." >&2
+  exit 1
+else
+  warn "GitHub SSH authentication did not report success; continuing because HEARTBEAT_REQUIRE_GITHUB_SSH=false"
+fi
 
 step "Git identity"
 current_git_name="$(git config --global --get user.name || true)"

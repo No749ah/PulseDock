@@ -1,3 +1,12 @@
+## Status Summary (2026-04-08 05:10 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5) and full frontend route+asset audits passing locally/publicly (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
+- **Branch:** heartbeat/2026-04-08-midnight (no rotation at 05:00 UTC; scheduled windows are 00:00/12:00 UTC)
+- **Last changes (05:10 UTC):**
+  - [x] **fix(devx): normalize frontend-audit base URLs to avoid trailing-slash drift** — `scripts/audit-frontend-pages.sh` now trims trailing slashes from `WEB_BASE_URL` / `PUBLIC_BASE_URL` and compares normalized effective URLs, preventing false redirect failures when bases are configured with trailing `/`.
+
+---
+
 ## Status Summary (2026-04-08 04:12 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
 - **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`./scripts/audit-deploy.sh --public`: 5/5) and full frontend route+asset audits passing locally/publicly (`./scripts/audit-frontend-pages.sh --public`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
@@ -256,6 +265,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Normalize frontend-audit base URLs before route comparison** - ✅ Done (2026-04-08). `scripts/audit-frontend-pages.sh` now trims trailing `/` from configured base URLs and normalizes effective URLs before route equality checks, preventing false-positive redirect drift failures.
 - [x] **Harden deploy-audit CLI argument parsing** - ✅ Done (2026-04-08). `scripts/audit-deploy.sh` now supports explicit `--help` usage output and fails fast on unknown arguments instead of silently ignoring typos.
 - [x] **Block heartbeat rotation when target branch already exists** - ✅ Done (2026-04-08). `scripts/heartbeat-rotate-branch.sh` now validates that `NEW_BRANCH` does not already exist locally or on `origin` before switching to `dev` and merging.
 - [x] **Validate required heartbeat rotate flag values** - ✅ Done (2026-04-08). `scripts/heartbeat-rotate-branch.sh` now validates non-empty values for `--name` and `--new-branch` and exits with clear usage errors when missing.

@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Environment bootstrap checks for heartbeat runs.
 # - Ensures SSH key symlink exists
-# - Verifies docker + GitHub SSH auth
+# - Verifies Docker CLI availability + GitHub SSH auth
 # - Verifies dind PostgreSQL/Redis reachability
 # - Starts dind services when needed
 
@@ -12,6 +12,7 @@ OPENCLAW_HOME="${OPENCLAW_HOME:-/home/node/.openclaw}"
 SSH_LINK="/home/node/.ssh"
 SSH_TARGET="${OPENCLAW_HOME}/.ssh"
 DIND_START_SCRIPT="${DIND_START_SCRIPT:-${WORKSPACE_ROOT}/scripts/start-dind-services.sh}"
+HEARTBEAT_REQUIRE_DOCKER="${HEARTBEAT_REQUIRE_DOCKER:-false}"
 
 GREEN='\033[0;32m'; YELLOW='\033[0;33m'; CYAN='\033[0;36m'; BOLD='\033[1m'; RESET='\033[0m'
 
@@ -48,8 +49,16 @@ else
 fi
 
 step "Docker CLI"
-docker --version
-ok "Docker CLI available"
+if command -v docker >/dev/null 2>&1; then
+  docker --version
+  ok "Docker CLI available"
+else
+  if [[ "${HEARTBEAT_REQUIRE_DOCKER}" == "true" ]]; then
+    echo "Bootstrap failed: Docker CLI is not installed or not in PATH (set HEARTBEAT_REQUIRE_DOCKER=false to warn instead)." >&2
+    exit 1
+  fi
+  warn "Docker CLI not found in PATH; continuing with dind reachability checks"
+fi
 
 step "GitHub SSH auth"
 ssh -T git@github.com 2>&1 | head -1 || true

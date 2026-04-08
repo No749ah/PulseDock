@@ -1,3 +1,12 @@
+## Status Summary (2026-04-08 06:07 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ⏳ Pending in this cycle (will run after commit): restart + post-deploy checks + frontend/public audits
+- **Branch:** heartbeat/2026-04-08-midnight (no rotation at 06:00 UTC; scheduled windows are 00:00/12:00 UTC)
+- **Last changes (06:07 UTC):**
+  - [x] **fix(devx): make heartbeat bootstrap Docker check configurable** — `scripts/heartbeat-bootstrap.sh` now checks Docker CLI presence safely and supports `HEARTBEAT_REQUIRE_DOCKER=true` to fail hard when strict enforcement is required.
+
+---
+
 ## Status Summary (2026-04-08 05:10 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
 - **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5) and full frontend route+asset audits passing locally/publicly (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
@@ -265,6 +274,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Make heartbeat Docker bootstrap check configurable** - ✅ Done (2026-04-08). `scripts/heartbeat-bootstrap.sh` now handles missing Docker CLI gracefully by default and supports strict failure via `HEARTBEAT_REQUIRE_DOCKER=true` when hard enforcement is needed.
 - [x] **Normalize frontend-audit base URLs before route comparison** - ✅ Done (2026-04-08). `scripts/audit-frontend-pages.sh` now trims trailing `/` from configured base URLs and normalizes effective URLs before route equality checks, preventing false-positive redirect drift failures.
 - [x] **Harden deploy-audit CLI argument parsing** - ✅ Done (2026-04-08). `scripts/audit-deploy.sh` now supports explicit `--help` usage output and fails fast on unknown arguments instead of silently ignoring typos.
 - [x] **Block heartbeat rotation when target branch already exists** - ✅ Done (2026-04-08). `scripts/heartbeat-rotate-branch.sh` now validates that `NEW_BRANCH` does not already exist locally or on `origin` before switching to `dev` and merging.

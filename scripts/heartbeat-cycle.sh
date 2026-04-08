@@ -87,4 +87,6 @@ else
   run_step "Frontend HEAD curl audit (local)" "npm run audit:frontend:heads"
 fi
 
+run_step "Branch rotation (scheduled windows only)" "npm run heartbeat:rotate:if-due"
+
 echo -e "\n${GREEN}${BOLD}Heartbeat cycle complete.${RESET}"

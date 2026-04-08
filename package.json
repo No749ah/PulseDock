@@ -33,6 +33,8 @@
     "audit:deploy:strict:prod": "bash ./scripts/audit-deploy.sh --public --strict-auth",
     "audit:frontend": "bash ./scripts/audit-frontend-pages.sh",
     "audit:frontend:prod": "bash ./scripts/audit-frontend-pages.sh --public",
+    "audit:frontend:heads": "bash ./scripts/heartbeat-curl-pages.sh",
+    "audit:frontend:heads:prod": "bash ./scripts/heartbeat-curl-pages.sh --public",
     "heartbeat:bootstrap": "bash ./scripts/heartbeat-bootstrap.sh",
     "heartbeat:check": "bash ./scripts/heartbeat-check.sh",
     "heartbeat:check:prod": "bash ./scripts/heartbeat-check.sh --public",

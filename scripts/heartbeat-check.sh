@@ -80,8 +80,10 @@ fi
 
 if $CHECK_PUBLIC; then
   run_step "Frontend route audit (local + public)" "npm run audit:frontend:prod"
+  run_step "Frontend HEAD curl audit (local + public)" "npm run audit:frontend:heads:prod"
 else
   run_step "Frontend route audit (local)" "npm run audit:frontend"
+  run_step "Frontend HEAD curl audit (local)" "npm run audit:frontend:heads"
 fi
 
 echo -e "\n${GREEN}${BOLD}Heartbeat check complete.${RESET}"

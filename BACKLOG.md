@@ -1,3 +1,12 @@
+## Status Summary (2026-04-08 13:14 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, including API health/login/proxy + public checks; authenticated API check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Full frontend route+asset audits passing (`npm run audit:frontend:prod`: 108/108). Explicit HEAD curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` now automated and passing on both local + public origins (`npm run audit:frontend:heads:prod`: 16/16).
+- **Branch:** heartbeat/2026-04-08-noon (no rotation at 13:00 UTC; scheduled window is exactly 00:00/12:00 UTC)
+- **Last changes (13:14 UTC):**
+  - [x] **chore(devx): automate explicit Step-5 frontend HEAD curl audit** — added `scripts/heartbeat-curl-pages.sh` + npm scripts `audit:frontend:heads` / `audit:frontend:heads:prod` and wired them into `scripts/heartbeat-check.sh` + `scripts/heartbeat-cycle.sh`.
+
+---
+
 ## Status Summary (2026-04-08 12:18 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
 - **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, including API health/login/proxy + public checks; authenticated API check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Full frontend route+asset audits passing (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
@@ -328,6 +337,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Automate explicit heartbeat Step-5 HEAD curl checks for required frontend pages** - ✅ Done (2026-04-08). Added `scripts/heartbeat-curl-pages.sh` plus npm scripts `audit:frontend:heads` / `audit:frontend:heads:prod`; wired both into `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` so every full heartbeat run enforces the required `/login /dashboard /monitors /alerts /account /projects /versions /admin` `curl -I` checks locally/publicly.
 - [x] **Allow heartbeat rotation in a small scheduled-window grace period** - ✅ Done (2026-04-08). `scripts/heartbeat-rotate-branch.sh` now supports `HEARTBEAT_ROTATE_WINDOW_GRACE_MINUTES` (default `5`) so 00:00/12:00 UTC rotations tolerate scheduler jitter while still blocking off-window runs.
 - [x] **Enforce heartbeat branch safety in Step-1 health runner** - ✅ Done (2026-04-08). `scripts/heartbeat-health.sh` now hard-fails on `main`, `dev`, detached HEAD, and non-`heartbeat/*` branches before running pull/build/test/audit.
 - [x] **Remove duplicate dind reachability logs in heartbeat bootstrap** - ✅ Done (2026-04-08). `scripts/heartbeat-bootstrap.sh` now runs silent preflight connectivity checks, starts dind services only when needed, then reports PostgreSQL/Redis reachability once with explicit failure output.

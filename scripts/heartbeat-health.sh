@@ -5,6 +5,11 @@
 # - npm run build (tail -3)
 # - npm run test (tail -5)
 # - npm audit --audit-level=high (tail -3)
+#
+# Optional timeout controls (seconds):
+# - HEARTBEAT_BUILD_TIMEOUT_SECONDS (default: 1800)
+# - HEARTBEAT_TEST_TIMEOUT_SECONDS (default: 2400)
+# - HEARTBEAT_AUDIT_TIMEOUT_SECONDS (default: 600)
 
 set -euo pipefail
 
@@ -46,22 +51,50 @@ ensure_clean_worktree() {
 run_with_tail() {
   local label="$1"
   local lines="$2"
-  shift 2
+  local timeout_seconds="$3"
+  shift 3
 
   local log_file
+  local status
+  local timeout_cmd_available
   log_file=$(mktemp)
+  status=0
+  timeout_cmd_available=0
 
-  echo -e "\n${BOLD}${CYAN}==> ${label}${RESET}"
-  if "$@" >"${log_file}" 2>&1; then
-    tail -n "${lines}" "${log_file}" || true
-    echo -e "${GREEN}✓ ${label}${RESET}"
-  else
-    tail -n 80 "${log_file}" || true
-    rm -f "${log_file}"
-    return 1
+  if command -v timeout >/dev/null 2>&1; then
+    timeout_cmd_available=1
   fi
 
+  echo -e "\n${BOLD}${CYAN}==> ${label}${RESET}"
+
+  if [[ "${timeout_cmd_available}" -eq 1 ]]; then
+    if timeout --signal=TERM --kill-after=30s "${timeout_seconds}s" "$@" >"${log_file}" 2>&1; then
+      status=0
+    else
+      status=$?
+    fi
+  else
+    if "$@" >"${log_file}" 2>&1; then
+      status=0
+    else
+      status=$?
+    fi
+  fi
+
+  if [[ "${status}" -eq 0 ]]; then
+    tail -n "${lines}" "${log_file}" || true
+    echo -e "${GREEN}✓ ${label}${RESET}"
+    rm -f "${log_file}"
+    return 0
+  fi
+
+  if [[ "${status}" -eq 124 ]]; then
+    echo "${label} timed out after ${timeout_seconds}s." >&2
+  fi
+
+  tail -n 80 "${log_file}" || true
   rm -f "${log_file}"
+  return "${status}"
 }
 
 echo -e "${BOLD}PulseDock Heartbeat Health Check $(date -u '+%Y-%m-%d %H:%M UTC')${RESET}"
@@ -78,8 +111,12 @@ echo -e "\n${BOLD}${CYAN}==> Git sync${RESET}"
 git pull origin dev
 echo -e "${GREEN}✓ Git sync${RESET}"
 
-run_with_tail "Build (tail -3)" 3 npm run build
-run_with_tail "Test (tail -5)" 5 npm run test
-run_with_tail "Security audit (tail -3)" 3 npm audit --audit-level=high
+BUILD_TIMEOUT_SECONDS="${HEARTBEAT_BUILD_TIMEOUT_SECONDS:-1800}"
+TEST_TIMEOUT_SECONDS="${HEARTBEAT_TEST_TIMEOUT_SECONDS:-2400}"
+AUDIT_TIMEOUT_SECONDS="${HEARTBEAT_AUDIT_TIMEOUT_SECONDS:-600}"
+
+run_with_tail "Build (tail -3)" 3 "${BUILD_TIMEOUT_SECONDS}" npm run build
+run_with_tail "Test (tail -5)" 5 "${TEST_TIMEOUT_SECONDS}" npm run test
+run_with_tail "Security audit (tail -3)" 3 "${AUDIT_TIMEOUT_SECONDS}" npm audit --audit-level=high
 
 echo -e "\n${GREEN}${BOLD}Heartbeat health check complete.${RESET}"

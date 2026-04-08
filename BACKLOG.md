@@ -1,3 +1,12 @@
+## Status Summary (2026-04-08 03:08 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5) and full frontend route+asset audits passing locally/publicly (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
+- **Branch:** heartbeat/2026-04-08-midnight (no rotation at 03:00 UTC; scheduled windows are 00:00/12:00 UTC)
+- **Last changes (03:08 UTC):**
+  - [x] **fix(devx): block heartbeat rotation when target branch already exists** — `scripts/heartbeat-rotate-branch.sh` now fails fast if the computed/new heartbeat branch already exists locally or on `origin`, preventing accidental branch reuse/overwrite.
+
+---
+
 ## Status Summary (2026-04-08 02:08 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
 - **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5) and full frontend route+asset audits passing locally/publicly (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
@@ -238,6 +247,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Block heartbeat rotation when target branch already exists** - ✅ Done (2026-04-08). `scripts/heartbeat-rotate-branch.sh` now validates that `NEW_BRANCH` does not already exist locally or on `origin` before switching to `dev` and merging.
 - [x] **Validate required heartbeat rotate flag values** - ✅ Done (2026-04-08). `scripts/heartbeat-rotate-branch.sh` now validates non-empty values for `--name` and `--new-branch` and exits with clear usage errors when missing.
 - [x] **Gate heartbeat branch rotation to scheduled UTC windows** - ✅ Done (2026-04-08). `scripts/heartbeat-rotate-branch.sh` now enforces execution at 00:00/12:00 UTC by default and requires explicit `--allow-off-schedule` override for manual off-cycle rotations.
 - [x] **Automate heartbeat branch rotation workflow** - ✅ Done (2026-04-08). Added `scripts/heartbeat-rotate-branch.sh` + npm script `heartbeat:rotate` to merge current `heartbeat/*` into `dev`, delete old heartbeat branch locally/remotely, and create/push a fresh heartbeat branch from updated `dev`.

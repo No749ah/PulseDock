@@ -114,6 +114,20 @@ compute_new_branch() {
   echo "heartbeat/${day}-${suffix}"
 }
 
+ensure_new_branch_available() {
+  local branch="$1"
+
+  if git show-ref --verify --quiet "refs/heads/${branch}"; then
+    echo "Local branch already exists: ${branch}" >&2
+    exit 1
+  fi
+
+  if git ls-remote --exit-code --heads origin "${branch}" >/dev/null 2>&1; then
+    echo "Remote branch already exists on origin: ${branch}" >&2
+    exit 1
+  fi
+}
+
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "Not inside a git repository." >&2
   exit 1
@@ -139,6 +153,8 @@ if [[ "$NEW_BRANCH" == "$OLD_BRANCH" ]]; then
   echo "New branch equals current branch ($OLD_BRANCH). Use --name or --new-branch." >&2
   exit 1
 fi
+
+ensure_new_branch_available "$NEW_BRANCH"
 
 # Merge old heartbeat branch into dev.
 git checkout dev

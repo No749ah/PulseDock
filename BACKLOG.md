@@ -1,3 +1,12 @@
+## Status Summary (2026-04-08 16:14 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ⏳ Pending in this cycle (will run restart + deploy/frontend audits after commit)
+- **Branch:** heartbeat/2026-04-08-noon (no rotation at 16:14 UTC; scheduled window is 00:00/12:00 UTC)
+- **Last changes (16:14 UTC):**
+  - [x] **chore(security): patch nodemailer SMTP command-injection advisory** — bumped `@pulsedock/api` `nodemailer` from `^8.0.3` to `^8.0.5` (lockfile updated), clearing the moderate advisory from `npm audit`.
+
+---
+
 ## Status Summary (2026-04-08 14:24 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
 - **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, including API health/login/proxy + public checks; authenticated API check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Full frontend route+asset audits passing (`npm run audit:frontend:prod`: 108/108). Explicit HEAD curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` passing on local + public (`npm run audit:frontend:heads:prod`: 16/16).
@@ -356,6 +365,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Patch nodemailer SMTP command-injection advisory** - ✅ Done (2026-04-08). Upgraded `@pulsedock/api` dependency `nodemailer` from `^8.0.3` to `^8.0.5` and refreshed lockfile, resolving `GHSA-vvjj-xcjg-gr5g` in heartbeat audits.
 - [x] **Remove eval execution from heartbeat orchestration runners** - ✅ Done (2026-04-08). Replaced `eval` in `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` with direct command invocation (`"$@"`) so each step executes without shell re-parsing and with lower injection risk.
 - [x] **Auto-run heartbeat branch rotation only when scheduled** - ✅ Done (2026-04-08). Added `scripts/heartbeat-rotate-if-due.sh` + npm script `heartbeat:rotate:if-due`; integrated with `scripts/heartbeat-cycle.sh` so Step 6 runs automatically at 00:00/12:00 UTC windows and exits cleanly with a skip message off-schedule.
 - [x] **Automate explicit heartbeat Step-5 HEAD curl checks for required frontend pages** - ✅ Done (2026-04-08). Added `scripts/heartbeat-curl-pages.sh` plus npm scripts `audit:frontend:heads` / `audit:frontend:heads:prod`; wired both into `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` so every full heartbeat run enforces the required `/login /dashboard /monitors /alerts /account /projects /versions /admin` `curl -I` checks locally/publicly.

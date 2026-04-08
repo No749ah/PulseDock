@@ -1,3 +1,118 @@
+## Status Summary (2026-04-07 23:11 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks and frontend route+asset audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
+- **Branch:** heartbeat/2026-04-07-afternoon
+- **Last changes (23:11 UTC):**
+  - [x] **chore(devx): enforce heartbeat branch safety in automation scripts** — `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` now fail fast when run outside `heartbeat/*` branches (including `dev`, `main`, and detached HEAD), preventing unsafe execution paths.
+
+---
+
+## Status Summary (2026-04-07 22:06 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ Services healthy; frontend audit passing locally after route-redirect hardening (`npm run audit:frontend`)
+- **Branch:** heartbeat/2026-04-07-afternoon
+- **Last changes (22:06 UTC):**
+  - [x] **fix(devx): fail frontend audits on silent route redirect drift** — `scripts/audit-frontend-pages.sh` now follows redirects and validates each required route resolves to itself (not an auth/error fallback URL), while still enforcing HTTP 200.
+
+---
+
+## Status Summary (2026-04-07 21:18 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks (including authenticated API + web `/api` proxy validation) and frontend route+asset audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
+- **Branch:** heartbeat/2026-04-07-afternoon
+- **Last changes (21:18 UTC):**
+  - [x] **chore(devx): harden frontend audit runtime-error detection + CLI parsing** — `scripts/audit-frontend-pages.sh` now uses strict argument parsing (unknown flags fail fast with usage output) and scans each required route body for known Next.js runtime error markers (`__next_error__`, server exception strings) before static-asset checks.
+  - [x] **fix(devx): keep frontend audit counters stable with strict marker checks** — removed `set -e` from `scripts/audit-frontend-pages.sh` so pass/fail counters remain non-fatal while still collecting full audit results.
+
+---
+
+## Status Summary (2026-04-07 20:15 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks and frontend route+asset audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
+- **Branch:** heartbeat/2026-04-07-afternoon
+- **Last changes (20:15 UTC):**
+  - [x] **chore(devx): enforce repo sync in heartbeat runners** — `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` now execute `git pull origin dev` first (with git-repo guard), aligning automation with heartbeat step 1.
+  - [x] **fix(devx): wait for web readiness in start-web script** — `scripts/start-web.sh` now blocks until `/login` returns 200 (or fails after timeout), preventing false-negative post-deploy/public 502 audit failures right after restart.
+
+---
+
+## Status Summary (2026-04-07 19:12 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks and frontend route+asset audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
+- **Branch:** heartbeat/2026-04-07-afternoon
+- **Last changes (19:12 UTC):**
+  - [x] **chore(devx): add strict-auth support to heartbeat check runner** — upgraded `scripts/heartbeat-check.sh` argument parsing to support `--strict-auth` (with `--public` compatibility), plus unknown-flag guard and explicit usage output.
+  - [x] **chore(npm): add strict heartbeat check npm scripts** — added `heartbeat:check:strict` and `heartbeat:check:strict:prod`.
+
+---
+
+## Status Summary (2026-04-07 18:10 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks and frontend route+asset audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
+- **Branch:** heartbeat/2026-04-07-afternoon
+- **Last changes (18:10 UTC):**
+  - [x] **chore(devx): add one-command heartbeat cycle runner** — added `scripts/heartbeat-cycle.sh` to enforce bootstrap → build → test → audit → restart → deploy/frontend audits in strict order, with optional `--public` and `--strict-auth` modes.
+  - [x] **chore(npm): add heartbeat cycle scripts** — added `heartbeat:cycle`, `heartbeat:cycle:prod`, `heartbeat:cycle:strict`, and `heartbeat:cycle:strict:prod`.
+
+---
+
+## Status Summary (2026-04-07 17:12 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks and frontend route+asset audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
+- **Branch:** heartbeat/2026-04-07-afternoon
+- **Last changes (17:12 UTC):**
+  - [x] **chore(devx): automate backlog status-summary pruning + archival** — added `scripts/prune-backlog-status.sh` and npm script `backlog:prune` to keep `BACKLOG.md` focused (latest summaries) while archiving older status blocks into `docs/BACKLOG_STATUS_ARCHIVE.md`.
+  - [x] **chore(backlog): archive legacy heartbeat status summaries** — pruned 50 older status summaries from `BACKLOG.md` into `docs/BACKLOG_STATUS_ARCHIVE.md`.
+
+---
+
+## Status Summary (2026-04-07 16:08 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ Services healthy; post-deploy audit passing locally with auth-guard validation and optional authenticated-path support
+- **Branch:** heartbeat/2026-04-07-afternoon
+- **Last changes (16:08 UTC):**
+  - [x] **chore(devx): add strict optional authenticated checks to heartbeat deploy audit** — enhanced `scripts/audit-deploy.sh` with `HEARTBEAT_AUTH_BEARER_TOKEN` support to validate authenticated `/api/v1/monitors` access (local/public), plus `--strict-auth` mode to fail when token is missing; added npm scripts `audit:deploy:strict` and `audit:deploy:strict:prod`.
+
+---
+
+## Status Summary (2026-04-07 15:10 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ Web restarted during build; frontend route+asset audit passing locally (all required pages 200 + discovered `_next/static` CSS/JS assets 200)
+- **Branch:** heartbeat/2026-04-07-afternoon
+- **Last changes (15:10 UTC):**
+  - [x] **chore(devx): harden heartbeat frontend audit with static asset checks** — extended `scripts/audit-frontend-pages.sh` to crawl required pages, discover Next.js `_next/static` CSS/JS assets, dedupe URLs, and fail on any non-200 asset response.
+
+---
+
+## Status Summary (2026-04-07 14:12 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks + frontend audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
+- **Branch:** heartbeat/2026-04-07-afternoon
+- **Last changes (14:12 UTC):**
+  - [x] **chore(devx): add heartbeat environment bootstrap automation** — added `scripts/heartbeat-bootstrap.sh` to enforce SSH key symlink repair, Docker/GitHub SSH checks, and PostgreSQL/Redis reachability checks (with auto-start fallback via dind start script).
+  - [x] **chore(devx): wire bootstrap into heartbeat checks** — `npm run heartbeat:check` now runs environment bootstrap before build/test/audit; added `npm run heartbeat:bootstrap`.
+
+---
+
+## Status Summary (2026-04-07 13:12 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks + frontend audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
+- **Branch:** heartbeat/2026-04-07-afternoon
+- **Last changes (13:12 UTC):**
+  - [x] **chore(devx): add full heartbeat check runner** — added `scripts/heartbeat-check.sh` plus npm scripts `heartbeat:check` and `heartbeat:check:prod` to run full heartbeat validation in one command (build, test, audit, post-deploy audit, frontend route audit).
+
+---
+
+## Status Summary (2026-04-07 12:09 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ Restarted API + web via `npm run restart`; local + public smoke tests passing; post-deploy and frontend route audits all green
+- **Branch:** heartbeat/2026-04-07-afternoon (merged heartbeat/2026-04-07-noon → dev, deleted old branch local+remote)
+- **Last changes (12:09 UTC):**
+  - [x] **chore(devx): add post-deploy heartbeat audit script** — added `scripts/audit-deploy.sh` with `npm run audit:deploy` + `npm run audit:deploy:prod` to enforce heartbeat Step 4 checks (API health, login, and `/api` auth-guard path on local/public origins)
+  - [x] **Branch management** — merged heartbeat/2026-04-07-noon → dev, deleted old branch, created heartbeat/2026-04-07-afternoon
+
+---
+
 ## Status Summary (2026-04-07 11:45 UTC)
 - **Build/Test/Audit:** ✅ Build clean; 5301 API + 5690 web + 1287 integration + 114 CLI + 12 agent = **12,404 tests passing**; 0 vulnerabilities
 - **Deployment:** ✅ API + web running; all 8 pages 200 local + public `https://oc-dev-test.no749ah.com`
@@ -18,526 +133,6 @@
   - [x] **feat(api): GET /v2/playbooks endpoint** — paginated playbooks with derived stepCount/monitorCount fields, severity filter (case-insensitive), search (name+desc), all sortBy combos (name/createdAt/updatedAt/stepCount/monitorCount), pagination. 17 unit + 27 integration tests. API: 5252 → 5285. Integration: 1260 → 1287.
 
 ---
-
-## Status Summary (2026-04-07 09:44 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; build + tests + `npm audit --audit-level=high` passing; 0 vulnerabilities
-- **Branch:** heartbeat/2026-04-04-afternoon
-- **Last changes (09:44 UTC):**
-  - [x] **chore(devx): add frontend route audit script** — added `scripts/audit-frontend-pages.sh` to verify all required heartbeat frontend routes (`/login`, `/dashboard`, `/monitors`, `/alerts`, `/account`, `/projects`, `/versions`, `/admin`) return HTTP 200 for local web and optional public reverse proxy.
-  - [x] **chore(npm): add frontend audit npm scripts** — `npm run audit:frontend` (local) and `npm run audit:frontend:prod` (local + public).
-
-## Status Summary (2026-04-04 17:20 UTC)
-- **Build/Test:** ✅ Build clean; 5199 API + 5690 web + 1131 integration + 114 CLI + 12 agent = **12,146 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 local + public `https://oc-dev-test.no749ah.com`
-- **Branch:** heartbeat/2026-04-04-afternoon
-- **Last changes (17:20 UTC):**
-  - [x] **feat(api): GET /v2/service-groups endpoint** — paginated service groups with search (name+desc), sort by name/createdAt/monitorCount (in-memory for monitorCount), derived monitorCount field. Auth guard, user isolation, invalid params → 400.
-  - [x] **feat(api): GET /v2/escalation-policies endpoint** — paginated escalation policies with search (name), sort by name/createdAt/stepCount (in-memory for stepCount), derived stepCount field. Auth guard, user isolation, invalid params → 400.
-  - [x] **test(api): 26 unit tests** — service-groups.controller.spec.ts (12), escalation-policies.controller.spec.ts (14). API: 5173 → 5199.
-  - [x] **test(api): 34 integration tests** — v2-service-groups-escalation.integration.spec.ts: auth guard, envelope shape, user isolation, derived fields, search (name+desc), all sort combos, pagination, invalid params → 400. Integration: 1097 → 1131.
-
-## Status Summary (2026-04-04 14:21 UTC)
-- **Build/Test:** ✅ Build clean; 5173 API + 5690 web + 1097 integration + 114 CLI + 12 agent = **12,086 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 local + public `https://oc-dev-test.no749ah.com`
-- **Branch:** heartbeat/2026-04-04-afternoon
-- **Last changes (14:21 UTC):**
-  - [x] **feat(api): GET /v2/maintenance endpoint** — paginated maintenance windows with recurrence filter (NONE/DAILY/WEEKLY/MONTHLY), activeOnly=true filter, search (name+desc), sort by startsAt/endsAt/name/createdAt/monitorCount. Response includes `isActive` computed flag and `monitorCount`. Registered in app.module.ts + v2.module.ts.
-  - [x] **test(api): 12 v2/maintenance unit tests** — controller spec: empty list meta, field shape, isActive true/false for active/past NONE window, activeOnly filter (true/false), monitorCount sort asc/desc, recurrenceEndsAt null/ISO, userId isolation, meta.pages ceil. API: 5161 → 5173.
-  - [x] **test(api): 19 v2/maintenance integration tests** — auth guard, envelope shape, field shape (all fields), isActive flag (active/past), user isolation, pagination (total/limit=1/cross-page), recurrence=DAILY filter, activeOnly=true filter, search (name case-insensitive / no-match), sort name asc/desc, invalid sortBy/sortDir/recurrence → 400, page-beyond-total. Integration: 1078 → 1097.
-  - [x] **test(web): 11 shareTokenHelpers unit tests** — buildShareTokenPath (path structure, special chars, empty), buildShareJsonPath (full path), copyButtonLabel (copied/not), isTokenActionDisabled (loading/not), generateButtonLabel (loading/not). Web: 5679 → 5690.
-
-## Status Summary (2026-04-04 13:21 UTC)
-- **Build/Test:** ✅ Build clean; 5161 API + 5679 web + 1078 integration + 114 CLI + 12 agent = **12,044 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 local + public `https://oc-dev-test.no749ah.com`
-- **Branch:** heartbeat/2026-04-04-afternoon (merged heartbeat/2026-04-04-noon → dev, deleted old branch)
-- **Last changes (13:21 UTC):**
-  - [x] **fix(api): v2/alert-channels type filter — expanded from 5 → 16 channel types** — DTO `IsIn` enum only allowed webhook/discord/slack/telegram/email; now includes all 16: pagerduty, opsgenie, sms, teams, ntfy, gotify, matrix, rocketchat, apprise, mattermost, zulip. Previously `?type=pagerduty` → 400; now correctly filters.
-  - [x] **test(api): 46 new v2-checks-alerts integration tests** — GET /v2/checks: auth guard, envelope, user isolation, meta.total, monitorId filter, level filters (green/red/yellow), combined monitorId+level, since/until/date-range filters, limit/page/cross-page, default sort desc, run shape, empty unknown monitorId, default limit=50, meta.pages calc. GET /v2/alert-channels: auth guard, envelope, user isolation, channel shape, webhookUrl redaction (Slack + Discord paths), botToken redaction, usedByCount=1/0, type filters (all types), case-insensitive search, sort name asc/desc, sort createdAt asc/desc, limit/page/page-beyond-total, combined type+search. Integration: 1032 → 1078.
-  - [x] **Branch management** — merged heartbeat/2026-04-04-noon → dev, deleted old branch, created heartbeat/2026-04-04-afternoon
-
----
-
-## Status Summary (2026-04-04 12:15 UTC)
-- **Build/Test:** ✅ Build clean; 5161 API + 5679 web + 1032 integration + 114 CLI + 12 agent = **11,998 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 local + public `https://oc-dev-test.no749ah.com`
-- **Branch:** heartbeat/2026-04-04-noon (merged heartbeat/2026-04-04-night → dev, deleted old branch)
-- **Last changes (12:15 UTC):**
-  - [x] **feat(api): v2/folders endpoint** — GET /v2/folders: flat paginated folders with depth, path (ancestor names), monitorCount, stats (healthy/degraded/down/overallStatus). Filters: parentId ('root' for top-level, id for children), search. Sorts: name/createdAt/position/monitorCount (in-memory for monitorCount sort). 30 unit tests.
-  - [x] **test(api): 31 v2/folders integration tests** — auth guard, envelope shape, meta, user isolation, depth/path for root/child/grandchild, parentId filter, search (case-insensitive, no-match), all sort combos, pagination, monitorCount, overallStatus, invalid params → 400. Integration: 1001 → 1032.
-  - [x] **Branch management** — merged heartbeat/2026-04-04-night → dev, deleted old branch, created heartbeat/2026-04-04-noon
-
----
-
-## Status Summary (2026-04-04 07:20 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 5679 web + 951 integration + 114 CLI + 12 agent = **11,811 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 local + public `https://oc-dev-test.no749ah.com`
-- **Branch:** heartbeat/2026-04-04-night
-- **Last changes (07:20 UTC):**
-  - [x] **feat(api): new v2/incidents + v2/deployments endpoints** — GET /v2/incidents (paginated, filter by status/severity/search/sort, derived updateCount+monitorCount+latestUpdateStatus); GET /v2/deployments (paginated, filter by service/environment/status/search, derived monitorCount). Registered in app.module.ts + v2.module.ts.
-  - [x] **31 new integration tests** — `v2-incidents-deployments.integration.spec.ts`: auth guard, pagination meta, field shape, all filter combos, search, sort, user isolation, invalid enum → 400 (both endpoints). Integration: 904 → 951.
-  - [x] **fix(test): dependency list assertion** — `monitors-details.integration.spec.ts` was checking `d.id` (MonitorDependency record ID) instead of `d.dependsOnId` (linked monitor ID). Fixed + all 32 tests passing.
-
----
-
-## Status Summary (2026-04-04 05:31 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 5679 web + 904 integration + 114 CLI + 12 agent = **11,764 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; `/health` 200, `/login` 200 local
-- **Branch:** heartbeat/2026-04-04-night
-- **Last changes (05:31 UTC):**
-  - [x] **263 new web tests — 16 helper files fully covered** — Added spec files for all previously untested helper modules: monitors/tags, projects, status-pages (+ extracted statusPagesHelpers.ts), embed/[monitorId], incidents/playbooks, monitors/dependencies, monitors/[id]/overview (events, alertChannels, deliveryHistory), monitors/components (playground, openApiImport), status/[slug]/widgets (content, performance, widgetIndex, rangePicker), invite/[token]. Web: 5416 → 5679.
-
----
-
-## Status Summary (2026-04-04 04:20 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 5416 web + 904 integration + 114 CLI + 12 agent = **11,501 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; `/health` 200, all pages 200 local + public `https://oc-dev-test.no749ah.com`
-- **Branch:** heartbeat/2026-04-04-night
-- **Last changes (04:20 UTC):**
-  - [x] **64 new web tests — createVersionModalHelpers extracted** — `createVersionModalHelpers.ts` with 7 pure functions: `normalizeToolQuery`, `scoreToolMatch` (exact/prefix/substring/id/tag/desc scoring), `filterTools` (filter+rank+sort verified-first), `closeMatchTools` (fallback suggestions), `modalProgress` (4-step wizard %), `providerFromSourceType` (10 provider mappings), `buildDockerRunSnippet`/`buildDockerComposeSnippet`/`buildShellSnippet` (agent install code generators). Web: 5352 → 5416.
-
----
-
-## Status Summary (2026-04-04 02:15 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 5206 web + 870 integration + 114 CLI + 12 agent = **11,257 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted; `/health` 200, all pages 200 local + public `https://oc-dev-test.no749ah.com`
-- **Branch:** heartbeat/2026-04-04-night
-- **Last changes (02:15 UTC):**
-  - [x] **59 new web tests — overviewHelpers + shareTokenHelpers** — extracted pure logic from OverviewTab into `overviewHelpers.ts` (EVENT_COLORS, build90DayBuckets, fillDayBuckets, calendarCellColor, calendarCellTooltip, buildCalendarWeeks, computeChartAvg, computeChartP95, findClosestPoint, buildChartMarks — 46 tests); extracted ShareTokenCard logic into `shareTokenHelpers.ts` (buildShareTokenPath, buildShareJsonPath, copyButtonLabel, isTokenActionDisabled, generateButtonLabel — 13 tests). Web: 5147 → 5206.
-
----
-
-## Status Summary (2026-04-04 00:45 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 5147 web + 870 integration + 114 CLI + 12 agent = **11,198 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; `/health` 200, `/login` 200, public `https://oc-dev-test.no749ah.com/login` 200
-- **Branch:** heartbeat/2026-04-04-night
-- **Status:** 🎉 BACKLOG FULLY CLEARED — All items done. Proposed **CronDock** to Noah via Discord. Awaiting repo creation.
-
----
-
-## Status Summary (2026-04-04 00:40 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 5147 web + 870 integration + 114 CLI + 12 agent = **11,198 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; `/health` 200, `/login` 200, public `https://oc-dev-test.no749ah.com/login` 200
-- **Branch:** heartbeat/2026-04-04-work
-- **Last changes (00:40 UTC):**
-  - [x] **18 new alert-actions integration tests** — `alerts-actions.integration.spec.ts` covering auth guards (5), preview-payload (4), retry-delivery (2), retry-all-failed (2), test (3), test-all (2)
-  - [x] **141 new web unit tests** — metricWidgetHelpers (23), layoutWidgetHelpers (23), unauthorized/helpers (18), certificateHelpers (16), alerts/channels/helpers (17), slaWidgetHelpers (17), versionWidgetHelpers (14), checkRunsHelpers (13). Web: 5006 → 5147.
-
----
-
-## Status Summary (2026-04-03 23:06 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 5006 web + 870 integration + 114 CLI + 12 agent = **11,057 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted; `/health` 200, `/login` 200, `/api/v1/monitors` proxy auth path verified (401 with bearer header), public `https://oc-dev-test.no749ah.com/login` 200
-- **Frontend audit:** ✅ Local + public route sweep all 200 on: /login, /dashboard, /monitors, /alerts, /account, /projects, /versions, /admin
-- **Branch:** heartbeat/2026-04-04-midnight
-- **Last changes (23:06 UTC):**
-  - [x] **fix(api): import-external endpoint hard-fail bug** — `ImportExternalDto.payload` lacked validator metadata under global whitelist validation, causing `POST /v1/monitors/import-external` to return 400 for valid payloads. Added `@IsOptional()` so payload passes through as intended.
-  - [x] **8 new integration tests — monitors-export** — added coverage for `POST /v1/monitors/import-from-openapi` (auth guard, empty selectedPaths, real monitor creation) and `POST /v1/monitors/import-external` (auth guard, CSV import, uptime-robot/better-uptime empty payload paths). Export suite: 15 → 23 tests.
-  - [x] **11 new integration tests — monitors-diagnostics** — added coverage for `/v1/monitors/security-headers`, `/:id/ct-log-history`, and `/:id/redirect-chain-stats` including auth guards, 404 behavior, isolation, and response-shape assertions. Diagnostics suite: 25 → 36 tests.
-
----
-
-## Status Summary (2026-04-04 00:00 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 5006 web + 851 integration + 114 CLI + 12 agent = **11,038 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-04-midnight (merged heartbeat/2026-04-03-noon → dev, deleted old branch)
-- **Last changes (00:00 UTC):**
-  - [x] **Branch management** — merged heartbeat/2026-04-03-noon → dev, deleted old branch, created heartbeat/2026-04-04-midnight
-  - [x] **6 new system/health integration tests** — /health, /health/live, /health/ready, /metrics, /v2/system/info, /v2/system/versions. Integration: 845 → 851.
-
----
-
-## Status Summary (2026-04-03 22:18 UTC)
-- **Build/Test:** ✅ Build clean; `npm run test` passing (5055 API + 4965 web + 114 CLI + 12 agent = **10,146 tests**); targeted integration `apps/api/test/v2-api.integration.spec.ts` **37/37 passing**; 0 vulnerabilities (`npm audit`)
-- **Deployment:** ✅ API + web restarted; `/health` 200, `/login` 200, `/api/v1/monitors` auth-guard path verified (401 with bearer header), public `https://oc-dev-test.no749ah.com/login` 200
-- **Frontend audit:** ✅ No 5xx on local/public route sweep (35 routes); only expected `404 /settings` on both origins
-- **Branch:** heartbeat/2026-04-03-noon
-- **Last changes (22:18 UTC):**
-  - [x] **Hardened v2 alert-channel integration coverage** — seeded deterministic cross-user channels in `v2-api.integration.spec.ts` and added assertions for strict isolation by channel id
-  - [x] **Added secret-redaction integration checks** — verifies `webhookUrl` is host-only redacted (`https://hooks.example.com/[redacted]`) and `botToken` is masked as `[redacted]`
-  - [x] **Improved test determinism** — replaced flaky channel setup via API payload ambiguity with direct Prisma seeding in integration setup
-
-## Status Summary (2026-04-03 21:14 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 4965 web + 753 integration + 114 CLI + 12 agent = **10,899 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-03-noon
-- **Last changes (21:14 UTC):**
-  - [x] **32 new integration tests — monitors-alerts + monitors-export** — monitors-alerts.integration.spec.ts (17: auth guards, empty/assign/unassign lifecycle, PATCH notifyOn/repeatIntervalMin/escalationPolicyId, simulate-alerts result shape, deliveries empty list, cross-user isolation); monitors-export.integration.spec.ts (15: JSON export shape + contents + user isolation + ids filter, YAML export, bulk import empty/valid, import-config 401/400/200, import-from-compose array response, import-from-openapi/preview suggestions shape). Integration: 721 → 753.
-  - [x] **Committed 2 previously-untracked integration specs** — invites.integration.spec.ts (15 tests) + plugins.integration.spec.ts (4 tests). Integration: 702 → 721.
-
----
-
-## Status Summary (2026-04-03 18:34 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 4965 web + 702 integration + 114 CLI + 12 agent = **10,848 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-03-noon
-- **Last changes (18:34 UTC):**
-  - [x] **13 new integration tests — monitor comparison endpoints** — added `monitors-comparison.integration.spec.ts` covering `/v1/monitors/compare`, `/:id/latency-distribution`, `/:id/period-comparison`, and `/:id/status-transitions`.
-  - [x] Coverage includes auth guards, ownership isolation (404 for cross-user access), input validation (<2 IDs / >4 IDs), invalid-period fallback (`7d`), and compare-period clamp (`days` max 90).
-  - [x] Integration tests: 689 → 702.
-
----
-
-## Status Summary (2026-04-03 18:30 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 4965 web + 689 integration + 114 CLI + 12 agent = **10,835 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-03-noon
-- **Last changes (18:30 UTC):**
-  - [x] **fix: route shadowing bug** — analytics/SLA/diagnostics/export/comparison controllers now registered BEFORE MonitorsController in app.module.ts; previously all static routes like /fleet-report, /trends, /correlation were shadowed by @Get(':id') and returning 404
-  - [x] **fix: monitors-sla.service uptimeCertificate throws NotFoundException** (was plain Error → 500; now 404)
-  - [x] **91 new integration tests** — feedback.integration.spec.ts (9), public-endpoints.integration.spec.ts (8), monitors-analytics.integration.spec.ts (43), monitors-sla.integration.spec.ts (31). Integration: 598→689, all passing.
-
----
-
-## Status Summary (2026-04-03 16:27 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 4965 web + 598 integration + 114 CLI + 12 agent = **10,744 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-03-noon
-- **Last changes (16:27 UTC):**
-  - [x] **72 new tests — widget index helpers + monitor integration suites** — widgetIndexHelpers.ts (getScopedMonitors 9t, passesVisibilityRule 9t, monitorDetailHref 5t = 21 web tests); monitors-runs.integration.spec.ts (25 tests: paginated history, filters, chart/uptime data); monitors-state.integration.spec.ts (26 tests: mute/pause/pin/priority/clone/bulk); fixed 3 test assertion mismatches against real API response shapes. Integration: 547→598.
-
----
-
-## Status Summary (2026-04-03 16:18 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 4944 web + 547 integration + 114 CLI + 12 agent = **10,672 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-03-noon
-- **Last changes (16:18 UTC):**
-  - [x] **29 new web unit tests** — performanceWidgetHelpers (apdexRatingColor, computeSharePct); rangePickerHelpers (RANGES, isValidRange, getDefaultRange); landingHelpers (STATUS_DOT_COLORS, statusDotColor). Web spec files: 220→223.
-
----
-
-## Status Summary (2026-04-03 06:20 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 4600 web + 298 integration + 114 CLI + 12 agent = **10,079 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-03-work
-- **Last changes (06:20 UTC):**
-  - [x] **179 new web unit tests across 6 page spec files** — alerts/response-time/page (17: formatMs null/ms/s rounding, latencyColor 4-band, formatDate); alerts/history/page (32: relativeTime fake-timers 4 branches, channelTypeBadgeClass 12 types+fallback, filterDeliveries status+search+null+combined, computeSuccessRate rounding); monitors/security/page (37: gradeColor/gradeBg/gradeBadgeVariant A-F+null+unknown+case-insensitive, coveragePctColor/coverageBarColor 3-band parity, relativeTime just-now/min/hr/day); monitors/fleet/page (29: gradeCircleColor A-F+fallback, severityBadgeClass 3-level distinct, tierTotal/tierBarWidth, tierColorClass/tierTextColorClass 5-color parity, sparklineHeight/minHeight); monitors/correlation/page (26: similarityColor/Label/BarColor 4-band+cross-parity, similarityBarPct rounding); status/analytics/page (17: formatRelativeTime null/just-now/min/hr/day+capitalization, totalViews/publishedCount/mostViewed). Web tests: 4421 → 4600. Spec files: 191 → 197.
-
----
-
-## Status Summary (2026-04-03 09:20 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 4738 web + 372 integration + 114 CLI + 12 agent = **10,291 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-03-work
-- **Last changes (09:20 UTC):**
-  - [x] **44 new integration tests — team & settings endpoints** — team.integration.spec.ts (26: auth guard GET/POST, empty lists, invite existing user → direct TeamMember, duplicate/self/OWNER-role rejection, role update, cross-user isolation on PATCH/DELETE, member removal, token-invite for unknown email, public preview route, invite cancellation); settings.integration.spec.ts (18: auth guard 4 endpoints, retention defaults, PUT 30/90 days + rollup toggle, invalid/missing retentionDays → 400, full user isolation, storage stats shape, workspace GET/PUT name+slug+website, name maxLength 400, cross-user isolation). Integration: 298 → 372.
-
----
-
-## Status Summary (2026-04-03 12:20 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 4957 web + 493 integration + 114 CLI + 12 agent = **10,631 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-03-noon
-- **Last changes (12:20 UTC):**
-  - [x] **fix(agent): missing redirectChain:[] in MonitorRun.create** — real production bug; POST /v1/agent/report was throwing P2011 null constraint violation every time it tried to write a MonitorRun record. Now fixed.
-  - [x] **fix(test): deleteUser audit assertion** — test expected old 3-arg signature; impl correctly uses null targetUserId + metadata object. Updated assertion.
-  - [x] **Branch management** — merged heartbeat/2026-04-03-work → dev, deleted old branch, created heartbeat/2026-04-03-noon
-  - [x] **33 new integration tests** — agent.integration.spec.ts (13: report via monitorId/toolId, v-prefix strip, hostname, auth, validation, user isolation, GET status); plan-feedback.integration.spec.ts (20: plan shape/usage/limits/check, feedback POST/GET, auth guards, truncation, admin vs user isolation). Integration: 460 → 493.
-
----
-
-## Status Summary (2026-04-03 11:28 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 4957 web + 460 integration + 114 CLI + 12 agent = **10598 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-03-work
-- **Last changes (11:28 UTC):**
-  - [x] **67 new web unit tests — widget helpers** — versionWidgetHelpers (parseVersionFromMessage 7t, classifyVersionDiff 8t); contentWidgetHelpers SOCIAL_CONFIG 8 platforms (19t); eventsTimelineHelpers EVENT_TYPE_COLORS (8t); openApiImportHelpers METHOD_COLORS 6 methods (9t); slaWidgetHelpers formatMinutes/computeBudgetUsed (16t). Web spec files: 215→220.
-  - [x] **~88 new integration tests** — admin, dependencies, service-groups integration suites (372→460). Fixed 2 test assertions (idempotent delete → 200; monitorRun.create missing fields).
-
----
-
-## Status Summary (2026-04-03 09:33 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 4793 web + 372 integration + 114 CLI + 12 agent = **10346 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-03-work
-- **Last changes (09:33 UTC):**
-  - [x] **131 new tests — web helpers + API integration** — alertChannelsCardHelpers (12 web tests); deliveryHistoryHelpers (16 web tests); invite/[token]/helpers (10 web tests); projects/helpers flattenTree/uptimeBarColor/STATUS_LABELS (17 web tests); maintenance/sla/reports-digest/status-slug page specs (+new web); annotations.integration.spec.ts + escalation.integration.spec.ts (integration: 298→372 +74). Web spec files: 209→213. Web tests: 4738→ 4793. Total: 10346.
-
----
-
-## Status Summary (2026-04-03 07:38 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 4469 web + 298 integration + 114 CLI + 12 agent = **9948 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-03-work
-- **Last changes (07:38 UTC):**
-  - [x] **27 new web unit tests — 4 helper modules extracted** — playgroundHelpers.ts (METHODS/statusColor/hasBody, 6 tests); incidents/playbooks/helpers.ts (SEVERITIES/severityColors/stepTypeColors, 4 tests); alerts/channels/helpers.ts (STATUS_LABELS/COLORS/BG/relativeTime, 8 tests); checkRunsHelpers.ts (buildTimingPhases/computeTotal/computeBarWidth, 9 tests). Web spec files: 198 → 202. Web tests: 4442 → 4469.
-
----
-
-## Status Summary (2026-04-03 06:22 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 4442 web + 298 integration + 114 CLI + 12 agent = **9921 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-03-work
-- **Last changes (06:22 UTC):**
-  - [x] **21 new web unit tests — pure helper extraction across 4 files** — embed/[monitorId]/helpers.ts (statusColor/statusLabel/formatUptime/formatLatency, 4 tests); monitors/dependencies/helpers.ts (computeLayout 6 cases + statusColor/statusBg/statusTextClass, 9 tests); monitors/[id]/components/certificateHelpers.ts (formatPct/complianceColor/complianceLabel/PERIOD_OPTIONS, 4 tests); monitors/tags/helpers.ts (PRESET_COLORS/getTagMonitorCount, 4 tests). Web spec files: 194 → 198. Web tests: 4421 → 4442.
-
----
-
-## Status Summary (2026-04-03 05:25 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 4421 web + 298 integration + 114 CLI + 12 agent = **9900 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-03-work
-- **Last changes (05:25 UTC):**
-  - [x] **166 new web unit tests across 6 spec files** — MonitorConfigCard/page (63: extractHost/Port all 12 monitor types, sslWarnDays, dnsTimeout/recordType, smtpTimeout/starttls, ping loss label, browser codes/timeout, http status array join, ftp/imap/pop3 tls labels, heartbeat token/timeout); AdvancedSettingsCard/page (60: hasSettings 20-branch guard incl. null/0/empty edge cases, businessHoursLabel/DaysLabel all-days/defaults/custom, anomalyMultiplierLabel decimal/null, autoIncidentSeverityLabel 5 severities, confirmations/retry/latency labels); DependenciesCard/page (15: getSelectableMonitors excludes self+existing+disabled, isAddButtonDisabled edge cases); AlertPanel (22: getRepeatInterval 6-case priority chain, getUnassigned/AvailableChannels immutability+ordering); AlertChannelPanel/versions (26: getAvailableChannels, CHANNEL_TYPE_COLORS structure, VERSION_NOTIFY_OPTIONS); BackupRestoreCard (30: filename generation, ISO date slice, totalCreated/Skipped, visibleErrors slice-5, overflowCount, hasErrors). Web tests: 4255 → 4421. Spec files: 185 → 191.
-
----
-
-## Status Summary (2026-04-03 04:17 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 4255 web + 298 integration + 114 CLI + 12 agent = **9734 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-03-work
-- **Last changes (04:17 UTC):**
-  - [x] **274 new web unit tests across 8 monitor page spec files** — live/page (fmtLatency/fmtSize/fmtAge fake-timers, LEVEL_CONFIG 3-level, levelLabel); downtime-cost/page (formatMinutes, formatUsd, costColor 5-band, costBadgeClass, findWorstMonitor semantics); interval-optimizer/page (formatInterval null/s/m/h, REC_CONFIG 4-type structure, filterMonitors variants); timeline/page (levelColor/levelLabel, uptimeColor thresholds, HOUR_OPTIONS sorted, computeSegmentWidthPct full/half/clipped); services/page (STATUS_MAP 4-status fallback, levelDotClass null/unknown, filterMonitorsBySearch case-insensitive); latency-heatmap/page (GRADE_COLORS/GRADE_TEXT_COLORS 5-grade A-F parity, formatDate/formatMs, computeLabelInterval 4-band); coverage/page (coverageBarColor/scoreBadgeVariant breakpoints, computeStatPct rounding, countGaps); compare/page (MONITOR_COLORS hex/distinct, DAYS_OPTIONS ascending, statusDotColor, interpLabels +/−, correlationBadgeColor 5-band); timing-breakdown/page (PHASE_CONFIG 5-phase color parity, formatMs, computeWaterfallPct min-1, sumPhases null-as-zero). Web: 3981 → 4255. Spec files: 176 → 185.
-
----
-
-## Status Summary (2026-04-03 03:15 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 3981 web + 298 integration + 114 CLI + 12 agent = **9460 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all 11 pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-03-work
-- **Last changes (03:15 UTC):**
-  - [x] **165 new web unit tests across 7 page spec files** — alerts/noise/page (12: noiseScoreConfig 4-band severity palette, unique labels+classes); alerts/analytics/page (17: formatDate UTC 8 cases, successRateColor 3-band, reliabilityBarColor 3-band); monitors/anomaly/page (34: SEVERITY_CONFIG 4-level, ANOMALY_TYPE_LABELS 7-entry, formatHours 3 periods, uptimeColor+latencyColor null/boundary); monitors/health-scores/page (28: GRADE_COLORS/GRADE_BAR 5-grade structure, scoreToGrade A–F threshold ladder); monitors/latency-bench/page (28: GRADE_COLORS emerald/blue variant, GRADE_BAR_COLORS, GRADE_LABELS range strings, fmtMs null/ms/s precision); monitors/schedule/page (34: fmtInterval s/m/h/d rounding, fmtCountdown null/Now/negative/m+s branches, heatBarColor 4-band); alerts/routing/page (12: MONITOR_TYPES 14 entries, ALERT_LEVELS 3 entries, toggle semantics). Web tests: 3816 → 3981. Spec files: 169 → 176.
-
----
-
-## Status Summary (2026-04-03 02:17 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 3816 web + 298 integration + 114 CLI + 12 agent = **9295 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all 11 pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-03-work
-- **Last changes (02:17 UTC):**
-  - [x] **Fix 2 web TypeScript strict errors** — `route.spec.ts`: `unknown` cast on fetchMock call assertion (TS2352); `useIncidents.spec.ts`: remove duplicate `status` property overwritten by spread (TS2783). Both `tsc --noEmit` clean.
-  - [x] **19 playbooks integration tests** — CRUD lifecycle, step validation (empty steps → 400), user isolation (B can't see/update/delete A's playbooks → 404), monitor attach/detach, incident playbook retrieval (source: none), auth guard (401/403). Integration: 279 → 298.
-
----
-
-## Status Summary (2026-04-03 01:11 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 3816 web + 279 integration + 114 CLI + 12 agent = **9276 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all 11 pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-03-work
-- **Last changes (01:11 UTC):**
-  - [x] **164 new web unit tests across 7 new page spec files** — reliability/page (28: scoreColor/scoreTextColor 5-band thresholds, formatWeek UTC zero-pad); heatmap/page (25: cellColor 6-band uptime thresholds, formatDate/formatShortDate, overallUptime aggregation+null); tag-analytics/page (21: healthColor/healthBg 3 statuses, uptimeColor boundary, formatLatency ms/s/null); predictions/page (27: riskColor/riskTextColor/fleetRiskColor 4-band risk, verified fleetRiskColor==riskTextColor); incidents/insights/page (17: formatMinutes all branches, formatWeek); versions/drift/page (19: KIND_CONFIG 5-kind structure+labels+colors, formatRelativeTime with fake timers); monitors/trends/page (27: deltaColorClass invertColors, uptimePctColorClass/latencyColorClass 3-band, formatDelta sign-strip). Web tests: 3652 → 3816. Spec files: 162 → 169.
-
----
-
-## Status Summary (2026-04-03 00:24 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 3652 web + 279 integration + 114 CLI + 12 agent = **9112 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all 11 pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-03-work
-- **Last changes (00:24 UTC):**
-  - [x] **Branch management** — merged heartbeat/2026-04-03-midnight → dev, deleted old branch, created heartbeat/2026-04-03-work
-  - [x] **44 new integration tests across 2 new spec files** — tags.integration.spec.ts (18: CRUD lifecycle, alphabetical ordering, monitorCount field, duplicate-name rejection 409, auth guard 401, cross-user isolation update/delete 404/403, same name allowed for different users); alert-routing.integration.spec.ts (26: full CRUD lifecycle, toggle enabled/disabled, reorder with priority assignment, user isolation 403, cross-user reorder rejection, simulate endpoint — no rules→fallback, catch-all match, level mismatch, monitor-id match, invalid level 400, nonexistent monitor 404, empty channelIds validation 400). Integration: 235 → 279.
-
----
-
-## Status Summary (2026-04-02 23:18 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 3652 web + 235 integration + 114 CLI + 12 agent = **9068 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all 11 pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-03-midnight
-- **Last changes (23:18 UTC):**
-  - [x] **219 new web unit tests across 6 spec files** — status/page (28: STATUS_CONFIG 7-entry structure, getOverallStatus priority order outage>degraded>operational>unknown), incidents/hooks/useIncidents (31: filterIncidents text search, partitionByStatus all 4 statuses, computePagination clamp/count, paginateSlice, resolvedThisMonth UTC-safe), versions/hooks/useVersions (31: statusSortKey priority order, computeVersionPagination, sortItems by name/status/lastChecked asc+desc, handleVersionSortLogic toggle/switch), admin/page (25: formatUptime seconds/minutes/hours/days all boundaries, relativeTimeLabel s/m/h/date branches), changelog/page (28: TAG_COLORS 7-tag structure + fallback resolve), mttr/page (38: formatMinutes null/negative/fractional/<1/1-59/60+ all branches, mttrColor/mttrBarColor/mttrBadgeVariant 4-band thresholds, formatWeek all 12 UTC months). Web tests: 3433 → 3652. Spec files: 155 → 162.
-
----
-
-## Status Summary (2026-04-02 21:17 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 3370 web + 200 integration + 114 CLI + 12 agent = **8751 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all 14 pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-02-evening
-- **Last changes (21:17 UTC):**
-  - [x] **Fix organizations controller production bug** — `OrganizationsController` typed `AuthRequest` with `{ sub: string }` but the shared `AuthGuard` populates `req.user` as `{ id: string }`. Every org endpoint was passing `undefined` as userId, causing `PrismaClientValidationError` on all writes and broken isolation on reads. Fixed both controller and unit spec mock.
-  - [x] **22 organizations integration tests** — full lifecycle: create, list, slug-check (available + unavailable), get single, update name, list members, invite existing user (direct add), reject double-invite (400), show invited member, reject non-owner role update (403), update member role to ADMIN, prevent changing OWNER role, remove member, switch active org, reject non-member switch (404), reject delete by non-owner (403), delete (owner only 204), verify gone (404). Auth guard (401). Integration: 160 → 182.
-  - [x] **18 notification-preferences integration tests** — GET auto-creates defaults (idempotent), PATCH notifyOnDown/notifyOnRecovery/notifyOnDegraded, quiet hours (valid + out-of-range 400), frequency hourly/daily/invalid (400), storm protection + threshold (valid + min/max violations), user isolation (A's changes don't affect B), digest-queue endpoint (authenticated + empty + 401). Integration: 182 → 200.
-
----
-
-## Status Summary (2026-04-02 20:12 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 3370 web + 160 integration + 114 CLI + 12 agent = **8711 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all 14 pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-02-evening
-- **Last changes (20:12 UTC):**
-  - [x] **Fix NestJS route shadowing bug** — `GET /v1/deployments/summary` and `GET /v1/deployments/by-monitor/:id` were returning 404 because the `:id` route was declared before them. Moved static routes before parameterized ones in `DeploymentsController`. Real production bug: the summary endpoint was completely broken.
-  - [x] **23 deployment integration tests** — full CRUD lifecycle against real PostgreSQL: create (defaults + all fields), list with service/environment/status filters, get single, update status+notes, delete, summary with custom days param, listByMonitor + empty-monitor case, deploy token generation, CI/CD webhook receiver, auth guard (401), user isolation (list/get/patch/delete all blocked for other-user deployments), input validation (400 on missing service field). Integration: 137 → 160.
-
----
-
-## Status Summary (2026-04-02 19:15 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 3370 web + 137 integration + 114 CLI + 12 agent = **8688 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all 8 pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-02-evening
-- **Last changes (19:15 UTC):**
-  - [x] **21 folder integration tests** — full CRUD lifecycle against real PostgreSQL: create root/nested, list as tree + flat, rename, move to new parent/root, circular-move rejection (self + descendant), delete with monitor unfile, mute/unmute cascading, mute-status endpoint, auth isolation (user B can't see/update user A's folders), input validation (invalid parentId, minute bounds). Integration: 116 → 137.
-
----
-
-## Status Summary (2026-04-02 18:17 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 3370 web + 116 integration + 114 CLI + 12 agent = **8667 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all 15 pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-02-evening
-- **Last changes (18:17 UTC):**
-  - [x] **101 new web unit tests across 6 page spec files** — ssl/page (26: daysLabel, expiryBadgeVariant, relativeTime with fake timers), reports/page (44: formatMinutes, formatDuration, budgetStatusBadgeVariant, budgetBarColor, uptimeBadgeVariant, statusBadgeVariant, DAY_NAMES), activity/page (30: relativeTime, levelColor, levelBg, severityColor), maintenance/effectiveness/page (22: formatDuration, STATUS_CONFIG palette coverage), deployments/page (24: STATUS_CONFIG, envClass case-insensitive with fallback), search/page (16: TYPE_CONFIG 4 types, STATUS_COLOR_MAP 5 entries). Web: 3269 → 3370. Spec files: 147 → 153.
-
----
-
-## Status Summary (2026-04-02 17:20 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 3269 web + 116 integration + 114 CLI + 12 agent = **8566 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-02-afternoon
-- **Last changes (17:20 UTC):**
-  - [x] **19 maintenance window integration tests** — full CRUD lifecycle against real PostgreSQL: create/read/update/delete, auth guard (401/403), user isolation (403 cross-user), active window detection (isActive flag true/false), future windows excluded from /active endpoint, weekly/daily recurrence fields. Integration: 97 → 116.
-  - [x] **44 public monitor page unit tests** — pure helper coverage for `app/public/monitor/[token]/page.spec.ts`: `formatRelative` (8 boundary tests with fake timers), `formatType` (13: all 11 known types + unknown + empty), `statusMeta` (6: all status values), `levelColor` (3), `buildDayBars` (8: 90 bars, pct/color thresholds, rounding, ordering), `buildSparkPath` (8: null cases, M/L command structure, x-span 0→400, latency skip). Web: 3225 → 3269.
-
----
-
-## Status Summary (2026-04-02 23:15 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 3429 web + 97 integration + 114 CLI + 12 agent = **8707 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-03-midnight
-- **Last changes (23:15 UTC):**
-  - [x] **Branch management** — merged heartbeat/2026-04-02-evening → dev, deleted old branch, created heartbeat/2026-04-03-midnight
-  - [x] **103 new web unit tests across 3 status-widget spec files** — StatusWidgets.spec.ts (43): computeOverallSystemStatus all branches, buildSystemStatusLabel/SubLabel all levels + singular/plural + null; clampUptimePct; resolveUptimePctFromLevel; filterActiveIncidents; getDownMonitors; buildIncidentBannerState. UptimeWidgets.spec.ts (31): resolveUptimePct priority chain, resolvePeriodDays, uptimeBorderColor thresholds, resolveUptimeLabel priority, formatUptimePct. IncidentWidgets.spec.ts (29): filterActiveIncidents case-sensitivity, formatIncidentDuration with fake timers, getMaintenanceStatus 3 states, countIncidentsByStatus, getIncidentPluralLabel. Web: 3326 → 3429.
-
----
-
-## Status Summary (2026-04-02 18:18 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 3326 web + 97 integration + 114 CLI + 12 agent = **8604 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-02-evening
-- **Last changes (18:18 UTC):**
-  - [x] **Branch management** — merged heartbeat/2026-04-02-afternoon → dev, deleted old branch, created heartbeat/2026-04-02-evening
-  - [x] **101 new web unit tests across 3 spec files** — shared.spec.ts (49): timeAgo/formatRelative with fake timers, isNoConfig, levelLabel, computeSystemLevel, buildStatusConfig all levels, uptimeBarColor/uptimePctColor thresholds; MonitorFiltersPanel.spec.ts (30): parseSearchQuery, matchesSearch case-insensitive, matchesStatus 3 variants, matchesFolder null-passthrough, matchesTag, countActiveFilters; PasswordGate.spec.ts (22): isSubmitDisabled, getButtonLabel, buildAuthUrl encoding, buildRedirectUrl, parseApiError fallback chain. Web: 3225 → 3326.
-
----
-
-## Status Summary (2026-04-02 16:25 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 3225 web + 97 integration + 114 CLI + 12 agent = **8503 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-02-afternoon
-- **Last changes (16:25 UTC):**
-  - [x] **104 new web unit tests across 5 component spec files** — DeleteMonitorConfirm (13): shouldRender guard, loading button label/disabled state, delete message formatting; BadgeModal (22): all 8 embed code builders (markdown/html/direct URL/iframe/card-iframe/script-tag/floating-widget/style-variant); QuickAddModal (23): URL parsing/validation (http+https pass, ftp/mailto fail), countValid, buildPayload folderId coercion; ResponseBodyViewer (20): tryFormatJson object/array/invalid/plain, lineCount, isTall threshold, typeLabel; LinkedIncidentsCard (26): shouldRender, formatDuration all branches, getSeverityClass 4 levels, getStatusDot, sliceIncidents overflow. Web: 3121 → 3225.
-
----
-
-## Status Summary (2026-04-02 16:19 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 3121 web + 97 integration + 114 CLI + 12 agent = **8399 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-02-afternoon
-- **Last changes (16:19 UTC):**
-  - [x] **170 new web unit tests across 5 spec files** — IncidentModals (32): CreateIncidentModal/EditIncidentModal/PostUpdateModal/DeleteIncidentModal confirm-disable logic, INCIDENT_TEMPLATES structure, status/severity enumerations; MonitorPicker (18): toggle add/remove, isChecked, typeLabel, empty-monitors; alerts/types (42): AlertType union all 16 channels, ChannelSchedule/AlertChannel validation, DeliveryStats contract, CreateFormState fields; versions/constants (44): CHANNEL_TYPE_COLORS, VERSION_NOTIFY_OPTIONS, NOTIFY_ON_LABELS, providerOptions (9 providers), authOptions (3 modes); admin/EditUserModal (34): isSelf, isActiveUser with undefined default, all button/label transitions, canSave guard, AdminUser type structure. Web: 2951 → 3121.
-
----
-
-## Status Summary (2026-04-02 15:16 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 2951 web + 97 integration + 114 CLI + 12 agent = **8229 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-02-afternoon
-- **Last changes (15:16 UTC):**
-  - [x] **18 API keys integration tests** — CRUD lifecycle (create with name/scope/expiry, list with user isolation, API key auth flow, rotate with invalidation, delete with auth revocation), auth guard (401/403), user isolation (user B can't rotate/delete user A's keys). Integration: 79 → 97.
-  - [x] **22 DigestQueueCard unit tests** — `formatRelative` (12 cases: just now/Nm ago/Nh ago/Nd ago with fake timers), `EVENT_LABELS` structure (5 tests), `EVENT_COLORS` structure (5 tests). Web: 2929 → 2951.
-
----
-
-## Status Summary (2026-04-02 14:16 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 2929 web + 79 integration + 114 CLI + 12 agent = **8189 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com (HTML + sampled CSS/JS assets return 200)
-- **Branch:** heartbeat/2026-04-02-afternoon
-- **Last changes (14:16 UTC):**
-  - [x] **241 new web unit tests across 10 component spec files** — TwoFactorCard (39), GrafanaIntegrationCard (25), ProfileCard (20), NotificationPrefsCard (27), DeleteChannelConfirm (14), DeliveryHistoryModal (22), CreateChannelModal (42), CtLogTab (24), DomainTab (32), TransactionTab (36). Web tests: 2688 → 2929. Spec files: 125 → 135.
-
----
-
-## Status Summary (2026-04-02 13:05 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 2680 web + 79 integration + 114 CLI + 12 agent = **7940 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com (HTML + sampled CSS/JS assets return 200)
-- **Branch:** heartbeat/2026-04-02-noon (merged midnight → dev, deleted old branch)
-- **Branch:** heartbeat/2026-04-02-afternoon
-- **Last changes (13:05 UTC):**
-  - [x] **26 new integration tests** — `test/status-pages.integration.spec.ts`: CRUD lifecycle, slug auto-generation, publish toggle, user isolation (403), public route access, auth guard. Integration tests: 53 → 79.
-  - [x] **Branch management** — merged heartbeat/2026-04-02-noon → dev, deleted old branch, created heartbeat/2026-04-02-afternoon.
-  - [x] **14 new web route/SEO tests** — proxy, check-url, sitemap, robots specs.
-  - [x] **Fix CLI strict TypeScript build blockers** — typed implicit `any` callback params + removed unused spy.
-  - [x] **73 new web tests** — `status-pages/[id]/edit/components/constants.spec.ts`.
-  - [x] **Release hygiene** — backfilled missing git tags `v0.7.0` through `v1.6.0`.
-
----
-
-## Status Summary (2026-04-02 10:17 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 2389 web + 53 integration + 12 agent = 7509 tests passing; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-02-midnight
-- **Last changes (10:17 UTC):**
-  - [x] **122 new web unit tests across 4 hook spec files** — incidents/types (48): formatDuration, incidentDuration, relativeTime, statusLabels, severityLabels, statusColors, severityColors with float edge cases; monitors/sla/hooks/useSla (18): complianceStatus all branches including IEEE 754 boundary; admin/hooks/useAdmin (20): PAGE_SIZE, computePages, paginateRows, pagination integration; monitors/hooks/useMonitors (36): filterMonitors 7 filter scenarios + computeMonitorSummary + pagination boundary. Web tests: 2267 → 2389. Spec files: 109 → 113.
-
----
-
-## Status Summary (2026-04-02 09:14 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 2267 web + 53 integration + 12 agent = 7387 tests passing; 0 vulnerabilities; 8/8 quality checks
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-02-midnight
-- **Last changes (09:14 UTC):**
-  - [x] **392 new web unit tests across 11 monitor form section spec files** — VersionConfigSection (13), WhoisConfigSection (21), CtLogConfigSection (23), TcpConfigSection (11), SslConfigSection (11), PingConfigSection (20), SmtpConfigSection (13), FtpImapPop3ConfigSection (13), BrowserConfigSection (17), AlertChannelsSection (4), TransactionStepBuilder (87). Web tests: 2092 → 2267. +11 spec files (98 → 109).
-
----
-
-## Status Summary (2026-04-02 08:14 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 2092 web + 53 integration + 12 agent = 7212 tests passing; 0 vulnerabilities; 8/8 quality checks
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-02-midnight
-- **Last changes (08:14 UTC):**
-  - [x] **81 new web unit tests across 3 new + 1 updated spec files** — useAlerts buildConfig() for all 16 channel types (57 tests), useDashboard type constants and section labels (31 tests), VersionStatsCards data contract (21 tests), monitors/utils buildEditFormData + buildFormDataFromTemplate refactored/expanded. Web tests: 2011 → 2092. +3 spec files (95 → 98).
-
----
-
-## Status Summary (2026-04-02 07:15 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 2011 web + 53 integration + 12 agent = 7131 tests passing; 0 vulnerabilities; 8/8 quality checks
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-02-midnight
-- **Last changes (07:15 UTC):**
-  - [x] **279 new web unit tests across 10 spec files** — BasicSettingsSection (57), HttpConfigSection (63), DnsConfigSection (33), AdvancedSettingsSection (73), GeoRegionsInput (37), HeartbeatConfigSection (19), GraphqlConfigSection (28), SystemInfoCard (19), ChangePasswordCard (14), ChannelScheduleSection (33). Web tests: 1732 → 2011. +10 spec files (85 → 95).
-
----
-
-## Status Summary (2026-04-02 06:19 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 1732 web + 53 integration + 12 agent = 6852 tests passing; 0 vulnerabilities; 8/8 quality checks
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-02-midnight
-- **Last changes (06:19 UTC):**
-  - [x] **Fix stale FIELD_LABELS test count** — ConfigHistoryTab spec had `toHaveLength(34)` but map has 35 entries; fixed assertion + description.
-  - [x] **220 new web component tests across 14 spec files** — VersionTableRow (23), VersionToolbar (19), VersionExpandedRow (19), MonitorsPagination (12), MonitorBulkActionsBar (14), MonitorRow (14), AdvancedFiltersPanel (18), CountdownWidget (15), MetricTab (20), SloTab (14), SimulateTab (13), SecurityTab (20), DiffTab (11), ContentTab (13). Web tests: 947 → 1732. +14 spec files (71 → 85).
-
----
-
-## Status Summary (2026-04-02 04:14 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 947 web + 53 integration + 12 agent = 6067 tests passing; 0 vulnerabilities; 8/8 quality checks
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-02-midnight
-- **Last changes (04:14 UTC):**
-  - [x] **Dashboard section component tests** — 155 new web tests across 7 dashboard components + OnboardingChecklist. Covers severity/status badge classes, time range labels, section order helpers, HealthTimeline trend/avg/colour logic, version badge selection, SLO compliance %, uptime colour thresholds. Web tests: 792 → 947.
-
----
-
-## Status Summary (2026-04-02 02:56 UTC)
-- **Build/Test:** ✅ Build clean; 5055 API + 776 web + 10 CLI + 12 agent tests passing; 0 vulnerabilities; 8/8 quality checks
-- **Deployment:** ✅ API + web running; all pages 200 locally + https://oc-dev-test.no749ah.com
-- **Branch:** heartbeat/2026-04-02-midnight
-- **Coverage status:** Every service and controller now has a spec file (zero missing specs).
-- **Last changes (02:56 UTC):**
-  - [x] **Alert delivery/routing service tests** — 52 new tests. API: 4692 → 4744.
-  - [x] **Monitor sub-service tests** — 114 new tests (monitors-sla, monitors-crud, monitors-export, monitors-analytics, alerts-analysis). API: 4744 → 4858.
-  - [x] **Monitor controller specs** — 197 new tests across all 9 previously-untested controllers. API: 4858 → 5055.
-  - [x] **TS fix** — Resolved TS2345 in monitors-export.controller.spec.ts (missing required baseUrl field in mock). Code quality: 8/8.
-
----
-
-## Status Summary (2026-04-01 22:10 UTC)
-- **Build/Test:** ✅ Build clean; 4712 API + 776 web + 10 CLI + 12 agent tests passing; 0 vulnerabilities
-- **Deployment:** ✅ Restarted API + web (`npm run restart`); `/health` 200, `/login` 200, all audited routes 200 locally + via `https://oc-dev-test.no749ah.com`
-- **Branch:** heartbeat/2026-04-01-afternoon
-- **Last changes (22:10 UTC):**
-  - [x] **Fix missing reportHtml module** — Created `apps/web/app/monitors/sla/components/reportHtml.ts` resolving TS2307 that silently broke the SLA compliance report download button. Generates printable HTML with summary cards, fleet stats, per-monitor detail tables, monthly breakdown, sorted by compliance status. XSS-safe (all user strings escaped).
-  - [x] **Add 16 tests for reportHtml** — Full coverage: HTML structure, period dates, summary counts, status badges, HTML escaping, empty-state, sort order, null rendering, print button. Web tests: 760 → 776.
-  - [x] **MonitorFormModal.tsx refactor** — 2581→216 lines; split into type-specific form sections under `monitors/components/form/*`.
-  - [x] **OverviewTab.tsx refactor** — extracted overview cards into `monitors/[id]/components/overview/*` for maintainability.
-  - [x] **Changelog page** — Added missing v1.1.0–v1.6.0 entries (6 releases absent from web UI).
-  - [x] **package.json license** — Fixed Apache-2.0 → MIT (matches LICENSE file and README badge).
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
@@ -615,8 +210,22 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Automate heartbeat branch rotation workflow** - ✅ Done (2026-04-08). Added `scripts/heartbeat-rotate-branch.sh` + npm script `heartbeat:rotate` to merge current `heartbeat/*` into `dev`, delete old heartbeat branch locally/remotely, and create/push a fresh heartbeat branch from updated `dev`.
+- [x] **Enforce heartbeat branch safety in automation scripts** - ✅ Done (2026-04-07). `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` now require execution from `heartbeat/*` branches and fail on `dev`, `main`, or detached HEAD.
+- [x] **Fail frontend heartbeat audit on redirect drift** - ✅ Done (2026-04-07). `scripts/audit-frontend-pages.sh` now follows redirects and fails when required routes resolve to a different URL (for example, hidden auth fallback to `/login`) even if status remains 200.
+- [x] **Automate full heartbeat validation pipeline** - ✅ Done (2026-04-07). Added `scripts/heartbeat-check.sh` with npm scripts `heartbeat:check` and `heartbeat:check:prod` to run build/test/audit + post-deploy + frontend route checks in one command.
+- [x] **Add strict-auth mode to heartbeat check pipeline** - ✅ Done (2026-04-07). Enhanced `scripts/heartbeat-check.sh` to support `--strict-auth` (compatible with `--public`) and added npm scripts `heartbeat:check:strict` and `heartbeat:check:strict:prod`.
+- [x] **Automate full heartbeat execution pipeline with restart gate** - ✅ Done (2026-04-07). Added `scripts/heartbeat-cycle.sh` + npm scripts `heartbeat:cycle*` to enforce the complete sequence (bootstrap, build, test, audit, mandatory restart, deploy audit, frontend audit), including optional public and strict-auth modes.
+- [x] **Make web startup readiness explicit in deployment flow** - ✅ Done (2026-04-07). `scripts/start-web.sh` now waits for `/login` readiness before returning, preventing race conditions right after restart.
+- [x] **Enforce `git pull origin dev` inside heartbeat runners** - ✅ Done (2026-04-07). `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` now perform repo sync as the first pipeline step.
+
 - [x] **Automate heartbeat frontend route audit** - ✅ Done (2026-04-07). Added `scripts/audit-frontend-pages.sh` + npm scripts `audit:frontend` and `audit:frontend:prod` to enforce local/public 200 checks for required UI routes.
+- [x] **Automate heartbeat frontend static-asset audit** - ✅ Done (2026-04-07). Enhanced `scripts/audit-frontend-pages.sh` to discover and validate Next.js `_next/static` CSS/JS assets from each required route and fail on non-200 asset loads.
+- [x] **Detect runtime error pages during heartbeat frontend audit** - ✅ Done (2026-04-07). `scripts/audit-frontend-pages.sh` now inspects route HTML for known Next.js runtime-error markers and fails even when HTTP status is 200.
+- [x] **Automate heartbeat environment bootstrap checks** - ✅ Done (2026-04-07). Added `scripts/heartbeat-bootstrap.sh` + npm script `heartbeat:bootstrap`; wired bootstrap as the first step in `heartbeat:check`.
+- [x] **Automate optional authenticated heartbeat deploy checks** - ✅ Done (2026-04-07). Enhanced `scripts/audit-deploy.sh` to validate authenticated `/api/v1/monitors` with `HEARTBEAT_AUTH_BEARER_TOKEN`, and added `--strict-auth` plus npm scripts `audit:deploy:strict` and `audit:deploy:strict:prod`.
 - [x] **Prune old status summaries from backlog file** - ✅ Done (2026-04-01). Removed redundant top-of-file status blocks and kept a single current status summary. (Note: git commit history itself is immutable and intentionally unchanged.)
+- [x] **Automate backlog status-summary pruning + archive** - ✅ Done (2026-04-07). Added `scripts/prune-backlog-status.sh` + `npm run backlog:prune`; keeps latest status summaries in `BACKLOG.md` and archives older summaries to `docs/BACKLOG_STATUS_ARCHIVE.md`.
 
 - [x] **Consolidate duplicate API endpoints** - ✅ Done (2026-03-30). Extracted shared v2 types (PaginatedEnvelope, AuthenticatedRequest, parsePagination, buildMeta) into v2/v2.types.ts and common/auth.types.ts. v1 and v2 are complementary (v2 adds pagination), not duplicates. 14 unit tests added.
 

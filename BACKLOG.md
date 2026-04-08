@@ -392,6 +392,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Validate heartbeat Step-1 timeout env values before command execution** - ✅ Done (2026-04-08). `scripts/heartbeat-health.sh` now validates `HEARTBEAT_BUILD_TIMEOUT_SECONDS`, `HEARTBEAT_TEST_TIMEOUT_SECONDS`, and `HEARTBEAT_AUDIT_TIMEOUT_SECONDS` as positive integers and fails fast with explicit errors for invalid values.
 - [x] **Add timeout guards to heartbeat Step-1 build/test/audit runner** - ✅ Done (2026-04-08). `scripts/heartbeat-health.sh` now supports configurable command timeouts (`HEARTBEAT_BUILD_TIMEOUT_SECONDS`, `HEARTBEAT_TEST_TIMEOUT_SECONDS`, `HEARTBEAT_AUDIT_TIMEOUT_SECONDS`) and surfaces explicit timeout failures instead of hanging indefinitely.
 - [x] **Enforce heartbeat git identity during bootstrap** - ✅ Done (2026-04-08). `scripts/heartbeat-bootstrap.sh` now validates global `git config` identity and auto-sets `user.name`/`user.email` to `No749ah` + `no749ah@users.noreply.github.com` (overrideable via `HEARTBEAT_GIT_USER_NAME` / `HEARTBEAT_GIT_USER_EMAIL`) to prevent misattributed automation commits.
 - [x] **Block heartbeat health runs on dirty working trees** - ✅ Done (2026-04-08). `scripts/heartbeat-health.sh` now fails fast when `git status --porcelain` is non-empty and prints concise pending changes, preventing `git pull origin dev` conflicts and mixed-state heartbeat validations.

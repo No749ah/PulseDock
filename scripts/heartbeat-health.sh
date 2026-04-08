@@ -115,6 +115,20 @@ BUILD_TIMEOUT_SECONDS="${HEARTBEAT_BUILD_TIMEOUT_SECONDS:-1800}"
 TEST_TIMEOUT_SECONDS="${HEARTBEAT_TEST_TIMEOUT_SECONDS:-2400}"
 AUDIT_TIMEOUT_SECONDS="${HEARTBEAT_AUDIT_TIMEOUT_SECONDS:-600}"
 
+validate_timeout_seconds() {
+  local label="$1"
+  local value="$2"
+
+  if [[ ! "$value" =~ ^[0-9]+$ ]] || [[ "$value" -le 0 ]]; then
+    echo "${label} must be a positive integer number of seconds. Got: '$value'." >&2
+    exit 1
+  fi
+}
+
+validate_timeout_seconds "HEARTBEAT_BUILD_TIMEOUT_SECONDS" "${BUILD_TIMEOUT_SECONDS}"
+validate_timeout_seconds "HEARTBEAT_TEST_TIMEOUT_SECONDS" "${TEST_TIMEOUT_SECONDS}"
+validate_timeout_seconds "HEARTBEAT_AUDIT_TIMEOUT_SECONDS" "${AUDIT_TIMEOUT_SECONDS}"
+
 run_with_tail "Build (tail -3)" 3 "${BUILD_TIMEOUT_SECONDS}" npm run build
 run_with_tail "Test (tail -5)" 5 "${TEST_TIMEOUT_SECONDS}" npm run test
 run_with_tail "Security audit (tail -3)" 3 "${AUDIT_TIMEOUT_SECONDS}" npm audit --audit-level=high

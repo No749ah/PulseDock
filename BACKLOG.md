@@ -1,3 +1,12 @@
+## Status Summary (2026-04-08 20:11 UTC)
+- **Build/Test/Audit:** ✅ Bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean)
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, authenticated API check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Full frontend route+asset audits passing (`npm run audit:frontend:prod`: 108/108). Explicit HEAD curl sweep passing (`npm run audit:frontend:heads:prod`: 16/16). Public root check `curl -sI https://oc-dev-test.no749ah.com` returned HTTP 200.
+- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 20:11 UTC; allowed windows are 00:00-00:05 and 12:00-12:05 UTC)
+- **Last changes (20:11 UTC):**
+  - [x] **fix(devx): validate heartbeat timeout env values** — `scripts/heartbeat-health.sh` now validates timeout environment variables as positive integers and fails fast with explicit errors for invalid values before starting build/test/audit commands.
+
+---
+
 ## Status Summary (2026-04-08 19:12 UTC)
 - **Build/Test/Audit:** ✅ Bootstrap + Step-1 health checks passed (`npm run heartbeat:bootstrap`, `git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean)
 - **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, including API health/login/proxy + public checks; authenticated API check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Full frontend route+asset audits passing (`npm run audit:frontend:prod`: 108/108). Explicit HEAD curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` passing on local + public (`npm run audit:frontend:heads:prod`: 16/16). Public root check `curl -sI https://oc-dev-test.no749ah.com` returned HTTP 200.

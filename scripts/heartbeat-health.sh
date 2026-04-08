@@ -1,12 +1,13 @@
 #!/usr/bin/env bash
 # Concise heartbeat health check with tailed output.
 # Runs required Step 1 commands in order:
-# - git pull origin dev
+# - git pull --ff-only origin dev
 # - npm run build (tail -3)
 # - npm run test (tail -5)
 # - npm audit --audit-level=high (tail -3)
 #
 # Optional timeout controls (seconds):
+# - HEARTBEAT_GIT_PULL_TIMEOUT_SECONDS (default: 300)
 # - HEARTBEAT_BUILD_TIMEOUT_SECONDS (default: 1800)
 # - HEARTBEAT_TEST_TIMEOUT_SECONDS (default: 2400)
 # - HEARTBEAT_AUDIT_TIMEOUT_SECONDS (default: 600)
@@ -107,9 +108,7 @@ echo -e "\n${BOLD}${CYAN}==> Working tree check${RESET}"
 ensure_clean_worktree
 echo -e "${GREEN}✓ Working tree check${RESET}"
 
-echo -e "\n${BOLD}${CYAN}==> Git sync${RESET}"
-git pull origin dev
-echo -e "${GREEN}✓ Git sync${RESET}"
+GIT_PULL_TIMEOUT_SECONDS="${HEARTBEAT_GIT_PULL_TIMEOUT_SECONDS:-300}"
 
 BUILD_TIMEOUT_SECONDS="${HEARTBEAT_BUILD_TIMEOUT_SECONDS:-1800}"
 TEST_TIMEOUT_SECONDS="${HEARTBEAT_TEST_TIMEOUT_SECONDS:-2400}"
@@ -128,6 +127,9 @@ validate_timeout_seconds() {
 validate_timeout_seconds "HEARTBEAT_BUILD_TIMEOUT_SECONDS" "${BUILD_TIMEOUT_SECONDS}"
 validate_timeout_seconds "HEARTBEAT_TEST_TIMEOUT_SECONDS" "${TEST_TIMEOUT_SECONDS}"
 validate_timeout_seconds "HEARTBEAT_AUDIT_TIMEOUT_SECONDS" "${AUDIT_TIMEOUT_SECONDS}"
+validate_timeout_seconds "HEARTBEAT_GIT_PULL_TIMEOUT_SECONDS" "${GIT_PULL_TIMEOUT_SECONDS}"
+
+run_with_tail "Git sync (tail -3)" 3 "${GIT_PULL_TIMEOUT_SECONDS}" git pull --ff-only origin dev
 
 run_with_tail "Build (tail -3)" 3 "${BUILD_TIMEOUT_SECONDS}" npm run build
 run_with_tail "Test (tail -5)" 5 "${TEST_TIMEOUT_SECONDS}" npm run test

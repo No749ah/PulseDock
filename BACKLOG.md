@@ -1,3 +1,12 @@
+## Status Summary (2026-04-08 08:14 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, including API health/login/proxy + public checks; authenticated API check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Full frontend route+asset audits passing (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
+- **Branch:** heartbeat/2026-04-08-midnight (no rotation at 08:00 UTC; scheduled window is exactly 00:00/12:00 UTC)
+- **Last changes (08:14 UTC):**
+  - [x] **chore(devx): add concise heartbeat health-check runner** — added `scripts/heartbeat-health.sh` + `npm run heartbeat:health` to execute required Step 1 checks with strict failure handling and tailed output (`build` tail -3, `test` tail -5, `audit` tail -3) for cleaner heartbeat logs.
+
+---
+
 ## Status Summary (2026-04-08 07:09 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
 - **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, including API health/login/proxy + public checks; authenticated API check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Full frontend route+asset audits passing (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
@@ -283,6 +292,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Add concise heartbeat Step-1 health-check runner** - ✅ Done (2026-04-08). Added `scripts/heartbeat-health.sh` + `npm run heartbeat:health` to run `git pull origin dev`, `npm run build` (tail -3), `npm run test` (tail -5), and `npm audit --audit-level=high` (tail -3) with strict failure propagation.
 - [x] **Enforce exact-minute heartbeat rotation schedule checks** - ✅ Done (2026-04-08). `scripts/heartbeat-rotate-branch.sh` now allows scheduled rotation only at exactly `00:00` or `12:00` UTC (minute must be `00`), and includes real current `HH:MM` UTC in off-schedule errors.
 - [x] **Make heartbeat Docker bootstrap check configurable** - ✅ Done (2026-04-08). `scripts/heartbeat-bootstrap.sh` now handles missing Docker CLI gracefully by default and supports strict failure via `HEARTBEAT_REQUIRE_DOCKER=true` when hard enforcement is needed.
 - [x] **Normalize frontend-audit base URLs before route comparison** - ✅ Done (2026-04-08). `scripts/audit-frontend-pages.sh` now trims trailing `/` from configured base URLs and normalizes effective URLs before route equality checks, preventing false-positive redirect drift failures.

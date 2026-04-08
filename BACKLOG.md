@@ -1,3 +1,12 @@
+## Status Summary (2026-04-08 18:07 UTC)
+- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, including API health/login/proxy + public checks; authenticated API check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Full frontend route+asset audits passing (`npm run audit:frontend:prod`: 108/108). Explicit HEAD curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` passing on local + public (`npm run audit:frontend:heads:prod`: 16/16). Public root check `curl -sI https://oc-dev-test.no749ah.com` returned HTTP 200.
+- **Branch:** heartbeat/2026-04-08-noon (no rotation at 18:07 UTC; scheduled window is 00:00/12:00 UTC)
+- **Last changes (18:07 UTC):**
+  - [x] **chore(devx): enforce heartbeat git identity during bootstrap** — `scripts/heartbeat-bootstrap.sh` now verifies global `git config` identity and auto-sets it to `No749ah <no749ah@users.noreply.github.com>` (configurable via `HEARTBEAT_GIT_USER_NAME` / `HEARTBEAT_GIT_USER_EMAIL`) to prevent mis-attributed automated commits.
+
+---
+
 ## Status Summary (2026-04-08 17:13 UTC)
 - **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
 - **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, including API health/login/proxy + public checks; authenticated API check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Full frontend route+asset audits passing (`npm run audit:frontend:prod`: 108/108). Explicit HEAD curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` passing on local + public (`npm run audit:frontend:heads:prod`: 16/16). Public root check `curl -sI https://oc-dev-test.no749ah.com` returned HTTP 200.
@@ -374,6 +383,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Enforce heartbeat git identity during bootstrap** - ✅ Done (2026-04-08). `scripts/heartbeat-bootstrap.sh` now validates global `git config` identity and auto-sets `user.name`/`user.email` to `No749ah` + `no749ah@users.noreply.github.com` (overrideable via `HEARTBEAT_GIT_USER_NAME` / `HEARTBEAT_GIT_USER_EMAIL`) to prevent misattributed automation commits.
 - [x] **Block heartbeat health runs on dirty working trees** - ✅ Done (2026-04-08). `scripts/heartbeat-health.sh` now fails fast when `git status --porcelain` is non-empty and prints concise pending changes, preventing `git pull origin dev` conflicts and mixed-state heartbeat validations.
 - [x] **Patch nodemailer SMTP command-injection advisory** - ✅ Done (2026-04-08). Upgraded `@pulsedock/api` dependency `nodemailer` from `^8.0.3` to `^8.0.5` and refreshed lockfile, resolving `GHSA-vvjj-xcjg-gr5g` in heartbeat audits.
 - [x] **Remove eval execution from heartbeat orchestration runners** - ✅ Done (2026-04-08). Replaced `eval` in `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` with direct command invocation (`"$@"`) so each step executes without shell re-parsing and with lower injection risk.

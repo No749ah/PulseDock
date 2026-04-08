@@ -13,6 +13,8 @@ SSH_LINK="/home/node/.ssh"
 SSH_TARGET="${OPENCLAW_HOME}/.ssh"
 DIND_START_SCRIPT="${DIND_START_SCRIPT:-${WORKSPACE_ROOT}/scripts/start-dind-services.sh}"
 HEARTBEAT_REQUIRE_DOCKER="${HEARTBEAT_REQUIRE_DOCKER:-false}"
+HEARTBEAT_GIT_USER_NAME="${HEARTBEAT_GIT_USER_NAME:-No749ah}"
+HEARTBEAT_GIT_USER_EMAIL="${HEARTBEAT_GIT_USER_EMAIL:-no749ah@users.noreply.github.com}"
 
 GREEN='\033[0;32m'; YELLOW='\033[0;33m'; CYAN='\033[0;36m'; BOLD='\033[1m'; RESET='\033[0m'
 
@@ -71,6 +73,18 @@ fi
 step "GitHub SSH auth"
 ssh -T git@github.com 2>&1 | head -1 || true
 ok "GitHub SSH check complete"
+
+step "Git identity"
+current_git_name="$(git config --global --get user.name || true)"
+current_git_email="$(git config --global --get user.email || true)"
+
+if [[ "${current_git_name}" != "${HEARTBEAT_GIT_USER_NAME}" || "${current_git_email}" != "${HEARTBEAT_GIT_USER_EMAIL}" ]]; then
+  git config --global user.name "${HEARTBEAT_GIT_USER_NAME}"
+  git config --global user.email "${HEARTBEAT_GIT_USER_EMAIL}"
+  ok "Set git identity to ${HEARTBEAT_GIT_USER_NAME} <${HEARTBEAT_GIT_USER_EMAIL}>"
+else
+  ok "Git identity already correct (${current_git_name} <${current_git_email}>)"
+fi
 
 step "dind services (PostgreSQL + Redis)"
 if ! is_port_reachable dind 5432 || ! is_port_reachable dind 6379; then

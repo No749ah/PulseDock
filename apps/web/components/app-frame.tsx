@@ -111,14 +111,12 @@ const navGroups: NavGroup[] = [
   },
 ];
 
-const NAV_COLLAPSED_KEY = 'pulsedock-nav-collapsed';
-
 /** Helper to get all secondary items from a group (flattened from sub-sections). */
 function getSecondaryItems(group: NavGroup): NavItem[] {
   return (group.secondary ?? []).flatMap((s) => s.items);
 }
 
-/** Collapsible sidebar navigation with categorized sub-sections for large groups. */
+/** Minimal sidebar navigation with all relevant items visible by default. */
 function NavSidebar({
   navGroups,
   pathname,
@@ -130,42 +128,6 @@ function NavSidebar({
   isAdmin: boolean;
   downMonitorCount: number;
 }) {
-  // Load collapsed state from localStorage
-  const [collapsed, setCollapsed] = useState<Record<string, boolean>>(() => {
-    try {
-      return JSON.parse(localStorage.getItem(NAV_COLLAPSED_KEY) || '{}');
-    } catch {
-      return {};
-    }
-  });
-
-  const toggleGroup = (label: string) => {
-    setCollapsed((prev) => {
-      const next = { ...prev, [label]: !prev[label] };
-      try { localStorage.setItem(NAV_COLLAPSED_KEY, JSON.stringify(next)); } catch {}
-      return next;
-    });
-  };
-
-  // Auto-expand group if the current page is in its secondary items
-  useEffect(() => {
-    for (const group of navGroups) {
-      const allSecondary = getSecondaryItems(group);
-      if (allSecondary.some((item) => pathname === item.href || pathname.startsWith(item.href + '/'))) {
-        setCollapsed((prev) => {
-          if (prev[group.label]) {
-            const next = { ...prev, [group.label]: false };
-            try { localStorage.setItem(NAV_COLLAPSED_KEY, JSON.stringify(next)); } catch {}
-            return next;
-          }
-          return prev;
-        });
-      }
-    }
-  // Only run on pathname change
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pathname]);
-
   const renderItem = (item: NavItem) => {
     const isActive = pathname === item.href || (item.href !== '/dashboard' && item.href !== '/' && pathname.startsWith(item.href + '/'));
     return (
@@ -204,7 +166,6 @@ function NavSidebar({
         const totalSecondary = secondarySections.reduce((n, s) => n + s.items.length, 0);
         if (!primaryItems.length && !totalSecondary) return null;
 
-        const isGroupCollapsed = collapsed[group.label] !== false && totalSecondary > 0;
         const hasSecondary = totalSecondary > 0;
 
         return (
@@ -215,7 +176,7 @@ function NavSidebar({
             <ul className="space-y-0.5">
               {primaryItems.map(renderItem)}
             </ul>
-            {hasSecondary && !isGroupCollapsed && (
+            {hasSecondary && (
               <div className="mt-2 space-y-3">
                 {secondarySections.map((section) => (
                   <div key={section.label}>
@@ -228,22 +189,6 @@ function NavSidebar({
                   </div>
                 ))}
               </div>
-            )}
-            {hasSecondary && (
-              <button
-                onClick={() => toggleGroup(group.label)}
-                className="flex items-center gap-1.5 px-3 py-1.5 mt-0.5 text-[11px] font-medium text-text-secondary/50 hover:text-text-secondary transition-colors w-full"
-              >
-                <ChevronDown
-                  className={[
-                    'w-3 h-3 transition-transform duration-200',
-                    isGroupCollapsed ? '' : 'rotate-180',
-                  ].join(' ')}
-                />
-                {isGroupCollapsed
-                  ? `${totalSecondary} more`
-                  : 'Show less'}
-              </button>
             )}
           </div>
         );

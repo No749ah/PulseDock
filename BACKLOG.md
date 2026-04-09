@@ -1,7 +1,7 @@
 ## Status Summary (2026-04-09 13:12 UTC)
 - **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change validation remained clean after web test-runner hardening.
-- **Deployment:** ⏳ Pending in this heartbeat run (restart + deploy/frontend audits will run after commit).
-- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 13:12 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy audits passed (`npm run audit:deploy:prod`: 5/5, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16). Direct API `/v1/monitors` and web-proxied/public `/api/v1/monitors` returned expected `401` with Bearer auth header.
+- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 13:11 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
 - **Last changes (13:12 UTC):**
   - [x] **test(web): cap Vitest worker concurrency to reduce local/CI flake from test over-parallelism** — set `minWorkers: 1` and `maxWorkers: 4` in `apps/web/vitest.config.ts` to keep web tests bounded and deterministic under constrained runners.
 

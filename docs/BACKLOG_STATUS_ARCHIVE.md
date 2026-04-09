@@ -891,3 +891,14 @@ Archived status summaries pruned from `BACKLOG.md`.
 
 ---
 
+
+## Archive batch 2026-04-09 07:13 UTC
+## Status Summary (2026-04-09 00:31 UTC)
+- **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind) and Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean).
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy audits passed (`npm run audit:deploy:prod`: 5/5, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16).
+- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 00:31 UTC; outside 00:00-00:05 UTC grace window)
+- **Last changes (00:31 UTC):**
+  - [x] **fix(devx): add retry guardrails to heartbeat HEAD route curls** — `scripts/heartbeat-curl-pages.sh` now retries transient non-200/timeout results with configurable env guards (`HEARTBEAT_HEAD_MAX_RETRIES`, `HEARTBEAT_HEAD_RETRY_DELAY_SECONDS`) and reports recovery attempts explicitly.
+
+---
+

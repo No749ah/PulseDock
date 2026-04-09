@@ -1,8 +1,8 @@
-## Status Summary (2026-04-09 07:08 UTC)
+## Status Summary (2026-04-09 07:13 UTC)
 - **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change validation remained clean after heartbeat route-source refactor.
 - **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy audits passed (`npm run audit:deploy:prod`: 5/5, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16). Direct and proxied monitor endpoints returned expected `401` with Bearer auth header.
-- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 07:08 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
-- **Last changes (07:08 UTC):**
+- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 07:13 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
+- **Last changes (07:13 UTC):**
   - [x] **refactor(devx): centralize heartbeat-required frontend route list for Step-5 audits** — added shared `scripts/heartbeat-required-routes.sh` and updated both `scripts/audit-frontend-pages.sh` and `scripts/heartbeat-curl-pages.sh` to source the same route set so curl-head and full frontend audits cannot drift.
 
 ---
@@ -22,15 +22,6 @@
 - **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 05:14 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
 - **Last changes (05:14 UTC):**
   - [x] **fix(devx): bound heartbeat bootstrap network checks with explicit timeouts** — added validated env controls (`HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS`, `HEARTBEAT_PORT_CHECK_TIMEOUT_MS`) in `scripts/heartbeat-bootstrap.sh`, set bounded `ssh -T` options (`BatchMode`, `ConnectionAttempts=1`, `ConnectTimeout`), and made dind port probes fail fast via socket timeouts to avoid hung heartbeat runs on degraded networks.
-
----
-
-## Status Summary (2026-04-09 00:31 UTC)
-- **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind) and Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean).
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy audits passed (`npm run audit:deploy:prod`: 5/5, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16).
-- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 00:31 UTC; outside 00:00-00:05 UTC grace window)
-- **Last changes (00:31 UTC):**
-  - [x] **fix(devx): add retry guardrails to heartbeat HEAD route curls** — `scripts/heartbeat-curl-pages.sh` now retries transient non-200/timeout results with configurable env guards (`HEARTBEAT_HEAD_MAX_RETRIES`, `HEARTBEAT_HEAD_RETRY_DELAY_SECONDS`) and reports recovery attempts explicitly.
 
 ---
 

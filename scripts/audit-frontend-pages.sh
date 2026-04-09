@@ -36,16 +36,14 @@ for arg in "$@"; do
   esac
 done
 
-ROUTES=(
-  "/login"
-  "/dashboard"
-  "/monitors"
-  "/alerts"
-  "/account"
-  "/projects"
-  "/versions"
-  "/admin"
-)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./heartbeat-required-routes.sh
+source "$SCRIPT_DIR/heartbeat-required-routes.sh"
+
+if [[ ${#HEARTBEAT_REQUIRED_ROUTES[@]} -eq 0 ]]; then
+  echo "No required routes configured in scripts/heartbeat-required-routes.sh" >&2
+  exit 1
+fi
 
 PASS=0
 FAIL=0
@@ -128,7 +126,7 @@ audit_assets_for_origin() {
   section "Static asset audit: $base"
 
   local route html rel_assets abs_assets
-  for route in "${ROUTES[@]}"; do
+  for route in "${HEARTBEAT_REQUIRED_ROUTES[@]}"; do
     html=$(curl -sL --max-time 15 "$base$route" 2>/dev/null || true)
     if [[ -z "$html" ]]; then
       fail_ "asset discovery failed for $base$route (empty response body)"
@@ -160,7 +158,7 @@ audit_assets_for_origin() {
 audit_origin() {
   local base="$1"
   section "Route audit: $base"
-  for route in "${ROUTES[@]}"; do
+  for route in "${HEARTBEAT_REQUIRED_ROUTES[@]}"; do
     check_route "$base" "$route"
   done
 }

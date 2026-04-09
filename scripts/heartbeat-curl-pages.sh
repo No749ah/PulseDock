@@ -60,16 +60,14 @@ for arg in "$@"; do
   esac
 done
 
-ROUTES=(
-  "/login"
-  "/dashboard"
-  "/monitors"
-  "/alerts"
-  "/account"
-  "/projects"
-  "/versions"
-  "/admin"
-)
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./heartbeat-required-routes.sh
+source "$SCRIPT_DIR/heartbeat-required-routes.sh"
+
+if [[ ${#HEARTBEAT_REQUIRED_ROUTES[@]} -eq 0 ]]; then
+  echo "No required routes configured in scripts/heartbeat-required-routes.sh" >&2
+  exit 1
+fi
 
 GREEN='\033[0;32m'; RED='\033[0;31m'; CYAN='\033[0;36m'; RESET='\033[0m'; BOLD='\033[1m'
 PASS=0
@@ -84,7 +82,7 @@ check_origin() {
   section "HEAD route audit: $base"
 
   local route code attempt
-  for route in "${ROUTES[@]}"; do
+  for route in "${HEARTBEAT_REQUIRED_ROUTES[@]}"; do
     code="000"
     for ((attempt=1; attempt<=MAX_RETRIES; attempt++)); do
       code=$(curl -s -o /dev/null -w "%{http_code}" -I --max-time "$REQUEST_TIMEOUT_SECONDS" --connect-timeout "$CONNECT_TIMEOUT_SECONDS" "$base$route" 2>/dev/null || echo "000")

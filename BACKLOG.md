@@ -1,3 +1,12 @@
+## Status Summary (2026-04-09 07:08 UTC)
+- **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change validation remained clean after heartbeat route-source refactor.
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy audits passed (`npm run audit:deploy:prod`: 5/5, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16). Direct and proxied monitor endpoints returned expected `401` with Bearer auth header.
+- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 07:08 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
+- **Last changes (07:08 UTC):**
+  - [x] **refactor(devx): centralize heartbeat-required frontend route list for Step-5 audits** — added shared `scripts/heartbeat-required-routes.sh` and updated both `scripts/audit-frontend-pages.sh` and `scripts/heartbeat-curl-pages.sh` to source the same route set so curl-head and full frontend audits cannot drift.
+
+---
+
 ## Status Summary (2026-04-09 06:14 UTC)
 - **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change validation remained clean after workflow update.
 - **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy audits passed (`npm run audit:deploy:prod`: 5/5, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16). Direct and proxied monitor endpoints returned expected `401` with Bearer auth header.
@@ -101,6 +110,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Centralize heartbeat-required frontend routes for Step-5 audits** - ✅ Done (2026-04-09). Added `scripts/heartbeat-required-routes.sh` as the single source of truth for mandatory Step-5 routes and switched both `scripts/audit-frontend-pages.sh` and `scripts/heartbeat-curl-pages.sh` to source it, preventing route-list drift between GET/static-asset and HEAD checks.
 - [x] **Decouple root build from implicit web start side effects** - ✅ Done (2026-04-09). Updated root `package.json` so `npm run build` compiles web/api/agent/cli/extension only and no longer runs `scripts/start-web.sh`; this keeps heartbeat Step-1 health checks side-effect free and reserves service restarts for mandatory Step 3.
 - [x] **Bound heartbeat bootstrap SSH + dind reachability checks with explicit timeouts** - ✅ Done (2026-04-09). `scripts/heartbeat-bootstrap.sh` now validates `HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS` and `HEARTBEAT_PORT_CHECK_TIMEOUT_MS`, applies bounded SSH auth options (`BatchMode`, `ConnectionAttempts=1`, `ConnectTimeout`) for `ssh -T git@github.com`, and uses timeout-backed socket probes for dind PostgreSQL/Redis checks to prevent indefinite hangs.
 - [x] **Stabilize heartbeat HEAD curl timeout controls + API integration bootstrap timeout** - ✅ Done (2026-04-09). Added validated env controls for heartbeat HEAD route checks (`HEARTBEAT_HEAD_REQUEST_TIMEOUT_SECONDS`, `HEARTBEAT_HEAD_CONNECT_TIMEOUT_SECONDS`) and limited retries to transient failures only (`000`, `429`, `5xx`) in `scripts/heartbeat-curl-pages.sh`; also set explicit `beforeAll` timeout in `apps/api/src/integration.spec.ts` to reduce bootstrap flake risk in slower CI/dev environments.

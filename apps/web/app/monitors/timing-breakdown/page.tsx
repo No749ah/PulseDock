@@ -9,6 +9,7 @@ import { Button } from '../../components/Button';
 import { getUser } from '../../../components/auth';
 import { api } from '../../../lib/api';
 import { useToast } from '../../../components/ui/toast';
+import { computeWaterfallSegments, type Phase } from './waterfall';
 
 type MonitorTiming = {
   id: string;
@@ -47,8 +48,6 @@ const PHASE_CONFIG = {
   download: { label: 'Download', color: 'bg-orange-500', textColor: 'text-orange-400', icon: <Download className="w-3 h-3" /> },
 } as const;
 
-type Phase = keyof typeof PHASE_CONFIG;
-
 function formatMs(ms: number | null): string {
   if (ms === null) return '—';
   if (ms < 1000) return `${ms}ms`;
@@ -56,9 +55,6 @@ function formatMs(ms: number | null): string {
 }
 
 function WaterfallBar({ monitor }: { monitor: MonitorTiming }) {
-  const total = typeof monitor.avgTotalMs === 'number' && Number.isFinite(monitor.avgTotalMs) && monitor.avgTotalMs > 0
-    ? monitor.avgTotalMs
-    : 1;
   const phases: Array<[Phase, number | null]> = [
     ['dns', monitor.avgDnsMs],
     ['tcp', monitor.avgTcpMs],
@@ -66,11 +62,10 @@ function WaterfallBar({ monitor }: { monitor: MonitorTiming }) {
     ['ttfb', monitor.avgTtfbMs],
     ['download', monitor.avgDownloadMs],
   ];
+  const segments = computeWaterfallSegments(phases, monitor.avgTotalMs);
   return (
     <div className="flex h-4 w-full rounded overflow-hidden gap-0.5">
-      {phases.map(([phase, ms]) => {
-        if (!ms || ms <= 0) return null;
-        const pct = Math.min(100, Math.max(1, Math.round((ms / total) * 100)));
+      {segments.map(({ phase, ms, pct }) => {
         return (
           <div
             key={phase}

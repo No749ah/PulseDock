@@ -1,3 +1,12 @@
+## Status Summary (2026-04-09 11:12 UTC)
+- **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change validation remained clean after timing-waterfall overflow hardening.
+- **Deployment:** ⏳ Pending restart + post-deploy audits in this heartbeat run.
+- **Branch:** heartbeat/2026-04-08-noon (rotation not due at 11:12 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
+- **Last changes (11:12 UTC):**
+  - [x] **fix(web): prevent timing-breakdown waterfall segment overflow beyond 100% width** — extracted `computeWaterfallSegments` helper, sanitized invalid phase timings, capped aggregate segment width to ≤100% when totals are inconsistent, and added focused unit coverage for invalid totals and overflow edge cases.
+
+---
+
 ## Status Summary (2026-04-09 10:13 UTC)
 - **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change validation remained clean after timing-breakdown hardening.
 - **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy audits passed (`npm run audit:deploy:prod`: 5/5, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16). Direct API `/v1/monitors` and web-proxied `/api/v1/monitors` returned expected `401` with Bearer auth header.
@@ -101,6 +110,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Prevent timing-breakdown waterfall aggregate width overflow when phase sums exceed total latency** - ✅ Done (2026-04-09). Added `apps/web/app/monitors/timing-breakdown/waterfall.ts` helper to sanitize phase values, compute safe percentages against `max(total, phaseSum)`, and reduce rounded overflow back to 100%; wired `WaterfallBar` to use it and added unit tests for invalid timings, invalid totals, and overflow correction.
 - [x] **Clamp timing-breakdown waterfall segment widths when total latency is invalid** - ✅ Done (2026-04-09). Hardened `apps/web/app/monitors/timing-breakdown/page.tsx` to treat non-finite/≤0 totals as safe fallback values and clamp segment percentages to `1..100`, preventing oversized `width` styles for malformed timing data; added matching unit coverage in `apps/web/app/monitors/timing-breakdown/page.spec.ts` for zero/negative totals.
 - [x] **Parameterize frontend route/static-asset audit curl timeouts with validated env controls** - ✅ Done (2026-04-09). Updated `scripts/audit-frontend-pages.sh` to support `FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS` and `FRONTEND_AUDIT_CONNECT_TIMEOUT_SECONDS`, validate both values, enforce connect-timeout ≤ request-timeout, and apply those bounds across route checks, HTML fetches, and static asset checks.
 - [x] **Centralize heartbeat-required frontend routes for Step-5 audits** - ✅ Done (2026-04-09). Added `scripts/heartbeat-required-routes.sh` as the single source of truth for mandatory Step-5 routes and switched both `scripts/audit-frontend-pages.sh` and `scripts/heartbeat-curl-pages.sh` to source it, preventing route-list drift between GET/static-asset and HEAD checks.

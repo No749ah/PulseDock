@@ -56,7 +56,9 @@ function formatMs(ms: number | null): string {
 }
 
 function WaterfallBar({ monitor }: { monitor: MonitorTiming }) {
-  const total = monitor.avgTotalMs ?? 1;
+  const total = typeof monitor.avgTotalMs === 'number' && Number.isFinite(monitor.avgTotalMs) && monitor.avgTotalMs > 0
+    ? monitor.avgTotalMs
+    : 1;
   const phases: Array<[Phase, number | null]> = [
     ['dns', monitor.avgDnsMs],
     ['tcp', monitor.avgTcpMs],
@@ -68,7 +70,7 @@ function WaterfallBar({ monitor }: { monitor: MonitorTiming }) {
     <div className="flex h-4 w-full rounded overflow-hidden gap-0.5">
       {phases.map(([phase, ms]) => {
         if (!ms || ms <= 0) return null;
-        const pct = Math.max(1, Math.round((ms / total) * 100));
+        const pct = Math.min(100, Math.max(1, Math.round((ms / total) * 100)));
         return (
           <div
             key={phase}

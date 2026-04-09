@@ -93,7 +93,8 @@ describe('formatMs', () => {
 // ─── WaterfallBar percentage computation ──────────────────────────────────────
 
 function computeWaterfallPct(ms: number, totalMs: number): number {
-  return Math.max(1, Math.round((ms / totalMs) * 100));
+  const safeTotalMs = Number.isFinite(totalMs) && totalMs > 0 ? totalMs : 1;
+  return Math.min(100, Math.max(1, Math.round((ms / safeTotalMs) * 100)));
 }
 
 describe('computeWaterfallPct', () => {
@@ -107,6 +108,14 @@ describe('computeWaterfallPct', () => {
     const pct = computeWaterfallPct(5, 200);
     expect(pct).toBeGreaterThanOrEqual(1);
     expect(pct).toBeLessThan(10);
+  });
+
+  it('falls back to safe divisor when total is zero', () => {
+    expect(computeWaterfallPct(10, 0)).toBe(100);
+  });
+
+  it('falls back to safe divisor when total is negative', () => {
+    expect(computeWaterfallPct(10, -50)).toBe(100);
   });
 });
 

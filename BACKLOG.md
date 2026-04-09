@@ -1,3 +1,10 @@
+## Status Summary (2026-04-09 01:12 UTC)
+- **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind) and Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean).
+- **Current heartbeat work:** ✅ Hardened branch-rotation grace validation by enforcing `HEARTBEAT_ROTATE_WINDOW_GRACE_MINUTES` range `0..59` in both `scripts/heartbeat-rotate-branch.sh` and `scripts/heartbeat-rotate-if-due.sh` to prevent accidental over-broad rotation windows.
+- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 01:12 UTC; outside 00:00-00:05 UTC grace window)
+
+---
+
 ## Status Summary (2026-04-09 00:31 UTC)
 - **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind) and Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean).
 - **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy audits passed (`npm run audit:deploy:prod`: 5/5, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16).
@@ -101,6 +108,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Bound heartbeat rotation grace to valid minute range** - ✅ Done (2026-04-09). Enforced `HEARTBEAT_ROTATE_WINDOW_GRACE_MINUTES` as integer `0..59` in `scripts/heartbeat-rotate-branch.sh` and `scripts/heartbeat-rotate-if-due.sh` to prevent accidental full-hour rotation windows from oversized values.
 - [x] **Harden heartbeat Step-5 HEAD curl checks with retry guardrails** - ✅ Done (2026-04-09). `scripts/heartbeat-curl-pages.sh` now retries transient failures before failing and validates retry env values (`HEARTBEAT_HEAD_MAX_RETRIES`, `HEARTBEAT_HEAD_RETRY_DELAY_SECONDS`) to reduce flaky false negatives during immediate post-restart checks.
 - [x] **Auto-prune backlog status summaries during full heartbeat runs** - ✅ Done (2026-04-08). Added `npm run backlog:prune` as an explicit step in both `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh`, and reduced default summary retention in `scripts/prune-backlog-status.sh` from 10 to 3 to keep `BACKLOG.md` concise while archiving older entries.
 - [x] **Harden heartbeat Step-1 git sync with fast-forward-only + timeout guard** - ✅ Done (2026-04-08). `scripts/heartbeat-health.sh` now executes `git pull --ff-only origin dev` through the shared timeout-aware tailed runner and validates `HEARTBEAT_GIT_PULL_TIMEOUT_SECONDS` (default `300`) as a positive integer before execution.

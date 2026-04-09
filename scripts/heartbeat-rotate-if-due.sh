@@ -6,8 +6,8 @@ set -euo pipefail
 
 ROTATION_WINDOW_GRACE_MINUTES="${HEARTBEAT_ROTATE_WINDOW_GRACE_MINUTES:-5}"
 
-if ! [[ "$ROTATION_WINDOW_GRACE_MINUTES" =~ ^[0-9]+$ ]]; then
-  echo "HEARTBEAT_ROTATE_WINDOW_GRACE_MINUTES must be a non-negative integer (got '${ROTATION_WINDOW_GRACE_MINUTES}')." >&2
+if ! [[ "$ROTATION_WINDOW_GRACE_MINUTES" =~ ^[0-9]+$ ]] || [[ "$ROTATION_WINDOW_GRACE_MINUTES" -gt 59 ]]; then
+  echo "HEARTBEAT_ROTATE_WINDOW_GRACE_MINUTES must be an integer between 0 and 59 (got '${ROTATION_WINDOW_GRACE_MINUTES}')." >&2
   exit 1
 fi
 

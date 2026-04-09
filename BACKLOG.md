@@ -1,3 +1,12 @@
+## Status Summary (2026-04-09 16:07 UTC)
+- **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change script validation passed.
+- **Deployment:** ⏳ Pending service restart + post-deploy route/proxy audits after commit.
+- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 16:07 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
+- **Last changes (16:07 UTC):**
+  - [x] **fix(heartbeat): reject malformed Step-5 required routes with query/fragment/whitespace** — tightened `scripts/heartbeat-required-routes.sh` validation to fail fast when route entries contain spaces, query strings, or fragments.
+
+---
+
 ## Status Summary (2026-04-09 15:10 UTC)
 - **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change validation remained clean after required-route integrity hardening.
 - **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`curl http://localhost:4321/health`, `curl http://localhost:1234/login`, direct and web-proxied `/api/v1/monitors` auth-path checks). Step-5 page HEAD audit passed for all required routes locally and publicly.
@@ -101,6 +110,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Reject query/fragment/whitespace in heartbeat Step-5 required routes** - ✅ Done (2026-04-09). Tightened `scripts/heartbeat-required-routes.sh` validation so route entries fail fast when they include whitespace or URL query/fragment components (`?`, `#`), keeping Step-5 route audits strictly path-only.
 - [x] **Validate heartbeat required-route list integrity at source** - ✅ Done (2026-04-09). Hardened `scripts/heartbeat-required-routes.sh` to fail fast on empty/invalid entries (must start with `/`, no trailing slash except `/`) and duplicate routes so Step-5 route audits cannot silently drift or double-check malformed paths.
 - [x] **Cap heartbeat Step-5 retry settings with explicit upper bounds** - ✅ Done (2026-04-09). Hardened `scripts/heartbeat-curl-pages.sh` with validated max guardrails (`HEARTBEAT_HEAD_MAX_RETRIES_LIMIT` default `10`, `HEARTBEAT_HEAD_MAX_RETRY_DELAY_SECONDS_LIMIT` default `30`) and fail-fast checks when configured retry counts/delays exceed safe limits.
 - [x] **Cap web Vitest worker concurrency for more stable heartbeat/CI test runs** - ✅ Done (2026-04-09). Updated `apps/web/vitest.config.ts` with `minWorkers: 1` and `maxWorkers: 4` so web tests avoid over-parallelism on constrained runners while preserving consistent execution behavior.

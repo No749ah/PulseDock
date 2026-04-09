@@ -30,6 +30,16 @@ for route in "${HEARTBEAT_REQUIRED_ROUTES[@]}"; do
     exit 1
   fi
 
+  if [[ "$route" =~ [[:space:]] ]]; then
+    echo "Route must not contain whitespace: $route" >&2
+    exit 1
+  fi
+
+  if [[ "$route" == *\?* || "$route" == *\#* ]]; then
+    echo "Route must not include query or fragment components: $route" >&2
+    exit 1
+  fi
+
   if [[ "$route" == */ && "$route" != "/" ]]; then
     echo "Route must not end with '/': $route" >&2
     exit 1

@@ -1,3 +1,12 @@
+## Status Summary (2026-04-09 06:12 UTC)
+- **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change validation remained clean after workflow update.
+- **Deployment:** ⏭️ Deferred until after code commit (heartbeat Step 3/4/5 pending in this run).
+- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 06:12 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
+- **Last changes (06:12 UTC):**
+  - [x] **chore(devx): remove implicit web restart side effect from root build pipeline** — `npm run build` no longer triggers `scripts/start-web.sh`, so heartbeat Step-1 health checks remain compile-only and service restarts stay explicit in Step 3.
+
+---
+
 ## Status Summary (2026-04-09 05:14 UTC)
 - **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed with new timeout guards (`npm run heartbeat:bootstrap`), and validation remained clean (`npm run build`, `npm run test`, `npm audit --audit-level=high`).
 - **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy audits passed (`npm run audit:deploy:prod`: 5/5, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16).
@@ -13,15 +22,6 @@
 - **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 00:31 UTC; outside 00:00-00:05 UTC grace window)
 - **Last changes (00:31 UTC):**
   - [x] **fix(devx): add retry guardrails to heartbeat HEAD route curls** — `scripts/heartbeat-curl-pages.sh` now retries transient non-200/timeout results with configurable env guards (`HEARTBEAT_HEAD_MAX_RETRIES`, `HEARTBEAT_HEAD_RETRY_DELAY_SECONDS`) and reports recovery attempts explicitly.
-
----
-
-## Status Summary (2026-04-08 23:12 UTC)
-- **Build/Test/Audit:** ✅ Step-0 env bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change validation remained clean (`npm run build`, `npm run test`, `npm audit --audit-level=high`).
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy audits passed (`npm run audit:deploy:prod`: 5/5, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16). Direct + proxied auth checks returned expected `401` with Bearer header, and public reverse proxy pages returned HTTP 200.
-- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 23:12 UTC; allowed windows are 00:00-00:05 and 12:00-12:05 UTC)
-- **Last changes (23:12 UTC):**
-  - [x] **chore(devx): auto-prune backlog status summaries in heartbeat pipelines** — wired `npm run backlog:prune` into both `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh`, and tightened the prune default to keep only the latest 3 summaries (`KEEP_STATUS_SUMMARIES` still overrides).
 
 ---
 
@@ -101,6 +101,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Decouple root build from implicit web start side effects** - ✅ Done (2026-04-09). Updated root `package.json` so `npm run build` compiles web/api/agent/cli/extension only and no longer runs `scripts/start-web.sh`; this keeps heartbeat Step-1 health checks side-effect free and reserves service restarts for mandatory Step 3.
 - [x] **Bound heartbeat bootstrap SSH + dind reachability checks with explicit timeouts** - ✅ Done (2026-04-09). `scripts/heartbeat-bootstrap.sh` now validates `HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS` and `HEARTBEAT_PORT_CHECK_TIMEOUT_MS`, applies bounded SSH auth options (`BatchMode`, `ConnectionAttempts=1`, `ConnectTimeout`) for `ssh -T git@github.com`, and uses timeout-backed socket probes for dind PostgreSQL/Redis checks to prevent indefinite hangs.
 - [x] **Stabilize heartbeat HEAD curl timeout controls + API integration bootstrap timeout** - ✅ Done (2026-04-09). Added validated env controls for heartbeat HEAD route checks (`HEARTBEAT_HEAD_REQUEST_TIMEOUT_SECONDS`, `HEARTBEAT_HEAD_CONNECT_TIMEOUT_SECONDS`) and limited retries to transient failures only (`000`, `429`, `5xx`) in `scripts/heartbeat-curl-pages.sh`; also set explicit `beforeAll` timeout in `apps/api/src/integration.spec.ts` to reduce bootstrap flake risk in slower CI/dev environments.
 - [x] **Bound heartbeat rotation grace to valid minute range** - ✅ Done (2026-04-09). Enforced `HEARTBEAT_ROTATE_WINDOW_GRACE_MINUTES` as integer `0..59` in `scripts/heartbeat-rotate-branch.sh` and `scripts/heartbeat-rotate-if-due.sh` to prevent accidental full-hour rotation windows from oversized values.

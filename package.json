@@ -14,7 +14,7 @@
     "api": "npm run dev:api",
     "dev:web": "npm run dev -w @pulsedock/web",
     "dev:api": "npm run dev -w @pulsedock/api",
-    "build": "bash ./scripts/build-web.sh && npm run build -w @pulsedock/api && npm run build -w @pulsedock/agent && npm run build -w @pulsedock/cli && npm run build -w @pulsedock/extension && bash ./scripts/start-web.sh",
+    "build": "bash ./scripts/build-web.sh && npm run build -w @pulsedock/api && npm run build -w @pulsedock/agent && npm run build -w @pulsedock/cli && npm run build -w @pulsedock/extension",
     "test": "NODE_ENV=test npm run test -w @pulsedock/web && NODE_ENV=test npm run test -w @pulsedock/api && NODE_ENV=test npm run test -w @pulsedock/cli && NODE_ENV=test npm run test -w @pulsedock/agent",
     "test:integration": "NODE_ENV=test npm run test:integration -w @pulsedock/api",
     "start:web": "bash ./scripts/start-web.sh",

@@ -880,3 +880,14 @@ Archived status summaries pruned from `BACKLOG.md`.
 
 ---
 
+
+## Archive batch 2026-04-09 06:13 UTC
+## Status Summary (2026-04-08 23:12 UTC)
+- **Build/Test/Audit:** ✅ Step-0 env bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change validation remained clean (`npm run build`, `npm run test`, `npm audit --audit-level=high`).
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy audits passed (`npm run audit:deploy:prod`: 5/5, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16). Direct + proxied auth checks returned expected `401` with Bearer header, and public reverse proxy pages returned HTTP 200.
+- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 23:12 UTC; allowed windows are 00:00-00:05 and 12:00-12:05 UTC)
+- **Last changes (23:12 UTC):**
+  - [x] **chore(devx): auto-prune backlog status summaries in heartbeat pipelines** — wired `npm run backlog:prune` into both `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh`, and tightened the prune default to keep only the latest 3 summaries (`KEEP_STATUS_SUMMARIES` still overrides).
+
+---
+

@@ -1,8 +1,8 @@
-## Status Summary (2026-04-09 11:12 UTC)
+## Status Summary (2026-04-09 11:13 UTC)
 - **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change validation remained clean after timing-waterfall overflow hardening.
-- **Deployment:** ⏳ Pending restart + post-deploy audits in this heartbeat run.
-- **Branch:** heartbeat/2026-04-08-noon (rotation not due at 11:12 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
-- **Last changes (11:12 UTC):**
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy audits passed (`npm run audit:deploy:prod`: 5/5, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16). Direct API `/v1/monitors` and web-proxied/public `/api/v1/monitors` returned expected `401` with Bearer auth header.
+- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 11:13 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
+- **Last changes (11:13 UTC):**
   - [x] **fix(web): prevent timing-breakdown waterfall segment overflow beyond 100% width** — extracted `computeWaterfallSegments` helper, sanitized invalid phase timings, capped aggregate segment width to ≤100% when totals are inconsistent, and added focused unit coverage for invalid totals and overflow edge cases.
 
 ---

@@ -1,3 +1,12 @@
+## Status Summary (2026-04-09 08:14 UTC)
+- **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change validation remained clean.
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy audits passed (`npm run audit:deploy:prod`: 5/5, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16). Direct API `/v1/monitors` and web-proxied `/api/v1/monitors` returned expected `401` with Bearer auth header.
+- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 08:14 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
+- **Last changes (08:14 UTC):**
+  - [x] **chore(devx): parameterize frontend audit curl timeout controls** — added validated env knobs `FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS` and `FRONTEND_AUDIT_CONNECT_TIMEOUT_SECONDS` in `scripts/audit-frontend-pages.sh`, enforced timeout bounds, and applied them consistently to route checks, HTML fetches, and static asset checks.
+
+---
+
 ## Status Summary (2026-04-09 07:13 UTC)
 - **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change validation remained clean after heartbeat route-source refactor.
 - **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy audits passed (`npm run audit:deploy:prod`: 5/5, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16). Direct and proxied monitor endpoints returned expected `401` with Bearer auth header.
@@ -13,15 +22,6 @@
 - **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 06:14 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
 - **Last changes (06:14 UTC):**
   - [x] **chore(devx): remove implicit web restart side effect from root build pipeline** — `npm run build` no longer triggers `scripts/start-web.sh`, so heartbeat Step-1 health checks remain compile-only and service restarts stay explicit in Step 3.
-
----
-
-## Status Summary (2026-04-09 05:14 UTC)
-- **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed with new timeout guards (`npm run heartbeat:bootstrap`), and validation remained clean (`npm run build`, `npm run test`, `npm audit --audit-level=high`).
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy audits passed (`npm run audit:deploy:prod`: 5/5, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16).
-- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 05:14 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
-- **Last changes (05:14 UTC):**
-  - [x] **fix(devx): bound heartbeat bootstrap network checks with explicit timeouts** — added validated env controls (`HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS`, `HEARTBEAT_PORT_CHECK_TIMEOUT_MS`) in `scripts/heartbeat-bootstrap.sh`, set bounded `ssh -T` options (`BatchMode`, `ConnectionAttempts=1`, `ConnectTimeout`), and made dind port probes fail fast via socket timeouts to avoid hung heartbeat runs on degraded networks.
 
 ---
 

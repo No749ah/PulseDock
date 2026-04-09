@@ -1,7 +1,9 @@
-## Status Summary (2026-04-09 01:12 UTC)
+## Status Summary (2026-04-09 04:12 UTC)
 - **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind) and Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean).
-- **Current heartbeat work:** ✅ Hardened branch-rotation grace validation by enforcing `HEARTBEAT_ROTATE_WINDOW_GRACE_MINUTES` range `0..59` in both `scripts/heartbeat-rotate-branch.sh` and `scripts/heartbeat-rotate-if-due.sh` to prevent accidental over-broad rotation windows.
-- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 01:12 UTC; outside 00:00-00:05 UTC grace window)
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy audits passed (`npm run audit:deploy:prod`: 5/5, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16). Required local HEAD checks for `/login /dashboard /monitors /alerts /account /projects /versions /admin` all returned HTTP 200.
+- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 04:12 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
+- **Last changes (04:12 UTC):**
+  - [x] **fix(devx): harden heartbeat HEAD timeout controls** — added validated timeout env controls (`HEARTBEAT_HEAD_REQUEST_TIMEOUT_SECONDS`, `HEARTBEAT_HEAD_CONNECT_TIMEOUT_SECONDS`), limited retries to transient failures only (`000`, `429`, `5xx`) in `scripts/heartbeat-curl-pages.sh`, and set an explicit `beforeAll` timeout in `apps/api/src/integration.spec.ts` to reduce startup-related test flake.
 
 ---
 

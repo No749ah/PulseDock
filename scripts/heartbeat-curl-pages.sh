@@ -9,6 +9,8 @@ set -euo pipefail
 WEB_BASE="${WEB_BASE_URL:-http://localhost:1234}"
 PUBLIC_BASE="${PUBLIC_BASE_URL:-https://oc-dev-test.no749ah.com}"
 CHECK_PUBLIC=false
+MAX_RETRIES="${HEARTBEAT_HEAD_MAX_RETRIES:-3}"
+RETRY_DELAY_SECONDS="${HEARTBEAT_HEAD_RETRY_DELAY_SECONDS:-1}"
 
 normalize_base() {
   local base="$1"
@@ -17,6 +19,16 @@ normalize_base() {
 
 WEB_BASE="$(normalize_base "$WEB_BASE")"
 PUBLIC_BASE="$(normalize_base "$PUBLIC_BASE")"
+
+if ! [[ "$MAX_RETRIES" =~ ^[0-9]+$ ]] || [[ "$MAX_RETRIES" -lt 1 ]]; then
+  echo "HEARTBEAT_HEAD_MAX_RETRIES must be a positive integer (got: $MAX_RETRIES)" >&2
+  exit 1
+fi
+
+if ! [[ "$RETRY_DELAY_SECONDS" =~ ^[0-9]+$ ]] || [[ "$RETRY_DELAY_SECONDS" -lt 0 ]]; then
+  echo "HEARTBEAT_HEAD_RETRY_DELAY_SECONDS must be a non-negative integer (got: $RETRY_DELAY_SECONDS)" >&2
+  exit 1
+fi
 
 for arg in "$@"; do
   case "$arg" in
@@ -54,14 +66,29 @@ check_origin() {
   local base="$1"
   section "HEAD route audit: $base"
 
-  local route code
+  local route code attempt
   for route in "${ROUTES[@]}"; do
-    code=$(curl -s -o /dev/null -w "%{http_code}" -I --max-time 10 --connect-timeout 5 "$base$route" 2>/dev/null || echo "000")
+    code="000"
+    for ((attempt=1; attempt<=MAX_RETRIES; attempt++)); do
+      code=$(curl -s -o /dev/null -w "%{http_code}" -I --max-time 10 --connect-timeout 5 "$base$route" 2>/dev/null || echo "000")
+      if [[ "$code" == "200" ]]; then
+        break
+      fi
+
+      if [[ "$attempt" -lt "$MAX_RETRIES" && "$RETRY_DELAY_SECONDS" -gt 0 ]]; then
+        sleep "$RETRY_DELAY_SECONDS"
+      fi
+    done
+
     if [[ "$code" == "200" ]]; then
-      echo -e "  ${GREEN}✓${RESET} $base$route → HTTP $code"
+      if [[ "$attempt" -gt 1 ]]; then
+        echo -e "  ${GREEN}✓${RESET} $base$route → HTTP $code (recovered after $attempt attempts)"
+      else
+        echo -e "  ${GREEN}✓${RESET} $base$route → HTTP $code"
+      fi
       ((PASS+=1))
     else
-      echo -e "  ${RED}✗${RESET} $base$route → expected 200, got $code"
+      echo -e "  ${RED}✗${RESET} $base$route → expected 200, got $code (after $MAX_RETRIES attempts)"
       ((FAIL+=1))
     fi
   done

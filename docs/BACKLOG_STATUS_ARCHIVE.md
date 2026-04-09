@@ -858,3 +858,14 @@ Archived status summaries pruned from `BACKLOG.md`.
 
 ---
 
+
+## Archive batch 2026-04-09 00:25 UTC
+## Status Summary (2026-04-08 21:08 UTC)
+- **Build/Test/Audit:** ✅ Bootstrap + Step-1 health checks passed (`npm run heartbeat:bootstrap`, `git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean)
+- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, authenticated check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Verified direct API and proxy auth behavior (`/v1/monitors` on API port and `/api/v1/monitors` on web proxy both returned HTTP 401 with Bearer header). Full frontend audits passing (`npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16). Public login check `curl -sI https://oc-dev-test.no749ah.com/login` returned HTTP 200.
+- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 21:08 UTC; allowed windows are 00:00-00:05 and 12:00-12:05 UTC)
+- **Last changes (21:08 UTC):**
+  - [x] **fix(devx): fail heartbeat bootstrap on GitHub SSH auth errors** — `scripts/heartbeat-bootstrap.sh` now validates `ssh -T git@github.com` output and fails fast by default when authentication does not report success (override with `HEARTBEAT_REQUIRE_GITHUB_SSH=false` to warn instead).
+
+---
+

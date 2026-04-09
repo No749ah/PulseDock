@@ -1,3 +1,12 @@
+## Status Summary (2026-04-09 00:31 UTC)
+- **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind) and Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean).
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy audits passed (`npm run audit:deploy:prod`: 5/5, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16).
+- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 00:31 UTC; outside 00:00-00:05 UTC grace window)
+- **Last changes (00:31 UTC):**
+  - [x] **fix(devx): add retry guardrails to heartbeat HEAD route curls** — `scripts/heartbeat-curl-pages.sh` now retries transient non-200/timeout results with configurable env guards (`HEARTBEAT_HEAD_MAX_RETRIES`, `HEARTBEAT_HEAD_RETRY_DELAY_SECONDS`) and reports recovery attempts explicitly.
+
+---
+
 ## Status Summary (2026-04-08 23:12 UTC)
 - **Build/Test/Audit:** ✅ Step-0 env bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change validation remained clean (`npm run build`, `npm run test`, `npm audit --audit-level=high`).
 - **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy audits passed (`npm run audit:deploy:prod`: 5/5, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16). Direct + proxied auth checks returned expected `401` with Bearer header, and public reverse proxy pages returned HTTP 200.
@@ -13,15 +22,6 @@
 - **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 22:41 UTC; allowed windows are 00:00-00:05 and 12:00-12:05 UTC)
 - **Last changes (22:41 UTC):**
   - [x] **fix(devx): harden heartbeat git sync with fast-forward-only + timeout guard** — `scripts/heartbeat-health.sh` now runs `git pull --ff-only origin dev` via the same tailed timeout runner and adds `HEARTBEAT_GIT_PULL_TIMEOUT_SECONDS` validation (default `300s`) to fail fast on stalled or non-fast-forward sync states.
-
----
-
-## Status Summary (2026-04-08 21:08 UTC)
-- **Build/Test/Audit:** ✅ Bootstrap + Step-1 health checks passed (`npm run heartbeat:bootstrap`, `git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean)
-- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, authenticated check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Verified direct API and proxy auth behavior (`/v1/monitors` on API port and `/api/v1/monitors` on web proxy both returned HTTP 401 with Bearer header). Full frontend audits passing (`npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16). Public login check `curl -sI https://oc-dev-test.no749ah.com/login` returned HTTP 200.
-- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 21:08 UTC; allowed windows are 00:00-00:05 and 12:00-12:05 UTC)
-- **Last changes (21:08 UTC):**
-  - [x] **fix(devx): fail heartbeat bootstrap on GitHub SSH auth errors** — `scripts/heartbeat-bootstrap.sh` now validates `ssh -T git@github.com` output and fails fast by default when authentication does not report success (override with `HEARTBEAT_REQUIRE_GITHUB_SSH=false` to warn instead).
 
 ---
 
@@ -101,6 +101,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Harden heartbeat Step-5 HEAD curl checks with retry guardrails** - ✅ Done (2026-04-09). `scripts/heartbeat-curl-pages.sh` now retries transient failures before failing and validates retry env values (`HEARTBEAT_HEAD_MAX_RETRIES`, `HEARTBEAT_HEAD_RETRY_DELAY_SECONDS`) to reduce flaky false negatives during immediate post-restart checks.
 - [x] **Auto-prune backlog status summaries during full heartbeat runs** - ✅ Done (2026-04-08). Added `npm run backlog:prune` as an explicit step in both `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh`, and reduced default summary retention in `scripts/prune-backlog-status.sh` from 10 to 3 to keep `BACKLOG.md` concise while archiving older entries.
 - [x] **Harden heartbeat Step-1 git sync with fast-forward-only + timeout guard** - ✅ Done (2026-04-08). `scripts/heartbeat-health.sh` now executes `git pull --ff-only origin dev` through the shared timeout-aware tailed runner and validates `HEARTBEAT_GIT_PULL_TIMEOUT_SECONDS` (default `300`) as a positive integer before execution.
 - [x] **Fail heartbeat bootstrap on GitHub SSH auth errors by default** - ✅ Done (2026-04-08). `scripts/heartbeat-bootstrap.sh` now validates `ssh -T git@github.com` output and fails fast when auth does not report success; opt-out warning mode available via `HEARTBEAT_REQUIRE_GITHUB_SSH=false`.

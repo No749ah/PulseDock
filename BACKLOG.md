@@ -101,6 +101,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Cap heartbeat Step-5 retry settings with explicit upper bounds** - ✅ Done (2026-04-09). Hardened `scripts/heartbeat-curl-pages.sh` with validated max guardrails (`HEARTBEAT_HEAD_MAX_RETRIES_LIMIT` default `10`, `HEARTBEAT_HEAD_MAX_RETRY_DELAY_SECONDS_LIMIT` default `30`) and fail-fast checks when configured retry counts/delays exceed safe limits.
 - [x] **Cap web Vitest worker concurrency for more stable heartbeat/CI test runs** - ✅ Done (2026-04-09). Updated `apps/web/vitest.config.ts` with `minWorkers: 1` and `maxWorkers: 4` so web tests avoid over-parallelism on constrained runners while preserving consistent execution behavior.
 - [x] **Prevent timing-breakdown waterfall aggregate width overflow when phase sums exceed total latency** - ✅ Done (2026-04-09). Added `apps/web/app/monitors/timing-breakdown/waterfall.ts` helper to sanitize phase values, compute safe percentages against `max(total, phaseSum)`, and reduce rounded overflow back to 100%; wired `WaterfallBar` to use it and added unit tests for invalid timings, invalid totals, and overflow correction.
 - [x] **Clamp timing-breakdown waterfall segment widths when total latency is invalid** - ✅ Done (2026-04-09). Hardened `apps/web/app/monitors/timing-breakdown/page.tsx` to treat non-finite/≤0 totals as safe fallback values and clamp segment percentages to `1..100`, preventing oversized `width` styles for malformed timing data; added matching unit coverage in `apps/web/app/monitors/timing-breakdown/page.spec.ts` for zero/negative totals.

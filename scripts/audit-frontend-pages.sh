@@ -131,7 +131,9 @@ check_route() {
   local route="$2"
   local code effective_url result normalized_effective expected_a expected_b
 
-  result=$(curl -sL -o /dev/null -w "%{http_code}|%{url_effective}" --max-time "$REQUEST_TIMEOUT_SECONDS" --connect-timeout "$CONNECT_TIMEOUT_SECONDS" "$base$route" 2>/dev/null || echo "000|")
+  if ! result=$(curl -sL -o /dev/null -w "%{http_code}|%{url_effective}" --max-time "$REQUEST_TIMEOUT_SECONDS" --connect-timeout "$CONNECT_TIMEOUT_SECONDS" "$base$route" 2>/dev/null); then
+    result="000|"
+  fi
   code="${result%%|*}"
   effective_url="${result#*|}"
   normalized_effective="${effective_url%%\?*}"
@@ -161,7 +163,9 @@ check_asset_url() {
   SEEN_ASSET_URLS["$url"]=1
 
   local code
-  code=$(curl -so /dev/null -w "%{http_code}" --max-time "$REQUEST_TIMEOUT_SECONDS" --connect-timeout "$CONNECT_TIMEOUT_SECONDS" "$url" 2>/dev/null || echo "000")
+  if ! code=$(curl -so /dev/null -w "%{http_code}" --max-time "$REQUEST_TIMEOUT_SECONDS" --connect-timeout "$CONNECT_TIMEOUT_SECONDS" "$url" 2>/dev/null); then
+    code="000"
+  fi
   if [[ "$code" == "200" ]]; then
     ok "asset $url → HTTP 200"
   else

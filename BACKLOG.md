@@ -1,3 +1,13 @@
+## Status Summary (2026-04-09 23:13 UTC)
+- **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`), plus post-change verification rerun passed.
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy verification passed (`/health` 200, `/login` 200, direct/web/public `/v1|api/v1/monitors` auth-path checks returned expected `401` with Bearer header).
+- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, `npm run audit:frontend`: 54/54, `npm run audit:frontend:prod`: 108/108).
+- **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 23:13 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows)
+- **Last changes (23:13 UTC):**
+  - [x] **fix(heartbeat): normalize curl failure status fallback in frontend audits** — fixed `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` to avoid concatenated `000000` HTTP code artifacts on curl failures, restoring correct transient retry logic and deterministic `000`/`000|` fallback reporting.
+
+---
+
 ## Status Summary (2026-04-09 22:07 UTC)
 - **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`).
 - **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy verification passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` auth-path checks returned expected `401` with Bearer header).
@@ -15,16 +25,6 @@
 - **Branch:** heartbeat/2026-04-08-noon (rotation check pending; outside 00:00-00:05 / 12:00-12:05 UTC windows at run start)
 - **Last changes (21:10 UTC):**
   - [x] **fix(heartbeat): reject dot-segment and empty path-segment required routes** — hardened `scripts/heartbeat-required-routes.sh` to fail fast on `//`, `/./`, and `/../` patterns so Step-5 route audits cannot silently normalize malformed paths.
-
----
-
-## Status Summary (2026-04-09 20:08 UTC)
-- **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`).
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy verification passed (`/health` 200, `/login` 200, direct/web/public `/v1|api/v1/monitors` auth-path checks returned expected `401` with Bearer header).
-- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, `npm run audit:frontend`: 54/54, `npm run audit:frontend:prod`: 108/108).
-- **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 20:08 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows)
-- **Last changes (20:08 UTC):**
-  - [x] **fix(heartbeat): reject userinfo and URL fragments in audit base origins** — committed and pushed (`3dbac5ce`) after hardening `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` to fail fast when `WEB_BASE_URL`/`PUBLIC_BASE_URL` include query (`?`), fragment (`#`), or userinfo (`user@host`) components.
 
 ---
 
@@ -104,6 +104,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Normalize curl failure status handling in heartbeat/frontend route audits** - ✅ Done (2026-04-09). Fixed `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` to map failed curl executions to a single fallback status (`000` / `000|`) without concatenated `000000` artifacts, restoring correct transient-failure retry behavior and deterministic failure reporting.
 - [x] **Reject malformed path segments in heartbeat Step-5 required routes** - ✅ Done (2026-04-09). Hardened `scripts/heartbeat-required-routes.sh` to fail fast when configured routes contain empty path segments (`//`) or dot segments (`/./`, `/../`), preventing implicit path normalization from masking invalid required-route entries.
 - [x] **Reject query/fragment and userinfo in Step-5 frontend audit base origins** - ✅ Done (2026-04-09). Hardened `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` `validate_origin_base` checks to fail fast when `WEB_BASE_URL`/`PUBLIC_BASE_URL` include query (`?`), fragment (`#`), or userinfo (`user@host`) components, and to reject empty/malformed host origins that previously slipped past regex-only validation.
 - [x] **Cap Step-5 route-audit curl timeout envs with explicit upper bounds** - ✅ Done (2026-04-09). Hardened `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` with validated limit env controls (`HEARTBEAT_HEAD_REQUEST_TIMEOUT_SECONDS_LIMIT`, `HEARTBEAT_HEAD_CONNECT_TIMEOUT_SECONDS_LIMIT`, `FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS_LIMIT`, `FRONTEND_AUDIT_CONNECT_TIMEOUT_SECONDS_LIMIT`) so oversized timeout values fail fast before audits run.

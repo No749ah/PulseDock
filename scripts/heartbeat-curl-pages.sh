@@ -165,7 +165,9 @@ check_origin() {
   for route in "${HEARTBEAT_REQUIRED_ROUTES[@]}"; do
     code="000"
     for ((attempt=1; attempt<=MAX_RETRIES; attempt++)); do
-      code=$(curl -s -o /dev/null -w "%{http_code}" -I --max-time "$REQUEST_TIMEOUT_SECONDS" --connect-timeout "$CONNECT_TIMEOUT_SECONDS" "$base$route" 2>/dev/null || echo "000")
+      if ! code=$(curl -s -o /dev/null -w "%{http_code}" -I --max-time "$REQUEST_TIMEOUT_SECONDS" --connect-timeout "$CONNECT_TIMEOUT_SECONDS" "$base$route" 2>/dev/null); then
+        code="000"
+      fi
       if [[ "$code" == "200" ]]; then
         break
       fi

@@ -16,6 +16,8 @@ HEARTBEAT_REQUIRE_DOCKER="${HEARTBEAT_REQUIRE_DOCKER:-false}"
 HEARTBEAT_REQUIRE_GITHUB_SSH="${HEARTBEAT_REQUIRE_GITHUB_SSH:-true}"
 HEARTBEAT_GIT_USER_NAME="${HEARTBEAT_GIT_USER_NAME:-No749ah}"
 HEARTBEAT_GIT_USER_EMAIL="${HEARTBEAT_GIT_USER_EMAIL:-no749ah@users.noreply.github.com}"
+HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS="${HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS:-10}"
+HEARTBEAT_PORT_CHECK_TIMEOUT_MS="${HEARTBEAT_PORT_CHECK_TIMEOUT_MS:-3000}"
 
 GREEN='\033[0;32m'; YELLOW='\033[0;33m'; CYAN='\033[0;36m'; BOLD='\033[1m'; RESET='\033[0m'
 
@@ -31,17 +33,28 @@ warn() {
   echo -e "${YELLOW}! $1${RESET}"
 }
 
+validate_positive_integer() {
+  local label="$1"
+  local value="$2"
+
+  if [[ ! "$value" =~ ^[0-9]+$ ]] || [[ "$value" -le 0 ]]; then
+    echo "${label} must be a positive integer. Got: '$value'." >&2
+    exit 1
+  fi
+}
+
 is_port_reachable() {
   local host="$1"
   local port="$2"
-  node -e "require('net').connect(${port},'${host}').on('connect',()=>process.exit(0)).on('error',()=>process.exit(1))" >/dev/null 2>&1
+  local timeout_ms="$3"
+  node -e "const net=require('net');const socket=net.createConnection({host:'${host}',port:${port}});const done=(code)=>{socket.removeAllListeners();socket.destroy();process.exit(code)};socket.setTimeout(${timeout_ms},()=>done(1));socket.on('connect',()=>done(0));socket.on('error',()=>done(1));" >/dev/null 2>&1
 }
 
 assert_port_reachable() {
   local host="$1"
   local port="$2"
   local name="$3"
-  if is_port_reachable "${host}" "${port}"; then
+  if is_port_reachable "${host}" "${port}" "${HEARTBEAT_PORT_CHECK_TIMEOUT_MS}"; then
     ok "${name} reachable (${host}:${port})"
     return 0
   fi
@@ -51,6 +64,9 @@ assert_port_reachable() {
 }
 
 step "SSH key symlink"
+validate_positive_integer "HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS" "${HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS}"
+validate_positive_integer "HEARTBEAT_PORT_CHECK_TIMEOUT_MS" "${HEARTBEAT_PORT_CHECK_TIMEOUT_MS}"
+
 if [[ ! -L "${SSH_LINK}" || ! -f "${SSH_LINK}/id_ed25519" ]]; then
   rm -rf "${SSH_LINK}"
   ln -sfn "${SSH_TARGET}" "${SSH_LINK}"
@@ -72,7 +88,7 @@ else
 fi
 
 step "GitHub SSH auth"
-github_ssh_output="$(ssh -T git@github.com 2>&1 || true)"
+github_ssh_output="$(ssh -o BatchMode=yes -o ConnectionAttempts=1 -o ConnectTimeout="${HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS}" -T git@github.com 2>&1 || true)"
 echo "${github_ssh_output}" | head -1
 
 if [[ "${github_ssh_output}" == *"successfully authenticated"* ]]; then
@@ -97,7 +113,7 @@ else
 fi
 
 step "dind services (PostgreSQL + Redis)"
-if ! is_port_reachable dind 5432 || ! is_port_reachable dind 6379; then
+if ! is_port_reachable dind 5432 "${HEARTBEAT_PORT_CHECK_TIMEOUT_MS}" || ! is_port_reachable dind 6379 "${HEARTBEAT_PORT_CHECK_TIMEOUT_MS}"; then
   warn "dind services unavailable, starting via ${DIND_START_SCRIPT}"
   if [[ ! -x "${DIND_START_SCRIPT}" ]]; then
     echo "Bootstrap failed: start script not executable: ${DIND_START_SCRIPT}" >&2

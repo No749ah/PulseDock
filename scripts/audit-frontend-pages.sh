@@ -9,6 +9,8 @@ set -uo pipefail
 WEB_BASE="${WEB_BASE_URL:-http://localhost:1234}"
 PUBLIC_BASE="${PUBLIC_BASE_URL:-https://oc-dev-test.no749ah.com}"
 CHECK_PUBLIC=false
+REQUEST_TIMEOUT_SECONDS="${FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS:-15}"
+CONNECT_TIMEOUT_SECONDS="${FRONTEND_AUDIT_CONNECT_TIMEOUT_SECONDS:-5}"
 
 normalize_base() {
   local base="$1"
@@ -23,6 +25,16 @@ usage() {
   echo "Usage: $0 [--public]" >&2
 }
 
+validate_positive_integer() {
+  local label="$1"
+  local value="$2"
+
+  if [[ ! "$value" =~ ^[0-9]+$ ]] || [[ "$value" -lt 1 ]]; then
+    echo "$label must be a positive integer (got: $value)" >&2
+    exit 1
+  fi
+}
+
 for arg in "$@"; do
   case "$arg" in
     --public)
@@ -35,6 +47,14 @@ for arg in "$@"; do
       ;;
   esac
 done
+
+validate_positive_integer "FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS" "$REQUEST_TIMEOUT_SECONDS"
+validate_positive_integer "FRONTEND_AUDIT_CONNECT_TIMEOUT_SECONDS" "$CONNECT_TIMEOUT_SECONDS"
+
+if [[ "$CONNECT_TIMEOUT_SECONDS" -gt "$REQUEST_TIMEOUT_SECONDS" ]]; then
+  echo "FRONTEND_AUDIT_CONNECT_TIMEOUT_SECONDS must be <= FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS" >&2
+  exit 1
+fi
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./heartbeat-required-routes.sh
@@ -61,7 +81,7 @@ check_route() {
   local route="$2"
   local code effective_url result normalized_effective expected_a expected_b
 
-  result=$(curl -sL -o /dev/null -w "%{http_code}|%{url_effective}" --max-time 10 --connect-timeout 5 "$base$route" 2>/dev/null || echo "000|")
+  result=$(curl -sL -o /dev/null -w "%{http_code}|%{url_effective}" --max-time "$REQUEST_TIMEOUT_SECONDS" --connect-timeout "$CONNECT_TIMEOUT_SECONDS" "$base$route" 2>/dev/null || echo "000|")
   code="${result%%|*}"
   effective_url="${result#*|}"
   normalized_effective="${effective_url%%\?*}"
@@ -91,7 +111,7 @@ check_asset_url() {
   SEEN_ASSET_URLS["$url"]=1
 
   local code
-  code=$(curl -so /dev/null -w "%{http_code}" --max-time 10 "$url" 2>/dev/null || echo "000")
+  code=$(curl -so /dev/null -w "%{http_code}" --max-time "$REQUEST_TIMEOUT_SECONDS" --connect-timeout "$CONNECT_TIMEOUT_SECONDS" "$url" 2>/dev/null || echo "000")
   if [[ "$code" == "200" ]]; then
     ok "asset $url → HTTP 200"
   else
@@ -127,7 +147,7 @@ audit_assets_for_origin() {
 
   local route html rel_assets abs_assets
   for route in "${HEARTBEAT_REQUIRED_ROUTES[@]}"; do
-    html=$(curl -sL --max-time 15 "$base$route" 2>/dev/null || true)
+    html=$(curl -sL --max-time "$REQUEST_TIMEOUT_SECONDS" --connect-timeout "$CONNECT_TIMEOUT_SECONDS" "$base$route" 2>/dev/null || true)
     if [[ -z "$html" ]]; then
       fail_ "asset discovery failed for $base$route (empty response body)"
       continue

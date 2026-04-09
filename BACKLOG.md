@@ -1,3 +1,13 @@
+## Status Summary (2026-04-09 18:08 UTC)
+- **Build/Test/Audit:** ✅ Full Step-0 bootstrap and Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`).
+- **Deployment:** 🔄 Pending in this cycle (will run after commit via `npm run restart` + Step-4 checks).
+- **Frontend Audit:** 🔄 Pending in this cycle (will run Step-5 local + public route/static audits after restart).
+- **Branch:** heartbeat/2026-04-08-noon (rotation window not due at 18:08 UTC)
+- **Last changes (18:08 UTC):**
+  - [x] **fix(heartbeat): cap Step-5 route-audit curl timeout envs with explicit upper bounds** — hardened `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` with validated timeout-limit controls so oversized timeout values fail fast instead of stalling heartbeat audits.
+
+---
+
 ## Status Summary (2026-04-09 17:29 UTC)
 - **Build/Test/Audit:** ✅ Full Step-0 bootstrap and Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`).
 - **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy verification passed (`/health` 200, `/login` 200, direct/web/public `/v1|api/v1/monitors` auth-path checks returned expected `401` with Bearer header).
@@ -102,6 +112,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Cap Step-5 route-audit curl timeout envs with explicit upper bounds** - ✅ Done (2026-04-09). Hardened `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` with validated limit env controls (`HEARTBEAT_HEAD_REQUEST_TIMEOUT_SECONDS_LIMIT`, `HEARTBEAT_HEAD_CONNECT_TIMEOUT_SECONDS_LIMIT`, `FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS_LIMIT`, `FRONTEND_AUDIT_CONNECT_TIMEOUT_SECONDS_LIMIT`) so oversized timeout values fail fast before audits run.
 - [x] **Validate heartbeat Step-5 frontend audit base URLs as strict origins** - ✅ Done (2026-04-09). Hardened `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` with fail-fast base URL validation to enforce non-empty, whitespace-free `http(s)://host[:port]` origins (no path/query/fragment) for `WEB_BASE_URL`/`PUBLIC_BASE_URL`.
 - [x] **Reject query/fragment/whitespace in heartbeat Step-5 required routes** - ✅ Done (2026-04-09). Tightened `scripts/heartbeat-required-routes.sh` validation so route entries fail fast when they include whitespace or URL query/fragment components (`?`, `#`), keeping Step-5 route audits strictly path-only.
 - [x] **Validate heartbeat required-route list integrity at source** - ✅ Done (2026-04-09). Hardened `scripts/heartbeat-required-routes.sh` to fail fast on empty/invalid entries (must start with `/`, no trailing slash except `/`) and duplicate routes so Step-5 route audits cannot silently drift or double-check malformed paths.

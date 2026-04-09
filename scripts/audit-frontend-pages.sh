@@ -18,8 +18,30 @@ normalize_base() {
   echo "${base%/}"
 }
 
+validate_origin_base() {
+  local label="$1"
+  local value="$2"
+
+  if [[ -z "$value" ]]; then
+    echo "$label must not be empty" >&2
+    exit 1
+  fi
+
+  if [[ "$value" =~ [[:space:]] ]]; then
+    echo "$label must not contain whitespace (got: $value)" >&2
+    exit 1
+  fi
+
+  if [[ ! "$value" =~ ^https?://[^/]+$ ]]; then
+    echo "$label must be an http(s) origin without path/query/fragment (got: $value)" >&2
+    exit 1
+  fi
+}
+
 WEB_BASE="$(normalize_base "$WEB_BASE")"
 PUBLIC_BASE="$(normalize_base "$PUBLIC_BASE")"
+validate_origin_base "WEB_BASE_URL" "$WEB_BASE"
+validate_origin_base "PUBLIC_BASE_URL" "$PUBLIC_BASE"
 
 usage() {
   echo "Usage: $0 [--public]" >&2

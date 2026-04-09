@@ -1,9 +1,9 @@
-## Status Summary (2026-04-09 14:14 UTC)
-- **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change validation remained clean after heartbeat retry-bound hardening.
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy audits passed (`npm run audit:deploy:prod`: 5/5, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16). Direct API `/v1/monitors` and web-proxied `/api/v1/monitors` returned expected `401` with Bearer auth header.
-- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 14:14 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
-- **Last changes (14:14 UTC):**
-  - [x] **fix(heartbeat): cap Step-5 HEAD retry settings with explicit upper bounds** — hardened `scripts/heartbeat-curl-pages.sh` with validated retry/delay limits (`HEARTBEAT_HEAD_MAX_RETRIES_LIMIT=10`, `HEARTBEAT_HEAD_MAX_RETRY_DELAY_SECONDS_LIMIT=30`) so misconfigured env values fail fast instead of stretching heartbeat runtime.
+## Status Summary (2026-04-09 15:10 UTC)
+- **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change validation remained clean after required-route integrity hardening.
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`curl http://localhost:4321/health`, `curl http://localhost:1234/login`, direct and web-proxied `/api/v1/monitors` auth-path checks). Step-5 page HEAD audit passed for all required routes locally and publicly.
+- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 15:10 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
+- **Last changes (15:10 UTC):**
+  - [x] **fix(heartbeat): validate shared Step-5 required routes at source** — hardened `scripts/heartbeat-required-routes.sh` to fail fast on empty, malformed, or duplicate route entries so both route-audit scripts consume only canonical, valid paths.
 
 ---
 
@@ -101,6 +101,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Validate heartbeat required-route list integrity at source** - ✅ Done (2026-04-09). Hardened `scripts/heartbeat-required-routes.sh` to fail fast on empty/invalid entries (must start with `/`, no trailing slash except `/`) and duplicate routes so Step-5 route audits cannot silently drift or double-check malformed paths.
 - [x] **Cap heartbeat Step-5 retry settings with explicit upper bounds** - ✅ Done (2026-04-09). Hardened `scripts/heartbeat-curl-pages.sh` with validated max guardrails (`HEARTBEAT_HEAD_MAX_RETRIES_LIMIT` default `10`, `HEARTBEAT_HEAD_MAX_RETRY_DELAY_SECONDS_LIMIT` default `30`) and fail-fast checks when configured retry counts/delays exceed safe limits.
 - [x] **Cap web Vitest worker concurrency for more stable heartbeat/CI test runs** - ✅ Done (2026-04-09). Updated `apps/web/vitest.config.ts` with `minWorkers: 1` and `maxWorkers: 4` so web tests avoid over-parallelism on constrained runners while preserving consistent execution behavior.
 - [x] **Prevent timing-breakdown waterfall aggregate width overflow when phase sums exceed total latency** - ✅ Done (2026-04-09). Added `apps/web/app/monitors/timing-breakdown/waterfall.ts` helper to sanitize phase values, compute safe percentages against `max(total, phaseSum)`, and reduce rounded overflow back to 100%; wired `WaterfallBar` to use it and added unit tests for invalid timings, invalid totals, and overflow correction.

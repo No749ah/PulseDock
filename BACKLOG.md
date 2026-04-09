@@ -1,3 +1,12 @@
+## Status Summary (2026-04-09 13:12 UTC)
+- **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change validation remained clean after web test-runner hardening.
+- **Deployment:** ⏳ Pending in this heartbeat run (restart + deploy/frontend audits will run after commit).
+- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 13:12 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
+- **Last changes (13:12 UTC):**
+  - [x] **test(web): cap Vitest worker concurrency to reduce local/CI flake from test over-parallelism** — set `minWorkers: 1` and `maxWorkers: 4` in `apps/web/vitest.config.ts` to keep web tests bounded and deterministic under constrained runners.
+
+---
+
 ## Status Summary (2026-04-09 11:13 UTC)
 - **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change validation remained clean after timing-waterfall overflow hardening.
 - **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy audits passed (`npm run audit:deploy:prod`: 5/5, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16). Direct API `/v1/monitors` and web-proxied/public `/api/v1/monitors` returned expected `401` with Bearer auth header.
@@ -13,24 +22,6 @@
 - **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 10:13 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
 - **Last changes (10:13 UTC):**
   - [x] **fix(web): clamp timing waterfall widths for invalid totals** — hardened timing-breakdown waterfall width calculations to handle non-finite/≤0 totals safely and clamp displayed phase percentages to `1..100`, with new unit coverage for zero/negative totals.
-
----
-
-## Status Summary (2026-04-09 07:13 UTC)
-- **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change validation remained clean after heartbeat route-source refactor.
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy audits passed (`npm run audit:deploy:prod`: 5/5, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16). Direct and proxied monitor endpoints returned expected `401` with Bearer auth header.
-- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 07:13 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
-- **Last changes (07:13 UTC):**
-  - [x] **refactor(devx): centralize heartbeat-required frontend route list for Step-5 audits** — added shared `scripts/heartbeat-required-routes.sh` and updated both `scripts/audit-frontend-pages.sh` and `scripts/heartbeat-curl-pages.sh` to source the same route set so curl-head and full frontend audits cannot drift.
-
----
-
-## Status Summary (2026-04-09 06:14 UTC)
-- **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change validation remained clean after workflow update.
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy audits passed (`npm run audit:deploy:prod`: 5/5, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16). Direct and proxied monitor endpoints returned expected `401` with Bearer auth header.
-- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 06:14 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
-- **Last changes (06:14 UTC):**
-  - [x] **chore(devx): remove implicit web restart side effect from root build pipeline** — `npm run build` no longer triggers `scripts/start-web.sh`, so heartbeat Step-1 health checks remain compile-only and service restarts stay explicit in Step 3.
 
 ---
 
@@ -110,6 +101,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Cap web Vitest worker concurrency for more stable heartbeat/CI test runs** - ✅ Done (2026-04-09). Updated `apps/web/vitest.config.ts` with `minWorkers: 1` and `maxWorkers: 4` so web tests avoid over-parallelism on constrained runners while preserving consistent execution behavior.
 - [x] **Prevent timing-breakdown waterfall aggregate width overflow when phase sums exceed total latency** - ✅ Done (2026-04-09). Added `apps/web/app/monitors/timing-breakdown/waterfall.ts` helper to sanitize phase values, compute safe percentages against `max(total, phaseSum)`, and reduce rounded overflow back to 100%; wired `WaterfallBar` to use it and added unit tests for invalid timings, invalid totals, and overflow correction.
 - [x] **Clamp timing-breakdown waterfall segment widths when total latency is invalid** - ✅ Done (2026-04-09). Hardened `apps/web/app/monitors/timing-breakdown/page.tsx` to treat non-finite/≤0 totals as safe fallback values and clamp segment percentages to `1..100`, preventing oversized `width` styles for malformed timing data; added matching unit coverage in `apps/web/app/monitors/timing-breakdown/page.spec.ts` for zero/negative totals.
 - [x] **Parameterize frontend route/static-asset audit curl timeouts with validated env controls** - ✅ Done (2026-04-09). Updated `scripts/audit-frontend-pages.sh` to support `FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS` and `FRONTEND_AUDIT_CONNECT_TIMEOUT_SECONDS`, validate both values, enforce connect-timeout ≤ request-timeout, and apply those bounds across route checks, HTML fetches, and static asset checks.

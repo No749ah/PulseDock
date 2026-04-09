@@ -944,3 +944,23 @@ Archived status summaries pruned from `BACKLOG.md`.
 
 ---
 
+
+## Archive batch 2026-04-09 17:30 UTC
+## Status Summary (2026-04-09 15:10 UTC)
+- **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change validation remained clean after required-route integrity hardening.
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`curl http://localhost:4321/health`, `curl http://localhost:1234/login`, direct and web-proxied `/api/v1/monitors` auth-path checks). Step-5 page HEAD audit passed for all required routes locally and publicly.
+- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 15:10 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
+- **Last changes (15:10 UTC):**
+  - [x] **fix(heartbeat): validate shared Step-5 required routes at source** — hardened `scripts/heartbeat-required-routes.sh` to fail fast on empty, malformed, or duplicate route entries so both route-audit scripts consume only canonical, valid paths.
+
+---
+
+## Status Summary (2026-04-09 11:13 UTC)
+- **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change validation remained clean after timing-waterfall overflow hardening.
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy audits passed (`npm run audit:deploy:prod`: 5/5, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16). Direct API `/v1/monitors` and web-proxied/public `/api/v1/monitors` returned expected `401` with Bearer auth header.
+- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 11:13 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
+- **Last changes (11:13 UTC):**
+  - [x] **fix(web): prevent timing-breakdown waterfall segment overflow beyond 100% width** — extracted `computeWaterfallSegments` helper, sanitized invalid phase timings, capped aggregate segment width to ≤100% when totals are inconsistent, and added focused unit coverage for invalid totals and overflow edge cases.
+
+---
+

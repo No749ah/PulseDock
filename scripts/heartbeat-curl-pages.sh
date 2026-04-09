@@ -26,6 +26,7 @@ normalize_base() {
 validate_origin_base() {
   local label="$1"
   local value="$2"
+  local without_scheme
 
   if [[ -z "$value" ]]; then
     echo "$label must not be empty" >&2
@@ -34,6 +35,19 @@ validate_origin_base() {
 
   if [[ "$value" =~ [[:space:]] ]]; then
     echo "$label must not contain whitespace (got: $value)" >&2
+    exit 1
+  fi
+
+  if [[ "$value" == *\?* || "$value" == *\#* ]]; then
+    echo "$label must not contain query/fragment components (got: $value)" >&2
+    exit 1
+  fi
+
+  without_scheme="${value#http://}"
+  without_scheme="${without_scheme#https://}"
+
+  if [[ -z "$without_scheme" || "$without_scheme" == :* || "$without_scheme" == *@* ]]; then
+    echo "$label must include a valid host[:port] origin and must not include userinfo (got: $value)" >&2
     exit 1
   fi
 

@@ -1,8 +1,8 @@
-## Status Summary (2026-04-09 06:12 UTC)
+## Status Summary (2026-04-09 06:14 UTC)
 - **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change validation remained clean after workflow update.
-- **Deployment:** ⏭️ Deferred until after code commit (heartbeat Step 3/4/5 pending in this run).
-- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 06:12 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
-- **Last changes (06:12 UTC):**
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy audits passed (`npm run audit:deploy:prod`: 5/5, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16). Direct and proxied monitor endpoints returned expected `401` with Bearer auth header.
+- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 06:14 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
+- **Last changes (06:14 UTC):**
   - [x] **chore(devx): remove implicit web restart side effect from root build pipeline** — `npm run build` no longer triggers `scripts/start-web.sh`, so heartbeat Step-1 health checks remain compile-only and service restarts stay explicit in Step 3.
 
 ---

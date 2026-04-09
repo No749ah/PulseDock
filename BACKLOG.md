@@ -23,15 +23,6 @@
 
 ---
 
-## Status Summary (2026-04-08 22:41 UTC)
-- **Build/Test/Audit:** ✅ Bootstrap + Step-1 checks passed (`npm run heartbeat:bootstrap`, `npm run heartbeat:health`), plus full validation after code changes (`npm run build`, `npm run test`, `npm audit --audit-level=high`) all clean.
-- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, authenticated check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Frontend route and asset audits passing (`npm run audit:frontend:prod`: 108/108) and required HEAD page sweep passing (`npm run audit:frontend:heads:prod`: 16/16). Public login check `curl -sI https://oc-dev-test.no749ah.com/login` returned HTTP 200.
-- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 22:41 UTC; allowed windows are 00:00-00:05 and 12:00-12:05 UTC)
-- **Last changes (22:41 UTC):**
-  - [x] **fix(devx): harden heartbeat git sync with fast-forward-only + timeout guard** — `scripts/heartbeat-health.sh` now runs `git pull --ff-only origin dev` via the same tailed timeout runner and adds `HEARTBEAT_GIT_PULL_TIMEOUT_SECONDS` validation (default `300s`) to fail fast on stalled or non-fast-forward sync states.
-
----
-
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
 **The project is NOT done. Not even close.**

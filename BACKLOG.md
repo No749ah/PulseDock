@@ -99,6 +99,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Stabilize heartbeat HEAD curl timeout controls + API integration bootstrap timeout** - ✅ Done (2026-04-09). Added validated env controls for heartbeat HEAD route checks (`HEARTBEAT_HEAD_REQUEST_TIMEOUT_SECONDS`, `HEARTBEAT_HEAD_CONNECT_TIMEOUT_SECONDS`) and limited retries to transient failures only (`000`, `429`, `5xx`) in `scripts/heartbeat-curl-pages.sh`; also set explicit `beforeAll` timeout in `apps/api/src/integration.spec.ts` to reduce bootstrap flake risk in slower CI/dev environments.
 - [x] **Bound heartbeat rotation grace to valid minute range** - ✅ Done (2026-04-09). Enforced `HEARTBEAT_ROTATE_WINDOW_GRACE_MINUTES` as integer `0..59` in `scripts/heartbeat-rotate-branch.sh` and `scripts/heartbeat-rotate-if-due.sh` to prevent accidental full-hour rotation windows from oversized values.
 - [x] **Harden heartbeat Step-5 HEAD curl checks with retry guardrails** - ✅ Done (2026-04-09). `scripts/heartbeat-curl-pages.sh` now retries transient failures before failing and validates retry env values (`HEARTBEAT_HEAD_MAX_RETRIES`, `HEARTBEAT_HEAD_RETRY_DELAY_SECONDS`) to reduce flaky false negatives during immediate post-restart checks.
 - [x] **Auto-prune backlog status summaries during full heartbeat runs** - ✅ Done (2026-04-08). Added `npm run backlog:prune` as an explicit step in both `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh`, and reduced default summary retention in `scripts/prune-backlog-status.sh` from 10 to 3 to keep `BACKLOG.md` concise while archiving older entries.

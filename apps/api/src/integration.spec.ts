@@ -260,7 +260,7 @@ beforeAll(async () => {
   SwaggerModule.setup('docs', app, swaggerDoc);
 
   await app.init();
-});
+}, 30000);
 
 afterAll(async () => {
   await app?.close();

@@ -11,6 +11,8 @@ PUBLIC_BASE="${PUBLIC_BASE_URL:-https://oc-dev-test.no749ah.com}"
 CHECK_PUBLIC=false
 MAX_RETRIES="${HEARTBEAT_HEAD_MAX_RETRIES:-3}"
 RETRY_DELAY_SECONDS="${HEARTBEAT_HEAD_RETRY_DELAY_SECONDS:-1}"
+REQUEST_TIMEOUT_SECONDS="${HEARTBEAT_HEAD_REQUEST_TIMEOUT_SECONDS:-10}"
+CONNECT_TIMEOUT_SECONDS="${HEARTBEAT_HEAD_CONNECT_TIMEOUT_SECONDS:-5}"
 
 normalize_base() {
   local base="$1"
@@ -27,6 +29,21 @@ fi
 
 if ! [[ "$RETRY_DELAY_SECONDS" =~ ^[0-9]+$ ]] || [[ "$RETRY_DELAY_SECONDS" -lt 0 ]]; then
   echo "HEARTBEAT_HEAD_RETRY_DELAY_SECONDS must be a non-negative integer (got: $RETRY_DELAY_SECONDS)" >&2
+  exit 1
+fi
+
+if ! [[ "$REQUEST_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]] || [[ "$REQUEST_TIMEOUT_SECONDS" -lt 1 ]]; then
+  echo "HEARTBEAT_HEAD_REQUEST_TIMEOUT_SECONDS must be a positive integer (got: $REQUEST_TIMEOUT_SECONDS)" >&2
+  exit 1
+fi
+
+if ! [[ "$CONNECT_TIMEOUT_SECONDS" =~ ^[0-9]+$ ]] || [[ "$CONNECT_TIMEOUT_SECONDS" -lt 1 ]]; then
+  echo "HEARTBEAT_HEAD_CONNECT_TIMEOUT_SECONDS must be a positive integer (got: $CONNECT_TIMEOUT_SECONDS)" >&2
+  exit 1
+fi
+
+if [[ "$CONNECT_TIMEOUT_SECONDS" -gt "$REQUEST_TIMEOUT_SECONDS" ]]; then
+  echo "HEARTBEAT_HEAD_CONNECT_TIMEOUT_SECONDS must be <= HEARTBEAT_HEAD_REQUEST_TIMEOUT_SECONDS" >&2
   exit 1
 fi
 
@@ -70,8 +87,13 @@ check_origin() {
   for route in "${ROUTES[@]}"; do
     code="000"
     for ((attempt=1; attempt<=MAX_RETRIES; attempt++)); do
-      code=$(curl -s -o /dev/null -w "%{http_code}" -I --max-time 10 --connect-timeout 5 "$base$route" 2>/dev/null || echo "000")
+      code=$(curl -s -o /dev/null -w "%{http_code}" -I --max-time "$REQUEST_TIMEOUT_SECONDS" --connect-timeout "$CONNECT_TIMEOUT_SECONDS" "$base$route" 2>/dev/null || echo "000")
       if [[ "$code" == "200" ]]; then
+        break
+      fi
+
+      # Retry only transient failures (timeouts/network/429/5xx).
+      if [[ "$code" != "000" && "$code" != "429" && ! "$code" =~ ^5[0-9]{2}$ ]]; then
         break
       fi
 

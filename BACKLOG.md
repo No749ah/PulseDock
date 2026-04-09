@@ -1,3 +1,13 @@
+## Status Summary (2026-04-09 22:07 UTC)
+- **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`).
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy verification passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` auth-path checks returned expected `401` with Bearer header).
+- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, `npm run audit:frontend`: 54/54, `npm run audit:frontend:prod`: 108/108).
+- **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 22:07 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows)
+- **Last changes (22:07 UTC):**
+  - [x] **fix(heartbeat): reject malformed required route path segments** — hardened `scripts/heartbeat-required-routes.sh` to fail fast on empty path segments (`//`) and dot segments (`/./`, `/../`, terminal `/.`, `/..`) in required-route definitions.
+
+---
+
 ## Status Summary (2026-04-09 21:10 UTC)
 - **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`).
 - **Deployment:** 🔄 Pending restart + post-deploy checks for current heartbeat change.
@@ -15,35 +25,6 @@
 - **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 20:08 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows)
 - **Last changes (20:08 UTC):**
   - [x] **fix(heartbeat): reject userinfo and URL fragments in audit base origins** — committed and pushed (`3dbac5ce`) after hardening `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` to fail fast when `WEB_BASE_URL`/`PUBLIC_BASE_URL` include query (`?`), fragment (`#`), or userinfo (`user@host`) components.
-
----
-
-## Status Summary (2026-04-09 18:14 UTC)
-- **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`), and post-change validation stayed clean.
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy verification passed (`/health` 200, `/login` 200, direct/web/public `/v1|api/v1/monitors` auth-path checks returned expected `401` with Bearer header).
-- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, `npm run audit:frontend`: 54/54, `npm run audit:frontend:prod`: 108/108).
-- **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 18:14 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows)
-- **Last changes (18:14 UTC):**
-  - [x] **fix(heartbeat): cap Step-5 route-audit curl timeout envs with explicit upper bounds** — committed and pushed (`08b72b5b`) after hardening `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` with validated timeout-limit controls to fail fast on oversized timeout values.
-
----
-
-## Status Summary (2026-04-09 17:29 UTC)
-- **Build/Test/Audit:** ✅ Full Step-0 bootstrap and Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`).
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy verification passed (`/health` 200, `/login` 200, direct/web/public `/v1|api/v1/monitors` auth-path checks returned expected `401` with Bearer header).
-- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, `npm run audit:frontend`: 54/54, `npm run audit:frontend:prod`: 108/108).
-- **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 17:29 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows)
-- **Last changes (17:29 UTC):**
-  - [x] **fix(heartbeat): validate Step-5 frontend audit base URLs as strict origins** — committed and pushed (`7a4d3f13`) after hardening both audit scripts to reject malformed base URL origins.
-
----
-
-## Status Summary (2026-04-09 17:15 UTC)
-- **Build/Test/Audit:** ✅ Step-0 bootstrap checks passed (Docker/GitHub SSH/dind), Step-1 checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high` all clean), and post-change validation stayed green.
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, direct/web/public monitor auth-path checks returned expected `401` with Bearer header). Step-5 HEAD page audit passed locally (8/8) and publicly (16/16).
-- **Branch:** heartbeat/2026-04-08-noon (rotation skipped at 17:15 UTC; outside 00:00-00:05 UTC and 12:00-12:05 UTC windows)
-- **Last changes (17:15 UTC):**
-  - [x] **fix(heartbeat): validate Step-5 frontend audit base URLs as strict origins** — hardened `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` to reject empty/whitespace and non-origin `WEB_BASE_URL`/`PUBLIC_BASE_URL` values (paths/query/fragment), preventing malformed base config from silently skewing route audits.
 
 ---
 

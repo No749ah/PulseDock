@@ -45,6 +45,16 @@ for route in "${HEARTBEAT_REQUIRED_ROUTES[@]}"; do
     exit 1
   fi
 
+  if [[ "$route" == *"//"* ]]; then
+    echo "Route must not contain empty path segments ('//'): $route" >&2
+    exit 1
+  fi
+
+  if [[ "$route" == *"/./"* || "$route" == *"/../"* || "$route" == "/." || "$route" == "/.." || "$route" == *"/." || "$route" == *"/.." ]]; then
+    echo "Route must not contain dot segments ('.' or '..'): $route" >&2
+    exit 1
+  fi
+
   if [[ -n "${HEARTBEAT_REQUIRED_ROUTE_SEEN[$route]:-}" ]]; then
     echo "Duplicate route found in scripts/heartbeat-required-routes.sh: $route" >&2
     exit 1
@@ -52,4 +62,3 @@ for route in "${HEARTBEAT_REQUIRED_ROUTES[@]}"; do
 
   HEARTBEAT_REQUIRED_ROUTE_SEEN["$route"]=1
 done
-

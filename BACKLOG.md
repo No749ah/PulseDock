@@ -1,3 +1,11 @@
+## Status Summary (2026-04-10 21:29 UTC)
+- **Build/Test/Audit:** ✅ Full heartbeat checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`) and post-change validation remained green (`npm run build && npm run test && npm audit --audit-level=high`, 0 vulnerabilities).
+- **Deployment:** ⏳ Pending restart/deploy audit in this heartbeat cycle.
+- **Frontend Audit:** ⏳ Pending full route/asset and HEAD/public audits in this heartbeat cycle.
+- **Branch:** heartbeat/2026-04-10-noon (rotation check remains off-window at 21:29 UTC).
+- **Last changes (21:29 UTC):**
+  - [x] **fix(heartbeat): hard-cap Step-5 frontend audit limit overrides** — hardened `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` with explicit hard caps for limit env overrides so malformed oversized `*_LIMIT` values fail fast before route and asset audits run.
+
 ## Status Summary (2026-04-10 20:17 UTC)
 - **Build/Test/Audit:** ✅ Full Step-0 + Step-1 heartbeat flow passed (`npm run heartbeat:bootstrap`, `npm run heartbeat:health`), plus post-change validation remained green (`npm run build && npm run test && npm audit --audit-level=high`, 0 vulnerabilities).
 - **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` returned expected `401` with invalid bearer).
@@ -13,14 +21,6 @@
 - **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 20:10 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
 - **Last changes (20:10 UTC):**
   - [x] **fix(heartbeat): add required-command checks to check/cycle orchestrators** — hardened `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` with fail-fast dependency validation (`git`, `npm`, `date`) before executing branch safety, bootstrap, and downstream heartbeat steps.
-
-## Status Summary (2026-04-10 19:07 UTC)
-- **Build/Test/Audit:** ✅ Step-0 + Step-1 heartbeat checks passed (`docker/ssh/dind`, `git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`), and post-change validation passed (`npm run build && npm run test && npm audit --audit-level=high`, 0 vulnerabilities).
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` returned expected `401` with invalid bearer).
-- **Frontend Audit:** ✅ Required route checks passed locally and via reverse proxy (`curl -I` on `/login /dashboard /monitors /alerts /account /projects /versions /admin`, plus `npm run audit:frontend` and `npm run audit:frontend:prod`).
-- **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 19:07 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
-- **Last changes (19:07 UTC):**
-  - [x] **fix(heartbeat): harden backlog-prune dependency + retention-limit validation** — updated `scripts/prune-backlog-status.sh` with required-command checks and bounded `KEEP_STATUS_SUMMARIES_LIMIT` validation so malformed retention env overrides or missing shell deps fail fast.
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
@@ -98,6 +98,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Hard-cap Step-5 frontend audit limit env overrides to prevent accidental unbounded guardrails** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` with explicit hard caps for `*_LIMIT` env controls (`*_LIMIT_HARD_CAP_SECONDS`, `*_LIMIT_HARD_CAP_RETRIES`) so malformed oversized limits fail fast before route/head/static-asset audits run.
 - [x] **Fail fast on missing core command dependencies in heartbeat check/cycle orchestrators** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` with explicit required-command checks (`git`, `npm`, `date`) so orchestration fails immediately with actionable errors before branch/bootstrap/deploy steps.
 - [x] **Harden backlog-prune script dependency checks and retention limit validation** - ✅ Done (2026-04-10). Updated `scripts/prune-backlog-status.sh` to fail fast when required shell commands (`grep`, `cut`, `awk`, `sed`, `date`, `mktemp`, `dirname`) are missing, and to validate/cap `KEEP_STATUS_SUMMARIES` with `KEEP_STATUS_SUMMARIES_LIMIT` (default `50`) before file mutations.
 - [x] **Add transient retry guardrails to frontend GET/static-asset audits** - ✅ Done (2026-04-10). Hardened `scripts/audit-frontend-pages.sh` with validated retry env controls (`FRONTEND_AUDIT_MAX_RETRIES`, `FRONTEND_AUDIT_RETRY_DELAY_SECONDS`, `FRONTEND_AUDIT_MAX_RETRIES_LIMIT`, `FRONTEND_AUDIT_MAX_RETRY_DELAY_SECONDS_LIMIT`) and transient-only retries (`000`, `429`, `5xx`) for route checks, asset fetches, and HTML discovery requests.

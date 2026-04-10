@@ -4,9 +4,28 @@ set -euo pipefail
 BACKLOG_FILE="${1:-BACKLOG.md}"
 ARCHIVE_FILE="${2:-docs/BACKLOG_STATUS_ARCHIVE.md}"
 KEEP_COUNT="${KEEP_STATUS_SUMMARIES:-3}"
+KEEP_COUNT_LIMIT="${KEEP_STATUS_SUMMARIES_LIMIT:-50}"
+
+required_commands=(grep cut awk sed date mktemp dirname)
+for cmd in "${required_commands[@]}"; do
+  if ! command -v "$cmd" >/dev/null 2>&1; then
+    echo "Missing required command: $cmd" >&2
+    exit 1
+  fi
+done
 
 if ! [[ "$KEEP_COUNT" =~ ^[0-9]+$ ]] || [ "$KEEP_COUNT" -lt 1 ]; then
   echo "KEEP_STATUS_SUMMARIES must be a positive integer (got: $KEEP_COUNT)" >&2
+  exit 1
+fi
+
+if ! [[ "$KEEP_COUNT_LIMIT" =~ ^[0-9]+$ ]] || [ "$KEEP_COUNT_LIMIT" -lt 1 ]; then
+  echo "KEEP_STATUS_SUMMARIES_LIMIT must be a positive integer (got: $KEEP_COUNT_LIMIT)" >&2
+  exit 1
+fi
+
+if [ "$KEEP_COUNT" -gt "$KEEP_COUNT_LIMIT" ]; then
+  echo "KEEP_STATUS_SUMMARIES must be <= KEEP_STATUS_SUMMARIES_LIMIT ($KEEP_COUNT > $KEEP_COUNT_LIMIT)" >&2
   exit 1
 fi
 

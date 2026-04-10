@@ -1,3 +1,11 @@
+## Status Summary (2026-04-10 19:07 UTC)
+- **Build/Test/Audit:** ✅ Step-0 + Step-1 heartbeat checks passed (`docker/ssh/dind`, `git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`), and post-change validation passed (`npm run build && npm run test && npm audit --audit-level=high`, 0 vulnerabilities).
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` returned expected `401` with invalid bearer).
+- **Frontend Audit:** ✅ Required route checks passed locally and via reverse proxy (`curl -I` on `/login /dashboard /monitors /alerts /account /projects /versions /admin`, plus `npm run audit:frontend` and `npm run audit:frontend:prod`).
+- **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 19:07 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
+- **Last changes (19:07 UTC):**
+  - [x] **fix(heartbeat): harden backlog-prune dependency + retention-limit validation** — updated `scripts/prune-backlog-status.sh` with required-command checks and bounded `KEEP_STATUS_SUMMARIES_LIMIT` validation so malformed retention env overrides or missing shell deps fail fast.
+
 ## Status Summary (2026-04-10 18:12 UTC)
 - **Build/Test/Audit:** ✅ Step-0 + Step-1 heartbeat checks passed (`npm run heartbeat:bootstrap`, `npm run heartbeat:health`), and post-change full validation passed (`npm run build && npm run test && npm audit --audit-level=high`, 0 vulnerabilities).
 - **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` returned expected `401` with invalid bearer).
@@ -13,14 +21,6 @@
 - **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 16:47 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
 - **Last changes (16:46 UTC):**
   - [x] **fix(security): patch Next.js server-components DoS advisory** — upgraded web dependency `next` from `^16.2.1` to `^16.2.3`, refreshed lockfile, and cleared the high-severity `GHSA-q4gf-8mx6-v5v3` audit finding.
-
-## Status Summary (2026-04-10 15:41 UTC)
-- **Build/Test/Audit:** ✅ Step-0/Step-1 heartbeat checks passed (`docker/ssh/dind`, `git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`).
-- **Deployment:** ⏭️ Skipped restart (docs-only heartbeat change; no runtime code changed).
-- **Frontend Audit:** ✅ Required route HEAD checks passed locally and via reverse proxy (`/login /dashboard /monitors /alerts /account /projects /versions /admin`).
-- **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 15:41 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
-- **Last changes (15:41 UTC):**
-  - [x] **docs(backlog): prune stale heartbeat status block + archive it** — added latest heartbeat summary, archived the oldest in-file status summary, and kept `BACKLOG.md` focused on the latest three snapshots.
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
@@ -98,6 +98,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Harden backlog-prune script dependency checks and retention limit validation** - ✅ Done (2026-04-10). Updated `scripts/prune-backlog-status.sh` to fail fast when required shell commands (`grep`, `cut`, `awk`, `sed`, `date`, `mktemp`, `dirname`) are missing, and to validate/cap `KEEP_STATUS_SUMMARIES` with `KEEP_STATUS_SUMMARIES_LIMIT` (default `50`) before file mutations.
 - [x] **Add transient retry guardrails to frontend GET/static-asset audits** - ✅ Done (2026-04-10). Hardened `scripts/audit-frontend-pages.sh` with validated retry env controls (`FRONTEND_AUDIT_MAX_RETRIES`, `FRONTEND_AUDIT_RETRY_DELAY_SECONDS`, `FRONTEND_AUDIT_MAX_RETRIES_LIMIT`, `FRONTEND_AUDIT_MAX_RETRY_DELAY_SECONDS_LIMIT`) and transient-only retries (`000`, `429`, `5xx`) for route checks, asset fetches, and HTML discovery requests.
 - [x] **Patch Next.js high-severity Server Components DoS advisory from heartbeat audit** - ✅ Done (2026-04-10). Upgraded `apps/web` dependency `next` from `^16.2.1` to `^16.2.3`, refreshed lockfile, and verified `npm audit --audit-level=high` returns 0 vulnerabilities.
 - [x] **Keep BACKLOG status snapshots trimmed to the latest three heartbeat runs** - ✅ Done (2026-04-10). Added current 15:41 UTC heartbeat status summary, archived the oldest in-file snapshot to `docs/BACKLOG_STATUS_ARCHIVE.md`, and kept `BACKLOG.md` focused on active context.

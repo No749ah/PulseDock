@@ -1186,3 +1186,13 @@ Archived status summaries pruned from `BACKLOG.md`.
 - **Last changes (15:23 UTC):**
   - [x] **test(api): add timeout budget for SLA forecast suite** — added explicit 15s suite timeout to `apps/api/src/monitors/monitors.sla-forecast.spec.ts` to prevent false timeout failures on loaded heartbeat runners.
 
+
+## Archive batch 2026-04-10 19:08 UTC
+## Status Summary (2026-04-10 15:41 UTC)
+- **Build/Test/Audit:** ✅ Step-0/Step-1 heartbeat checks passed (`docker/ssh/dind`, `git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`).
+- **Deployment:** ⏭️ Skipped restart (docs-only heartbeat change; no runtime code changed).
+- **Frontend Audit:** ✅ Required route HEAD checks passed locally and via reverse proxy (`/login /dashboard /monitors /alerts /account /projects /versions /admin`).
+- **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 15:41 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
+- **Last changes (15:41 UTC):**
+  - [x] **docs(backlog): prune stale heartbeat status block + archive it** — added latest heartbeat summary, archived the oldest in-file status summary, and kept `BACKLOG.md` focused on the latest three snapshots.
+

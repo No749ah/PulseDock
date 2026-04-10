@@ -31,14 +31,16 @@ fi
 # 3. Build
 #    Prevent stale lock collisions from interrupted prior builds and keep memory bounded
 #    in constrained environments.
-#    Also clear orphaned local next-build processes for this repo/workdir to avoid
-#    false "another next build process is already running" failures in heartbeat runs.
-stale_build_pids="$(ps -eo pid=,args= | awk -v web_dir="$WEB_DIR" '$0 ~ /next build/ && index($0, web_dir) > 0 { print $1 }')"
+#    Also clear long-lived orphaned local next-build processes for this repo/workdir
+#    to avoid false "another next build process is already running" failures in heartbeat runs.
+#    Only target processes older than 10 minutes so we never kill fresh wrapper processes
+#    created by the current npm invocation.
+stale_build_pids="$(ps -eo pid=,etimes=,args= | awk -v web_dir="$WEB_DIR" '$0 ~ /next build/ && index($0, web_dir) > 0 && $2 > 600 { print $1 }')"
 if [ -n "$stale_build_pids" ]; then
   echo "==> Stopping stale next build process(es): $stale_build_pids"
   kill $stale_build_pids 2>/dev/null || true
   sleep 1
-  stale_build_pids="$(ps -eo pid=,args= | awk -v web_dir="$WEB_DIR" '$0 ~ /next build/ && index($0, web_dir) > 0 { print $1 }')"
+  stale_build_pids="$(ps -eo pid=,etimes=,args= | awk -v web_dir="$WEB_DIR" '$0 ~ /next build/ && index($0, web_dir) > 0 && $2 > 600 { print $1 }')"
   if [ -n "$stale_build_pids" ]; then
     echo "==> Force-killing stale next build process(es): $stale_build_pids"
     kill -9 $stale_build_pids 2>/dev/null || true

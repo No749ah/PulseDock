@@ -1166,3 +1166,13 @@ Archived status summaries pruned from `BACKLOG.md`.
 - **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 13:12 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
 - **Last changes (13:12 UTC):**
   - [x] **fix(heartbeat): validate bootstrap git identity overrides before writing git config** — hardened `scripts/heartbeat-bootstrap.sh` to fail fast when `HEARTBEAT_GIT_USER_NAME`/`HEARTBEAT_GIT_USER_EMAIL` are empty, contain newline/whitespace edge cases, or use an invalid email shape.
+
+## Archive batch 2026-04-10 16:48 UTC
+## Status Summary (2026-04-10 14:13 UTC)
+- **Build/Test/Audit:** ✅ Step-0 + Step-1 checks passed (`npm run heartbeat:bootstrap`, `npm run heartbeat:health`) and post-change full validation passed (`npm run build && npm run test && npm audit --audit-level=high`).
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` with auth header returned expected `401`).
+- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, `curl -sI https://oc-dev-test.no749ah.com`: HTTP 200).
+- **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 14:13 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
+- **Last changes (14:13 UTC):**
+  - [x] **fix(heartbeat): hard-cap Step-1 timeout limit env overrides** — hardened `scripts/heartbeat-health.sh` to reject `*_TIMEOUT_SECONDS_LIMIT` values above an explicit 86400-second safety cap before Step-1 commands execute.
+

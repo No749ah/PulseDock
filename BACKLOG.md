@@ -1,3 +1,11 @@
+## Status Summary (2026-04-10 16:46 UTC)
+- **Build/Test/Audit:** ✅ Step-0 + Step-1 heartbeat checks passed (`docker/ssh/dind`, `git pull origin dev`, `npm run build`, `npm run test`); addressed `npm audit --audit-level=high` finding by upgrading `next` and re-running full validation (`npm run build && npm run test && npm audit --audit-level=high`, now 0 vulnerabilities).
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` with auth header returned expected `401`).
+- **Frontend Audit:** ✅ Required route HEAD checks passed locally and via reverse proxy (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16).
+- **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 16:47 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
+- **Last changes (16:46 UTC):**
+  - [x] **fix(security): patch Next.js server-components DoS advisory** — upgraded web dependency `next` from `^16.2.1` to `^16.2.3`, refreshed lockfile, and cleared the high-severity `GHSA-q4gf-8mx6-v5v3` audit finding.
+
 ## Status Summary (2026-04-10 15:41 UTC)
 - **Build/Test/Audit:** ✅ Step-0/Step-1 heartbeat checks passed (`docker/ssh/dind`, `git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`).
 - **Deployment:** ⏭️ Skipped restart (docs-only heartbeat change; no runtime code changed).
@@ -13,14 +21,6 @@
 - **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 15:23 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
 - **Last changes (15:23 UTC):**
   - [x] **test(api): add timeout budget for SLA forecast suite** — added explicit 15s suite timeout to `apps/api/src/monitors/monitors.sla-forecast.spec.ts` to prevent false timeout failures on loaded heartbeat runners.
-
-## Status Summary (2026-04-10 14:13 UTC)
-- **Build/Test/Audit:** ✅ Step-0 + Step-1 checks passed (`npm run heartbeat:bootstrap`, `npm run heartbeat:health`) and post-change full validation passed (`npm run build && npm run test && npm audit --audit-level=high`).
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` with auth header returned expected `401`).
-- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, `curl -sI https://oc-dev-test.no749ah.com`: HTTP 200).
-- **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 14:13 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
-- **Last changes (14:13 UTC):**
-  - [x] **fix(heartbeat): hard-cap Step-1 timeout limit env overrides** — hardened `scripts/heartbeat-health.sh` to reject `*_TIMEOUT_SECONDS_LIMIT` values above an explicit 86400-second safety cap before Step-1 commands execute.
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
@@ -98,6 +98,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Patch Next.js high-severity Server Components DoS advisory from heartbeat audit** - ✅ Done (2026-04-10). Upgraded `apps/web` dependency `next` from `^16.2.1` to `^16.2.3`, refreshed lockfile, and verified `npm audit --audit-level=high` returns 0 vulnerabilities.
 - [x] **Keep BACKLOG status snapshots trimmed to the latest three heartbeat runs** - ✅ Done (2026-04-10). Added current 15:41 UTC heartbeat status summary, archived the oldest in-file snapshot to `docs/BACKLOG_STATUS_ARCHIVE.md`, and kept `BACKLOG.md` focused on active context.
 - [x] **Stabilize SLA forecast spec runtime budget to avoid false timeout failures in loaded heartbeat runners** - ✅ Done (2026-04-10). Added an explicit 15-second suite timeout in `apps/api/src/monitors/monitors.sla-forecast.spec.ts` so rare slow CI/heartbeat environments do not fail this deterministic test block due to default runner timeout pressure.
 - [x] **Hard-cap heartbeat Step-1 timeout limit env overrides to prevent accidental unbounded windows** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-health.sh` with an explicit 86400-second safety cap for all `*_TIMEOUT_SECONDS_LIMIT` values so malformed oversized limit overrides fail fast before Step-1 commands run.

@@ -29,6 +29,22 @@ done
 
 GREEN='\033[0;32m'; CYAN='\033[0;36m'; BOLD='\033[1m'; RESET='\033[0m'
 
+ensure_required_commands() {
+  local missing=()
+  local required=(git npm date)
+
+  for cmd in "${required[@]}"; do
+    if ! command -v "${cmd}" >/dev/null 2>&1; then
+      missing+=("${cmd}")
+    fi
+  done
+
+  if [[ "${#missing[@]}" -gt 0 ]]; then
+    echo "Missing required command(s): ${missing[*]}. Install dependencies before running heartbeat cycles." >&2
+    exit 1
+  fi
+}
+
 run_step() {
   local label="$1"
   shift
@@ -64,6 +80,7 @@ ensure_safe_branch() {
 
 echo -e "${BOLD}PulseDock Heartbeat Cycle $(date -u '+%Y-%m-%d %H:%M UTC')${RESET}"
 
+run_step "Dependency check" ensure_required_commands
 run_step "Branch safety check" ensure_safe_branch
 run_step "Environment bootstrap" npm run heartbeat:bootstrap
 run_step "Health check (git pull + build/test/audit tails)" npm run heartbeat:health

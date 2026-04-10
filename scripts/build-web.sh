@@ -8,7 +8,7 @@
 #
 # FIX: Stop the web server BEFORE building so nothing serves from a half-wiped dir.
 #      The caller (npm run build) must restart the server after this script finishes.
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR/.."
@@ -22,6 +22,13 @@ bash "$REPO_ROOT/scripts/stop-web.sh" 2>/dev/null || true
 # 2. Backup existing static chunks so cached HTML referencing old hashes stays valid.
 cd "$WEB_DIR"
 STATIC_BACKUP_DIR=""
+cleanup_static_backup() {
+  if [ -n "${STATIC_BACKUP_DIR:-}" ] && [ -d "${STATIC_BACKUP_DIR}" ]; then
+    rm -rf "${STATIC_BACKUP_DIR}"
+  fi
+}
+trap cleanup_static_backup EXIT
+
 if [ -d ".next/static" ]; then
   echo "==> Backing up old static chunks…"
   STATIC_BACKUP_DIR="$(mktemp -d .next/static-prev.XXXXXX)"
@@ -59,7 +66,7 @@ NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS="$NODE_OPTIONS" npx next build --webpack
 if [ -n "$STATIC_BACKUP_DIR" ] && [ -d "$STATIC_BACKUP_DIR" ]; then
   echo "==> Merging old static chunks into new build…"
   cp -rn "$STATIC_BACKUP_DIR"/. .next/static/
-  rm -rf "$STATIC_BACKUP_DIR"
+  cleanup_static_backup
   echo "==> Merge done."
 fi
 

@@ -1,3 +1,13 @@
+## Status Summary (2026-04-10 03:16 UTC)
+- **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`), plus post-change build/test/audit rerun passed.
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy verification passed (`/health` 200, `/login` 200, web/public `/api/v1/monitors` auth-path checks returned expected `401` with Bearer header).
+- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, `npm run audit:frontend`: 54/54, `npm run audit:frontend:prod`: 108/108).
+- **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 03:16 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows)
+- **Last changes (03:16 UTC):**
+  - [x] **chore(build): harden web build backup cleanup with strict shell mode** — updated `scripts/build-web.sh` to use `set -euo pipefail` and an EXIT trap that always removes temporary static backup directories, preventing stale temp-dir buildup on interrupted builds.
+
+---
+
 ## Status Summary (2026-04-10 02:53 UTC)
 - **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`) with the latest heartbeat hardening change applied.
 - **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy verification passed (`/health` 200, `/login` 200, direct/web/public `/v1|api/v1/monitors` auth-path checks returned expected `401` with Bearer header).
@@ -15,16 +25,6 @@
 - **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 00:47 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows)
 - **Last changes (00:48 UTC):**
   - [x] **fix(build): clear stale Next.js build processes/locks before web compile** — hardened `scripts/build-web.sh` to terminate orphaned repo-local `next build` processes and remove both `.next/lock` and `.next/build.lock` before starting a new build, preventing false "another next build process is already running" heartbeat failures.
-
----
-
-## Status Summary (2026-04-09 23:13 UTC)
-- **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`), plus post-change verification rerun passed.
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy verification passed (`/health` 200, `/login` 200, direct/web/public `/v1|api/v1/monitors` auth-path checks returned expected `401` with Bearer header).
-- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, `npm run audit:frontend`: 54/54, `npm run audit:frontend:prod`: 108/108).
-- **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 23:13 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows)
-- **Last changes (23:13 UTC):**
-  - [x] **fix(heartbeat): normalize curl failure status fallback in frontend audits** — fixed `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` to avoid concatenated `000000` HTTP code artifacts on curl failures, restoring correct transient retry logic and deterministic `000`/`000|` fallback reporting.
 
 ---
 
@@ -104,6 +104,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Harden web build backup cleanup and shell failure handling** - ✅ Done (2026-04-10). Updated `scripts/build-web.sh` to use strict shell mode (`set -euo pipefail`) and added EXIT-trap cleanup for temporary `.next/static` backup directories so interrupted/failing builds cannot leak temp paths.
 - [x] **Limit stale Next.js build-process cleanup to long-lived orphans only** - ✅ Done (2026-04-10). Refined `scripts/build-web.sh` stale process detection to only target repo-local `next build` processes older than 10 minutes (`ps etimes > 600`), preventing accidental termination of fresh build wrappers started by the current heartbeat run.
 - [x] **Harden static-chunk backup path in web build script to avoid repeated-heartbeat collisions** - ✅ Done (2026-04-10). Updated `scripts/build-web.sh` to back up `.next/static` into a unique `mktemp` directory and merge from that path after build, eliminating fixed `.next/static-prev` destination collisions (`cp: cannot create directory '.next/static-prev': File exists`) during repeated heartbeat runs.
 - [x] **Clear stale Next.js build process/lock state before heartbeat web builds** - ✅ Done (2026-04-10). Hardened `scripts/build-web.sh` to terminate orphaned repo-local `next build` processes and delete both `.next/lock` + `.next/build.lock` before invoking `next build --webpack`, preventing false concurrent-build collisions in heartbeat runs.

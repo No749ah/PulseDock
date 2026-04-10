@@ -1,3 +1,11 @@
+## Status Summary (2026-04-10 12:10 UTC)
+- **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`).
+- **Deployment:** 🚧 Pending Step-3 restart + post-deploy verification (scheduled after branch rotation and push).
+- **Frontend Audit:** 🚧 Pending mandatory Step-5 local/public route HEAD checks after restart.
+- **Branch:** heartbeat/2026-04-08-noon (rotation due window active at 12:xx UTC).
+- **Last changes (12:10 UTC):**
+  - [x] **fix(heartbeat): only swallow old-branch sync when remote heartbeat branch is truly absent** — hardened `scripts/heartbeat-rotate-branch.sh` to probe `origin/<old-branch>` first and only skip sync when the remote branch does not exist, while surfacing real `git pull --ff-only` failures instead of silently continuing with stale branch state.
+
 ## Status Summary (2026-04-10 11:12 UTC)
 - **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`npm run heartbeat:bootstrap`, `npm run heartbeat:health`), plus post-change full `npm run build && npm run test && npm audit --audit-level=high` rerun passed.
 - **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` returned expected `401`).
@@ -98,6 +106,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Avoid masking real old-branch sync failures during Step-6 branch rotation** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-rotate-branch.sh` to first probe remote branch existence and only skip pre-merge `git pull --ff-only origin <heartbeat-branch>` when `origin/<branch>` is genuinely absent, while preserving fail-fast behavior for real pull/auth/network errors.
 - [x] **Validate heartbeat Step-6 branch-rotation suffix and branch-name inputs before git operations** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-rotate-branch.sh` to fail fast on invalid `--name` suffix values (lowercase alnum + hyphen only) and malformed/whitespace branch names via `git check-ref-format --branch`.
 - [x] **Fail fast on missing core command dependencies in heartbeat Step-0 bootstrap checks** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-bootstrap.sh` with explicit required-command checks (`git`, `ssh`, `node`) so Step-0 fails immediately with actionable errors when bootstrap runtime dependencies are unavailable.
 - [x] **Fail fast on missing core command dependencies in heartbeat Step-1 health checks** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-health.sh` with explicit checks for required commands (`git`, `npm`, `mktemp`, `tail`) so Step-1 fails immediately with actionable errors when runtime dependencies are unavailable; emits a clear warning when optional `timeout` is missing and falls back without time bounds.

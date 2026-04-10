@@ -177,6 +177,16 @@ ensure_new_branch_available() {
   fi
 }
 
+sync_old_branch_from_origin_if_present() {
+  local branch="$1"
+
+  if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+    git pull --ff-only origin "$branch"
+  else
+    echo "Remote branch origin/$branch not found, skipping heartbeat branch fast-forward sync before merge."
+  fi
+}
+
 if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
   echo "Not inside a git repository." >&2
   exit 1
@@ -190,7 +200,7 @@ ensure_rotation_window
 git fetch origin --prune
 
 # Update current heartbeat branch from remote if available.
-git pull --ff-only origin "$OLD_BRANCH" >/dev/null 2>&1 || true
+sync_old_branch_from_origin_if_present "$OLD_BRANCH"
 
 NEW_BRANCH="$(compute_new_branch)"
 validate_branch_name "$NEW_BRANCH"

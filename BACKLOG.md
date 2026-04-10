@@ -1,8 +1,8 @@
 ## Status Summary (2026-04-10 02:53 UTC)
 - **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`) with the latest heartbeat hardening change applied.
-- **Deployment:** 🔄 Pending restart + post-deploy verification for current heartbeat commit.
-- **Frontend Audit:** 🔄 Pending Step-5 route/static checks after restart.
-- **Branch:** heartbeat/2026-04-08-noon (rotation check pending; outside 00:00-00:05 / 12:00-12:05 UTC windows at run start)
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy verification passed (`/health` 200, `/login` 200, direct/web/public `/v1|api/v1/monitors` auth-path checks returned expected `401` with Bearer header).
+- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, `npm run audit:frontend`: 54/54, `npm run audit:frontend:prod`: 108/108).
+- **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 02:49 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows)
 - **Last changes (02:53 UTC):**
   - [x] **fix(build): only kill stale repo-local next build processes older than 10 minutes** — refined `scripts/build-web.sh` stale-process cleanup to target long-lived orphaned `next build` processes only, preventing accidental termination of fresh wrapper processes during active heartbeat builds.
 
@@ -25,26 +25,6 @@
 - **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 23:13 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows)
 - **Last changes (23:13 UTC):**
   - [x] **fix(heartbeat): normalize curl failure status fallback in frontend audits** — fixed `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` to avoid concatenated `000000` HTTP code artifacts on curl failures, restoring correct transient retry logic and deterministic `000`/`000|` fallback reporting.
-
----
-
-## Status Summary (2026-04-09 22:07 UTC)
-- **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`).
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy verification passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` auth-path checks returned expected `401` with Bearer header).
-- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, `npm run audit:frontend`: 54/54, `npm run audit:frontend:prod`: 108/108).
-- **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 22:07 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows)
-- **Last changes (22:07 UTC):**
-  - [x] **fix(heartbeat): reject malformed required route path segments** — hardened `scripts/heartbeat-required-routes.sh` to fail fast on empty path segments (`//`) and dot segments (`/./`, `/../`, terminal `/.`, `/..`) in required-route definitions.
-
----
-
-## Status Summary (2026-04-09 21:10 UTC)
-- **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`).
-- **Deployment:** 🔄 Pending restart + post-deploy checks for current heartbeat change.
-- **Frontend Audit:** 🔄 Pending Step-5 route/static checks after restart.
-- **Branch:** heartbeat/2026-04-08-noon (rotation check pending; outside 00:00-00:05 / 12:00-12:05 UTC windows at run start)
-- **Last changes (21:10 UTC):**
-  - [x] **fix(heartbeat): reject dot-segment and empty path-segment required routes** — hardened `scripts/heartbeat-required-routes.sh` to fail fast on `//`, `/./`, and `/../` patterns so Step-5 route audits cannot silently normalize malformed paths.
 
 ---
 

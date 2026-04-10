@@ -1128,3 +1128,13 @@ Archived status summaries pruned from `BACKLOG.md`.
 - **Last changes (08:12 UTC):**
   - [x] **fix(heartbeat): fail fast when `grep`/`tr` are missing in frontend asset audit** — hardened `scripts/audit-frontend-pages.sh` with explicit command dependency checks so Step-5 asset parsing failures are immediate and actionable.
 
+
+## Archive batch 2026-04-10 12:13 UTC
+## Status Summary (2026-04-10 09:10 UTC)
+- **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`), plus post-change build/test/audit rerun passed.
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy verification passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` auth-path checks returned expected `401`).
+- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, `npm run audit:frontend`: 54/54, `npm run audit:frontend:prod`: 108/108).
+- **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 09:11 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
+- **Last changes (09:10 UTC):**
+  - [x] **fix(heartbeat): fail fast when core command dependencies are missing in Step-1 health runner** — hardened `scripts/heartbeat-health.sh` with explicit required-command checks (`git`, `npm`, `mktemp`, `tail`) and a clear warning when optional `timeout` is unavailable.
+

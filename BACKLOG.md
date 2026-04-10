@@ -1,3 +1,11 @@
+## Status Summary (2026-04-10 11:12 UTC)
+- **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`npm run heartbeat:bootstrap`, `npm run heartbeat:health`), plus post-change full `npm run build && npm run test && npm audit --audit-level=high` rerun passed.
+- **Deployment:** 🔄 Pending in this heartbeat (will restart services + run deploy/frontend audits after commit).
+- **Frontend Audit:** 🔄 Pending in this heartbeat (scheduled after restart).
+- **Branch:** heartbeat/2026-04-08-noon (rotation check still pending for this run; outside scheduled window at start time 11:02 UTC).
+- **Last changes (11:12 UTC):**
+  - [x] **fix(heartbeat): validate rotate branch inputs with strict suffix/ref-name checks** — hardened `scripts/heartbeat-rotate-branch.sh` to reject malformed `--name` suffixes and invalid/whitespace-containing branch names via `git check-ref-format --branch`, preventing unsafe branch creation attempts in Step-6 automation.
+
 ## Status Summary (2026-04-10 10:12 UTC)
 - **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`), plus post-change build/test/audit rerun passed.
 - **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy verification passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` auth-path checks returned expected `401`).
@@ -13,14 +21,6 @@
 - **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 09:11 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
 - **Last changes (09:10 UTC):**
   - [x] **fix(heartbeat): fail fast when core command dependencies are missing in Step-1 health runner** — hardened `scripts/heartbeat-health.sh` with explicit required-command checks (`git`, `npm`, `mktemp`, `tail`) and a clear warning when optional `timeout` is unavailable.
-
-## Status Summary (2026-04-10 08:12 UTC)
-- **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`), plus post-change build/test/audit rerun passed.
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy verification passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` auth-path checks returned expected `401`).
-- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, `npm run audit:frontend`: 54/54, `npm run audit:frontend:prod`: 108/108).
-- **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 08:12 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows)
-- **Last changes (08:12 UTC):**
-  - [x] **fix(heartbeat): fail fast when `grep`/`tr` are missing in frontend asset audit** — hardened `scripts/audit-frontend-pages.sh` with explicit command dependency checks so Step-5 asset parsing failures are immediate and actionable.
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
@@ -98,6 +98,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Validate heartbeat Step-6 branch-rotation suffix and branch-name inputs before git operations** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-rotate-branch.sh` to fail fast on invalid `--name` suffix values (lowercase alnum + hyphen only) and malformed/whitespace branch names via `git check-ref-format --branch`.
 - [x] **Fail fast on missing core command dependencies in heartbeat Step-0 bootstrap checks** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-bootstrap.sh` with explicit required-command checks (`git`, `ssh`, `node`) so Step-0 fails immediately with actionable errors when bootstrap runtime dependencies are unavailable.
 - [x] **Fail fast on missing core command dependencies in heartbeat Step-1 health checks** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-health.sh` with explicit checks for required commands (`git`, `npm`, `mktemp`, `tail`) so Step-1 fails immediately with actionable errors when runtime dependencies are unavailable; emits a clear warning when optional `timeout` is missing and falls back without time bounds.
 - [x] **Fail fast on missing `grep`/`tr` dependencies in frontend asset audits** - ✅ Done (2026-04-10). Hardened `scripts/audit-frontend-pages.sh` with explicit `grep`/`tr` command checks so Step-5 static-asset parsing failures are immediate and actionable when core text-processing dependencies are unavailable.

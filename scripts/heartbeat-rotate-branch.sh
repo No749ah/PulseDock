@@ -19,6 +19,39 @@ EXPLICIT_NEW_BRANCH=""
 ALLOW_OFF_SCHEDULE=false
 ROTATION_WINDOW_GRACE_MINUTES="${HEARTBEAT_ROTATE_WINDOW_GRACE_MINUTES:-5}"
 
+validate_custom_suffix() {
+  local suffix="$1"
+
+  if [[ -z "$suffix" ]]; then
+    echo "Custom suffix must be non-empty." >&2
+    exit 1
+  fi
+
+  if ! [[ "$suffix" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+    echo "Invalid --name suffix '$suffix'. Use lowercase letters, numbers, and hyphens only." >&2
+    exit 1
+  fi
+}
+
+validate_branch_name() {
+  local branch="$1"
+
+  if [[ -z "$branch" ]]; then
+    echo "Branch name must be non-empty." >&2
+    exit 1
+  fi
+
+  if [[ "$branch" =~ [[:space:]] ]]; then
+    echo "Branch name must not contain whitespace (got '$branch')." >&2
+    exit 1
+  fi
+
+  if ! git check-ref-format --branch "$branch" >/dev/null 2>&1; then
+    echo "Invalid git branch name: '$branch'." >&2
+    exit 1
+  fi
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --name)
@@ -26,6 +59,7 @@ while [[ $# -gt 0 ]]; do
         echo "--name requires a non-empty suffix value." >&2
         exit 1
       fi
+      validate_custom_suffix "$2"
       CUSTOM_SUFFIX="$2"
       shift 2
       ;;
@@ -34,6 +68,7 @@ while [[ $# -gt 0 ]]; do
         echo "--new-branch requires a non-empty heartbeat/* branch name." >&2
         exit 1
       fi
+      validate_branch_name "$2"
       EXPLICIT_NEW_BRANCH="$2"
       shift 2
       ;;
@@ -158,6 +193,7 @@ git fetch origin --prune
 git pull --ff-only origin "$OLD_BRANCH" >/dev/null 2>&1 || true
 
 NEW_BRANCH="$(compute_new_branch)"
+validate_branch_name "$NEW_BRANCH"
 if [[ "$NEW_BRANCH" != heartbeat/* ]]; then
   echo "New branch must be heartbeat/*, got '$NEW_BRANCH'." >&2
   exit 1

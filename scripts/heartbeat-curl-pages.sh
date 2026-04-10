@@ -208,13 +208,18 @@ check_origin() {
   local base="$1"
   section "HEAD route audit: $base"
 
-  local route code attempt
+  local route code attempt result effective_url normalized_effective expected_a expected_b
   for route in "${HEARTBEAT_REQUIRED_ROUTES[@]}"; do
     code="000"
+    result="000|"
+    effective_url=""
+
     for ((attempt=1; attempt<=MAX_RETRIES; attempt++)); do
-      if ! code=$(curl -s -o /dev/null -w "%{http_code}" -I --max-time "$REQUEST_TIMEOUT_SECONDS" --connect-timeout "$CONNECT_TIMEOUT_SECONDS" "$base$route" 2>/dev/null); then
-        code="000"
+      if ! result=$(curl -sL -o /dev/null -w "%{http_code}|%{url_effective}" -I --max-time "$REQUEST_TIMEOUT_SECONDS" --connect-timeout "$CONNECT_TIMEOUT_SECONDS" "$base$route" 2>/dev/null); then
+        result="000|"
       fi
+      code="${result%%|*}"
+
       if [[ "$code" == "200" ]]; then
         break
       fi
@@ -229,13 +234,24 @@ check_origin() {
       fi
     done
 
-    if [[ "$code" == "200" ]]; then
+    code="${result%%|*}"
+    effective_url="${result#*|}"
+    normalized_effective="${effective_url%%\?*}"
+    normalized_effective="${normalized_effective%%#*}"
+
+    expected_a="$base$route"
+    expected_b="$base$route/"
+
+    if [[ "$code" == "200" && ( "$normalized_effective" == "$expected_a" || "$normalized_effective" == "$expected_b" ) ]]; then
       if [[ "$attempt" -gt 1 ]]; then
-        echo -e "  ${GREEN}✓${RESET} $base$route → HTTP $code (recovered after $attempt attempts)"
+        echo -e "  ${GREEN}✓${RESET} $base$route → HTTP $code (no redirect drift, recovered after $attempt attempts)"
       else
-        echo -e "  ${GREEN}✓${RESET} $base$route → HTTP $code"
+        echo -e "  ${GREEN}✓${RESET} $base$route → HTTP $code (no redirect drift)"
       fi
       ((PASS+=1))
+    elif [[ "$code" == "200" ]]; then
+      echo -e "  ${RED}✗${RESET} $base$route → redirected to $effective_url"
+      ((FAIL+=1))
     else
       echo -e "  ${RED}✗${RESET} $base$route → expected 200, got $code (after $MAX_RETRIES attempts)"
       ((FAIL+=1))

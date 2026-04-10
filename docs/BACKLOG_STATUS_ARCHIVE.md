@@ -1214,3 +1214,13 @@ Archived status summaries pruned from `BACKLOG.md`.
 - **Last changes (16:46 UTC):**
   - [x] **fix(security): patch Next.js server-components DoS advisory** — upgraded web dependency `next` from `^16.2.1` to `^16.2.3`, refreshed lockfile, and cleared the high-severity `GHSA-q4gf-8mx6-v5v3` audit finding.
 
+
+## Archive batch 2026-04-10 23:12 UTC
+## Status Summary (2026-04-10 20:10 UTC)
+- **Build/Test/Audit:** ✅ Step-0 + Step-1 heartbeat checks passed (`docker/ssh/dind`, `git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`), and post-change validation passed (`npm run build && npm run test && npm audit --audit-level=high`, 0 vulnerabilities).
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` returned expected `401` with invalid bearer).
+- **Frontend Audit:** ✅ Required route checks passed locally and via reverse proxy (`curl -I` on `/login /dashboard /monitors /alerts /account /projects /versions /admin`, plus `npm run audit:frontend` and `npm run audit:frontend:prod`).
+- **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 20:10 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
+- **Last changes (20:10 UTC):**
+  - [x] **fix(heartbeat): add required-command checks to check/cycle orchestrators** — hardened `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` with fail-fast dependency validation (`git`, `npm`, `date`) before executing branch safety, bootstrap, and downstream heartbeat steps.
+

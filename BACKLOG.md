@@ -1,8 +1,8 @@
 ## Status Summary (2026-04-10 21:29 UTC)
 - **Build/Test/Audit:** ✅ Full heartbeat checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`) and post-change validation remained green (`npm run build && npm run test && npm audit --audit-level=high`, 0 vulnerabilities).
-- **Deployment:** ⏳ Pending restart/deploy audit in this heartbeat cycle.
-- **Frontend Audit:** ⏳ Pending full route/asset and HEAD/public audits in this heartbeat cycle.
-- **Branch:** heartbeat/2026-04-10-noon (rotation check remains off-window at 21:29 UTC).
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` returned expected `401` with invalid bearer).
+- **Frontend Audit:** ✅ Required local + public route checks, static-asset checks, and HEAD checks passed (`npm run audit:frontend`, `npm run audit:frontend:heads`, `npm run audit:frontend:prod`, `npm run audit:frontend:heads:prod`; all green).
+- **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 21:30 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
 - **Last changes (21:29 UTC):**
   - [x] **fix(heartbeat): hard-cap Step-5 frontend audit limit overrides** — hardened `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` with explicit hard caps for limit env overrides so malformed oversized `*_LIMIT` values fail fast before route and asset audits run.
 

@@ -1,10 +1,10 @@
-## Status Summary (2026-04-10 05:14 UTC)
+## Status Summary (2026-04-10 06:12 UTC)
 - **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`), plus post-change build/test/audit rerun passed.
 - **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy verification passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` auth-path checks returned expected `401`).
 - **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, `npm run audit:frontend`: 54/54, `npm run audit:frontend:prod`: 108/108).
-- **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 05:14 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows)
-- **Last changes (05:14 UTC):**
-  - [x] **fix(heartbeat): cap bootstrap timeout env values with explicit upper bounds** — hardened `scripts/heartbeat-bootstrap.sh` with validated limits for SSH and dind socket timeout envs so oversized values fail fast before Step-0 checks run.
+- **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 06:12 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows)
+- **Last changes (06:12 UTC):**
+  - [x] **fix(heartbeat): validate bootstrap boolean env toggles** — hardened `scripts/heartbeat-bootstrap.sh` with fail-fast validation for `HEARTBEAT_REQUIRE_DOCKER` and `HEARTBEAT_REQUIRE_GITHUB_SSH` so typoed values cannot silently alter bootstrap behavior.
 
 ## Status Summary (2026-04-10 04:58 UTC)
 - **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`), plus post-change build/test/audit rerun passed.
@@ -100,6 +100,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Validate heartbeat bootstrap boolean toggles as strict true/false values** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-bootstrap.sh` with fail-fast boolean validation for `HEARTBEAT_REQUIRE_DOCKER` and `HEARTBEAT_REQUIRE_GITHUB_SSH` to prevent typoed values from silently changing Step-0 behavior.
 - [x] **Cap heartbeat Step-0 bootstrap timeout env values with explicit upper bounds** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-bootstrap.sh` with bounded validation for `HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS`/`HEARTBEAT_PORT_CHECK_TIMEOUT_MS` plus new limit env controls (`HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS_LIMIT`, `HEARTBEAT_PORT_CHECK_TIMEOUT_MS_LIMIT`) so oversized values fail fast before bootstrap checks run.
 - [x] **Cap heartbeat Step-1 health-check timeout env values with explicit upper bounds** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-health.sh` with validated limit env controls (`HEARTBEAT_GIT_PULL_TIMEOUT_SECONDS_LIMIT`, `HEARTBEAT_BUILD_TIMEOUT_SECONDS_LIMIT`, `HEARTBEAT_TEST_TIMEOUT_SECONDS_LIMIT`, `HEARTBEAT_AUDIT_TIMEOUT_SECONDS_LIMIT`) so oversized timeout values fail fast before Step-1 checks run.
 - [x] **Harden web build backup cleanup and shell failure handling** - ✅ Done (2026-04-10). Updated `scripts/build-web.sh` to use strict shell mode (`set -euo pipefail`) and added EXIT-trap cleanup for temporary `.next/static` backup directories so interrupted/failing builds cannot leak temp paths.

@@ -68,6 +68,16 @@ validate_positive_integer_bounded() {
   fi
 }
 
+validate_boolean() {
+  local label="$1"
+  local value="$2"
+
+  if [[ "$value" != "true" && "$value" != "false" ]]; then
+    echo "${label} must be 'true' or 'false'. Got: '${value}'." >&2
+    exit 1
+  fi
+}
+
 is_port_reachable() {
   local host="$1"
   local port="$2"
@@ -91,6 +101,8 @@ assert_port_reachable() {
 step "SSH key symlink"
 validate_positive_integer_bounded "HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS" "${HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS}" "HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS_LIMIT" "${HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS_LIMIT}"
 validate_positive_integer_bounded "HEARTBEAT_PORT_CHECK_TIMEOUT_MS" "${HEARTBEAT_PORT_CHECK_TIMEOUT_MS}" "HEARTBEAT_PORT_CHECK_TIMEOUT_MS_LIMIT" "${HEARTBEAT_PORT_CHECK_TIMEOUT_MS_LIMIT}"
+validate_boolean "HEARTBEAT_REQUIRE_DOCKER" "${HEARTBEAT_REQUIRE_DOCKER}"
+validate_boolean "HEARTBEAT_REQUIRE_GITHUB_SSH" "${HEARTBEAT_REQUIRE_GITHUB_SSH}"
 
 if [[ ! -L "${SSH_LINK}" || ! -f "${SSH_LINK}/id_ed25519" ]]; then
   rm -rf "${SSH_LINK}"

@@ -31,9 +31,9 @@ GREEN='\033[0;32m'; CYAN='\033[0;36m'; BOLD='\033[1m'; RESET='\033[0m'
 
 run_step() {
   local label="$1"
-  local cmd="$2"
+  shift
   echo -e "\n${BOLD}${CYAN}==> ${label}${RESET}"
-  eval "$cmd"
+  "$@"
   echo -e "${GREEN}✓ ${label}${RESET}"
 }
 
@@ -64,25 +64,31 @@ ensure_safe_branch() {
 
 echo -e "${BOLD}PulseDock Heartbeat Cycle $(date -u '+%Y-%m-%d %H:%M UTC')${RESET}"
 
-run_step "Branch safety check" "ensure_safe_branch"
-run_step "Environment bootstrap" "npm run heartbeat:bootstrap"
-run_step "Health check (git pull + build/test/audit tails)" "npm run heartbeat:health"
-run_step "Restart services" "npm run restart"
+run_step "Branch safety check" ensure_safe_branch
+run_step "Environment bootstrap" npm run heartbeat:bootstrap
+run_step "Health check (git pull + build/test/audit tails)" npm run heartbeat:health
+run_step "Restart services" npm run restart
 
 if $CHECK_PUBLIC && $STRICT_AUTH; then
-  run_step "Post-deploy audit (local + public, strict auth)" "npm run audit:deploy:strict:prod"
+  run_step "Post-deploy audit (local + public, strict auth)" npm run audit:deploy:strict:prod
 elif $CHECK_PUBLIC; then
-  run_step "Post-deploy audit (local + public)" "npm run audit:deploy:prod"
+  run_step "Post-deploy audit (local + public)" npm run audit:deploy:prod
 elif $STRICT_AUTH; then
-  run_step "Post-deploy audit (local, strict auth)" "npm run audit:deploy:strict"
+  run_step "Post-deploy audit (local, strict auth)" npm run audit:deploy:strict
 else
-  run_step "Post-deploy audit (local)" "npm run audit:deploy"
+  run_step "Post-deploy audit (local)" npm run audit:deploy
 fi
 
 if $CHECK_PUBLIC; then
-  run_step "Frontend route audit (local + public)" "npm run audit:frontend:prod"
+  run_step "Frontend route audit (local + public)" npm run audit:frontend:prod
+  run_step "Frontend HEAD curl audit (local + public)" npm run audit:frontend:heads:prod
 else
-  run_step "Frontend route audit (local)" "npm run audit:frontend"
+  run_step "Frontend route audit (local)" npm run audit:frontend
+  run_step "Frontend HEAD curl audit (local)" npm run audit:frontend:heads
 fi
+
+run_step "Backlog status-summary prune" npm run backlog:prune
+
+run_step "Branch rotation (scheduled windows only)" npm run heartbeat:rotate:if-due
 
 echo -e "\n${GREEN}${BOLD}Heartbeat cycle complete.${RESET}"

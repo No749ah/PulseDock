@@ -9,6 +9,19 @@ set -uo pipefail
 WEB_BASE="${WEB_BASE_URL:-http://localhost:1234}"
 PUBLIC_BASE="${PUBLIC_BASE_URL:-https://oc-dev-test.no749ah.com}"
 CHECK_PUBLIC=false
+REQUEST_TIMEOUT_SECONDS="${FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS:-15}"
+CONNECT_TIMEOUT_SECONDS="${FRONTEND_AUDIT_CONNECT_TIMEOUT_SECONDS:-5}"
+REQUEST_TIMEOUT_SECONDS_LIMIT="${FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS_LIMIT:-60}"
+CONNECT_TIMEOUT_SECONDS_LIMIT="${FRONTEND_AUDIT_CONNECT_TIMEOUT_SECONDS_LIMIT:-30}"
+
+require_command() {
+  local command_name="$1"
+
+  if ! command -v "$command_name" >/dev/null 2>&1; then
+    echo "Missing required command: $command_name" >&2
+    exit 1
+  fi
+}
 
 normalize_base() {
   local base="$1"
@@ -16,11 +29,57 @@ normalize_base() {
   echo "${base%/}"
 }
 
+validate_origin_base() {
+  local label="$1"
+  local value="$2"
+  local without_scheme
+
+  if [[ -z "$value" ]]; then
+    echo "$label must not be empty" >&2
+    exit 1
+  fi
+
+  if [[ "$value" =~ [[:space:]] ]]; then
+    echo "$label must not contain whitespace (got: $value)" >&2
+    exit 1
+  fi
+
+  if [[ "$value" == *\?* || "$value" == *\#* ]]; then
+    echo "$label must not contain query/fragment components (got: $value)" >&2
+    exit 1
+  fi
+
+  without_scheme="${value#http://}"
+  without_scheme="${without_scheme#https://}"
+
+  if [[ -z "$without_scheme" || "$without_scheme" == :* || "$without_scheme" == *@* ]]; then
+    echo "$label must include a valid host[:port] origin and must not include userinfo (got: $value)" >&2
+    exit 1
+  fi
+
+  if [[ ! "$value" =~ ^https?://[^/]+$ ]]; then
+    echo "$label must be an http(s) origin without path/query/fragment (got: $value)" >&2
+    exit 1
+  fi
+}
+
 WEB_BASE="$(normalize_base "$WEB_BASE")"
 PUBLIC_BASE="$(normalize_base "$PUBLIC_BASE")"
+validate_origin_base "WEB_BASE_URL" "$WEB_BASE"
+validate_origin_base "PUBLIC_BASE_URL" "$PUBLIC_BASE"
 
 usage() {
   echo "Usage: $0 [--public]" >&2
+}
+
+validate_positive_integer() {
+  local label="$1"
+  local value="$2"
+
+  if [[ ! "$value" =~ ^[0-9]+$ ]] || [[ "$value" -lt 1 ]]; then
+    echo "$label must be a positive integer (got: $value)" >&2
+    exit 1
+  fi
 }
 
 for arg in "$@"; do
@@ -36,16 +95,42 @@ for arg in "$@"; do
   esac
 done
 
-ROUTES=(
-  "/login"
-  "/dashboard"
-  "/monitors"
-  "/alerts"
-  "/account"
-  "/projects"
-  "/versions"
-  "/admin"
-)
+validate_positive_integer "FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS" "$REQUEST_TIMEOUT_SECONDS"
+validate_positive_integer "FRONTEND_AUDIT_CONNECT_TIMEOUT_SECONDS" "$CONNECT_TIMEOUT_SECONDS"
+validate_positive_integer "FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS_LIMIT" "$REQUEST_TIMEOUT_SECONDS_LIMIT"
+validate_positive_integer "FRONTEND_AUDIT_CONNECT_TIMEOUT_SECONDS_LIMIT" "$CONNECT_TIMEOUT_SECONDS_LIMIT"
+
+if [[ "$REQUEST_TIMEOUT_SECONDS" -gt "$REQUEST_TIMEOUT_SECONDS_LIMIT" ]]; then
+  echo "FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS must be <= FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS_LIMIT (got: $REQUEST_TIMEOUT_SECONDS > $REQUEST_TIMEOUT_SECONDS_LIMIT)" >&2
+  exit 1
+fi
+
+if [[ "$CONNECT_TIMEOUT_SECONDS" -gt "$CONNECT_TIMEOUT_SECONDS_LIMIT" ]]; then
+  echo "FRONTEND_AUDIT_CONNECT_TIMEOUT_SECONDS must be <= FRONTEND_AUDIT_CONNECT_TIMEOUT_SECONDS_LIMIT (got: $CONNECT_TIMEOUT_SECONDS > $CONNECT_TIMEOUT_SECONDS_LIMIT)" >&2
+  exit 1
+fi
+
+if [[ "$CONNECT_TIMEOUT_SECONDS" -gt "$REQUEST_TIMEOUT_SECONDS" ]]; then
+  echo "FRONTEND_AUDIT_CONNECT_TIMEOUT_SECONDS must be <= FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS" >&2
+  exit 1
+fi
+
+require_command curl
+require_command grep
+require_command tr
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=./heartbeat-required-routes.sh
+if [[ ! -r "$SCRIPT_DIR/heartbeat-required-routes.sh" ]]; then
+  echo "Missing required routes definition: $SCRIPT_DIR/heartbeat-required-routes.sh" >&2
+  exit 1
+fi
+source "$SCRIPT_DIR/heartbeat-required-routes.sh"
+
+if [[ ${#HEARTBEAT_REQUIRED_ROUTES[@]} -eq 0 ]]; then
+  echo "No required routes configured in scripts/heartbeat-required-routes.sh" >&2
+  exit 1
+fi
 
 PASS=0
 FAIL=0
@@ -63,7 +148,9 @@ check_route() {
   local route="$2"
   local code effective_url result normalized_effective expected_a expected_b
 
-  result=$(curl -sL -o /dev/null -w "%{http_code}|%{url_effective}" --max-time 10 --connect-timeout 5 "$base$route" 2>/dev/null || echo "000|")
+  if ! result=$(curl -sL -o /dev/null -w "%{http_code}|%{url_effective}" --max-time "$REQUEST_TIMEOUT_SECONDS" --connect-timeout "$CONNECT_TIMEOUT_SECONDS" "$base$route" 2>/dev/null); then
+    result="000|"
+  fi
   code="${result%%|*}"
   effective_url="${result#*|}"
   normalized_effective="${effective_url%%\?*}"
@@ -93,7 +180,9 @@ check_asset_url() {
   SEEN_ASSET_URLS["$url"]=1
 
   local code
-  code=$(curl -so /dev/null -w "%{http_code}" --max-time 10 "$url" 2>/dev/null || echo "000")
+  if ! code=$(curl -so /dev/null -w "%{http_code}" --max-time "$REQUEST_TIMEOUT_SECONDS" --connect-timeout "$CONNECT_TIMEOUT_SECONDS" "$url" 2>/dev/null); then
+    code="000"
+  fi
   if [[ "$code" == "200" ]]; then
     ok "asset $url → HTTP 200"
   else
@@ -128,8 +217,8 @@ audit_assets_for_origin() {
   section "Static asset audit: $base"
 
   local route html rel_assets abs_assets
-  for route in "${ROUTES[@]}"; do
-    html=$(curl -sL --max-time 15 "$base$route" 2>/dev/null || true)
+  for route in "${HEARTBEAT_REQUIRED_ROUTES[@]}"; do
+    html=$(curl -sL --max-time "$REQUEST_TIMEOUT_SECONDS" --connect-timeout "$CONNECT_TIMEOUT_SECONDS" "$base$route" 2>/dev/null || true)
     if [[ -z "$html" ]]; then
       fail_ "asset discovery failed for $base$route (empty response body)"
       continue
@@ -160,7 +249,7 @@ audit_assets_for_origin() {
 audit_origin() {
   local base="$1"
   section "Route audit: $base"
-  for route in "${ROUTES[@]}"; do
+  for route in "${HEARTBEAT_REQUIRED_ROUTES[@]}"; do
     check_route "$base" "$route"
   done
 }

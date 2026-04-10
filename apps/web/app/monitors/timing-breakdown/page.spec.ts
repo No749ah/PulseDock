@@ -1,5 +1,6 @@
 // Unit tests for monitors/timing-breakdown/page.tsx pure helpers
 import { describe, it, expect } from 'vitest';
+import { computeWaterfallSegments } from './waterfall';
 
 // ─── PHASE_CONFIG ─────────────────────────────────────────────────────────────
 
@@ -92,21 +93,43 @@ describe('formatMs', () => {
 
 // ─── WaterfallBar percentage computation ──────────────────────────────────────
 
-function computeWaterfallPct(ms: number, totalMs: number): number {
-  return Math.max(1, Math.round((ms / totalMs) * 100));
-}
+describe('computeWaterfallSegments', () => {
+  it('filters out null/invalid phases', () => {
+    const segments = computeWaterfallSegments(
+      [['dns', 5], ['tcp', null], ['tls', Number.NaN], ['ttfb', 0], ['download', -3]],
+      10,
+    );
 
-describe('computeWaterfallPct', () => {
-  it('returns 100 for full total', () => expect(computeWaterfallPct(100, 100)).toBe(100));
-  it('returns 50 for half', () => expect(computeWaterfallPct(50, 100)).toBe(50));
-  it('returns minimum 1 for very small fraction', () => expect(computeWaterfallPct(1, 10000)).toBe(1));
-  it('returns 25 for quarter', () => expect(computeWaterfallPct(25, 100)).toBe(25));
-  it('rounds 33.3 to 33', () => expect(computeWaterfallPct(100, 300)).toBe(33));
-  it('rounds 66.6 to 67', () => expect(computeWaterfallPct(200, 300)).toBe(67));
-  it('handles typical DNS timing (5ms of 200ms total)', () => {
-    const pct = computeWaterfallPct(5, 200);
-    expect(pct).toBeGreaterThanOrEqual(1);
-    expect(pct).toBeLessThan(10);
+    expect(segments).toHaveLength(1);
+    expect(segments[0]).toMatchObject({ phase: 'dns', ms: 5, pct: 50 });
+  });
+
+  it('uses phase sum when total is invalid', () => {
+    const segments = computeWaterfallSegments(
+      [['dns', 25], ['tcp', 75], ['tls', null], ['ttfb', null], ['download', null]],
+      0,
+    );
+
+    expect(segments.map((segment) => segment.pct)).toEqual([25, 75]);
+  });
+
+  it('prevents aggregate overflow above 100%', () => {
+    const segments = computeWaterfallSegments(
+      [['dns', 99], ['tcp', 99], ['tls', 99], ['ttfb', null], ['download', null]],
+      100,
+    );
+
+    const totalPct = segments.reduce((sum, segment) => sum + segment.pct, 0);
+    expect(totalPct).toBeLessThanOrEqual(100);
+  });
+
+  it('keeps a minimum visible width for very small phases', () => {
+    const segments = computeWaterfallSegments(
+      [['dns', 1], ['tcp', 1], ['tls', null], ['ttfb', null], ['download', null]],
+      10_000,
+    );
+
+    expect(segments.map((segment) => segment.pct)).toEqual([1, 1]);
   });
 });
 

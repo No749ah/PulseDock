@@ -147,8 +147,14 @@ export function useVersions(): UseVersionsReturn {
     setLoading(true);
     try {
       const [data, monitors] = await Promise.all([
-        api<Summary>('/v1/monitors/version-summary'),
-        api<MonitorDetails[]>('/v1/monitors'),
+        api<Summary>('/v1/monitors/version-summary').catch((error) => {
+          console.error('Failed to load version summary', error);
+          return { stats: { total: 0, upToDate: 0, outdated: 0, unknown: 0 }, items: [] } as Summary;
+        }),
+        api<MonitorDetails[]>('/v1/monitors').catch((error) => {
+          console.error('Failed to load monitors for versions', error);
+          return [] as MonitorDetails[];
+        }),
       ]);
       setSummary(data);
       const map: Record<string, MonitorDetails> = {};
@@ -159,7 +165,11 @@ export function useVersions(): UseVersionsReturn {
     }
   }, []);
 
-  useEffect(() => { load().catch(() => router.push('/login')); }, [load, router]);
+  useEffect(() => {
+    load().catch((error) => {
+      console.error('Versions page load failed', error);
+    });
+  }, [load]);
 
   // Load tool registry once
   useEffect(() => {

@@ -191,47 +191,49 @@ export function NotificationPrefsCard({ notifPrefs, userId, onPrefsChange, toast
       )}
 
       {/* Alert Storm Protection */}
-      <div className="pt-4 border-t border-border">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-sm font-medium text-text-primary">Alert Storm Protection</p>
-            <p className="text-xs text-text-secondary mt-0.5">
-              Suppress alerts when too many fire in a short window. Prevents notification floods during major incidents.
-            </p>
-          </div>
-          <button
-            type="button"
-            role="switch"
-            aria-checked={notifPrefs!.alertStormProtection ?? false}
-            onClick={() => handleUpdateNotifPrefs({ alertStormProtection: !(notifPrefs!.alertStormProtection ?? false) })}
-            className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
-              (notifPrefs!.alertStormProtection ?? false) ? "bg-accent" : "bg-surface-elevated border border-border"
-            }`}
-          >
-            <span
-              className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${
-                (notifPrefs!.alertStormProtection ?? false) ? "translate-x-5" : "translate-x-0"
+      {notifPrefs && (
+        <div className="pt-4 border-t border-border">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-sm font-medium text-text-primary">Alert Storm Protection</p>
+              <p className="text-xs text-text-secondary mt-0.5">
+                Suppress alerts when too many fire in a short window. Prevents notification floods during major incidents.
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={notifPrefs.alertStormProtection ?? false}
+              onClick={() => handleUpdateNotifPrefs({ alertStormProtection: !(notifPrefs.alertStormProtection ?? false) })}
+              className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-accent ${
+                (notifPrefs.alertStormProtection ?? false) ? "bg-accent" : "bg-surface-elevated border border-border"
               }`}
-            />
-          </button>
-        </div>
-        {(notifPrefs!.alertStormProtection ?? false) && (
-          <div className="mt-3 flex items-center gap-3">
-            <label className="text-xs font-medium text-text-secondary whitespace-nowrap">Max alerts per 10 minutes:</label>
-            <input
-              type="number"
-              min={1}
-              max={100}
-              value={notifPrefs!.alertStormThreshold ?? 10}
-              onChange={(e) => handleUpdateNotifPrefs({ alertStormThreshold: Math.max(1, Math.min(100, Number(e.target.value))) })}
-              className="w-20 px-3 py-1.5 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
-            />
-            <p className="text-xs text-text-muted">
-              Alerts beyond this limit are suppressed for 10 min.
-            </p>
+            >
+              <span
+                className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${
+                  (notifPrefs.alertStormProtection ?? false) ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
           </div>
-        )}
-      </div>
+          {(notifPrefs.alertStormProtection ?? false) && (
+            <div className="mt-3 flex items-center gap-3">
+              <label className="text-xs font-medium text-text-secondary whitespace-nowrap">Max alerts per 10 minutes:</label>
+              <input
+                type="number"
+                min={1}
+                max={100}
+                value={notifPrefs.alertStormThreshold ?? 10}
+                onChange={(e) => handleUpdateNotifPrefs({ alertStormThreshold: Math.max(1, Math.min(100, Number(e.target.value))) })}
+                className="w-20 px-3 py-1.5 text-sm rounded-xl border border-border bg-surface text-text-primary focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+              <p className="text-xs text-text-muted">
+                Alerts beyond this limit are suppressed for 10 min.
+              </p>
+            </div>
+          )}
+        </div>
+      )}
     </Card>
   );
 }

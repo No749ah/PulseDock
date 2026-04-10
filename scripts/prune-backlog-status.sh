@@ -3,7 +3,7 @@ set -euo pipefail
 
 BACKLOG_FILE="${1:-BACKLOG.md}"
 ARCHIVE_FILE="${2:-docs/BACKLOG_STATUS_ARCHIVE.md}"
-KEEP_COUNT="${KEEP_STATUS_SUMMARIES:-10}"
+KEEP_COUNT="${KEEP_STATUS_SUMMARIES:-3}"
 
 if ! [[ "$KEEP_COUNT" =~ ^[0-9]+$ ]] || [ "$KEEP_COUNT" -lt 1 ]; then
   echo "KEEP_STATUS_SUMMARIES must be a positive integer (got: $KEEP_COUNT)" >&2

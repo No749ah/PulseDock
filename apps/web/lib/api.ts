@@ -111,7 +111,7 @@ export async function api<T>(path: string, _token?: string, init?: RequestInit):
 
   let response = await run();
 
-  if (response.status === 401 && typeof window !== 'undefined') {
+  if (response.status === 401 && typeof window !== 'undefined' && !path.includes('/v1/auth/refresh')) {
     // Attempt a silent token refresh using the httpOnly refresh cookie.
     const refreshResp = await fetch(`${API_BASE}/v1/auth/refresh`, {
       method: 'POST',

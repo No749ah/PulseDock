@@ -8,7 +8,7 @@
 #
 # FIX: Stop the web server BEFORE building so nothing serves from a half-wiped dir.
 #      The caller (npm run build) must restart the server after this script finishes.
-set -e
+set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPO_ROOT="$SCRIPT_DIR/.."
@@ -21,16 +21,39 @@ bash "$REPO_ROOT/scripts/stop-web.sh" 2>/dev/null || true
 
 # 2. Backup existing static chunks so cached HTML referencing old hashes stays valid.
 cd "$WEB_DIR"
+STATIC_BACKUP_DIR=""
+cleanup_static_backup() {
+  if [ -n "${STATIC_BACKUP_DIR:-}" ] && [ -d "${STATIC_BACKUP_DIR}" ]; then
+    rm -rf "${STATIC_BACKUP_DIR}"
+  fi
+}
+trap cleanup_static_backup EXIT
+
 if [ -d ".next/static" ]; then
   echo "==> Backing up old static chunks…"
-  rm -rf .next/static-prev
-  cp -r .next/static .next/static-prev
+  STATIC_BACKUP_DIR="$(mktemp -d .next/static-prev.XXXXXX)"
+  cp -a .next/static/. "$STATIC_BACKUP_DIR/"
 fi
 
 # 3. Build
 #    Prevent stale lock collisions from interrupted prior builds and keep memory bounded
 #    in constrained environments.
-rm -f .next/lock
+#    Also clear long-lived orphaned local next-build processes for this repo/workdir
+#    to avoid false "another next build process is already running" failures in heartbeat runs.
+#    Only target processes older than 10 minutes so we never kill fresh wrapper processes
+#    created by the current npm invocation.
+stale_build_pids="$(ps -eo pid=,etimes=,args= | awk -v web_dir="$WEB_DIR" '$0 ~ /next build/ && index($0, web_dir) > 0 && $2 > 600 { print $1 }')"
+if [ -n "$stale_build_pids" ]; then
+  echo "==> Stopping stale next build process(es): $stale_build_pids"
+  kill $stale_build_pids 2>/dev/null || true
+  sleep 1
+  stale_build_pids="$(ps -eo pid=,etimes=,args= | awk -v web_dir="$WEB_DIR" '$0 ~ /next build/ && index($0, web_dir) > 0 && $2 > 600 { print $1 }')"
+  if [ -n "$stale_build_pids" ]; then
+    echo "==> Force-killing stale next build process(es): $stale_build_pids"
+    kill -9 $stale_build_pids 2>/dev/null || true
+  fi
+fi
+rm -f .next/lock .next/build.lock
 : "${NODE_OPTIONS:=--max-old-space-size=768}"
 echo "==> Building web… (NODE_OPTIONS=$NODE_OPTIONS)"
 # Next.js 16.2+ defaults to Turbopack which omits required-server-files.json.
@@ -40,10 +63,10 @@ NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS="$NODE_OPTIONS" npx next build --webpack
 # 4. Merge old chunks back — old hashes coexist with new ones.
 #    Browsers or CDNs that cached old HTML still get their chunks served.
 #    New chunks win (cp -rn = no-overwrite for existing files).
-if [ -d ".next/static-prev" ]; then
+if [ -n "$STATIC_BACKUP_DIR" ] && [ -d "$STATIC_BACKUP_DIR" ]; then
   echo "==> Merging old static chunks into new build…"
-  cp -rn .next/static-prev/. .next/static/
-  rm -rf .next/static-prev
+  cp -rn "$STATIC_BACKUP_DIR"/. .next/static/
+  cleanup_static_backup
   echo "==> Merge done."
 fi
 

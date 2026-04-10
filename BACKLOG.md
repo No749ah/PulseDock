@@ -1,256 +1,34 @@
-## Status Summary (2026-04-08 12:18 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, including API health/login/proxy + public checks; authenticated API check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Full frontend route+asset audits passing (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
-- **Branch:** heartbeat/2026-04-08-noon (rotated at 12:00 window with old heartbeat branch deleted local+remote)
-- **Last changes (12:18 UTC):**
-  - [x] **fix(devx): allow scheduled heartbeat branch rotation grace window** — `scripts/heartbeat-rotate-branch.sh` now accepts `HEARTBEAT_ROTATE_WINDOW_GRACE_MINUTES` (default `5`) so scheduled 00:00/12:00 rotations can run within minute jitter without manual override.
+## Status Summary (2026-04-10 12:10 UTC)
+- **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`).
+- **Deployment:** 🚧 Pending Step-3 restart + post-deploy verification (scheduled after branch rotation and push).
+- **Frontend Audit:** 🚧 Pending mandatory Step-5 local/public route HEAD checks after restart.
+- **Branch:** heartbeat/2026-04-08-noon (rotation due window active at 12:xx UTC).
+- **Last changes (12:10 UTC):**
+  - [x] **fix(heartbeat): only swallow old-branch sync when remote heartbeat branch is truly absent** — hardened `scripts/heartbeat-rotate-branch.sh` to probe `origin/<old-branch>` first and only skip sync when the remote branch does not exist, while surfacing real `git pull --ff-only` failures instead of silently continuing with stale branch state.
 
----
+## Status Summary (2026-04-10 11:12 UTC)
+- **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`npm run heartbeat:bootstrap`, `npm run heartbeat:health`), plus post-change full `npm run build && npm run test && npm audit --audit-level=high` rerun passed.
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` returned expected `401`).
+- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, direct local route curls: 8/8 HTTP 200, public `/login` + `/dashboard`: 200).
+- **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 11:12 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
+- **Last changes (11:12 UTC):**
+  - [x] **fix(heartbeat): validate rotate branch inputs with strict suffix/ref-name checks** — hardened `scripts/heartbeat-rotate-branch.sh` to reject malformed `--name` suffixes and invalid/whitespace-containing branch names via `git check-ref-format --branch`, preventing unsafe branch creation attempts in Step-6 automation.
 
-## Status Summary (2026-04-08 11:13 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, including API health/login/proxy + public checks; authenticated API check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Full frontend route+asset audits passing (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
-- **Branch:** heartbeat/2026-04-08-midnight (no rotation at 11:00 UTC; scheduled window is exactly 00:00/12:00 UTC)
-- **Last changes (11:13 UTC):**
-  - [x] **fix(devx): enforce heartbeat branch safety in Step-1 health runner** — `scripts/heartbeat-health.sh` now fails on `main`, `dev`, detached HEAD, or non-`heartbeat/*` branches before running `git pull`/build/test/audit.
-
----
-
-## Status Summary (2026-04-08 10:12 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, including API health/login/proxy + public checks; authenticated API check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Full frontend route+asset audits passing (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
-- **Branch:** heartbeat/2026-04-08-midnight (no rotation at 10:00 UTC; scheduled window is exactly 00:00/12:00 UTC)
+## Status Summary (2026-04-10 10:12 UTC)
+- **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`), plus post-change build/test/audit rerun passed.
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy verification passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` auth-path checks returned expected `401`).
+- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, direct local route curl checks: 8/8 HTTP 200).
+- **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 10:15 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
 - **Last changes (10:12 UTC):**
-  - [x] **fix(devx): remove duplicate dind reachability logs in heartbeat bootstrap** — `scripts/heartbeat-bootstrap.sh` now performs silent preflight port checks and logs PostgreSQL/Redis reachability once after optional service start, with explicit failure messages if either port remains unreachable.
+  - [x] **fix(heartbeat): fail fast when core bootstrap command dependencies are missing** — hardened `scripts/heartbeat-bootstrap.sh` with explicit required-command checks (`git`, `ssh`, `node`) so Step-0 exits immediately with actionable errors when bootstrap runtime dependencies are unavailable.
 
----
-
-## Status Summary (2026-04-08 09:09 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, including API health/login/proxy + public checks; authenticated API check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Full frontend route+asset audits passing (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
-- **Branch:** heartbeat/2026-04-08-midnight (no rotation at 09:00 UTC; scheduled window is exactly 00:00/12:00 UTC)
-- **Last changes (09:09 UTC):**
-  - [x] **chore(devx): wire concise heartbeat health runner into full pipelines** — updated `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` to run `npm run heartbeat:health` for Step-1 (`git pull` + tailed build/test/audit) instead of duplicating raw commands.
-
----
-
-## Status Summary (2026-04-08 08:14 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, including API health/login/proxy + public checks; authenticated API check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Full frontend route+asset audits passing (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
-- **Branch:** heartbeat/2026-04-08-midnight (no rotation at 08:00 UTC; scheduled window is exactly 00:00/12:00 UTC)
-- **Last changes (08:14 UTC):**
-  - [x] **chore(devx): add concise heartbeat health-check runner** — added `scripts/heartbeat-health.sh` + `npm run heartbeat:health` to execute required Step 1 checks with strict failure handling and tailed output (`build` tail -3, `test` tail -5, `audit` tail -3) for cleaner heartbeat logs.
-
----
-
-## Status Summary (2026-04-08 07:09 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5, including API health/login/proxy + public checks; authenticated API check skipped because `HEARTBEAT_AUTH_BEARER_TOKEN` is unset). Full frontend route+asset audits passing (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
-- **Branch:** heartbeat/2026-04-08-midnight (no rotation at 07:00 UTC; scheduled window is exactly 00:00/12:00 UTC)
-- **Last changes (07:09 UTC):**
-  - [x] **fix(devx): enforce exact-minute heartbeat branch rotation windows** — `scripts/heartbeat-rotate-branch.sh` now permits automatic rotation only at exactly `00:00` or `12:00` UTC (`HH:00`), and reports the real current UTC time in rejection errors.
-
----
-
-## Status Summary (2026-04-08 06:10 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5) and full frontend route+asset audits passing locally/publicly (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
-- **Branch:** heartbeat/2026-04-08-midnight (no rotation at 06:00 UTC; scheduled windows are 00:00/12:00 UTC)
-- **Last changes (06:10 UTC):**
-  - [x] **fix(devx): make heartbeat bootstrap Docker check configurable** — `scripts/heartbeat-bootstrap.sh` now checks Docker CLI presence safely and supports `HEARTBEAT_REQUIRE_DOCKER=true` to fail hard when strict enforcement is required.
-
----
-
-## Status Summary (2026-04-08 05:10 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5) and full frontend route+asset audits passing locally/publicly (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
-- **Branch:** heartbeat/2026-04-08-midnight (no rotation at 05:00 UTC; scheduled windows are 00:00/12:00 UTC)
-- **Last changes (05:10 UTC):**
-  - [x] **fix(devx): normalize frontend-audit base URLs to avoid trailing-slash drift** — `scripts/audit-frontend-pages.sh` now trims trailing slashes from `WEB_BASE_URL` / `PUBLIC_BASE_URL` and compares normalized effective URLs, preventing false redirect failures when bases are configured with trailing `/`.
-
----
-
-## Status Summary (2026-04-08 04:12 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`./scripts/audit-deploy.sh --public`: 5/5) and full frontend route+asset audits passing locally/publicly (`./scripts/audit-frontend-pages.sh --public`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
-- **Branch:** heartbeat/2026-04-08-midnight (no rotation at 04:00 UTC; scheduled windows are 00:00/12:00 UTC)
-- **Last changes (04:12 UTC):**
-  - [x] **fix(devx): fail deploy-audit on unknown CLI flags** — `scripts/audit-deploy.sh` now provides `--help` usage output and exits on unknown args instead of silently continuing.
-
----
-
-## Status Summary (2026-04-08 03:08 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5) and full frontend route+asset audits passing locally/publicly (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
-- **Branch:** heartbeat/2026-04-08-midnight (no rotation at 03:00 UTC; scheduled windows are 00:00/12:00 UTC)
-- **Last changes (03:08 UTC):**
-  - [x] **fix(devx): block heartbeat rotation when target branch already exists** — `scripts/heartbeat-rotate-branch.sh` now fails fast if the computed/new heartbeat branch already exists locally or on `origin`, preventing accidental branch reuse/overwrite.
-
----
-
-## Status Summary (2026-04-08 02:08 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5) and full frontend route+asset audits passing locally/publicly (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
-- **Branch:** heartbeat/2026-04-08-midnight (no rotation at 02:00 UTC; scheduled windows are 00:00/12:00 UTC)
-- **Last changes (02:08 UTC):**
-  - [x] **fix(devx): validate required values for heartbeat rotate CLI flags** — `scripts/heartbeat-rotate-branch.sh` now fails fast with explicit errors when `--name` or `--new-branch` are passed without values, preventing ambiguous shell `shift` failures.
-
----
-
-## Status Summary (2026-04-08 01:11 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing; `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5) and full frontend route+asset audits passing locally/publicly (`npm run audit:frontend:prod`: 108/108). Manual curl sweep for `/login /dashboard /monitors /alerts /account /projects /versions /admin` returned HTTP 200 on both local + public origins.
-- **Branch:** heartbeat/2026-04-08-midnight
-- **Last changes (01:11 UTC):**
-  - [x] **chore(devx): gate heartbeat branch rotation to 00:00/12:00 UTC by default** — `scripts/heartbeat-rotate-branch.sh` now fails outside scheduled windows unless explicitly overridden with `--allow-off-schedule`, preventing accidental off-cycle merge/delete rotations.
-
----
-
-## Status Summary (2026-04-08 00:11 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks passing (`npm run audit:deploy:prod`: 5/5) and full frontend route+asset audits passing locally/publicly (`npm run audit:frontend:prod`: 108/108)
-- **Branch:** heartbeat/2026-04-08-midnight (merged `heartbeat/2026-04-07-afternoon` → `dev`, deleted old branch local+remote)
-- **Last changes (00:11 UTC):**
-  - [x] **chore(devx): automate heartbeat branch rotation workflow** — added `scripts/heartbeat-rotate-branch.sh` + `npm run heartbeat:rotate` to automate merge→delete old branch→create new heartbeat branch.
-  - [x] **Branch management** — completed 00:00 UTC rotation and strict cleanup of old heartbeat branch.
-
----
-
-## Status Summary (2026-04-07 23:11 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks and frontend route+asset audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
-- **Branch:** heartbeat/2026-04-07-afternoon
-- **Last changes (23:11 UTC):**
-  - [x] **chore(devx): enforce heartbeat branch safety in automation scripts** — `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` now fail fast when run outside `heartbeat/*` branches (including `dev`, `main`, and detached HEAD), preventing unsafe execution paths.
-
----
-
-## Status Summary (2026-04-07 22:06 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ Services healthy; frontend audit passing locally after route-redirect hardening (`npm run audit:frontend`)
-- **Branch:** heartbeat/2026-04-07-afternoon
-- **Last changes (22:06 UTC):**
-  - [x] **fix(devx): fail frontend audits on silent route redirect drift** — `scripts/audit-frontend-pages.sh` now follows redirects and validates each required route resolves to itself (not an auth/error fallback URL), while still enforcing HTTP 200.
-
----
-
-## Status Summary (2026-04-07 21:18 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks (including authenticated API + web `/api` proxy validation) and frontend route+asset audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
-- **Branch:** heartbeat/2026-04-07-afternoon
-- **Last changes (21:18 UTC):**
-  - [x] **chore(devx): harden frontend audit runtime-error detection + CLI parsing** — `scripts/audit-frontend-pages.sh` now uses strict argument parsing (unknown flags fail fast with usage output) and scans each required route body for known Next.js runtime error markers (`__next_error__`, server exception strings) before static-asset checks.
-  - [x] **fix(devx): keep frontend audit counters stable with strict marker checks** — removed `set -e` from `scripts/audit-frontend-pages.sh` so pass/fail counters remain non-fatal while still collecting full audit results.
-
----
-
-## Status Summary (2026-04-07 20:15 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks and frontend route+asset audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
-- **Branch:** heartbeat/2026-04-07-afternoon
-- **Last changes (20:15 UTC):**
-  - [x] **chore(devx): enforce repo sync in heartbeat runners** — `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` now execute `git pull origin dev` first (with git-repo guard), aligning automation with heartbeat step 1.
-  - [x] **fix(devx): wait for web readiness in start-web script** — `scripts/start-web.sh` now blocks until `/login` returns 200 (or fails after timeout), preventing false-negative post-deploy/public 502 audit failures right after restart.
-
----
-
-## Status Summary (2026-04-07 19:12 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks and frontend route+asset audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
-- **Branch:** heartbeat/2026-04-07-afternoon
-- **Last changes (19:12 UTC):**
-  - [x] **chore(devx): add strict-auth support to heartbeat check runner** — upgraded `scripts/heartbeat-check.sh` argument parsing to support `--strict-auth` (with `--public` compatibility), plus unknown-flag guard and explicit usage output.
-  - [x] **chore(npm): add strict heartbeat check npm scripts** — added `heartbeat:check:strict` and `heartbeat:check:strict:prod`.
-
----
-
-## Status Summary (2026-04-07 18:10 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks and frontend route+asset audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
-- **Branch:** heartbeat/2026-04-07-afternoon
-- **Last changes (18:10 UTC):**
-  - [x] **chore(devx): add one-command heartbeat cycle runner** — added `scripts/heartbeat-cycle.sh` to enforce bootstrap → build → test → audit → restart → deploy/frontend audits in strict order, with optional `--public` and `--strict-auth` modes.
-  - [x] **chore(npm): add heartbeat cycle scripts** — added `heartbeat:cycle`, `heartbeat:cycle:prod`, `heartbeat:cycle:strict`, and `heartbeat:cycle:strict:prod`.
-
----
-
-## Status Summary (2026-04-07 17:12 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks and frontend route+asset audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
-- **Branch:** heartbeat/2026-04-07-afternoon
-- **Last changes (17:12 UTC):**
-  - [x] **chore(devx): automate backlog status-summary pruning + archival** — added `scripts/prune-backlog-status.sh` and npm script `backlog:prune` to keep `BACKLOG.md` focused (latest summaries) while archiving older status blocks into `docs/BACKLOG_STATUS_ARCHIVE.md`.
-  - [x] **chore(backlog): archive legacy heartbeat status summaries** — pruned 50 older status summaries from `BACKLOG.md` into `docs/BACKLOG_STATUS_ARCHIVE.md`.
-
----
-
-## Status Summary (2026-04-07 16:08 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ Services healthy; post-deploy audit passing locally with auth-guard validation and optional authenticated-path support
-- **Branch:** heartbeat/2026-04-07-afternoon
-- **Last changes (16:08 UTC):**
-  - [x] **chore(devx): add strict optional authenticated checks to heartbeat deploy audit** — enhanced `scripts/audit-deploy.sh` with `HEARTBEAT_AUTH_BEARER_TOKEN` support to validate authenticated `/api/v1/monitors` access (local/public), plus `--strict-auth` mode to fail when token is missing; added npm scripts `audit:deploy:strict` and `audit:deploy:strict:prod`.
-
----
-
-## Status Summary (2026-04-07 15:10 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ Web restarted during build; frontend route+asset audit passing locally (all required pages 200 + discovered `_next/static` CSS/JS assets 200)
-- **Branch:** heartbeat/2026-04-07-afternoon
-- **Last changes (15:10 UTC):**
-  - [x] **chore(devx): harden heartbeat frontend audit with static asset checks** — extended `scripts/audit-frontend-pages.sh` to crawl required pages, discover Next.js `_next/static` CSS/JS assets, dedupe URLs, and fail on any non-200 asset response.
-
----
-
-## Status Summary (2026-04-07 14:12 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks + frontend audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
-- **Branch:** heartbeat/2026-04-07-afternoon
-- **Last changes (14:12 UTC):**
-  - [x] **chore(devx): add heartbeat environment bootstrap automation** — added `scripts/heartbeat-bootstrap.sh` to enforce SSH key symlink repair, Docker/GitHub SSH checks, and PostgreSQL/Redis reachability checks (with auto-start fallback via dind start script).
-  - [x] **chore(devx): wire bootstrap into heartbeat checks** — `npm run heartbeat:check` now runs environment bootstrap before build/test/audit; added `npm run heartbeat:bootstrap`.
-
----
-
-## Status Summary (2026-04-07 13:12 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ API + web restarted via `npm run restart`; post-deploy checks + frontend audits passing locally and publicly (`https://oc-dev-test.no749ah.com`)
-- **Branch:** heartbeat/2026-04-07-afternoon
-- **Last changes (13:12 UTC):**
-  - [x] **chore(devx): add full heartbeat check runner** — added `scripts/heartbeat-check.sh` plus npm scripts `heartbeat:check` and `heartbeat:check:prod` to run full heartbeat validation in one command (build, test, audit, post-deploy audit, frontend route audit).
-
----
-
-## Status Summary (2026-04-07 12:09 UTC)
-- **Build/Test/Audit:** ✅ `git pull origin dev` up to date; `npm run build` clean; `npm run test` passing (5301 API + 5690 web + 114 CLI + 12 agent = **11,117 tests**); `npm audit --audit-level=high` 0 vulnerabilities
-- **Deployment:** ✅ Restarted API + web via `npm run restart`; local + public smoke tests passing; post-deploy and frontend route audits all green
-- **Branch:** heartbeat/2026-04-07-afternoon (merged heartbeat/2026-04-07-noon → dev, deleted old branch local+remote)
-- **Last changes (12:09 UTC):**
-  - [x] **chore(devx): add post-deploy heartbeat audit script** — added `scripts/audit-deploy.sh` with `npm run audit:deploy` + `npm run audit:deploy:prod` to enforce heartbeat Step 4 checks (API health, login, and `/api` auth-guard path on local/public origins)
-  - [x] **Branch management** — merged heartbeat/2026-04-07-noon → dev, deleted old branch, created heartbeat/2026-04-07-afternoon
-
----
-
-## Status Summary (2026-04-07 11:45 UTC)
-- **Build/Test/Audit:** ✅ Build clean; 5301 API + 5690 web + 1287 integration + 114 CLI + 12 agent = **12,404 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all 8 pages 200 local + public `https://oc-dev-test.no749ah.com`
-- **Branch:** heartbeat/2026-04-07-noon (merged heartbeat/2026-04-07-morning → dev, deleted old branch)
-- **Last changes (11:45 UTC):**
-  - [x] **feat(api): GET /v2/alert-deliveries endpoint** — paginated delivery log, filter by status/channelId/monitorId/since/until, sortBy createdAt/durationMs/status, user isolation via alertChannel.userId join, channelName+channelType in each record. 16 unit + 28 integration tests. API: 5285 → 5301.
-  - [x] **Branch management** — merged heartbeat/2026-04-07-morning → dev, deleted old branch, created heartbeat/2026-04-07-noon
-
----
-
-## Status Summary (2026-04-07 11:15 UTC)
-- **Build/Test/Audit:** ✅ Build clean; 5285 API + 5690 web + 1287 integration + 114 CLI + 12 agent = **12,388 tests passing**; 0 vulnerabilities
-- **Deployment:** ✅ API + web running; all 8 pages 200 local + public `https://oc-dev-test.no749ah.com`
-- **Branch:** heartbeat/2026-04-07-morning (merged heartbeat/2026-04-04-afternoon → dev, deleted old branch)
-- **Last changes (11:15 UTC):**
-  - [x] **feat(api): GET /v2/search endpoint** — committed uncommitted work from prior session; paginated flat search (monitors/incidents/status_pages/versions), sortBy: relevance|updatedAt|title, types filter, entityType field. 17 integration tests.
-  - [x] **Branch management** — merged heartbeat/2026-04-04-afternoon → dev, deleted old branch, created heartbeat/2026-04-07-morning
-  - [x] **feat(api): GET /v2/playbooks endpoint** — paginated playbooks with derived stepCount/monitorCount fields, severity filter (case-insensitive), search (name+desc), all sortBy combos (name/createdAt/updatedAt/stepCount/monitorCount), pagination. 17 unit + 27 integration tests. API: 5252 → 5285. Integration: 1260 → 1287.
-
----
+## Status Summary (2026-04-10 09:10 UTC)
+- **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`), plus post-change build/test/audit rerun passed.
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy verification passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` auth-path checks returned expected `401`).
+- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, `npm run audit:frontend`: 54/54, `npm run audit:frontend:prod`: 108/108).
+- **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 09:11 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
+- **Last changes (09:10 UTC):**
+  - [x] **fix(heartbeat): fail fast when core command dependencies are missing in Step-1 health runner** — hardened `scripts/heartbeat-health.sh` with explicit required-command checks (`git`, `npm`, `mktemp`, `tail`) and a clear warning when optional `timeout` is unavailable.
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
@@ -328,6 +106,48 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Avoid masking real old-branch sync failures during Step-6 branch rotation** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-rotate-branch.sh` to first probe remote branch existence and only skip pre-merge `git pull --ff-only origin <heartbeat-branch>` when `origin/<branch>` is genuinely absent, while preserving fail-fast behavior for real pull/auth/network errors.
+- [x] **Validate heartbeat Step-6 branch-rotation suffix and branch-name inputs before git operations** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-rotate-branch.sh` to fail fast on invalid `--name` suffix values (lowercase alnum + hyphen only) and malformed/whitespace branch names via `git check-ref-format --branch`.
+- [x] **Fail fast on missing core command dependencies in heartbeat Step-0 bootstrap checks** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-bootstrap.sh` with explicit required-command checks (`git`, `ssh`, `node`) so Step-0 fails immediately with actionable errors when bootstrap runtime dependencies are unavailable.
+- [x] **Fail fast on missing core command dependencies in heartbeat Step-1 health checks** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-health.sh` with explicit checks for required commands (`git`, `npm`, `mktemp`, `tail`) so Step-1 fails immediately with actionable errors when runtime dependencies are unavailable; emits a clear warning when optional `timeout` is missing and falls back without time bounds.
+- [x] **Fail fast on missing `grep`/`tr` dependencies in frontend asset audits** - ✅ Done (2026-04-10). Hardened `scripts/audit-frontend-pages.sh` with explicit `grep`/`tr` command checks so Step-5 static-asset parsing failures are immediate and actionable when core text-processing dependencies are unavailable.
+- [x] **Fail fast on missing curl/routes dependency in heartbeat/frontend route audits** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` with explicit `curl` dependency checks and required-routes source-file readability validation so Step-5 failures are immediate and actionable when runtime dependencies are missing.
+- [x] **Validate heartbeat bootstrap boolean toggles as strict true/false values** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-bootstrap.sh` with fail-fast boolean validation for `HEARTBEAT_REQUIRE_DOCKER` and `HEARTBEAT_REQUIRE_GITHUB_SSH` to prevent typoed values from silently changing Step-0 behavior.
+- [x] **Cap heartbeat Step-0 bootstrap timeout env values with explicit upper bounds** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-bootstrap.sh` with bounded validation for `HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS`/`HEARTBEAT_PORT_CHECK_TIMEOUT_MS` plus new limit env controls (`HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS_LIMIT`, `HEARTBEAT_PORT_CHECK_TIMEOUT_MS_LIMIT`) so oversized values fail fast before bootstrap checks run.
+- [x] **Cap heartbeat Step-1 health-check timeout env values with explicit upper bounds** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-health.sh` with validated limit env controls (`HEARTBEAT_GIT_PULL_TIMEOUT_SECONDS_LIMIT`, `HEARTBEAT_BUILD_TIMEOUT_SECONDS_LIMIT`, `HEARTBEAT_TEST_TIMEOUT_SECONDS_LIMIT`, `HEARTBEAT_AUDIT_TIMEOUT_SECONDS_LIMIT`) so oversized timeout values fail fast before Step-1 checks run.
+- [x] **Harden web build backup cleanup and shell failure handling** - ✅ Done (2026-04-10). Updated `scripts/build-web.sh` to use strict shell mode (`set -euo pipefail`) and added EXIT-trap cleanup for temporary `.next/static` backup directories so interrupted/failing builds cannot leak temp paths.
+- [x] **Limit stale Next.js build-process cleanup to long-lived orphans only** - ✅ Done (2026-04-10). Refined `scripts/build-web.sh` stale process detection to only target repo-local `next build` processes older than 10 minutes (`ps etimes > 600`), preventing accidental termination of fresh build wrappers started by the current heartbeat run.
+- [x] **Harden static-chunk backup path in web build script to avoid repeated-heartbeat collisions** - ✅ Done (2026-04-10). Updated `scripts/build-web.sh` to back up `.next/static` into a unique `mktemp` directory and merge from that path after build, eliminating fixed `.next/static-prev` destination collisions (`cp: cannot create directory '.next/static-prev': File exists`) during repeated heartbeat runs.
+- [x] **Clear stale Next.js build process/lock state before heartbeat web builds** - ✅ Done (2026-04-10). Hardened `scripts/build-web.sh` to terminate orphaned repo-local `next build` processes and delete both `.next/lock` + `.next/build.lock` before invoking `next build --webpack`, preventing false concurrent-build collisions in heartbeat runs.
+- [x] **Normalize curl failure status handling in heartbeat/frontend route audits** - ✅ Done (2026-04-09). Fixed `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` to map failed curl executions to a single fallback status (`000` / `000|`) without concatenated `000000` artifacts, restoring correct transient-failure retry behavior and deterministic failure reporting.
+- [x] **Reject malformed path segments in heartbeat Step-5 required routes** - ✅ Done (2026-04-09). Hardened `scripts/heartbeat-required-routes.sh` to fail fast when configured routes contain empty path segments (`//`) or dot segments (`/./`, `/../`), preventing implicit path normalization from masking invalid required-route entries.
+- [x] **Reject query/fragment and userinfo in Step-5 frontend audit base origins** - ✅ Done (2026-04-09). Hardened `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` `validate_origin_base` checks to fail fast when `WEB_BASE_URL`/`PUBLIC_BASE_URL` include query (`?`), fragment (`#`), or userinfo (`user@host`) components, and to reject empty/malformed host origins that previously slipped past regex-only validation.
+- [x] **Cap Step-5 route-audit curl timeout envs with explicit upper bounds** - ✅ Done (2026-04-09). Hardened `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` with validated limit env controls (`HEARTBEAT_HEAD_REQUEST_TIMEOUT_SECONDS_LIMIT`, `HEARTBEAT_HEAD_CONNECT_TIMEOUT_SECONDS_LIMIT`, `FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS_LIMIT`, `FRONTEND_AUDIT_CONNECT_TIMEOUT_SECONDS_LIMIT`) so oversized timeout values fail fast before audits run.
+- [x] **Validate heartbeat Step-5 frontend audit base URLs as strict origins** - ✅ Done (2026-04-09). Hardened `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` with fail-fast base URL validation to enforce non-empty, whitespace-free `http(s)://host[:port]` origins (no path/query/fragment) for `WEB_BASE_URL`/`PUBLIC_BASE_URL`.
+- [x] **Reject query/fragment/whitespace in heartbeat Step-5 required routes** - ✅ Done (2026-04-09). Tightened `scripts/heartbeat-required-routes.sh` validation so route entries fail fast when they include whitespace or URL query/fragment components (`?`, `#`), keeping Step-5 route audits strictly path-only.
+- [x] **Validate heartbeat required-route list integrity at source** - ✅ Done (2026-04-09). Hardened `scripts/heartbeat-required-routes.sh` to fail fast on empty/invalid entries (must start with `/`, no trailing slash except `/`) and duplicate routes so Step-5 route audits cannot silently drift or double-check malformed paths.
+- [x] **Cap heartbeat Step-5 retry settings with explicit upper bounds** - ✅ Done (2026-04-09). Hardened `scripts/heartbeat-curl-pages.sh` with validated max guardrails (`HEARTBEAT_HEAD_MAX_RETRIES_LIMIT` default `10`, `HEARTBEAT_HEAD_MAX_RETRY_DELAY_SECONDS_LIMIT` default `30`) and fail-fast checks when configured retry counts/delays exceed safe limits.
+- [x] **Cap web Vitest worker concurrency for more stable heartbeat/CI test runs** - ✅ Done (2026-04-09). Updated `apps/web/vitest.config.ts` with `minWorkers: 1` and `maxWorkers: 4` so web tests avoid over-parallelism on constrained runners while preserving consistent execution behavior.
+- [x] **Prevent timing-breakdown waterfall aggregate width overflow when phase sums exceed total latency** - ✅ Done (2026-04-09). Added `apps/web/app/monitors/timing-breakdown/waterfall.ts` helper to sanitize phase values, compute safe percentages against `max(total, phaseSum)`, and reduce rounded overflow back to 100%; wired `WaterfallBar` to use it and added unit tests for invalid timings, invalid totals, and overflow correction.
+- [x] **Clamp timing-breakdown waterfall segment widths when total latency is invalid** - ✅ Done (2026-04-09). Hardened `apps/web/app/monitors/timing-breakdown/page.tsx` to treat non-finite/≤0 totals as safe fallback values and clamp segment percentages to `1..100`, preventing oversized `width` styles for malformed timing data; added matching unit coverage in `apps/web/app/monitors/timing-breakdown/page.spec.ts` for zero/negative totals.
+- [x] **Parameterize frontend route/static-asset audit curl timeouts with validated env controls** - ✅ Done (2026-04-09). Updated `scripts/audit-frontend-pages.sh` to support `FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS` and `FRONTEND_AUDIT_CONNECT_TIMEOUT_SECONDS`, validate both values, enforce connect-timeout ≤ request-timeout, and apply those bounds across route checks, HTML fetches, and static asset checks.
+- [x] **Centralize heartbeat-required frontend routes for Step-5 audits** - ✅ Done (2026-04-09). Added `scripts/heartbeat-required-routes.sh` as the single source of truth for mandatory Step-5 routes and switched both `scripts/audit-frontend-pages.sh` and `scripts/heartbeat-curl-pages.sh` to source it, preventing route-list drift between GET/static-asset and HEAD checks.
+- [x] **Decouple root build from implicit web start side effects** - ✅ Done (2026-04-09). Updated root `package.json` so `npm run build` compiles web/api/agent/cli/extension only and no longer runs `scripts/start-web.sh`; this keeps heartbeat Step-1 health checks side-effect free and reserves service restarts for mandatory Step 3.
+- [x] **Bound heartbeat bootstrap SSH + dind reachability checks with explicit timeouts** - ✅ Done (2026-04-09). `scripts/heartbeat-bootstrap.sh` now validates `HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS` and `HEARTBEAT_PORT_CHECK_TIMEOUT_MS`, applies bounded SSH auth options (`BatchMode`, `ConnectionAttempts=1`, `ConnectTimeout`) for `ssh -T git@github.com`, and uses timeout-backed socket probes for dind PostgreSQL/Redis checks to prevent indefinite hangs.
+- [x] **Stabilize heartbeat HEAD curl timeout controls + API integration bootstrap timeout** - ✅ Done (2026-04-09). Added validated env controls for heartbeat HEAD route checks (`HEARTBEAT_HEAD_REQUEST_TIMEOUT_SECONDS`, `HEARTBEAT_HEAD_CONNECT_TIMEOUT_SECONDS`) and limited retries to transient failures only (`000`, `429`, `5xx`) in `scripts/heartbeat-curl-pages.sh`; also set explicit `beforeAll` timeout in `apps/api/src/integration.spec.ts` to reduce bootstrap flake risk in slower CI/dev environments.
+- [x] **Bound heartbeat rotation grace to valid minute range** - ✅ Done (2026-04-09). Enforced `HEARTBEAT_ROTATE_WINDOW_GRACE_MINUTES` as integer `0..59` in `scripts/heartbeat-rotate-branch.sh` and `scripts/heartbeat-rotate-if-due.sh` to prevent accidental full-hour rotation windows from oversized values.
+- [x] **Harden heartbeat Step-5 HEAD curl checks with retry guardrails** - ✅ Done (2026-04-09). `scripts/heartbeat-curl-pages.sh` now retries transient failures before failing and validates retry env values (`HEARTBEAT_HEAD_MAX_RETRIES`, `HEARTBEAT_HEAD_RETRY_DELAY_SECONDS`) to reduce flaky false negatives during immediate post-restart checks.
+- [x] **Auto-prune backlog status summaries during full heartbeat runs** - ✅ Done (2026-04-08). Added `npm run backlog:prune` as an explicit step in both `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh`, and reduced default summary retention in `scripts/prune-backlog-status.sh` from 10 to 3 to keep `BACKLOG.md` concise while archiving older entries.
+- [x] **Harden heartbeat Step-1 git sync with fast-forward-only + timeout guard** - ✅ Done (2026-04-08). `scripts/heartbeat-health.sh` now executes `git pull --ff-only origin dev` through the shared timeout-aware tailed runner and validates `HEARTBEAT_GIT_PULL_TIMEOUT_SECONDS` (default `300`) as a positive integer before execution.
+- [x] **Fail heartbeat bootstrap on GitHub SSH auth errors by default** - ✅ Done (2026-04-08). `scripts/heartbeat-bootstrap.sh` now validates `ssh -T git@github.com` output and fails fast when auth does not report success; opt-out warning mode available via `HEARTBEAT_REQUIRE_GITHUB_SSH=false`.
+- [x] **Validate heartbeat Step-1 timeout env values before command execution** - ✅ Done (2026-04-08). `scripts/heartbeat-health.sh` now validates `HEARTBEAT_BUILD_TIMEOUT_SECONDS`, `HEARTBEAT_TEST_TIMEOUT_SECONDS`, and `HEARTBEAT_AUDIT_TIMEOUT_SECONDS` as positive integers and fails fast with explicit errors for invalid values.
+- [x] **Add timeout guards to heartbeat Step-1 build/test/audit runner** - ✅ Done (2026-04-08). `scripts/heartbeat-health.sh` now supports configurable command timeouts (`HEARTBEAT_BUILD_TIMEOUT_SECONDS`, `HEARTBEAT_TEST_TIMEOUT_SECONDS`, `HEARTBEAT_AUDIT_TIMEOUT_SECONDS`) and surfaces explicit timeout failures instead of hanging indefinitely.
+- [x] **Enforce heartbeat git identity during bootstrap** - ✅ Done (2026-04-08). `scripts/heartbeat-bootstrap.sh` now validates global `git config` identity and auto-sets `user.name`/`user.email` to `No749ah` + `no749ah@users.noreply.github.com` (overrideable via `HEARTBEAT_GIT_USER_NAME` / `HEARTBEAT_GIT_USER_EMAIL`) to prevent misattributed automation commits.
+- [x] **Block heartbeat health runs on dirty working trees** - ✅ Done (2026-04-08). `scripts/heartbeat-health.sh` now fails fast when `git status --porcelain` is non-empty and prints concise pending changes, preventing `git pull origin dev` conflicts and mixed-state heartbeat validations.
+- [x] **Patch nodemailer SMTP command-injection advisory** - ✅ Done (2026-04-08). Upgraded `@pulsedock/api` dependency `nodemailer` from `^8.0.3` to `^8.0.5` and refreshed lockfile, resolving `GHSA-vvjj-xcjg-gr5g` in heartbeat audits.
+- [x] **Remove eval execution from heartbeat orchestration runners** - ✅ Done (2026-04-08). Replaced `eval` in `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` with direct command invocation (`"$@"`) so each step executes without shell re-parsing and with lower injection risk.
+- [x] **Auto-run heartbeat branch rotation only when scheduled** - ✅ Done (2026-04-08). Added `scripts/heartbeat-rotate-if-due.sh` + npm script `heartbeat:rotate:if-due`; integrated with `scripts/heartbeat-cycle.sh` so Step 6 runs automatically at 00:00/12:00 UTC windows and exits cleanly with a skip message off-schedule.
+- [x] **Automate explicit heartbeat Step-5 HEAD curl checks for required frontend pages** - ✅ Done (2026-04-08). Added `scripts/heartbeat-curl-pages.sh` plus npm scripts `audit:frontend:heads` / `audit:frontend:heads:prod`; wired both into `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` so every full heartbeat run enforces the required `/login /dashboard /monitors /alerts /account /projects /versions /admin` `curl -I` checks locally/publicly.
 - [x] **Allow heartbeat rotation in a small scheduled-window grace period** - ✅ Done (2026-04-08). `scripts/heartbeat-rotate-branch.sh` now supports `HEARTBEAT_ROTATE_WINDOW_GRACE_MINUTES` (default `5`) so 00:00/12:00 UTC rotations tolerate scheduler jitter while still blocking off-window runs.
 - [x] **Enforce heartbeat branch safety in Step-1 health runner** - ✅ Done (2026-04-08). `scripts/heartbeat-health.sh` now hard-fails on `main`, `dev`, detached HEAD, and non-`heartbeat/*` branches before running pull/build/test/audit.
 - [x] **Remove duplicate dind reachability logs in heartbeat bootstrap** - ✅ Done (2026-04-08). `scripts/heartbeat-bootstrap.sh` now runs silent preflight connectivity checks, starts dind services only when needed, then reports PostgreSQL/Redis reachability once with explicit failure output.

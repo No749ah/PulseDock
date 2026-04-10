@@ -18,6 +18,15 @@ CONNECT_TIMEOUT_SECONDS_LIMIT="${HEARTBEAT_HEAD_CONNECT_TIMEOUT_SECONDS_LIMIT:-3
 MAX_RETRIES_LIMIT="${HEARTBEAT_HEAD_MAX_RETRIES_LIMIT:-10}"
 MAX_RETRY_DELAY_SECONDS_LIMIT="${HEARTBEAT_HEAD_MAX_RETRY_DELAY_SECONDS_LIMIT:-30}"
 
+require_command() {
+  local command_name="$1"
+
+  if ! command -v "$command_name" >/dev/null 2>&1; then
+    echo "Missing required command: $command_name" >&2
+    exit 1
+  fi
+}
+
 normalize_base() {
   local base="$1"
   echo "${base%/}"
@@ -140,8 +149,14 @@ for arg in "$@"; do
   esac
 done
 
+require_command curl
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./heartbeat-required-routes.sh
+if [[ ! -r "$SCRIPT_DIR/heartbeat-required-routes.sh" ]]; then
+  echo "Missing required routes definition: $SCRIPT_DIR/heartbeat-required-routes.sh" >&2
+  exit 1
+fi
 source "$SCRIPT_DIR/heartbeat-required-routes.sh"
 
 if [[ ${#HEARTBEAT_REQUIRED_ROUTES[@]} -eq 0 ]]; then

@@ -14,6 +14,15 @@ CONNECT_TIMEOUT_SECONDS="${FRONTEND_AUDIT_CONNECT_TIMEOUT_SECONDS:-5}"
 REQUEST_TIMEOUT_SECONDS_LIMIT="${FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS_LIMIT:-60}"
 CONNECT_TIMEOUT_SECONDS_LIMIT="${FRONTEND_AUDIT_CONNECT_TIMEOUT_SECONDS_LIMIT:-30}"
 
+require_command() {
+  local command_name="$1"
+
+  if ! command -v "$command_name" >/dev/null 2>&1; then
+    echo "Missing required command: $command_name" >&2
+    exit 1
+  fi
+}
+
 normalize_base() {
   local base="$1"
   # Keep scheme intact but trim any trailing slash to avoid //route redirects.
@@ -106,8 +115,14 @@ if [[ "$CONNECT_TIMEOUT_SECONDS" -gt "$REQUEST_TIMEOUT_SECONDS" ]]; then
   exit 1
 fi
 
+require_command curl
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./heartbeat-required-routes.sh
+if [[ ! -r "$SCRIPT_DIR/heartbeat-required-routes.sh" ]]; then
+  echo "Missing required routes definition: $SCRIPT_DIR/heartbeat-required-routes.sh" >&2
+  exit 1
+fi
 source "$SCRIPT_DIR/heartbeat-required-routes.sh"
 
 if [[ ${#HEARTBEAT_REQUIRED_ROUTES[@]} -eq 0 ]]; then

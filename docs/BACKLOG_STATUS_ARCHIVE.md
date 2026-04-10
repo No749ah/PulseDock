@@ -1148,3 +1148,21 @@ Archived status summaries pruned from `BACKLOG.md`.
 - **Last changes (10:12 UTC):**
   - [x] **fix(heartbeat): fail fast when core bootstrap command dependencies are missing** — hardened `scripts/heartbeat-bootstrap.sh` with explicit required-command checks (`git`, `ssh`, `node`) so Step-0 exits immediately with actionable errors when bootstrap runtime dependencies are unavailable.
 
+
+## Archive batch 2026-04-10 15:24 UTC
+## Status Summary (2026-04-10 11:12 UTC)
+- **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`npm run heartbeat:bootstrap`, `npm run heartbeat:health`), plus post-change full `npm run build && npm run test && npm audit --audit-level=high` rerun passed.
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` returned expected `401`).
+- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, direct local route curls: 8/8 HTTP 200, public `/login` + `/dashboard`: 200).
+- **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 11:12 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
+- **Last changes (11:12 UTC):**
+  - [x] **fix(heartbeat): validate rotate branch inputs with strict suffix/ref-name checks** — hardened `scripts/heartbeat-rotate-branch.sh` to reject malformed `--name` suffixes and invalid/whitespace-containing branch names via `git check-ref-format --branch`, preventing unsafe branch creation attempts in Step-6 automation.
+
+## Archive batch 2026-04-10 15:41 UTC
+## Status Summary (2026-04-10 13:12 UTC)
+- **Build/Test/Audit:** ✅ Full Step-0 + Step-1 checks passed (`npm run heartbeat:bootstrap`, `npm run heartbeat:health`), plus post-change rerun (`npm run build && npm run test && npm audit --audit-level=high`) passed.
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` with auth header returned expected `401`).
+- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, `curl -sI https://oc-dev-test.no749ah.com`: HTTP 200).
+- **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 13:12 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
+- **Last changes (13:12 UTC):**
+  - [x] **fix(heartbeat): validate bootstrap git identity overrides before writing git config** — hardened `scripts/heartbeat-bootstrap.sh` to fail fast when `HEARTBEAT_GIT_USER_NAME`/`HEARTBEAT_GIT_USER_EMAIL` are empty, contain newline/whitespace edge cases, or use an invalid email shape.

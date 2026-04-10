@@ -1,3 +1,19 @@
+## Status Summary (2026-04-10 15:41 UTC)
+- **Build/Test/Audit:** ✅ Step-0/Step-1 heartbeat checks passed (`docker/ssh/dind`, `git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`).
+- **Deployment:** ⏭️ Skipped restart (docs-only heartbeat change; no runtime code changed).
+- **Frontend Audit:** ✅ Required route HEAD checks passed locally and via reverse proxy (`/login /dashboard /monitors /alerts /account /projects /versions /admin`).
+- **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 15:41 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
+- **Last changes (15:41 UTC):**
+  - [x] **docs(backlog): prune stale heartbeat status block + archive it** — added latest heartbeat summary, archived the oldest in-file status summary, and kept `BACKLOG.md` focused on the latest three snapshots.
+
+## Status Summary (2026-04-10 15:23 UTC)
+- **Build/Test/Audit:** ✅ Step-0 + Step-1 checks passed (`npm run heartbeat:bootstrap`, `npm run heartbeat:health`) and post-change full validation passed (`npm run build && npm run test && npm audit --audit-level=high`).
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` with auth header returned expected `401`).
+- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, `curl -sI https://oc-dev-test.no749ah.com`: HTTP 200).
+- **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 15:23 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
+- **Last changes (15:23 UTC):**
+  - [x] **test(api): add timeout budget for SLA forecast suite** — added explicit 15s suite timeout to `apps/api/src/monitors/monitors.sla-forecast.spec.ts` to prevent false timeout failures on loaded heartbeat runners.
+
 ## Status Summary (2026-04-10 14:13 UTC)
 - **Build/Test/Audit:** ✅ Step-0 + Step-1 checks passed (`npm run heartbeat:bootstrap`, `npm run heartbeat:health`) and post-change full validation passed (`npm run build && npm run test && npm audit --audit-level=high`).
 - **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` with auth header returned expected `401`).
@@ -5,22 +21,6 @@
 - **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 14:13 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
 - **Last changes (14:13 UTC):**
   - [x] **fix(heartbeat): hard-cap Step-1 timeout limit env overrides** — hardened `scripts/heartbeat-health.sh` to reject `*_TIMEOUT_SECONDS_LIMIT` values above an explicit 86400-second safety cap before Step-1 commands execute.
-
-## Status Summary (2026-04-10 13:12 UTC)
-- **Build/Test/Audit:** ✅ Full Step-0 + Step-1 checks passed (`npm run heartbeat:bootstrap`, `npm run heartbeat:health`), plus post-change rerun (`npm run build && npm run test && npm audit --audit-level=high`) passed.
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` with auth header returned expected `401`).
-- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, `curl -sI https://oc-dev-test.no749ah.com`: HTTP 200).
-- **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 13:12 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
-- **Last changes (13:12 UTC):**
-  - [x] **fix(heartbeat): validate bootstrap git identity overrides before writing git config** — hardened `scripts/heartbeat-bootstrap.sh` to fail fast when `HEARTBEAT_GIT_USER_NAME`/`HEARTBEAT_GIT_USER_EMAIL` are empty, contain newline/whitespace edge cases, or use an invalid email shape.
-
-## Status Summary (2026-04-10 11:12 UTC)
-- **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`npm run heartbeat:bootstrap`, `npm run heartbeat:health`), plus post-change full `npm run build && npm run test && npm audit --audit-level=high` rerun passed.
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` returned expected `401`).
-- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, direct local route curls: 8/8 HTTP 200, public `/login` + `/dashboard`: 200).
-- **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 11:12 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
-- **Last changes (11:12 UTC):**
-  - [x] **fix(heartbeat): validate rotate branch inputs with strict suffix/ref-name checks** — hardened `scripts/heartbeat-rotate-branch.sh` to reject malformed `--name` suffixes and invalid/whitespace-containing branch names via `git check-ref-format --branch`, preventing unsafe branch creation attempts in Step-6 automation.
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
@@ -98,6 +98,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Keep BACKLOG status snapshots trimmed to the latest three heartbeat runs** - ✅ Done (2026-04-10). Added current 15:41 UTC heartbeat status summary, archived the oldest in-file snapshot to `docs/BACKLOG_STATUS_ARCHIVE.md`, and kept `BACKLOG.md` focused on active context.
 - [x] **Stabilize SLA forecast spec runtime budget to avoid false timeout failures in loaded heartbeat runners** - ✅ Done (2026-04-10). Added an explicit 15-second suite timeout in `apps/api/src/monitors/monitors.sla-forecast.spec.ts` so rare slow CI/heartbeat environments do not fail this deterministic test block due to default runner timeout pressure.
 - [x] **Hard-cap heartbeat Step-1 timeout limit env overrides to prevent accidental unbounded windows** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-health.sh` with an explicit 86400-second safety cap for all `*_TIMEOUT_SECONDS_LIMIT` values so malformed oversized limit overrides fail fast before Step-1 commands run.
 - [x] **Validate heartbeat bootstrap git-identity env overrides before applying git config** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-bootstrap.sh` with fail-fast validation for `HEARTBEAT_GIT_USER_NAME`/`HEARTBEAT_GIT_USER_EMAIL` (non-empty, no newline/whitespace edge cases, and email-shape checks) so invalid overrides cannot silently write malformed git identity.

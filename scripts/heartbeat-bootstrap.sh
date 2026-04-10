@@ -31,6 +31,22 @@ HEARTBEAT_PORT_CHECK_TIMEOUT_MS_LIMIT="${HEARTBEAT_PORT_CHECK_TIMEOUT_MS_LIMIT:-
 
 GREEN='\033[0;32m'; YELLOW='\033[0;33m'; CYAN='\033[0;36m'; BOLD='\033[1m'; RESET='\033[0m'
 
+ensure_required_commands() {
+  local missing=()
+  local required=(git ssh node)
+
+  for cmd in "${required[@]}"; do
+    if ! command -v "${cmd}" >/dev/null 2>&1; then
+      missing+=("${cmd}")
+    fi
+  done
+
+  if [[ "${#missing[@]}" -gt 0 ]]; then
+    echo "Missing required command(s): ${missing[*]}. Install dependencies before running heartbeat bootstrap." >&2
+    exit 1
+  fi
+}
+
 step() {
   echo -e "\n${BOLD}${CYAN}==> $1${RESET}"
 }
@@ -77,6 +93,10 @@ validate_boolean() {
     exit 1
   fi
 }
+
+step "Dependency check"
+ensure_required_commands
+ok "Dependency check"
 
 is_port_reachable() {
   local host="$1"

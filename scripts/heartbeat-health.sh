@@ -22,6 +22,26 @@ set -euo pipefail
 
 GREEN='\033[0;32m'; CYAN='\033[0;36m'; BOLD='\033[1m'; RESET='\033[0m'
 
+ensure_required_commands() {
+  local missing=()
+  local required=(git npm mktemp tail)
+
+  for cmd in "${required[@]}"; do
+    if ! command -v "${cmd}" >/dev/null 2>&1; then
+      missing+=("${cmd}")
+    fi
+  done
+
+  if [[ "${#missing[@]}" -gt 0 ]]; then
+    echo "Missing required command(s): ${missing[*]}. Install dependencies before running heartbeat health checks." >&2
+    exit 1
+  fi
+
+  if ! command -v timeout >/dev/null 2>&1; then
+    echo "Missing optional command 'timeout'; heartbeat health checks will run without execution time limits." >&2
+  fi
+}
+
 ensure_safe_branch() {
   if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
     echo "Not inside a git repository. Run this script from the PulseDock repo root." >&2
@@ -105,6 +125,10 @@ run_with_tail() {
 }
 
 echo -e "${BOLD}PulseDock Heartbeat Health Check $(date -u '+%Y-%m-%d %H:%M UTC')${RESET}"
+
+echo -e "\n${BOLD}${CYAN}==> Dependency check${RESET}"
+ensure_required_commands
+echo -e "${GREEN}✓ Dependency check${RESET}"
 
 echo -e "\n${BOLD}${CYAN}==> Branch safety check${RESET}"
 ensure_safe_branch

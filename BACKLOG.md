@@ -98,6 +98,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Stabilize SLA forecast spec runtime budget to avoid false timeout failures in loaded heartbeat runners** - ✅ Done (2026-04-10). Added an explicit 15-second suite timeout in `apps/api/src/monitors/monitors.sla-forecast.spec.ts` so rare slow CI/heartbeat environments do not fail this deterministic test block due to default runner timeout pressure.
 - [x] **Hard-cap heartbeat Step-1 timeout limit env overrides to prevent accidental unbounded windows** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-health.sh` with an explicit 86400-second safety cap for all `*_TIMEOUT_SECONDS_LIMIT` values so malformed oversized limit overrides fail fast before Step-1 commands run.
 - [x] **Validate heartbeat bootstrap git-identity env overrides before applying git config** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-bootstrap.sh` with fail-fast validation for `HEARTBEAT_GIT_USER_NAME`/`HEARTBEAT_GIT_USER_EMAIL` (non-empty, no newline/whitespace edge cases, and email-shape checks) so invalid overrides cannot silently write malformed git identity.
 - [x] **Avoid masking real old-branch sync failures during Step-6 branch rotation** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-rotate-branch.sh` to first probe remote branch existence and only skip pre-merge `git pull --ff-only origin <heartbeat-branch>` when `origin/<branch>` is genuinely absent, while preserving fail-fast behavior for real pull/auth/network errors.

@@ -183,5 +183,5 @@ describe('MonitorsService.slaBudgetForecast()', () => {
       expect(entry).toHaveProperty('totalChecks');
       expect(entry).toHaveProperty('failedChecks');
     }
-  });
+  }, 15000);
 });

@@ -1,3 +1,11 @@
+## Status Summary (2026-04-10 20:17 UTC)
+- **Build/Test/Audit:** ✅ Full Step-0 + Step-1 heartbeat flow passed (`npm run heartbeat:bootstrap`, `npm run heartbeat:health`), plus post-change validation remained green (`npm run build && npm run test && npm audit --audit-level=high`, 0 vulnerabilities).
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` returned expected `401` with invalid bearer).
+- **Frontend Audit:** ✅ Required route and asset audits passed locally and via reverse proxy (`npm run audit:frontend`, `npm run audit:frontend:heads`, `npm run audit:frontend:prod`, `npm run audit:frontend:heads:prod`; all checks green).
+- **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 20:17 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
+- **Last changes (20:17 UTC):**
+  - [x] **fix(heartbeat): fail fast when core commands are missing** — committed + pushed hardening in `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` to verify required command dependencies (`git`, `npm`, `date`) before orchestration steps run.
+
 ## Status Summary (2026-04-10 20:10 UTC)
 - **Build/Test/Audit:** ✅ Step-0 + Step-1 heartbeat checks passed (`docker/ssh/dind`, `git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`), and post-change validation passed (`npm run build && npm run test && npm audit --audit-level=high`, 0 vulnerabilities).
 - **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` returned expected `401` with invalid bearer).
@@ -13,22 +21,6 @@
 - **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 19:07 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
 - **Last changes (19:07 UTC):**
   - [x] **fix(heartbeat): harden backlog-prune dependency + retention-limit validation** — updated `scripts/prune-backlog-status.sh` with required-command checks and bounded `KEEP_STATUS_SUMMARIES_LIMIT` validation so malformed retention env overrides or missing shell deps fail fast.
-
-## Status Summary (2026-04-10 18:12 UTC)
-- **Build/Test/Audit:** ✅ Step-0 + Step-1 heartbeat checks passed (`npm run heartbeat:bootstrap`, `npm run heartbeat:health`), and post-change full validation passed (`npm run build && npm run test && npm audit --audit-level=high`, 0 vulnerabilities).
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` returned expected `401` with invalid bearer).
-- **Frontend Audit:** ✅ Step-5 route/static + HEAD audits passed locally and via reverse proxy (`npm run audit:frontend`: 54/54, `npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:prod`: 108/108, `npm run audit:frontend:heads:prod`: 16/16).
-- **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 18:13 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
-- **Last changes (18:12 UTC):**
-  - [x] **fix(heartbeat): add transient retries to frontend GET/static audits** — hardened `scripts/audit-frontend-pages.sh` with bounded retry controls and transient-only retry behavior (`000`, `429`, `5xx`) for route checks, asset checks, and HTML asset discovery.
-
-## Status Summary (2026-04-10 16:46 UTC)
-- **Build/Test/Audit:** ✅ Step-0 + Step-1 heartbeat checks passed (`docker/ssh/dind`, `git pull origin dev`, `npm run build`, `npm run test`); addressed `npm audit --audit-level=high` finding by upgrading `next` and re-running full validation (`npm run build && npm run test && npm audit --audit-level=high`, now 0 vulnerabilities).
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` with auth header returned expected `401`).
-- **Frontend Audit:** ✅ Required route HEAD checks passed locally and via reverse proxy (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16).
-- **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 16:47 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
-- **Last changes (16:46 UTC):**
-  - [x] **fix(security): patch Next.js server-components DoS advisory** — upgraded web dependency `next` from `^16.2.1` to `^16.2.3`, refreshed lockfile, and cleared the high-severity `GHSA-q4gf-8mx6-v5v3` audit finding.
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 

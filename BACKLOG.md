@@ -1,3 +1,13 @@
+## Status Summary (2026-04-10 00:46 UTC)
+- **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`), plus post-change build/test/audit rerun passed.
+- **Deployment:** 🔄 Pending restart + post-deploy verification for current heartbeat change.
+- **Frontend Audit:** 🔄 Pending Step-5 route/static checks after restart.
+- **Branch:** heartbeat/2026-04-08-noon (rotation check pending; current run time outside 00:00-00:05 / 12:00-12:05 UTC windows)
+- **Last changes (00:46 UTC):**
+  - [x] **fix(build): clear stale Next.js build processes/locks before web compile** — hardened `scripts/build-web.sh` to terminate orphaned repo-local `next build` processes and remove both `.next/lock` and `.next/build.lock` before starting a new build, preventing false "another next build process is already running" heartbeat failures.
+
+---
+
 ## Status Summary (2026-04-09 23:13 UTC)
 - **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`), plus post-change verification rerun passed.
 - **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy verification passed (`/health` 200, `/login` 200, direct/web/public `/v1|api/v1/monitors` auth-path checks returned expected `401` with Bearer header).
@@ -104,6 +114,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Clear stale Next.js build process/lock state before heartbeat web builds** - ✅ Done (2026-04-10). Hardened `scripts/build-web.sh` to terminate orphaned repo-local `next build` processes and delete both `.next/lock` + `.next/build.lock` before invoking `next build --webpack`, preventing false concurrent-build collisions in heartbeat runs.
 - [x] **Normalize curl failure status handling in heartbeat/frontend route audits** - ✅ Done (2026-04-09). Fixed `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` to map failed curl executions to a single fallback status (`000` / `000|`) without concatenated `000000` artifacts, restoring correct transient-failure retry behavior and deterministic failure reporting.
 - [x] **Reject malformed path segments in heartbeat Step-5 required routes** - ✅ Done (2026-04-09). Hardened `scripts/heartbeat-required-routes.sh` to fail fast when configured routes contain empty path segments (`//`) or dot segments (`/./`, `/../`), preventing implicit path normalization from masking invalid required-route entries.
 - [x] **Reject query/fragment and userinfo in Step-5 frontend audit base origins** - ✅ Done (2026-04-09). Hardened `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` `validate_origin_base` checks to fail fast when `WEB_BASE_URL`/`PUBLIC_BASE_URL` include query (`?`), fragment (`#`), or userinfo (`user@host`) components, and to reject empty/malformed host origins that previously slipped past regex-only validation.

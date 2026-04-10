@@ -21,10 +21,11 @@ bash "$REPO_ROOT/scripts/stop-web.sh" 2>/dev/null || true
 
 # 2. Backup existing static chunks so cached HTML referencing old hashes stays valid.
 cd "$WEB_DIR"
+STATIC_BACKUP_DIR=""
 if [ -d ".next/static" ]; then
   echo "==> Backing up old static chunks…"
-  rm -rf .next/static-prev
-  cp -r .next/static .next/static-prev
+  STATIC_BACKUP_DIR="$(mktemp -d .next/static-prev.XXXXXX)"
+  cp -a .next/static/. "$STATIC_BACKUP_DIR/"
 fi
 
 # 3. Build
@@ -53,10 +54,10 @@ NEXT_TELEMETRY_DISABLED=1 NODE_OPTIONS="$NODE_OPTIONS" npx next build --webpack
 # 4. Merge old chunks back — old hashes coexist with new ones.
 #    Browsers or CDNs that cached old HTML still get their chunks served.
 #    New chunks win (cp -rn = no-overwrite for existing files).
-if [ -d ".next/static-prev" ]; then
+if [ -n "$STATIC_BACKUP_DIR" ] && [ -d "$STATIC_BACKUP_DIR" ]; then
   echo "==> Merging old static chunks into new build…"
-  cp -rn .next/static-prev/. .next/static/
-  rm -rf .next/static-prev
+  cp -rn "$STATIC_BACKUP_DIR"/. .next/static/
+  rm -rf "$STATIC_BACKUP_DIR"
   echo "==> Merge done."
 fi
 

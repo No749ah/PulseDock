@@ -114,6 +114,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Harden static-chunk backup path in web build script to avoid repeated-heartbeat collisions** - ✅ Done (2026-04-10). Updated `scripts/build-web.sh` to back up `.next/static` into a unique `mktemp` directory and merge from that path after build, eliminating fixed `.next/static-prev` destination collisions (`cp: cannot create directory '.next/static-prev': File exists`) during repeated heartbeat runs.
 - [x] **Clear stale Next.js build process/lock state before heartbeat web builds** - ✅ Done (2026-04-10). Hardened `scripts/build-web.sh` to terminate orphaned repo-local `next build` processes and delete both `.next/lock` + `.next/build.lock` before invoking `next build --webpack`, preventing false concurrent-build collisions in heartbeat runs.
 - [x] **Normalize curl failure status handling in heartbeat/frontend route audits** - ✅ Done (2026-04-09). Fixed `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` to map failed curl executions to a single fallback status (`000` / `000|`) without concatenated `000000` artifacts, restoring correct transient-failure retry behavior and deterministic failure reporting.
 - [x] **Reject malformed path segments in heartbeat Step-5 required routes** - ✅ Done (2026-04-09). Hardened `scripts/heartbeat-required-routes.sh` to fail fast when configured routes contain empty path segments (`//`) or dot segments (`/./`, `/../`), preventing implicit path normalization from masking invalid required-route entries.

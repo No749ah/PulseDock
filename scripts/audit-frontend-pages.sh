@@ -13,6 +13,10 @@ REQUEST_TIMEOUT_SECONDS="${FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS:-15}"
 CONNECT_TIMEOUT_SECONDS="${FRONTEND_AUDIT_CONNECT_TIMEOUT_SECONDS:-5}"
 REQUEST_TIMEOUT_SECONDS_LIMIT="${FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS_LIMIT:-60}"
 CONNECT_TIMEOUT_SECONDS_LIMIT="${FRONTEND_AUDIT_CONNECT_TIMEOUT_SECONDS_LIMIT:-30}"
+MAX_RETRIES="${FRONTEND_AUDIT_MAX_RETRIES:-3}"
+RETRY_DELAY_SECONDS="${FRONTEND_AUDIT_RETRY_DELAY_SECONDS:-1}"
+MAX_RETRIES_LIMIT="${FRONTEND_AUDIT_MAX_RETRIES_LIMIT:-10}"
+MAX_RETRY_DELAY_SECONDS_LIMIT="${FRONTEND_AUDIT_MAX_RETRY_DELAY_SECONDS_LIMIT:-30}"
 
 require_command() {
   local command_name="$1"
@@ -99,6 +103,18 @@ validate_positive_integer "FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS" "$REQUEST_TIM
 validate_positive_integer "FRONTEND_AUDIT_CONNECT_TIMEOUT_SECONDS" "$CONNECT_TIMEOUT_SECONDS"
 validate_positive_integer "FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS_LIMIT" "$REQUEST_TIMEOUT_SECONDS_LIMIT"
 validate_positive_integer "FRONTEND_AUDIT_CONNECT_TIMEOUT_SECONDS_LIMIT" "$CONNECT_TIMEOUT_SECONDS_LIMIT"
+validate_positive_integer "FRONTEND_AUDIT_MAX_RETRIES" "$MAX_RETRIES"
+validate_positive_integer "FRONTEND_AUDIT_MAX_RETRIES_LIMIT" "$MAX_RETRIES_LIMIT"
+
+if [[ ! "$RETRY_DELAY_SECONDS" =~ ^[0-9]+$ ]] || [[ "$RETRY_DELAY_SECONDS" -lt 0 ]]; then
+  echo "FRONTEND_AUDIT_RETRY_DELAY_SECONDS must be a non-negative integer (got: $RETRY_DELAY_SECONDS)" >&2
+  exit 1
+fi
+
+if [[ ! "$MAX_RETRY_DELAY_SECONDS_LIMIT" =~ ^[0-9]+$ ]] || [[ "$MAX_RETRY_DELAY_SECONDS_LIMIT" -lt 0 ]]; then
+  echo "FRONTEND_AUDIT_MAX_RETRY_DELAY_SECONDS_LIMIT must be a non-negative integer (got: $MAX_RETRY_DELAY_SECONDS_LIMIT)" >&2
+  exit 1
+fi
 
 if [[ "$REQUEST_TIMEOUT_SECONDS" -gt "$REQUEST_TIMEOUT_SECONDS_LIMIT" ]]; then
   echo "FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS must be <= FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS_LIMIT (got: $REQUEST_TIMEOUT_SECONDS > $REQUEST_TIMEOUT_SECONDS_LIMIT)" >&2
@@ -112,6 +128,16 @@ fi
 
 if [[ "$CONNECT_TIMEOUT_SECONDS" -gt "$REQUEST_TIMEOUT_SECONDS" ]]; then
   echo "FRONTEND_AUDIT_CONNECT_TIMEOUT_SECONDS must be <= FRONTEND_AUDIT_REQUEST_TIMEOUT_SECONDS" >&2
+  exit 1
+fi
+
+if [[ "$MAX_RETRIES" -gt "$MAX_RETRIES_LIMIT" ]]; then
+  echo "FRONTEND_AUDIT_MAX_RETRIES must be <= FRONTEND_AUDIT_MAX_RETRIES_LIMIT (got: $MAX_RETRIES > $MAX_RETRIES_LIMIT)" >&2
+  exit 1
+fi
+
+if [[ "$RETRY_DELAY_SECONDS" -gt "$MAX_RETRY_DELAY_SECONDS_LIMIT" ]]; then
+  echo "FRONTEND_AUDIT_RETRY_DELAY_SECONDS must be <= FRONTEND_AUDIT_MAX_RETRY_DELAY_SECONDS_LIMIT (got: $RETRY_DELAY_SECONDS > $MAX_RETRY_DELAY_SECONDS_LIMIT)" >&2
   exit 1
 fi
 
@@ -143,14 +169,37 @@ ok() { echo -e "  ${GREEN}✓${RESET} $1"; ((PASS++)); }
 fail_() { echo -e "  ${RED}✗${RESET} $1"; ((FAIL++)); FAILS+=("$1"); }
 section() { echo -e "\n${BOLD}${CYAN}$1${RESET}"; }
 
+is_transient_status() {
+  local code="$1"
+  [[ "$code" == "000" || "$code" == "429" || "$code" =~ ^5[0-9]{2}$ ]]
+}
+
 check_route() {
   local base="$1"
   local route="$2"
-  local code effective_url result normalized_effective expected_a expected_b
+  local code effective_url result normalized_effective expected_a expected_b attempt
 
-  if ! result=$(curl -sL -o /dev/null -w "%{http_code}|%{url_effective}" --max-time "$REQUEST_TIMEOUT_SECONDS" --connect-timeout "$CONNECT_TIMEOUT_SECONDS" "$base$route" 2>/dev/null); then
-    result="000|"
-  fi
+  code="000"
+  result="000|"
+  for ((attempt=1; attempt<=MAX_RETRIES; attempt++)); do
+    if ! result=$(curl -sL -o /dev/null -w "%{http_code}|%{url_effective}" --max-time "$REQUEST_TIMEOUT_SECONDS" --connect-timeout "$CONNECT_TIMEOUT_SECONDS" "$base$route" 2>/dev/null); then
+      result="000|"
+    fi
+    code="${result%%|*}"
+
+    if [[ "$code" == "200" ]]; then
+      break
+    fi
+
+    if ! is_transient_status "$code"; then
+      break
+    fi
+
+    if [[ "$attempt" -lt "$MAX_RETRIES" && "$RETRY_DELAY_SECONDS" -gt 0 ]]; then
+      sleep "$RETRY_DELAY_SECONDS"
+    fi
+  done
+
   code="${result%%|*}"
   effective_url="${result#*|}"
   normalized_effective="${effective_url%%\?*}"
@@ -160,7 +209,7 @@ check_route() {
   expected_b="$base$route/"
 
   if [[ "$code" != "200" ]]; then
-    fail_ "$base$route → expected 200, got $code"
+    fail_ "$base$route → expected 200, got $code (after $MAX_RETRIES attempts)"
     return
   fi
 
@@ -180,13 +229,30 @@ check_asset_url() {
   SEEN_ASSET_URLS["$url"]=1
 
   local code
-  if ! code=$(curl -so /dev/null -w "%{http_code}" --max-time "$REQUEST_TIMEOUT_SECONDS" --connect-timeout "$CONNECT_TIMEOUT_SECONDS" "$url" 2>/dev/null); then
-    code="000"
-  fi
+  local attempt
+  code="000"
+  for ((attempt=1; attempt<=MAX_RETRIES; attempt++)); do
+    if ! code=$(curl -so /dev/null -w "%{http_code}" --max-time "$REQUEST_TIMEOUT_SECONDS" --connect-timeout "$CONNECT_TIMEOUT_SECONDS" "$url" 2>/dev/null); then
+      code="000"
+    fi
+
+    if [[ "$code" == "200" ]]; then
+      break
+    fi
+
+    if ! is_transient_status "$code"; then
+      break
+    fi
+
+    if [[ "$attempt" -lt "$MAX_RETRIES" && "$RETRY_DELAY_SECONDS" -gt 0 ]]; then
+      sleep "$RETRY_DELAY_SECONDS"
+    fi
+  done
+
   if [[ "$code" == "200" ]]; then
     ok "asset $url → HTTP 200"
   else
-    fail_ "asset $url → expected 200, got $code"
+    fail_ "asset $url → expected 200, got $code (after $MAX_RETRIES attempts)"
   fi
 }
 
@@ -216,11 +282,22 @@ audit_assets_for_origin() {
   local base="$1"
   section "Static asset audit: $base"
 
-  local route html rel_assets abs_assets
+  local route html rel_assets abs_assets attempt
   for route in "${HEARTBEAT_REQUIRED_ROUTES[@]}"; do
-    html=$(curl -sL --max-time "$REQUEST_TIMEOUT_SECONDS" --connect-timeout "$CONNECT_TIMEOUT_SECONDS" "$base$route" 2>/dev/null || true)
+    html=""
+    for ((attempt=1; attempt<=MAX_RETRIES; attempt++)); do
+      html=$(curl -sL --max-time "$REQUEST_TIMEOUT_SECONDS" --connect-timeout "$CONNECT_TIMEOUT_SECONDS" "$base$route" 2>/dev/null || true)
+      if [[ -n "$html" ]]; then
+        break
+      fi
+
+      if [[ "$attempt" -lt "$MAX_RETRIES" && "$RETRY_DELAY_SECONDS" -gt 0 ]]; then
+        sleep "$RETRY_DELAY_SECONDS"
+      fi
+    done
+
     if [[ -z "$html" ]]; then
-      fail_ "asset discovery failed for $base$route (empty response body)"
+      fail_ "asset discovery failed for $base$route (empty response body after $MAX_RETRIES attempts)"
       continue
     fi
 

@@ -1052,3 +1052,15 @@ Archived status summaries pruned from `BACKLOG.md`.
 
 ---
 
+
+## Archive batch 2026-04-10 04:58 UTC
+## Status Summary (2026-04-10 00:48 UTC)
+- **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`), plus post-change build/test/audit rerun passed.
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy verification passed (`/health` 200, `/login` 200, direct/web/public `/v1|api/v1/monitors` auth-path checks returned expected `401` with Bearer header).
+- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, `npm run audit:frontend`: 54/54, `npm run audit:frontend:prod`: 108/108).
+- **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 00:47 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows)
+- **Last changes (00:48 UTC):**
+  - [x] **fix(build): clear stale Next.js build processes/locks before web compile** — hardened `scripts/build-web.sh` to terminate orphaned repo-local `next build` processes and remove both `.next/lock` and `.next/build.lock` before starting a new build, preventing false "another next build process is already running" heartbeat failures.
+
+---
+

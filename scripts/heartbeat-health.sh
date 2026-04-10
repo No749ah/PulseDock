@@ -11,6 +11,12 @@
 # - HEARTBEAT_BUILD_TIMEOUT_SECONDS (default: 1800)
 # - HEARTBEAT_TEST_TIMEOUT_SECONDS (default: 2400)
 # - HEARTBEAT_AUDIT_TIMEOUT_SECONDS (default: 600)
+#
+# Optional timeout upper bounds (seconds):
+# - HEARTBEAT_GIT_PULL_TIMEOUT_SECONDS_LIMIT (default: 1800)
+# - HEARTBEAT_BUILD_TIMEOUT_SECONDS_LIMIT (default: 7200)
+# - HEARTBEAT_TEST_TIMEOUT_SECONDS_LIMIT (default: 7200)
+# - HEARTBEAT_AUDIT_TIMEOUT_SECONDS_LIMIT (default: 1800)
 
 set -euo pipefail
 
@@ -109,10 +115,14 @@ ensure_clean_worktree
 echo -e "${GREEN}✓ Working tree check${RESET}"
 
 GIT_PULL_TIMEOUT_SECONDS="${HEARTBEAT_GIT_PULL_TIMEOUT_SECONDS:-300}"
+GIT_PULL_TIMEOUT_SECONDS_LIMIT="${HEARTBEAT_GIT_PULL_TIMEOUT_SECONDS_LIMIT:-1800}"
 
 BUILD_TIMEOUT_SECONDS="${HEARTBEAT_BUILD_TIMEOUT_SECONDS:-1800}"
 TEST_TIMEOUT_SECONDS="${HEARTBEAT_TEST_TIMEOUT_SECONDS:-2400}"
 AUDIT_TIMEOUT_SECONDS="${HEARTBEAT_AUDIT_TIMEOUT_SECONDS:-600}"
+BUILD_TIMEOUT_SECONDS_LIMIT="${HEARTBEAT_BUILD_TIMEOUT_SECONDS_LIMIT:-7200}"
+TEST_TIMEOUT_SECONDS_LIMIT="${HEARTBEAT_TEST_TIMEOUT_SECONDS_LIMIT:-7200}"
+AUDIT_TIMEOUT_SECONDS_LIMIT="${HEARTBEAT_AUDIT_TIMEOUT_SECONDS_LIMIT:-1800}"
 
 validate_timeout_seconds() {
   local label="$1"
@@ -124,10 +134,25 @@ validate_timeout_seconds() {
   fi
 }
 
-validate_timeout_seconds "HEARTBEAT_BUILD_TIMEOUT_SECONDS" "${BUILD_TIMEOUT_SECONDS}"
-validate_timeout_seconds "HEARTBEAT_TEST_TIMEOUT_SECONDS" "${TEST_TIMEOUT_SECONDS}"
-validate_timeout_seconds "HEARTBEAT_AUDIT_TIMEOUT_SECONDS" "${AUDIT_TIMEOUT_SECONDS}"
-validate_timeout_seconds "HEARTBEAT_GIT_PULL_TIMEOUT_SECONDS" "${GIT_PULL_TIMEOUT_SECONDS}"
+validate_timeout_seconds_bounded() {
+  local label="$1"
+  local value="$2"
+  local limit_label="$3"
+  local limit_value="$4"
+
+  validate_timeout_seconds "${label}" "${value}"
+  validate_timeout_seconds "${limit_label}" "${limit_value}"
+
+  if [[ "${value}" -gt "${limit_value}" ]]; then
+    echo "${label} (${value}) must be less than or equal to ${limit_label} (${limit_value})." >&2
+    exit 1
+  fi
+}
+
+validate_timeout_seconds_bounded "HEARTBEAT_GIT_PULL_TIMEOUT_SECONDS" "${GIT_PULL_TIMEOUT_SECONDS}" "HEARTBEAT_GIT_PULL_TIMEOUT_SECONDS_LIMIT" "${GIT_PULL_TIMEOUT_SECONDS_LIMIT}"
+validate_timeout_seconds_bounded "HEARTBEAT_BUILD_TIMEOUT_SECONDS" "${BUILD_TIMEOUT_SECONDS}" "HEARTBEAT_BUILD_TIMEOUT_SECONDS_LIMIT" "${BUILD_TIMEOUT_SECONDS_LIMIT}"
+validate_timeout_seconds_bounded "HEARTBEAT_TEST_TIMEOUT_SECONDS" "${TEST_TIMEOUT_SECONDS}" "HEARTBEAT_TEST_TIMEOUT_SECONDS_LIMIT" "${TEST_TIMEOUT_SECONDS_LIMIT}"
+validate_timeout_seconds_bounded "HEARTBEAT_AUDIT_TIMEOUT_SECONDS" "${AUDIT_TIMEOUT_SECONDS}" "HEARTBEAT_AUDIT_TIMEOUT_SECONDS_LIMIT" "${AUDIT_TIMEOUT_SECONDS_LIMIT}"
 
 run_with_tail "Git sync (tail -3)" 3 "${GIT_PULL_TIMEOUT_SECONDS}" git pull --ff-only origin dev
 

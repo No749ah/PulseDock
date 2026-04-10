@@ -94,6 +94,38 @@ validate_boolean() {
   fi
 }
 
+validate_git_identity_inputs() {
+  local name_label="$1"
+  local name_value="$2"
+  local email_label="$3"
+  local email_value="$4"
+
+  if [[ -z "$name_value" || "$name_value" =~ [[:space:]]$ || "$name_value" =~ ^[[:space:]] ]]; then
+    echo "${name_label} must be non-empty and must not start/end with whitespace. Got: '${name_value}'." >&2
+    exit 1
+  fi
+
+  if [[ "$name_value" == *$'\n'* || "$name_value" == *$'\r'* ]]; then
+    echo "${name_label} must not contain newline characters." >&2
+    exit 1
+  fi
+
+  if [[ -z "$email_value" || "$email_value" =~ [[:space:]] ]]; then
+    echo "${email_label} must be a non-empty email without whitespace. Got: '${email_value}'." >&2
+    exit 1
+  fi
+
+  if [[ "$email_value" == *$'\n'* || "$email_value" == *$'\r'* ]]; then
+    echo "${email_label} must not contain newline characters." >&2
+    exit 1
+  fi
+
+  if [[ ! "$email_value" =~ ^[^@]+@[^@]+\.[^@]+$ ]]; then
+    echo "${email_label} must look like a valid email address. Got: '${email_value}'." >&2
+    exit 1
+  fi
+}
+
 step "Dependency check"
 ensure_required_commands
 ok "Dependency check"
@@ -123,6 +155,7 @@ validate_positive_integer_bounded "HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS" "${HEA
 validate_positive_integer_bounded "HEARTBEAT_PORT_CHECK_TIMEOUT_MS" "${HEARTBEAT_PORT_CHECK_TIMEOUT_MS}" "HEARTBEAT_PORT_CHECK_TIMEOUT_MS_LIMIT" "${HEARTBEAT_PORT_CHECK_TIMEOUT_MS_LIMIT}"
 validate_boolean "HEARTBEAT_REQUIRE_DOCKER" "${HEARTBEAT_REQUIRE_DOCKER}"
 validate_boolean "HEARTBEAT_REQUIRE_GITHUB_SSH" "${HEARTBEAT_REQUIRE_GITHUB_SSH}"
+validate_git_identity_inputs "HEARTBEAT_GIT_USER_NAME" "${HEARTBEAT_GIT_USER_NAME}" "HEARTBEAT_GIT_USER_EMAIL" "${HEARTBEAT_GIT_USER_EMAIL}"
 
 if [[ ! -L "${SSH_LINK}" || ! -f "${SSH_LINK}/id_ed25519" ]]; then
   rm -rf "${SSH_LINK}"

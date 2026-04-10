@@ -116,6 +116,8 @@ if [[ "$CONNECT_TIMEOUT_SECONDS" -gt "$REQUEST_TIMEOUT_SECONDS" ]]; then
 fi
 
 require_command curl
+require_command grep
+require_command tr
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # shellcheck source=./heartbeat-required-routes.sh

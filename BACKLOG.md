@@ -1,3 +1,11 @@
+## Status Summary (2026-04-10 14:13 UTC)
+- **Build/Test/Audit:** ✅ Step-0 + Step-1 checks passed (`npm run heartbeat:bootstrap`, `npm run heartbeat:health`) and post-change full validation passed (`npm run build && npm run test && npm audit --audit-level=high`).
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` with auth header returned expected `401`).
+- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, `curl -sI https://oc-dev-test.no749ah.com`: HTTP 200).
+- **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 14:13 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
+- **Last changes (14:13 UTC):**
+  - [x] **fix(heartbeat): hard-cap Step-1 timeout limit env overrides** — hardened `scripts/heartbeat-health.sh` to reject `*_TIMEOUT_SECONDS_LIMIT` values above an explicit 86400-second safety cap before Step-1 commands execute.
+
 ## Status Summary (2026-04-10 13:12 UTC)
 - **Build/Test/Audit:** ✅ Full Step-0 + Step-1 checks passed (`npm run heartbeat:bootstrap`, `npm run heartbeat:health`), plus post-change rerun (`npm run build && npm run test && npm audit --audit-level=high`) passed.
 - **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` with auth header returned expected `401`).
@@ -13,14 +21,6 @@
 - **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 11:12 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
 - **Last changes (11:12 UTC):**
   - [x] **fix(heartbeat): validate rotate branch inputs with strict suffix/ref-name checks** — hardened `scripts/heartbeat-rotate-branch.sh` to reject malformed `--name` suffixes and invalid/whitespace-containing branch names via `git check-ref-format --branch`, preventing unsafe branch creation attempts in Step-6 automation.
-
-## Status Summary (2026-04-10 10:12 UTC)
-- **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`), plus post-change build/test/audit rerun passed.
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy verification passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` auth-path checks returned expected `401`).
-- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, direct local route curl checks: 8/8 HTTP 200).
-- **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 10:15 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
-- **Last changes (10:12 UTC):**
-  - [x] **fix(heartbeat): fail fast when core bootstrap command dependencies are missing** — hardened `scripts/heartbeat-bootstrap.sh` with explicit required-command checks (`git`, `ssh`, `node`) so Step-0 exits immediately with actionable errors when bootstrap runtime dependencies are unavailable.
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 

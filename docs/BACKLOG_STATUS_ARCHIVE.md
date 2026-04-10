@@ -1138,3 +1138,13 @@ Archived status summaries pruned from `BACKLOG.md`.
 - **Last changes (09:10 UTC):**
   - [x] **fix(heartbeat): fail fast when core command dependencies are missing in Step-1 health runner** — hardened `scripts/heartbeat-health.sh` with explicit required-command checks (`git`, `npm`, `mktemp`, `tail`) and a clear warning when optional `timeout` is unavailable.
 
+
+## Archive batch 2026-04-10 14:14 UTC
+## Status Summary (2026-04-10 10:12 UTC)
+- **Build/Test/Audit:** ✅ Full Step-0 bootstrap + Step-1 health checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`), plus post-change build/test/audit rerun passed.
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy verification passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` auth-path checks returned expected `401`).
+- **Frontend Audit:** ✅ Step-5 checks all green (`npm run audit:frontend:heads`: 8/8, `npm run audit:frontend:heads:prod`: 16/16, direct local route curl checks: 8/8 HTTP 200).
+- **Branch:** heartbeat/2026-04-08-noon (rotation check skipped at 10:15 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
+- **Last changes (10:12 UTC):**
+  - [x] **fix(heartbeat): fail fast when core bootstrap command dependencies are missing** — hardened `scripts/heartbeat-bootstrap.sh` with explicit required-command checks (`git`, `ssh`, `node`) so Step-0 exits immediately with actionable errors when bootstrap runtime dependencies are unavailable.
+

@@ -17,6 +17,9 @@
 # - HEARTBEAT_BUILD_TIMEOUT_SECONDS_LIMIT (default: 7200)
 # - HEARTBEAT_TEST_TIMEOUT_SECONDS_LIMIT (default: 7200)
 # - HEARTBEAT_AUDIT_TIMEOUT_SECONDS_LIMIT (default: 1800)
+#
+# Safety guardrail: all *_LIMIT values are hard-capped at 86400 seconds
+# to prevent accidental unbounded runtime windows.
 
 set -euo pipefail
 
@@ -148,6 +151,8 @@ BUILD_TIMEOUT_SECONDS_LIMIT="${HEARTBEAT_BUILD_TIMEOUT_SECONDS_LIMIT:-7200}"
 TEST_TIMEOUT_SECONDS_LIMIT="${HEARTBEAT_TEST_TIMEOUT_SECONDS_LIMIT:-7200}"
 AUDIT_TIMEOUT_SECONDS_LIMIT="${HEARTBEAT_AUDIT_TIMEOUT_SECONDS_LIMIT:-1800}"
 
+MAX_TIMEOUT_LIMIT_SECONDS=86400
+
 validate_timeout_seconds() {
   local label="$1"
   local value="$2"
@@ -172,6 +177,23 @@ validate_timeout_seconds_bounded() {
     exit 1
   fi
 }
+
+validate_timeout_limit_guardrail() {
+  local limit_label="$1"
+  local limit_value="$2"
+
+  validate_timeout_seconds "${limit_label}" "${limit_value}"
+
+  if [[ "${limit_value}" -gt "${MAX_TIMEOUT_LIMIT_SECONDS}" ]]; then
+    echo "${limit_label} (${limit_value}) exceeds hard safety cap (${MAX_TIMEOUT_LIMIT_SECONDS} seconds)." >&2
+    exit 1
+  fi
+}
+
+validate_timeout_limit_guardrail "HEARTBEAT_GIT_PULL_TIMEOUT_SECONDS_LIMIT" "${GIT_PULL_TIMEOUT_SECONDS_LIMIT}"
+validate_timeout_limit_guardrail "HEARTBEAT_BUILD_TIMEOUT_SECONDS_LIMIT" "${BUILD_TIMEOUT_SECONDS_LIMIT}"
+validate_timeout_limit_guardrail "HEARTBEAT_TEST_TIMEOUT_SECONDS_LIMIT" "${TEST_TIMEOUT_SECONDS_LIMIT}"
+validate_timeout_limit_guardrail "HEARTBEAT_AUDIT_TIMEOUT_SECONDS_LIMIT" "${AUDIT_TIMEOUT_SECONDS_LIMIT}"
 
 validate_timeout_seconds_bounded "HEARTBEAT_GIT_PULL_TIMEOUT_SECONDS" "${GIT_PULL_TIMEOUT_SECONDS}" "HEARTBEAT_GIT_PULL_TIMEOUT_SECONDS_LIMIT" "${GIT_PULL_TIMEOUT_SECONDS_LIMIT}"
 validate_timeout_seconds_bounded "HEARTBEAT_BUILD_TIMEOUT_SECONDS" "${BUILD_TIMEOUT_SECONDS}" "HEARTBEAT_BUILD_TIMEOUT_SECONDS_LIMIT" "${BUILD_TIMEOUT_SECONDS_LIMIT}"

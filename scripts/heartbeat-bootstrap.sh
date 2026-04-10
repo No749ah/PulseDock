@@ -4,6 +4,14 @@
 # - Verifies Docker CLI availability + GitHub SSH auth
 # - Verifies dind PostgreSQL/Redis reachability
 # - Starts dind services when needed
+#
+# Optional timeout controls:
+# - HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS (default: 10)
+# - HEARTBEAT_PORT_CHECK_TIMEOUT_MS (default: 3000)
+#
+# Optional timeout upper bounds:
+# - HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS_LIMIT (default: 60)
+# - HEARTBEAT_PORT_CHECK_TIMEOUT_MS_LIMIT (default: 10000)
 
 set -euo pipefail
 
@@ -18,6 +26,8 @@ HEARTBEAT_GIT_USER_NAME="${HEARTBEAT_GIT_USER_NAME:-No749ah}"
 HEARTBEAT_GIT_USER_EMAIL="${HEARTBEAT_GIT_USER_EMAIL:-no749ah@users.noreply.github.com}"
 HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS="${HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS:-10}"
 HEARTBEAT_PORT_CHECK_TIMEOUT_MS="${HEARTBEAT_PORT_CHECK_TIMEOUT_MS:-3000}"
+HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS_LIMIT="${HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS_LIMIT:-60}"
+HEARTBEAT_PORT_CHECK_TIMEOUT_MS_LIMIT="${HEARTBEAT_PORT_CHECK_TIMEOUT_MS_LIMIT:-10000}"
 
 GREEN='\033[0;32m'; YELLOW='\033[0;33m'; CYAN='\033[0;36m'; BOLD='\033[1m'; RESET='\033[0m'
 
@@ -43,6 +53,21 @@ validate_positive_integer() {
   fi
 }
 
+validate_positive_integer_bounded() {
+  local label="$1"
+  local value="$2"
+  local limit_label="$3"
+  local limit_value="$4"
+
+  validate_positive_integer "$label" "$value"
+  validate_positive_integer "$limit_label" "$limit_value"
+
+  if [[ "$value" -gt "$limit_value" ]]; then
+    echo "${label} must be <= ${limit_label}. Got: '${value}' > '${limit_value}'." >&2
+    exit 1
+  fi
+}
+
 is_port_reachable() {
   local host="$1"
   local port="$2"
@@ -64,8 +89,8 @@ assert_port_reachable() {
 }
 
 step "SSH key symlink"
-validate_positive_integer "HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS" "${HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS}"
-validate_positive_integer "HEARTBEAT_PORT_CHECK_TIMEOUT_MS" "${HEARTBEAT_PORT_CHECK_TIMEOUT_MS}"
+validate_positive_integer_bounded "HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS" "${HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS}" "HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS_LIMIT" "${HEARTBEAT_SSH_CONNECT_TIMEOUT_SECONDS_LIMIT}"
+validate_positive_integer_bounded "HEARTBEAT_PORT_CHECK_TIMEOUT_MS" "${HEARTBEAT_PORT_CHECK_TIMEOUT_MS}" "HEARTBEAT_PORT_CHECK_TIMEOUT_MS_LIMIT" "${HEARTBEAT_PORT_CHECK_TIMEOUT_MS_LIMIT}"
 
 if [[ ! -L "${SSH_LINK}" || ! -f "${SSH_LINK}/id_ed25519" ]]; then
   rm -rf "${SSH_LINK}"

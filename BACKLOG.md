@@ -1,3 +1,10 @@
+## Status Summary (2026-04-11 22:12 UTC)
+- **Build/Test/Audit:** ✅ Full heartbeat checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`) and post-change validation remained green (`npm run build && npm run test && npm audit --audit-level=high`, 0 vulnerabilities).
+- **Deployment:** ⏳ Pending restart + deploy verification (will be executed in Steps 3-5 after commit).
+- **Branch:** heartbeat/2026-04-10-noon (Step-6 rotation check pending; current run is outside scheduled 00:00/12:00 UTC window).
+- **Last changes (22:12 UTC):**
+  - [x] **fix(heartbeat): run frontend route/static audits in strict shell mode** — enabled `set -euo pipefail` in `scripts/audit-frontend-pages.sh` so unexpected command failures terminate Step-5 audits immediately instead of continuing in partially failed states.
+
 ## Status Summary (2026-04-10 23:11 UTC)
 - **Build/Test/Audit:** ✅ Full heartbeat checks passed (`git pull --ff-only origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`) and post-change validation remained green (`npm run build && npm run test && npm audit --audit-level=high`, 0 vulnerabilities).
 - **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` returned expected `401` with invalid bearer).
@@ -13,14 +20,6 @@
 - **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 21:30 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
 - **Last changes (21:29 UTC):**
   - [x] **fix(heartbeat): hard-cap Step-5 frontend audit limit overrides** — hardened `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` with explicit hard caps for limit env overrides so malformed oversized `*_LIMIT` values fail fast before route and asset audits run.
-
-## Status Summary (2026-04-10 20:17 UTC)
-- **Build/Test/Audit:** ✅ Full Step-0 + Step-1 heartbeat flow passed (`npm run heartbeat:bootstrap`, `npm run heartbeat:health`), plus post-change validation remained green (`npm run build && npm run test && npm audit --audit-level=high`, 0 vulnerabilities).
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` returned expected `401` with invalid bearer).
-- **Frontend Audit:** ✅ Required route and asset audits passed locally and via reverse proxy (`npm run audit:frontend`, `npm run audit:frontend:heads`, `npm run audit:frontend:prod`, `npm run audit:frontend:heads:prod`; all checks green).
-- **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 20:17 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
-- **Last changes (20:17 UTC):**
-  - [x] **fix(heartbeat): fail fast when core commands are missing** — committed + pushed hardening in `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` to verify required command dependencies (`git`, `npm`, `date`) before orchestration steps run.
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
@@ -98,6 +97,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Run Step-5 frontend route/static audits in strict shell mode** - ✅ Done (2026-04-11). Updated `scripts/audit-frontend-pages.sh` from `set -uo pipefail` to `set -euo pipefail` so unexpected command failures hard-stop the audit instead of being silently tolerated.
 - [x] **Fail heartbeat Step-5 HEAD route checks on redirect drift** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-curl-pages.sh` to follow redirects for HEAD checks, compare `%{url_effective}` against expected route targets, and fail when a required route silently resolves elsewhere despite final HTTP 200.
 - [x] **Hard-cap Step-5 frontend audit limit env overrides to prevent accidental unbounded guardrails** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` with explicit hard caps for `*_LIMIT` env controls (`*_LIMIT_HARD_CAP_SECONDS`, `*_LIMIT_HARD_CAP_RETRIES`) so malformed oversized limits fail fast before route/head/static-asset audits run.
 - [x] **Fail fast on missing core command dependencies in heartbeat check/cycle orchestrators** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` with explicit required-command checks (`git`, `npm`, `date`) so orchestration fails immediately with actionable errors before branch/bootstrap/deploy steps.

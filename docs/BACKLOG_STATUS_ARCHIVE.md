@@ -1224,3 +1224,13 @@ Archived status summaries pruned from `BACKLOG.md`.
 - **Last changes (20:10 UTC):**
   - [x] **fix(heartbeat): add required-command checks to check/cycle orchestrators** — hardened `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` with fail-fast dependency validation (`git`, `npm`, `date`) before executing branch safety, bootstrap, and downstream heartbeat steps.
 
+
+## Archive batch 2026-04-11 22:12 UTC
+## Status Summary (2026-04-10 20:17 UTC)
+- **Build/Test/Audit:** ✅ Full Step-0 + Step-1 heartbeat flow passed (`npm run heartbeat:bootstrap`, `npm run heartbeat:health`), plus post-change validation remained green (`npm run build && npm run test && npm audit --audit-level=high`, 0 vulnerabilities).
+- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` returned expected `401` with invalid bearer).
+- **Frontend Audit:** ✅ Required route and asset audits passed locally and via reverse proxy (`npm run audit:frontend`, `npm run audit:frontend:heads`, `npm run audit:frontend:prod`, `npm run audit:frontend:heads:prod`; all checks green).
+- **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 20:17 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
+- **Last changes (20:17 UTC):**
+  - [x] **fix(heartbeat): fail fast when core commands are missing** — committed + pushed hardening in `scripts/heartbeat-check.sh` and `scripts/heartbeat-cycle.sh` to verify required command dependencies (`git`, `npm`, `date`) before orchestration steps run.
+

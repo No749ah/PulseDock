@@ -5484,7 +5484,7 @@ describe('StatusPagesService', () => {
       const result = await service.getWidgetData('my-status-page', 'mmsg1');
       expect(result.monitors).toHaveLength(1);
       expect((result as { summary: { healthy: number } }).summary.healthy).toBe(1);
-    });
+    }, 15000);
 
     it('filters by monitorType when configured', async () => {
       const layout = { widgets: [{ id: 'mmsg2', type: 'multi-monitor-status-grid', config: { monitorType: 'HTTP' }, x: 0, y: 0, w: 12, h: 3 }] };

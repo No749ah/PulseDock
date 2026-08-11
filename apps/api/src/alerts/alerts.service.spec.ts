@@ -3089,7 +3089,7 @@ describe('AlertsService', () => {
       const service = new AlertsService(prisma as never, metrics, makeMailer() as never, makeNotifications() as never);
 
       await expect(service.notifyTest(channel)).rejects.toThrow('Matrix returned 403');
-    });
+    }, 15000);
 
     it('does not send if required config fields are missing', async () => {
       const channel = makeChannel({

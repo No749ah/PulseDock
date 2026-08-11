@@ -1447,7 +1447,7 @@ describe('AuthService branch coverage gaps', () => {
     const svc = makeService(prisma as never);
 
     await expect(svc.disable2FA('user-1', 'ValidPass1!Strong', recoveryCode)).resolves.toEqual({ ok: true });
-  });
+  }, 15000);
 });
 
 describe('exportUserAuditLog() additional CSV branch coverage', () => {

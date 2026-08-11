@@ -1,3 +1,10 @@
+## Status Summary (2026-04-14 08:16 UTC)
+- **Build/Test/Audit:** ✅ Full heartbeat checks passed after stabilization fix (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`, 0 vulnerabilities).
+- **Deployment:** ⏳ Pending restart + deploy verification (Steps 3-5 will run after commit).
+- **Branch:** heartbeat/2026-04-10-noon (rotation check pending; current run remains outside 00:00/12:00 UTC windows).
+- **Last changes (08:16 UTC):**
+  - [x] **test(api): stabilize three flaky timeout-prone specs in loaded heartbeat runners** — added explicit `15000ms` per-test timeouts for Matrix non-ok handling (`alerts.service.spec.ts`), 2FA recovery-code disable path (`auth.service.spec.ts`), and status-page multi-monitor filtering (`status-pages.service.spec.ts`) to prevent false negative 5s default timeout failures.
+
 ## Status Summary (2026-04-11 22:12 UTC)
 - **Build/Test/Audit:** ✅ Full heartbeat checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`) and post-change validation remained green (`npm run build && npm run test && npm audit --audit-level=high`, 0 vulnerabilities).
 - **Deployment:** ⏳ Pending restart + deploy verification (will be executed in Steps 3-5 after commit).
@@ -12,14 +19,6 @@
 - **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 23:11 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
 - **Last changes (23:11 UTC):**
   - [x] **fix(heartbeat): fail HEAD audit on redirect drift** — hardened `scripts/heartbeat-curl-pages.sh` to follow redirects and compare `%{url_effective}` against expected required routes, so Step-5 HEAD checks now fail on silent route drift instead of accepting any final `200`.
-
-## Status Summary (2026-04-10 21:29 UTC)
-- **Build/Test/Audit:** ✅ Full heartbeat checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`) and post-change validation remained green (`npm run build && npm run test && npm audit --audit-level=high`, 0 vulnerabilities).
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` returned expected `401` with invalid bearer).
-- **Frontend Audit:** ✅ Required local + public route checks, static-asset checks, and HEAD checks passed (`npm run audit:frontend`, `npm run audit:frontend:heads`, `npm run audit:frontend:prod`, `npm run audit:frontend:heads:prod`; all green).
-- **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 21:30 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
-- **Last changes (21:29 UTC):**
-  - [x] **fix(heartbeat): hard-cap Step-5 frontend audit limit overrides** — hardened `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` with explicit hard caps for limit env overrides so malformed oversized `*_LIMIT` values fail fast before route and asset audits run.
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
@@ -97,6 +96,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Stabilize three timeout-prone API specs that intermittently fail heartbeat Step-1 test runs under load** - ✅ Done (2026-04-14). Added explicit `15000ms` per-test timeouts in `apps/api/src/alerts/alerts.service.spec.ts`, `apps/api/src/auth/auth.service.spec.ts`, and `apps/api/src/status-pages/status-pages.service.spec.ts` for known slow-path tests that occasionally exceed Vitest's default `5000ms` budget on busy runners.
 - [x] **Run Step-5 frontend route/static audits in strict shell mode** - ✅ Done (2026-04-11). Updated `scripts/audit-frontend-pages.sh` from `set -uo pipefail` to `set -euo pipefail` so unexpected command failures hard-stop the audit instead of being silently tolerated.
 - [x] **Fail heartbeat Step-5 HEAD route checks on redirect drift** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-curl-pages.sh` to follow redirects for HEAD checks, compare `%{url_effective}` against expected route targets, and fail when a required route silently resolves elsewhere despite final HTTP 200.
 - [x] **Hard-cap Step-5 frontend audit limit env overrides to prevent accidental unbounded guardrails** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-curl-pages.sh` and `scripts/audit-frontend-pages.sh` with explicit hard caps for `*_LIMIT` env controls (`*_LIMIT_HARD_CAP_SECONDS`, `*_LIMIT_HARD_CAP_RETRIES`) so malformed oversized limits fail fast before route/head/static-asset audits run.

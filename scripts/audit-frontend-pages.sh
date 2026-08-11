@@ -189,8 +189,8 @@ declare -A SEEN_ASSET_URLS
 
 GREEN='\033[0;32m'; RED='\033[0;31m'; CYAN='\033[0;36m'; RESET='\033[0m'; BOLD='\033[1m'
 
-ok() { echo -e "  ${GREEN}✓${RESET} $1"; ((PASS++)); }
-fail_() { echo -e "  ${RED}✗${RESET} $1"; ((FAIL++)); FAILS+=("$1"); }
+ok() { echo -e "  ${GREEN}✓${RESET} $1"; PASS=$((PASS + 1)); }
+fail_() { echo -e "  ${RED}✗${RESET} $1"; FAIL=$((FAIL + 1)); FAILS+=("$1"); }
 section() { echo -e "\n${BOLD}${CYAN}$1${RESET}"; }
 
 is_transient_status() {

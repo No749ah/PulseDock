@@ -7833,6 +7833,384 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+  'lightdash-web': [
+    {
+      id: 'self-hosted',
+      label: 'Lightdash (Self-Hosted)',
+      description: 'Lightdash open-source BI tool. Version via /api/v1/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://lightdash.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'lightdash-io/lightdash' },
+      evidenceUrl: 'https://docs.lightdash.com/api/v1/',
+    },
+  ],
+
+  'cube-js': [
+    {
+      id: 'self-hosted',
+      label: 'Cube (Self-Hosted)',
+      description: 'Cube semantic analytics layer. Version via /readyz (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://cube.example.com:4000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/readyz',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/readyz', '/livez'],
+      },
+      latestSource: { type: 'github-releases', target: 'cube-js/cube.js' },
+      evidenceUrl: 'https://cube.dev/docs/http-api/rest',
+    },
+  ],
+
+  'twentycrm': [
+    {
+      id: 'self-hosted',
+      label: 'Twenty CRM (Self-Hosted)',
+      description: 'Twenty open-source CRM. Version via /api/v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://twentycrm.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'twentyhq/twenty' },
+      evidenceUrl: 'https://twenty.com/developers',
+    },
+  ],
+
+  'chatwoot-web': [
+    {
+      id: 'self-hosted',
+      label: 'Chatwoot Web (Self-Hosted)',
+      description: 'Chatwoot open-source customer support. Version via /auth/sign_in (no version endpoint; tracks GitHub releases).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://chatwoot.example.com',
+      versionSource: { type: 'github-releases', target: 'chatwoot/chatwoot' },
+      latestSource: { type: 'github-releases', target: 'chatwoot/chatwoot' },
+      evidenceUrl: 'https://www.chatwoot.com/docs/self-hosted',
+    },
+  ],
+
+  'plane-app': [
+    {
+      id: 'self-hosted',
+      label: 'Plane (Self-Hosted)',
+      description: 'Plane open-source project management. Version via /api/v1/instances/ (requires API token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://plane.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/instances/',
+        jsonPath: '$.current_version',
+        jsonPathExtractors: ['current_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/instances/'],
+      },
+      latestSource: { type: 'github-releases', target: 'makeplane/plane' },
+      evidenceUrl: 'https://developers.plane.so/api-reference/introduction',
+    },
+  ],
+
+  'cal-dot-com': [
+    {
+      id: 'self-hosted',
+      label: 'Cal.com (Self-Hosted)',
+      description: 'Cal.com scheduling platform. Version via /api/v1/health (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://cal.example.com',
+      versionSource: { type: 'github-releases', target: 'calcom/cal.com' },
+      latestSource: { type: 'github-releases', target: 'calcom/cal.com' },
+      evidenceUrl: 'https://cal.com/docs/enterprise-features/api',
+    },
+  ],
+
+  'directus-cms': [
+    {
+      id: 'self-hosted',
+      label: 'Directus CMS (Self-Hosted)',
+      description: 'Directus headless CMS. Version via /server/info (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://directus.example.com:8055',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/server/info',
+        jsonPath: '$.data.directus',
+        jsonPathExtractors: ['data.directus', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/server/info', '/server/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'directus/directus' },
+      evidenceUrl: 'https://docs.directus.io/reference/system/server.html',
+    },
+  ],
+
+  'payload-cms-v3': [
+    {
+      id: 'self-hosted',
+      label: 'Payload CMS v3 (Self-Hosted)',
+      description: 'Payload CMS v3 headless CMS. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://payload.example.com:3000',
+      versionSource: { type: 'github-releases', target: 'payloadcms/payload' },
+      latestSource: { type: 'github-releases', target: 'payloadcms/payload' },
+      evidenceUrl: 'https://payloadcms.com/docs/rest-api/overview',
+    },
+  ],
+
+  'medplum': [
+    {
+      id: 'self-hosted',
+      label: 'Medplum (Self-Hosted)',
+      description: 'Medplum healthcare platform. Version via /healthcheck (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://medplum.example.com:8103',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/healthcheck',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/healthcheck'],
+      },
+      latestSource: { type: 'github-releases', target: 'medplum/medplum' },
+      evidenceUrl: 'https://www.medplum.com/docs/api',
+    },
+  ],
+
+  'evidence-dev': [
+    {
+      id: 'self-hosted',
+      label: 'Evidence (Self-Hosted)',
+      description: 'Evidence code-driven BI framework. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://evidence.example.com:3000',
+      versionSource: { type: 'github-releases', target: 'evidence-dev/evidence' },
+      latestSource: { type: 'github-releases', target: 'evidence-dev/evidence' },
+      evidenceUrl: 'https://docs.evidence.dev/',
+    },
+  ],
+
+  'jeedom': [
+    {
+      id: 'self-hosted',
+      label: 'Jeedom (Self-Hosted)',
+      description: 'Jeedom home automation platform. Version via /core/api/jeeApi.php (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://jeedom.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/core/api/jeeApi.php?apikey={{apiKey}}&type=core&action=version',
+        jsonPath: '$.result',
+        jsonPathExtractors: ['result', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/core/api/jeeApi.php'],
+      },
+      latestSource: { type: 'github-releases', target: 'jeedom/jeedom' },
+      evidenceUrl: 'https://doc.jeedom.com/en_US/core/4.4/api_http',
+    },
+  ],
+
+  'homegenie': [
+    {
+      id: 'self-hosted',
+      label: 'HomeGenie (Self-Hosted)',
+      description: 'HomeGenie home automation server. Version via /api/HomeAutomation.HomeGenie/Config/System.Version/Get (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://homegenie.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/HomeAutomation.HomeGenie/Config/System.Version/Get',
+        jsonPath: '$.ResponseValue',
+        jsonPathExtractors: ['ResponseValue', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/HomeAutomation.HomeGenie/Config/System.Version/Get'],
+      },
+      latestSource: { type: 'github-releases', target: 'genielabs/HomeGenie' },
+      evidenceUrl: 'https://genielabs.github.io/HomeGenie/api/',
+    },
+  ],
+
+  'zigbee2mqtt-ui': [
+    {
+      id: 'self-hosted',
+      label: 'Zigbee2MQTT (Self-Hosted)',
+      description: 'Zigbee2MQTT gateway. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://zigbee2mqtt.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'Koenkk/zigbee2mqtt' },
+      evidenceUrl: 'https://www.zigbee2mqtt.io/guide/usage/frontend.html',
+    },
+  ],
+
+  'zwavejs2mqtt-ui': [
+    {
+      id: 'self-hosted',
+      label: 'Z-Wave JS UI (Self-Hosted)',
+      description: 'Z-Wave JS UI (zwavejs2mqtt). Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://zwavejs2mqtt.example.com:8091',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'zwave-js/zwave-js-ui' },
+      evidenceUrl: 'https://zwave-js.github.io/zwave-js-ui/',
+    },
+  ],
+
+  'motioneye': [
+    {
+      id: 'self-hosted',
+      label: 'motionEye (Self-Hosted)',
+      description: 'motionEye motion detection/CCTV. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://motioneye.example.com:8765',
+      versionSource: { type: 'github-releases', target: 'motioneye-project/motioneye' },
+      latestSource: { type: 'github-releases', target: 'motioneye-project/motioneye' },
+      evidenceUrl: 'https://github.com/motioneye-project/motioneye/wiki',
+    },
+  ],
+
+  'agentdvr': [
+    {
+      id: 'self-hosted',
+      label: 'Agent DVR (Self-Hosted)',
+      description: 'Agent DVR IP camera management. Version via /command/getversion (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://agentdvr.example.com:8090',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/command/getversion',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/command/getversion'],
+      },
+      latestSource: { type: 'github-releases', target: 'ispysoftware/agent-dvr' },
+      evidenceUrl: 'https://www.ispyconnect.com/agentdvr.aspx',
+    },
+  ],
+
+  'compreface': [
+    {
+      id: 'self-hosted',
+      label: 'CompreFace (Self-Hosted)',
+      description: 'CompreFace open-source facial recognition. Version via /actuator/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://compreface.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/actuator/info',
+        jsonPath: '$.build.version',
+        jsonPathExtractors: ['build.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/actuator/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'exadel-inc/CompreFace' },
+      evidenceUrl: 'https://github.com/exadel-inc/CompreFace',
+    },
+  ],
+
+  'deepstack': [
+    {
+      id: 'self-hosted',
+      label: 'DeepStack (Self-Hosted)',
+      description: 'DeepStack AI API server for image processing. Version via /v1/vision/models (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://deepstack.example.com:80',
+      versionSource: { type: 'github-releases', target: 'johnolafenwa/DeepStack' },
+      latestSource: { type: 'github-releases', target: 'johnolafenwa/DeepStack' },
+      evidenceUrl: 'https://docs.deepstack.cc/',
+    },
+  ],
+
+  'codeproject-ai': [
+    {
+      id: 'self-hosted',
+      label: 'CodeProject.AI Server (Self-Hosted)',
+      description: 'CodeProject.AI AI inference server. Version via /v1/server/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://cpai.example.com:32168',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/server/status',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/v1/server/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'codeproject/CodeProject.AI-Server' },
+      evidenceUrl: 'https://www.codeproject.com/ai/',
+    },
+  ],
+
+  'viseron': [
+    {
+      id: 'self-hosted',
+      label: 'Viseron (Self-Hosted)',
+      description: 'Viseron self-hosted AI NVR. Version via /api/v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://viseron.example.com:8888',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'roflcoopter/viseron' },
+      evidenceUrl: 'https://viseron.netlify.app/docs/api/',
+    },
+  ],
+
 };
 
 /**

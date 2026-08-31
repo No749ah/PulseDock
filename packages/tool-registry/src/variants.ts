@@ -13576,6 +13576,378 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Dev frameworks / libraries (npm)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'jupyter': [
+    {
+      id: 'jupyterlab',
+      label: 'JupyterLab (npm / Self-Hosted)',
+      description: 'JupyterLab interactive development environment. Version from npm registry.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: '@jupyterlab/application' },
+      latestSource: { type: 'npm-registry', target: '@jupyterlab/application' },
+      evidenceUrl: 'https://www.npmjs.com/package/@jupyterlab/application',
+    },
+    {
+      id: 'notebook',
+      label: 'Jupyter Notebook (Classic)',
+      description: 'Classic Jupyter Notebook package. Version from PyPI.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'pypi', target: 'notebook' },
+      latestSource: { type: 'pypi', target: 'notebook' },
+      evidenceUrl: 'https://pypi.org/project/notebook/',
+    },
+    {
+      id: 'hub',
+      label: 'JupyterHub (Self-Hosted)',
+      description: 'JupyterHub multi-user server. Version from PyPI or GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'pypi', target: 'jupyterhub' },
+      latestSource: { type: 'pypi', target: 'jupyterhub' },
+      evidenceUrl: 'https://pypi.org/project/jupyterhub/',
+    },
+  ],
+
+  'nestjs': [
+    {
+      id: 'npm',
+      label: 'NestJS (npm)',
+      description: 'NestJS Node.js framework. Version from npm registry.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: '@nestjs/core' },
+      latestSource: { type: 'npm-registry', target: '@nestjs/core' },
+      evidenceUrl: 'https://www.npmjs.com/package/@nestjs/core',
+    },
+  ],
+
+  'nextjs': [
+    {
+      id: 'npm',
+      label: 'Next.js (npm)',
+      description: 'Next.js React framework. Version from npm registry.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'next' },
+      latestSource: { type: 'npm-registry', target: 'next' },
+      evidenceUrl: 'https://www.npmjs.com/package/next',
+    },
+    {
+      id: 'vercel',
+      label: 'Next.js on Vercel (Managed)',
+      description: 'Next.js deployed on Vercel. Tracks npm release version.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'next' },
+      latestSource: { type: 'npm-registry', target: 'next' },
+      evidenceUrl: 'https://vercel.com/docs/frameworks/nextjs',
+    },
+  ],
+
+  'prisma': [
+    {
+      id: 'npm',
+      label: 'Prisma ORM (npm)',
+      description: 'Prisma Node.js ORM. Version from npm registry.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'prisma' },
+      latestSource: { type: 'npm-registry', target: 'prisma' },
+      evidenceUrl: 'https://www.npmjs.com/package/prisma',
+    },
+  ],
+
+  'fastify': [
+    {
+      id: 'npm',
+      label: 'Fastify (npm)',
+      description: 'Fastify web framework for Node.js. Version from npm registry.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'fastify' },
+      latestSource: { type: 'npm-registry', target: 'fastify' },
+      evidenceUrl: 'https://www.npmjs.com/package/fastify',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Java / JVM frameworks (Maven Central)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'spring-boot': [
+    {
+      id: 'maven',
+      label: 'Spring Boot (Maven Central)',
+      description: 'Spring Boot framework. Version from Maven Central.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'maven-central', target: 'org.springframework.boot:spring-boot' },
+      latestSource: { type: 'maven-central', target: 'org.springframework.boot:spring-boot' },
+      evidenceUrl: 'https://mvnrepository.com/artifact/org.springframework.boot/spring-boot',
+    },
+  ],
+
+  'quarkus': [
+    {
+      id: 'maven',
+      label: 'Quarkus (Maven Central)',
+      description: 'Quarkus Kubernetes-native Java framework. Version from Maven Central.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'maven-central', target: 'io.quarkus:quarkus-bom' },
+      latestSource: { type: 'maven-central', target: 'io.quarkus:quarkus-bom' },
+      evidenceUrl: 'https://mvnrepository.com/artifact/io.quarkus/quarkus-bom',
+    },
+  ],
+
+  'micronaut': [
+    {
+      id: 'maven',
+      label: 'Micronaut (Maven Central)',
+      description: 'Micronaut JVM microservices framework. Version from Maven Central.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'maven-central', target: 'io.micronaut:micronaut-bom' },
+      latestSource: { type: 'maven-central', target: 'io.micronaut:micronaut-bom' },
+      evidenceUrl: 'https://mvnrepository.com/artifact/io.micronaut/micronaut-bom',
+    },
+  ],
+
+  'jackson-databind': [
+    {
+      id: 'maven',
+      label: 'Jackson Databind (Maven Central)',
+      description: 'Jackson JSON library for Java. Version from Maven Central.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'maven-central', target: 'com.fasterxml.jackson.core:jackson-databind' },
+      latestSource: { type: 'maven-central', target: 'com.fasterxml.jackson.core:jackson-databind' },
+      evidenceUrl: 'https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind',
+    },
+  ],
+
+  'log4j': [
+    {
+      id: 'log4j2',
+      label: 'Log4j 2 (Maven Central)',
+      description: 'Apache Log4j 2 logging library. Version from Maven Central.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'maven-central', target: 'org.apache.logging.log4j:log4j-core' },
+      latestSource: { type: 'maven-central', target: 'org.apache.logging.log4j:log4j-core' },
+      evidenceUrl: 'https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // API Gateways
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'kong': [
+    {
+      id: 'oss',
+      label: 'Kong Gateway (OSS / Self-Hosted)',
+      description: 'Kong open-source API gateway. Version via /status JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://kong.example.com:8001',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/status',
+        jsonPath: '$.server.version',
+        jsonPathExtractors: ['server.version', 'version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'Kong/kong' },
+      evidenceUrl: 'https://docs.konghq.com/gateway/latest/admin-api/#status-route',
+    },
+    {
+      id: 'enterprise',
+      label: 'Kong Konnect (Enterprise / Cloud)',
+      description: 'Kong Konnect managed API platform.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Kong/kong' },
+      latestSource: { type: 'github-releases', target: 'Kong/kong' },
+      evidenceUrl: 'https://konghq.com/products/kong-konnect',
+    },
+  ],
+
+  'apisix': [
+    {
+      id: 'self-hosted',
+      label: 'Apache APISIX (Self-Hosted)',
+      description: 'Apache APISIX API gateway. Version via admin API /v1/schema.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://apisix.example.com:9080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/schema',
+        jsonPath: '$.main.version',
+        jsonPathExtractors: ['main.version', 'version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'apache/apisix' },
+      evidenceUrl: 'https://apisix.apache.org/docs/apisix/control-api/',
+    },
+  ],
+
+  'tyk': [
+    {
+      id: 'self-hosted',
+      label: 'Tyk Gateway (Self-Hosted)',
+      description: 'Tyk API gateway. Version via /hello JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://tyk.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/hello',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'TykTechnologies/tyk' },
+      evidenceUrl: 'https://tyk.io/docs/tyk-gateway-api/',
+    },
+    {
+      id: 'cloud',
+      label: 'Tyk Cloud',
+      description: 'Tyk managed cloud API management.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'TykTechnologies/tyk' },
+      latestSource: { type: 'github-releases', target: 'TykTechnologies/tyk' },
+      evidenceUrl: 'https://tyk.io/cloud/',
+    },
+  ],
+
+  'hasura': [
+    {
+      id: 'self-hosted',
+      label: 'Hasura GraphQL Engine (Self-Hosted)',
+      description: 'Hasura instant GraphQL API. Version via /v1/version JSON.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://hasura.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'hasura/graphql-engine' },
+      evidenceUrl: 'https://hasura.io/docs/latest/api-reference/version-api/',
+    },
+    {
+      id: 'cloud',
+      label: 'Hasura Cloud',
+      description: 'Hasura managed cloud at cloud.hasura.io.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hasura/graphql-engine' },
+      latestSource: { type: 'github-releases', target: 'hasura/graphql-engine' },
+      evidenceUrl: 'https://cloud.hasura.io',
+    },
+  ],
+
+  'postgrest': [
+    {
+      id: 'self-hosted',
+      label: 'PostgREST (Self-Hosted)',
+      description: 'PostgREST REST API from PostgreSQL. Version via / root JSON.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://postgrest.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/',
+        jsonPath: '$.info.postgrest.version',
+        jsonPathExtractors: ['info.postgrest.version', 'version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'PostgREST/postgrest' },
+      evidenceUrl: 'https://docs.postgrest.org/en/stable/references/api/schemas.html',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Container runtimes / Kubernetes operators
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'containerd': [
+    {
+      id: 'self-hosted',
+      label: 'containerd (Self-Hosted)',
+      description: 'containerd container runtime. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'containerd/containerd' },
+      latestSource: { type: 'github-releases', target: 'containerd/containerd' },
+      evidenceUrl: 'https://containerd.io/docs/getting-started/',
+    },
+  ],
+
+  'cri-o': [
+    {
+      id: 'self-hosted',
+      label: 'CRI-O (Self-Hosted)',
+      description: 'CRI-O lightweight container runtime for Kubernetes. Version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'cri-o/cri-o' },
+      latestSource: { type: 'github-releases', target: 'cri-o/cri-o' },
+      evidenceUrl: 'https://cri-o.io/#installation',
+    },
+  ],
+
+  'keda': [
+    {
+      id: 'self-hosted',
+      label: 'KEDA (Self-Hosted on Kubernetes)',
+      description: 'Kubernetes Event-Driven Autoscaling. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'kedacore/keda' },
+      latestSource: { type: 'github-releases', target: 'kedacore/keda' },
+      evidenceUrl: 'https://keda.sh/docs/latest/deploy/',
+    },
+  ],
+
+  'flagger': [
+    {
+      id: 'self-hosted',
+      label: 'Flagger (Self-Hosted)',
+      description: 'Flagger progressive delivery Kubernetes operator. Version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'fluxcd/flagger' },
+      latestSource: { type: 'github-releases', target: 'fluxcd/flagger' },
+      evidenceUrl: 'https://docs.flagger.app/install/flagger-install-on-kubernetes',
+    },
+  ],
+
+  'helm-argocd': [
+    {
+      id: 'argo',
+      label: 'Argo CD Helm Chart (argo/argo-cd)',
+      description: 'Argo CD GitOps CD tool Helm chart. Version via ArtifactHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'helm-chart', target: 'argo/argo-cd' },
+      latestSource: { type: 'helm-chart', target: 'argo/argo-cd' },
+      evidenceUrl: 'https://artifacthub.io/packages/helm/argo/argo-cd',
+    },
+  ],
+
 };
 
 /**

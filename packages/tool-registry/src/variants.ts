@@ -15117,6 +15117,342 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // CMS (continued)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'microweber': [
+    {
+      id: 'self-hosted',
+      label: 'Microweber (Self-Hosted)',
+      description: 'Microweber open-source CMS and e-commerce. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'microweber/microweber' },
+      latestSource: { type: 'github-releases', target: 'microweber/microweber' },
+      evidenceUrl: 'https://microweber.com/download.php',
+    },
+  ],
+
+  'cockpit-cms': [
+    {
+      id: 'self-hosted',
+      label: 'Cockpit CMS (Self-Hosted)',
+      description: 'Cockpit headless CMS. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Cockpit-HQ/Cockpit' },
+      latestSource: { type: 'github-releases', target: 'Cockpit-HQ/Cockpit' },
+      evidenceUrl: 'https://getcockpit.com/docs/getting-started/installation',
+    },
+  ],
+
+  'decap-cms': [
+    {
+      id: 'npm',
+      label: 'Decap CMS (npm / Static Site)',
+      description: 'Decap CMS (formerly Netlify CMS) Git-based headless CMS.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'decap-cms' },
+      latestSource: { type: 'npm-registry', target: 'decap-cms' },
+      evidenceUrl: 'https://www.npmjs.com/package/decap-cms',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Notifications / Alerting
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'ntfy': [
+    {
+      id: 'self-hosted',
+      label: 'ntfy (Self-Hosted)',
+      description: 'ntfy push notification server. Version via /v1/info JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://ntfy.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'binwiederhier/ntfy' },
+      evidenceUrl: 'https://docs.ntfy.sh/install/',
+    },
+    {
+      id: 'cloud',
+      label: 'ntfy.sh (Cloud)',
+      description: 'ntfy.sh managed cloud push notifications at ntfy.sh.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'binwiederhier/ntfy' },
+      latestSource: { type: 'github-releases', target: 'binwiederhier/ntfy' },
+      evidenceUrl: 'https://ntfy.sh',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Media / Books / Self-hosted apps
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'kavita': [
+    {
+      id: 'self-hosted',
+      label: 'Kavita (Self-Hosted)',
+      description: 'Kavita digital library server. Version via /api/Server/server-info JSON.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://kavita.example.com:5000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/Server/server-info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version', 'kavitaVersion'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'Kareadita/Kavita' },
+      evidenceUrl: 'https://wiki.kavitareader.com/en/get-started',
+    },
+  ],
+
+  'komga': [
+    {
+      id: 'self-hosted',
+      label: 'Komga (Self-Hosted)',
+      description: 'Komga comic/manga server. Version via /actuator/info JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://komga.example.com:25600',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/actuator/info',
+        jsonPath: '$.build.version',
+        jsonPathExtractors: ['build.version', 'version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'gotson/komga' },
+      evidenceUrl: 'https://komga.org/docs/installation/docker',
+    },
+  ],
+
+  'calibre-web': [
+    {
+      id: 'self-hosted',
+      label: 'Calibre-Web (Self-Hosted)',
+      description: 'Calibre-Web e-book library web app. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'janeczku/calibre-web' },
+      latestSource: { type: 'github-releases', target: 'janeczku/calibre-web' },
+      evidenceUrl: 'https://github.com/janeczku/calibre-web/wiki/Quick-Start-Guide',
+    },
+  ],
+
+  'audiobookshelf': [
+    {
+      id: 'self-hosted',
+      label: 'Audiobookshelf (Self-Hosted)',
+      description: 'Audiobookshelf self-hosted audiobook server. Version via /ping JSON.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://audiobookshelf.example.com:13378',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/ping',
+        jsonPath: '$.serverVersion',
+        jsonPathExtractors: ['serverVersion', 'version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'advplyr/audiobookshelf' },
+      evidenceUrl: 'https://www.audiobookshelf.org/docs/',
+    },
+  ],
+
+  'tautulli': [
+    {
+      id: 'self-hosted',
+      label: 'Tautulli (Self-Hosted)',
+      description: 'Tautulli Plex monitoring server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Tautulli/Tautulli' },
+      latestSource: { type: 'github-releases', target: 'Tautulli/Tautulli' },
+      evidenceUrl: 'https://tautulli.com',
+    },
+  ],
+
+  'bazarr': [
+    {
+      id: 'self-hosted',
+      label: 'Bazarr (Self-Hosted)',
+      description: 'Bazarr subtitle management companion to Sonarr/Radarr. Version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'morpheus65535/bazarr' },
+      latestSource: { type: 'github-releases', target: 'morpheus65535/bazarr' },
+      evidenceUrl: 'https://wiki.bazarr.media/Getting-Started/Setup-Guide/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Runtimes / Dev tools
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'deno': [
+    {
+      id: 'runtime',
+      label: 'Deno Runtime',
+      description: 'Deno JavaScript/TypeScript runtime. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'denoland/deno' },
+      latestSource: { type: 'github-releases', target: 'denoland/deno' },
+      evidenceUrl: 'https://docs.deno.com/runtime/manual/getting_started/installation/',
+    },
+    {
+      id: 'deploy',
+      label: 'Deno Deploy (Cloud)',
+      description: 'Deno Deploy edge runtime managed service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'denoland/deno' },
+      latestSource: { type: 'github-releases', target: 'denoland/deno' },
+      evidenceUrl: 'https://deno.com/deploy',
+    },
+  ],
+
+  'bun': [
+    {
+      id: 'runtime',
+      label: 'Bun Runtime',
+      description: 'Bun all-in-one JavaScript runtime and toolkit. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'oven-sh/bun' },
+      latestSource: { type: 'github-releases', target: 'oven-sh/bun' },
+      evidenceUrl: 'https://bun.sh/docs/installation',
+    },
+  ],
+
+  'devpod': [
+    {
+      id: 'cli',
+      label: 'DevPod (CLI / Desktop)',
+      description: 'DevPod OSS dev environment manager. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'loft-sh/devpod' },
+      latestSource: { type: 'github-releases', target: 'loft-sh/devpod' },
+      evidenceUrl: 'https://devpod.sh/docs/getting-started/install',
+    },
+  ],
+
+  'act': [
+    {
+      id: 'cli',
+      label: 'act (Local GitHub Actions Runner)',
+      description: 'nektos/act — run GitHub Actions locally. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'nektos/act' },
+      latestSource: { type: 'github-releases', target: 'nektos/act' },
+      evidenceUrl: 'https://nektosact.com/installation/',
+    },
+  ],
+
+  'hoppscotch': [
+    {
+      id: 'self-hosted',
+      label: 'Hoppscotch (Self-Hosted)',
+      description: 'Hoppscotch open-source API testing platform. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hoppscotch/hoppscotch' },
+      latestSource: { type: 'github-releases', target: 'hoppscotch/hoppscotch' },
+      evidenceUrl: 'https://docs.hoppscotch.io/documentation/self-host/community-edition/install-and-build',
+    },
+    {
+      id: 'cloud',
+      label: 'Hoppscotch Cloud',
+      description: 'Hoppscotch managed cloud at hoppscotch.io.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hoppscotch/hoppscotch' },
+      latestSource: { type: 'github-releases', target: 'hoppscotch/hoppscotch' },
+      evidenceUrl: 'https://hoppscotch.io',
+    },
+  ],
+
+  'gitea-actions': [
+    {
+      id: 'self-hosted',
+      label: 'Gitea Actions Runner (Self-Hosted)',
+      description: 'Gitea Actions runner (act_runner). Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'nektos/act' },
+      latestSource: { type: 'github-releases', target: 'nektos/act' },
+      evidenceUrl: 'https://docs.gitea.com/usage/actions/act-runner',
+    },
+  ],
+
+  'gitness': [
+    {
+      id: 'self-hosted',
+      label: 'Gitness (Self-Hosted)',
+      description: 'Harness Gitness open-source CI/SCM. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'harness/gitness' },
+      latestSource: { type: 'github-releases', target: 'harness/gitness' },
+      evidenceUrl: 'https://docs.gitness.com/installation',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Project Management
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'plane': [
+    {
+      id: 'self-hosted',
+      label: 'Plane (Self-Hosted)',
+      description: 'Plane open-source project management. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'makeplane/plane' },
+      latestSource: { type: 'github-releases', target: 'makeplane/plane' },
+      evidenceUrl: 'https://docs.plane.so/self-hosting',
+    },
+    {
+      id: 'cloud',
+      label: 'Plane Cloud',
+      description: 'Plane managed cloud at app.plane.so.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'makeplane/plane' },
+      latestSource: { type: 'github-releases', target: 'makeplane/plane' },
+      evidenceUrl: 'https://app.plane.so',
+    },
+  ],
+
+  'linear-oss': [
+    {
+      id: 'npm',
+      label: 'Linear SDK (npm)',
+      description: 'Linear project management API SDK for Node.js. Version from npm.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: '@linear/sdk' },
+      latestSource: { type: 'npm-registry', target: '@linear/sdk' },
+      evidenceUrl: 'https://www.npmjs.com/package/@linear/sdk',
+    },
+  ],
+
 };
 
 /**

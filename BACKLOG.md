@@ -1,12 +1,18 @@
-## Status Summary (2026-08-31 09:52 UTC)
-- **Build/Test/Audit:** ✅ Build passes (`npm run build` exit 0). Web: 5687 tests pass (257 files). API TypeScript clean (exit 0). 0 npm vulnerabilities.
-- **Deployment:** ⚠️ Web server running locally (port 1234). Public URL returning 502 — Docker/dind unavailable in sandbox so API not running; reverse proxy can't route without backend. Infrastructure issue, not a code issue.
-- **Branch:** heartbeat/2026-08-11-boot (active; 3 new commits this session)
-- **Changes (09:52 UTC):**
-  - [x] **fix(security): bump esbuild to clear low-severity dev-server advisory** — `GHSA-g7r4-m6w7-qqqr`; `npm audit --audit-level=high` now returns 0 vulnerabilities.
-  - [x] **fix(types): correct Summary stats shape in version hook fallback** — `useVersions.ts` error-fallback used stale `{ upToDate, outdated, unknown }` field names instead of current `{ green, yellow, red }` required by `Summary` type; fixed to match the live API contract.
-  - [x] **fix(config): remove invalid vitest minWorkers option** — `apps/web/vitest.config.ts` had `minWorkers: 1` which doesn't exist in vitest's `InlineConfig`; removed. Config is now type-clean.
-  - [x] **test(versions): add 101 unit tests for createVersionModalHelpers and utils pure helpers** — full coverage of `normalizeToolQuery`, `scoreToolMatch`, `filterTools`, `closeMatchTools`, `modalProgress`, `providerFromSourceType`, `buildDockerRunSnippet`, `buildDockerComposeSnippet`, `buildShellSnippet`, `stripLeadingV`, `secondsToHuman`, `levelBadgeVariant`, and all constants/options in `CHANNEL_TYPE_COLORS`, `VERSION_NOTIFY_OPTIONS`, `NOTIFY_ON_LABELS`, `providerOptions`, `authOptions`.
+## Status Summary (2026-08-31 10:15 UTC)
+- **Build/Test/Audit:** ✅ Build passes. Web: 5698 tests pass (257 files, +11 from new specs). API TypeScript clean. Web TypeScript clean. 0 npm vulnerabilities.
+- **Deployment:** ⚠️ Web server running locally (port 1234). Public URL returning 502 — Docker/dind unavailable in sandbox (no API), infrastructure issue not a code issue.
+- **Branch:** heartbeat/2026-08-11-boot (active; 11 commits this session)
+- **Changes (10:15 UTC):**
+  - [x] **fix(security): bump esbuild to clear low-severity dev-server advisory** — `GHSA-g7r4-m6w7-qqqr`; 0 vulnerabilities.
+  - [x] **fix(types): correct Summary stats shape in version hook fallback** — `useVersions.ts` error-fallback used stale `{ upToDate, outdated, unknown }` instead of `{ green, yellow, red }` required by `Summary` type.
+  - [x] **fix(config): remove invalid vitest minWorkers option** — `apps/web/vitest.config.ts` had `minWorkers: 1` which doesn't exist in vitest's `InlineConfig`; removed.
+  - [x] **test(versions): add 101 unit tests for createVersionModalHelpers and utils** — full coverage of `normalizeToolQuery`, `scoreToolMatch`, `filterTools`, `closeMatchTools`, `modalProgress`, `providerFromSourceType`, all snippet builders, `stripLeadingV`, `secondsToHuman`, `levelBadgeVariant`, and all option constants.
+  - [x] **fix(types): add displayName and timezone to Me interface** — `Me` was missing these fields; account page used `as unknown as` casts to access them. Fixed type definition, removed casts.
+  - [x] **fix(types): replace as-unknown-as cast in alerts/channels testAll** — used proper union type `{ results: TestAllResult[] } | TestAllResult[]` with `Array.isArray()` type guard.
+  - [x] **fix(types): remove redundant cast in API proxy route** — `Headers.getSetCookie()` is typed in `lib.dom.d.ts`; cast was unnecessary.
+  - [x] **fix(types): proper union return type on auth.service.login** — eliminated `as unknown as` cast; added type guards in controller (`'requires2fa' in result`) and spec.
+  - [x] **fix(metrics): correct Prometheus uptime calculation (real bug!)** — `MonitorRun.status` is `Int` (HTTP status code) and can never equal the string `'up'`; both `pulsedock_monitor_up` (per-monitor) and `pulsedock_monitor_uptime_pct_7d` metrics were always 0. Fixed by switching groupBy to `ok: Boolean` and `latestRun.ok` check; updated spec mocks accordingly.
+  - [x] **fix(types): simplify checkedAt normalisation** — `new Date(x).toISOString()` handles both string and Date without any cast.
 
 ## Status Summary (2026-04-14 08:16 UTC)
 - **Build/Test/Audit:** ✅ Full heartbeat checks passed after stabilization fix (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`, 0 vulnerabilities).

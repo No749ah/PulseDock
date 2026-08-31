@@ -5078,7 +5078,7 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     {
       id: 'self-hosted',
       label: 'Debezium (Self-Hosted)',
-      description: 'Debezium CDC platform (via Kafka Connect). Version via /connectors (requires Kafka Connect REST).',
+      description: 'Debezium CDC platform (via Kafka Connect). Version via / (requires Kafka Connect REST).',
       requiresInstanceUrl: true,
       authRequired: false,
       urlPlaceholder: 'http://debezium.example.com:8083',
@@ -5092,6 +5092,406 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
       },
       latestSource: { type: 'github-releases', target: 'debezium/debezium' },
       evidenceUrl: 'https://debezium.io/documentation/reference/stable/operations/rest-api.html',
+    },
+  ],
+
+  'ksqldb': [
+    {
+      id: 'self-hosted',
+      label: 'ksqlDB (Self-Hosted)',
+      description: 'ksqlDB streaming SQL engine. Version via /info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://ksqldb.example.com:8088',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/info',
+        jsonPath: '$.KsqlServerInfo.version',
+        jsonPathExtractors: ['KsqlServerInfo.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'confluentinc/ksql' },
+      evidenceUrl: 'https://docs.ksqldb.io/en/latest/developer-guide/ksqldb-rest-api/',
+    },
+  ],
+
+  'linstor': [
+    {
+      id: 'self-hosted',
+      label: 'LINSTOR (Self-Hosted)',
+      description: 'LINSTOR distributed block storage. Version via /v1/controller/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://linstor.example.com:3370',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/controller/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/v1/controller/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'LINBIT/linstor-server' },
+      evidenceUrl: 'https://app.swaggerhub.com/apis/Linstor/Linstor',
+    },
+  ],
+
+  'grav': [
+    {
+      id: 'self-hosted',
+      label: 'Grav CMS (Self-Hosted)',
+      description: 'Grav flat-file CMS. Version via /api/versions (requires API plugin + auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://grav.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/versions',
+        jsonPath: '$.grav',
+        jsonPathExtractors: ['grav', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/versions'],
+      },
+      latestSource: { type: 'github-releases', target: 'getgrav/grav' },
+      evidenceUrl: 'https://learn.getgrav.org/17/advanced/grav-api',
+    },
+  ],
+
+  'pimcore': [
+    {
+      id: 'self-hosted',
+      label: 'Pimcore (Self-Hosted)',
+      description: 'Pimcore data and experience management. Version via /admin/misc/json-translations-system (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://pimcore.example.com',
+      versionSource: {
+        type: 'github-releases',
+        target: 'pimcore/pimcore',
+      },
+      latestSource: { type: 'github-releases', target: 'pimcore/pimcore' },
+      evidenceUrl: 'https://pimcore.com/docs/platform/Pimcore/Development_Tools_and_Details/REST_API/',
+    },
+  ],
+
+  'keystone-js': [
+    {
+      id: 'self-hosted',
+      label: 'KeystoneJS (Self-Hosted)',
+      description: 'KeystoneJS headless CMS. Version via /api/graphql introspection or package.json — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://keystone.example.com:3000',
+      versionSource: {
+        type: 'github-releases',
+        target: 'keystonejs/keystone',
+      },
+      latestSource: { type: 'github-releases', target: 'keystonejs/keystone' },
+      evidenceUrl: 'https://keystonejs.com/docs/apis',
+    },
+  ],
+
+  'polr': [
+    {
+      id: 'self-hosted',
+      label: 'Polr (Self-Hosted)',
+      description: 'Polr URL shortener. Version via /api/v2/data/shorten (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://polr.example.com',
+      versionSource: {
+        type: 'github-releases',
+        target: 'cydrobolt/polr',
+      },
+      latestSource: { type: 'github-releases', target: 'cydrobolt/polr' },
+      evidenceUrl: 'https://docs.polrproject.org/en/latest/user-guide/api/',
+    },
+  ],
+
+  'dub-co': [
+    {
+      id: 'self-hosted',
+      label: 'Dub (Self-Hosted)',
+      description: 'Dub open-source link management. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://dub.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'dubinc/dub' },
+      evidenceUrl: 'https://dub.co/docs/api-reference/introduction',
+    },
+  ],
+
+  'opnform': [
+    {
+      id: 'self-hosted',
+      label: 'OpnForm (Self-Hosted)',
+      description: 'OpnForm open-source form builder. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://opnform.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'JhumanJ/OpnForm' },
+      evidenceUrl: 'https://opnform.com/docs',
+    },
+  ],
+
+  'heyform': [
+    {
+      id: 'self-hosted',
+      label: 'HeyForm (Self-Hosted)',
+      description: 'HeyForm open-source form builder. Version via /api/v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://heyform.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'heyform/heyform' },
+      evidenceUrl: 'https://github.com/heyform/heyform',
+    },
+  ],
+
+  'plantuml-server': [
+    {
+      id: 'self-hosted',
+      label: 'PlantUML Server (Self-Hosted)',
+      description: 'PlantUML diagram server. Version via /version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://plantuml.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version', '/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'plantuml/plantuml-server' },
+      evidenceUrl: 'https://plantuml.com/server',
+    },
+  ],
+
+  'shellinabox': [
+    {
+      id: 'self-hosted',
+      label: 'Shell In A Box (Self-Hosted)',
+      description: 'Shell In A Box web-based terminal. No HTTP version endpoint — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://shellinabox.example.com:4200',
+      versionSource: {
+        type: 'github-releases',
+        target: 'shellinabox/shellinabox',
+      },
+      latestSource: { type: 'github-releases', target: 'shellinabox/shellinabox' },
+      evidenceUrl: 'https://github.com/shellinabox/shellinabox',
+    },
+  ],
+
+  'pufferpanel': [
+    {
+      id: 'self-hosted',
+      label: 'PufferPanel (Self-Hosted)',
+      description: 'PufferPanel game server management panel. Version via /api/config (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://pufferpanel.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/config',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/config'],
+      },
+      latestSource: { type: 'github-releases', target: 'PufferPanel/PufferPanel' },
+      evidenceUrl: 'https://docs.pufferpanel.com/en/latest/api.html',
+    },
+  ],
+
+  'pelican-panel': [
+    {
+      id: 'self-hosted',
+      label: 'Pelican Panel (Self-Hosted)',
+      description: 'Pelican Panel (Pterodactyl fork) game server management. Version via /api/client (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://pelican.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/client',
+        jsonPath: '$.meta.pterodactyl_version',
+        jsonPathExtractors: ['meta.pterodactyl_version', 'meta.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/client'],
+      },
+      latestSource: { type: 'github-releases', target: 'pelican-dev/panel' },
+      evidenceUrl: 'https://pelican.dev/docs',
+    },
+  ],
+
+  'padloc': [
+    {
+      id: 'self-hosted',
+      label: 'Padloc (Self-Hosted)',
+      description: 'Padloc password manager. Version via /health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://padloc.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'padloc/padloc' },
+      evidenceUrl: 'https://padloc.app/docs/selfhosting',
+    },
+  ],
+
+  'novnc': [
+    {
+      id: 'self-hosted',
+      label: 'noVNC (Self-Hosted)',
+      description: 'noVNC web-based VNC client. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://novnc.example.com:6080',
+      versionSource: {
+        type: 'github-releases',
+        target: 'novnc/noVNC',
+      },
+      latestSource: { type: 'github-releases', target: 'novnc/noVNC' },
+      evidenceUrl: 'https://github.com/novnc/noVNC',
+    },
+  ],
+
+  'easy-appointments': [
+    {
+      id: 'self-hosted',
+      label: 'Easy!Appointments (Self-Hosted)',
+      description: 'Easy!Appointments open-source scheduling. Version via /api/v1/ (requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://easyappointments.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/'],
+      },
+      latestSource: { type: 'github-releases', target: 'alextselegidis/easyappointments' },
+      evidenceUrl: 'https://easyappointments.org/docs.html#rest-api',
+    },
+  ],
+
+  'crater-invoicing': [
+    {
+      id: 'self-hosted',
+      label: 'Crater Invoicing (Self-Hosted)',
+      description: 'Crater open-source invoicing. Version via /api/v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://crater.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'crater-invoice/crater' },
+      evidenceUrl: 'https://crater.finance/docs',
+    },
+  ],
+
+  'axelor': [
+    {
+      id: 'self-hosted',
+      label: 'Axelor (Self-Hosted)',
+      description: 'Axelor open-source ERP/CRM. Version via /ws/app/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://axelor.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/ws/app/info',
+        jsonPath: '$.application.version',
+        jsonPathExtractors: ['application.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/ws/app/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'axelor/axelor-open-suite' },
+      evidenceUrl: 'https://docs.axelor.com/adk/latest/api/',
+    },
+  ],
+
+  'gladys-assistant': [
+    {
+      id: 'self-hosted',
+      label: 'Gladys Assistant (Self-Hosted)',
+      description: 'Gladys Assistant open-source home automation. Version via /api/v1/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://gladys.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'GladysAssistant/Gladys' },
+      evidenceUrl: 'https://gladysassistant.com/docs/api/',
+    },
+  ],
+
+  'cubejs': [
+    {
+      id: 'self-hosted',
+      label: 'Cube.js (Self-Hosted)',
+      description: 'Cube semantic layer for analytics APIs. Version via /readyz (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://cubejs.example.com:4000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/readyz',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/readyz', '/livez'],
+      },
+      latestSource: { type: 'github-releases', target: 'cube-js/cube.js' },
+      evidenceUrl: 'https://cube.dev/docs/http-api/rest',
     },
   ],
 

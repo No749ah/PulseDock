@@ -12828,6 +12828,434 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Security / Zero-trust
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'checkmk': [
+    {
+      id: 'raw',
+      label: 'Checkmk RAW (Self-Hosted, Free)',
+      description: 'Checkmk RAW open-source edition. Version via GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'tribe29/checkmk' },
+      latestSource: { type: 'github-releases', target: 'tribe29/checkmk' },
+      evidenceUrl: 'https://github.com/tribe29/checkmk/releases',
+    },
+    {
+      id: 'enterprise',
+      label: 'Checkmk Cloud / Enterprise',
+      description: 'Checkmk Enterprise or Cloud editions. Tracks release from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'tribe29/checkmk' },
+      latestSource: { type: 'github-releases', target: 'tribe29/checkmk' },
+      evidenceUrl: 'https://checkmk.com/product/editions',
+    },
+  ],
+
+  'passbolt': [
+    {
+      id: 'community',
+      label: 'Passbolt Community Edition (Self-Hosted)',
+      description: 'Passbolt CE open-source password manager. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'passbolt/passbolt_api' },
+      latestSource: { type: 'github-releases', target: 'passbolt/passbolt_api' },
+      evidenceUrl: 'https://www.passbolt.com/ce/docker',
+    },
+    {
+      id: 'pro',
+      label: 'Passbolt Pro / Business (Self-Hosted)',
+      description: 'Passbolt Pro or Business edition with advanced features.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'passbolt/passbolt_api' },
+      latestSource: { type: 'github-releases', target: 'passbolt/passbolt_api' },
+      evidenceUrl: 'https://www.passbolt.com/pro',
+    },
+    {
+      id: 'cloud',
+      label: 'Passbolt Cloud',
+      description: 'Passbolt managed cloud service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'passbolt/passbolt_api' },
+      latestSource: { type: 'github-releases', target: 'passbolt/passbolt_api' },
+      evidenceUrl: 'https://www.passbolt.com/cloud',
+    },
+  ],
+
+  'falco': [
+    {
+      id: 'self-hosted',
+      label: 'Falco (Self-Hosted on Kubernetes/Linux)',
+      description: 'Falco runtime security. Version via /version endpoint or GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'falcosecurity/falco' },
+      latestSource: { type: 'github-releases', target: 'falcosecurity/falco' },
+      evidenceUrl: 'https://falco.org/docs/getting-started/installation/',
+    },
+  ],
+
+  'tailscale': [
+    {
+      id: 'saas',
+      label: 'Tailscale (SaaS / Cloud)',
+      description: 'Tailscale VPN managed control plane. Client version from APT or GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'apt-release', target: 'tailscale' },
+      latestSource: { type: 'github-releases', target: 'tailscale/tailscale' },
+      evidenceUrl: 'https://pkgs.tailscale.com/stable/',
+    },
+    {
+      id: 'headscale',
+      label: 'Headscale (Self-Hosted Control Plane)',
+      description: 'Headscale open-source Tailscale control server. Version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'juanfont/headscale' },
+      latestSource: { type: 'github-releases', target: 'juanfont/headscale' },
+      evidenceUrl: 'https://headscale.net/running-headscale-linux/',
+    },
+  ],
+
+  'wireguard': [
+    {
+      id: 'kernel',
+      label: 'WireGuard (Linux Kernel Module)',
+      description: 'WireGuard in-kernel VPN. Version tracks kernel/tool releases from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'WireGuard/wireguard-tools' },
+      latestSource: { type: 'github-releases', target: 'WireGuard/wireguard-tools' },
+      evidenceUrl: 'https://www.wireguard.com/install/',
+    },
+  ],
+
+  'netbird': [
+    {
+      id: 'cloud',
+      label: 'NetBird (Cloud)',
+      description: 'NetBird managed WireGuard mesh network. Client from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'netbirdio/netbird' },
+      latestSource: { type: 'github-releases', target: 'netbirdio/netbird' },
+      evidenceUrl: 'https://docs.netbird.io/how-to/installation',
+    },
+    {
+      id: 'self-hosted',
+      label: 'NetBird (Self-Hosted)',
+      description: 'NetBird with self-hosted management server.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'netbirdio/netbird' },
+      latestSource: { type: 'github-releases', target: 'netbirdio/netbird' },
+      evidenceUrl: 'https://docs.netbird.io/selfhosted/selfhosted-guide',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Storage / File sync
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'seafile': [
+    {
+      id: 'community',
+      label: 'Seafile Community Edition (Self-Hosted)',
+      description: 'Seafile CE file sync. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'haiwen/seafile' },
+      latestSource: { type: 'github-releases', target: 'haiwen/seafile' },
+      evidenceUrl: 'https://seafile.com/en/download/',
+    },
+    {
+      id: 'pro',
+      label: 'Seafile Pro Edition (Self-Hosted)',
+      description: 'Seafile Pro with advanced features. Tracks CE GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'haiwen/seafile' },
+      latestSource: { type: 'github-releases', target: 'haiwen/seafile' },
+      evidenceUrl: 'https://seafile.com/en/product/private-cloud/',
+    },
+  ],
+
+  'longhorn': [
+    {
+      id: 'self-hosted',
+      label: 'Longhorn (Self-Hosted on Kubernetes)',
+      description: 'Rancher Longhorn distributed block storage. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'longhorn/longhorn' },
+      latestSource: { type: 'github-releases', target: 'longhorn/longhorn' },
+      evidenceUrl: 'https://longhorn.io/docs/latest/deploy/install/',
+    },
+  ],
+
+  'rclone': [
+    {
+      id: 'cli',
+      label: 'Rclone (CLI)',
+      description: 'Rclone cloud storage sync tool. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'rclone/rclone' },
+      latestSource: { type: 'github-releases', target: 'rclone/rclone' },
+      evidenceUrl: 'https://rclone.org/install/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Media / Self-hosted apps
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'navidrome': [
+    {
+      id: 'self-hosted',
+      label: 'Navidrome (Self-Hosted)',
+      description: 'Navidrome music server. Version via /app/ build info or GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'navidrome/navidrome' },
+      latestSource: { type: 'github-releases', target: 'navidrome/navidrome' },
+      evidenceUrl: 'https://www.navidrome.org/docs/installation/',
+    },
+  ],
+
+  'photoprism': [
+    {
+      id: 'self-hosted',
+      label: 'PhotoPrism (Self-Hosted)',
+      description: 'PhotoPrism AI photo management. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'photoprism/photoprism' },
+      latestSource: { type: 'github-releases', target: 'photoprism/photoprism' },
+      evidenceUrl: 'https://docs.photoprism.app/getting-started/',
+    },
+    {
+      id: 'membership',
+      label: 'PhotoPrism+ (Membership)',
+      description: 'PhotoPrism with Plus features via membership. Same release track.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'photoprism/photoprism' },
+      latestSource: { type: 'github-releases', target: 'photoprism/photoprism' },
+      evidenceUrl: 'https://www.photoprism.app/membership',
+    },
+  ],
+
+  'emby': [
+    {
+      id: 'self-hosted',
+      label: 'Emby Server (Self-Hosted)',
+      description: 'Emby media server. Version via /System/Info/Public JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://emby.example.com:8096',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/System/Info/Public',
+        jsonPath: '$.ServerVersion',
+        jsonPathExtractors: ['ServerVersion', 'Version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'MediaBrowser/Emby' },
+      evidenceUrl: 'https://dev.emby.media/doc/restapi/System-Service.html',
+    },
+    {
+      id: 'premiere',
+      label: 'Emby Premiere (Self-Hosted, Licensed)',
+      description: 'Emby with Premiere license. Same version endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://emby.example.com:8096',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/System/Info/Public',
+        jsonPath: '$.ServerVersion',
+        jsonPathExtractors: ['ServerVersion'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'MediaBrowser/Emby' },
+      evidenceUrl: 'https://emby.media/premiere.html',
+    },
+  ],
+
+  'owncast': [
+    {
+      id: 'self-hosted',
+      label: 'Owncast (Self-Hosted)',
+      description: 'Owncast live streaming server. Version via /api/config JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://stream.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/config',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'owncast/owncast' },
+      evidenceUrl: 'https://owncast.online/docs/api/',
+    },
+  ],
+
+  'payload-cms': [
+    {
+      id: 'self-hosted',
+      label: 'Payload CMS (Self-Hosted)',
+      description: 'Payload headless CMS. Version from npm registry.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'payload' },
+      latestSource: { type: 'npm-registry', target: 'payload' },
+      evidenceUrl: 'https://www.npmjs.com/package/payload',
+    },
+    {
+      id: 'cloud',
+      label: 'Payload Cloud',
+      description: 'Payload managed cloud hosting. Tracks npm release version.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'payload' },
+      latestSource: { type: 'npm-registry', target: 'payload' },
+      evidenceUrl: 'https://payloadcms.com/cloud',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Messaging / Streaming
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'kafka': [
+    {
+      id: 'self-hosted',
+      label: 'Apache Kafka (Self-Hosted)',
+      description: 'Apache Kafka distributed event streaming. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'apache/kafka' },
+      latestSource: { type: 'github-releases', target: 'apache/kafka' },
+      evidenceUrl: 'https://kafka.apache.org/downloads',
+    },
+    {
+      id: 'confluent',
+      label: 'Confluent Platform / Cloud',
+      description: 'Confluent Kafka distribution with enterprise features.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'apache/kafka' },
+      latestSource: { type: 'github-releases', target: 'apache/kafka' },
+      evidenceUrl: 'https://www.confluent.io/product/confluent-platform/',
+    },
+  ],
+
+  'redpanda': [
+    {
+      id: 'self-hosted',
+      label: 'Redpanda (Self-Hosted)',
+      description: 'Redpanda Kafka-compatible streaming. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'redpanda-data/redpanda' },
+      latestSource: { type: 'github-releases', target: 'redpanda-data/redpanda' },
+      evidenceUrl: 'https://docs.redpanda.com/current/deploy/deployment-option/self-hosted/',
+    },
+    {
+      id: 'cloud',
+      label: 'Redpanda Cloud (Serverless / Dedicated)',
+      description: 'Redpanda managed cloud streaming platform.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'redpanda-data/redpanda' },
+      latestSource: { type: 'github-releases', target: 'redpanda-data/redpanda' },
+      evidenceUrl: 'https://www.redpanda.com/redpanda-cloud',
+    },
+  ],
+
+  'mosquitto': [
+    {
+      id: 'self-hosted',
+      label: 'Eclipse Mosquitto (Self-Hosted)',
+      description: 'Eclipse Mosquitto MQTT broker. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'eclipse/mosquitto' },
+      latestSource: { type: 'github-releases', target: 'eclipse/mosquitto' },
+      evidenceUrl: 'https://mosquitto.org/download/',
+    },
+  ],
+
+  'activemq': [
+    {
+      id: 'classic',
+      label: 'ActiveMQ Classic (Self-Hosted)',
+      description: 'Apache ActiveMQ Classic message broker. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'apache/activemq' },
+      latestSource: { type: 'github-releases', target: 'apache/activemq' },
+      evidenceUrl: 'https://activemq.apache.org/components/classic/',
+    },
+    {
+      id: 'artemis',
+      label: 'ActiveMQ Artemis (Self-Hosted)',
+      description: 'Apache ActiveMQ Artemis next-gen broker. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'apache/activemq-artemis' },
+      latestSource: { type: 'github-releases', target: 'apache/activemq-artemis' },
+      evidenceUrl: 'https://activemq.apache.org/components/artemis/',
+    },
+  ],
+
+  'supabase': [
+    {
+      id: 'self-hosted',
+      label: 'Supabase (Self-Hosted)',
+      description: 'Supabase open-source Firebase alternative. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'supabase/supabase' },
+      latestSource: { type: 'github-releases', target: 'supabase/supabase' },
+      evidenceUrl: 'https://supabase.com/docs/guides/self-hosting',
+    },
+    {
+      id: 'cloud',
+      label: 'Supabase Cloud',
+      description: 'Supabase managed cloud platform at supabase.com.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'supabase/supabase' },
+      latestSource: { type: 'github-releases', target: 'supabase/supabase' },
+      evidenceUrl: 'https://supabase.com/dashboard',
+    },
+  ],
+
+  'packer': [
+    {
+      id: 'oss',
+      label: 'HashiCorp Packer (OSS)',
+      description: 'Packer machine image builder. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hashicorp/packer' },
+      latestSource: { type: 'github-releases', target: 'hashicorp/packer' },
+      evidenceUrl: 'https://developer.hashicorp.com/packer/install',
+    },
+  ],
+
 };
 
 /**

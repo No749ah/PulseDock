@@ -12349,6 +12349,485 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Networking / Proxies / Service Mesh
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'nginx': [
+    {
+      id: 'oss',
+      label: 'NGINX (OSS / APT)',
+      description: 'NGINX open-source web server installed from APT.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'apt-release', target: 'nginx' },
+      latestSource: { type: 'github-releases', target: 'nginx/nginx' },
+      evidenceUrl: 'https://nginx.org/en/download.html',
+    },
+    {
+      id: 'plus',
+      label: 'NGINX Plus (Commercial)',
+      description: 'NGINX Plus commercial edition. Tracks OSS releases as version reference.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'apt-release', target: 'nginx-plus' },
+      latestSource: { type: 'github-releases', target: 'nginx/nginx' },
+      evidenceUrl: 'https://www.nginx.com/products/nginx/',
+    },
+    {
+      id: 'self-hosted-instance',
+      label: 'NGINX (Self-Hosted / Version Header)',
+      description: 'Detect NGINX version from Server response header.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://nginx.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['server'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'nginx/nginx' },
+      evidenceUrl: 'https://nginx.org/en/docs/',
+    },
+  ],
+
+  'caddy': [
+    {
+      id: 'self-hosted',
+      label: 'Caddy (Self-Hosted)',
+      description: 'Caddy web server. Version via /api/config/ or GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'apt-release', target: 'caddy' },
+      latestSource: { type: 'github-releases', target: 'caddyserver/caddy' },
+      evidenceUrl: 'https://caddyserver.com/docs/install',
+    },
+  ],
+
+  'haproxy': [
+    {
+      id: 'community',
+      label: 'HAProxy Community (Self-Hosted)',
+      description: 'HAProxy open-source load balancer. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'haproxy/haproxy' },
+      latestSource: { type: 'github-releases', target: 'haproxy/haproxy' },
+      evidenceUrl: 'https://www.haproxy.org/#down',
+    },
+    {
+      id: 'enterprise',
+      label: 'HAProxy Enterprise',
+      description: 'HAProxy Technologies commercial edition.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'haproxy/haproxy' },
+      latestSource: { type: 'github-releases', target: 'haproxy/haproxy' },
+      evidenceUrl: 'https://www.haproxy.com/products/haproxy-enterprise',
+    },
+  ],
+
+  'envoy': [
+    {
+      id: 'self-hosted',
+      label: 'Envoy Proxy (Self-Hosted)',
+      description: 'Envoy L7 proxy. Version via /server_info JSON admin endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://envoy.example.com:9901',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/server_info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'envoyproxy/envoy' },
+      evidenceUrl: 'https://www.envoyproxy.io/docs/envoy/latest/operations/admin',
+    },
+  ],
+
+  'istio': [
+    {
+      id: 'self-hosted',
+      label: 'Istio (Self-Hosted on Kubernetes)',
+      description: 'Istio service mesh. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'istio/istio' },
+      latestSource: { type: 'github-releases', target: 'istio/istio' },
+      evidenceUrl: 'https://istio.io/latest/docs/setup/install/',
+    },
+  ],
+
+  'linkerd': [
+    {
+      id: 'oss',
+      label: 'Linkerd (OSS)',
+      description: 'Linkerd ultra-light service mesh for Kubernetes.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'linkerd/linkerd2' },
+      latestSource: { type: 'github-releases', target: 'linkerd/linkerd2' },
+      evidenceUrl: 'https://linkerd.io/2.15/getting-started/',
+    },
+    {
+      id: 'enterprise',
+      label: 'Linkerd Enterprise (Buoyant Cloud)',
+      description: 'Buoyant Enterprise for Linkerd (BEL).',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'linkerd/linkerd2' },
+      latestSource: { type: 'github-releases', target: 'linkerd/linkerd2' },
+      evidenceUrl: 'https://buoyant.io/enterprise-linkerd',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Infrastructure as Code / Config Management
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'terraform': [
+    {
+      id: 'oss',
+      label: 'Terraform (OSS / APT)',
+      description: 'HashiCorp Terraform open-source. Version from APT or GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'apt-release', target: 'terraform' },
+      latestSource: { type: 'github-releases', target: 'hashicorp/terraform' },
+      evidenceUrl: 'https://developer.hashicorp.com/terraform/install',
+    },
+    {
+      id: 'cloud',
+      label: 'HCP Terraform (Terraform Cloud)',
+      description: 'HashiCorp Cloud Platform Terraform managed service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hashicorp/terraform' },
+      latestSource: { type: 'github-releases', target: 'hashicorp/terraform' },
+      evidenceUrl: 'https://developer.hashicorp.com/hcp/docs/terraform',
+    },
+    {
+      id: 'enterprise',
+      label: 'Terraform Enterprise (Self-Hosted)',
+      description: 'Terraform Enterprise on-prem. Version matches OSS releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hashicorp/terraform' },
+      latestSource: { type: 'github-releases', target: 'hashicorp/terraform' },
+      evidenceUrl: 'https://developer.hashicorp.com/terraform/enterprise',
+    },
+  ],
+
+  'opentofu': [
+    {
+      id: 'oss',
+      label: 'OpenTofu (Open-Source Terraform Fork)',
+      description: 'OpenTofu IaC tool — community Terraform fork under Linux Foundation.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'opentofu/opentofu' },
+      latestSource: { type: 'github-releases', target: 'opentofu/opentofu' },
+      evidenceUrl: 'https://opentofu.org/docs/intro/install/',
+    },
+  ],
+
+  'ansible': [
+    {
+      id: 'community',
+      label: 'Ansible Community (PyPI)',
+      description: 'Ansible community package. Version from PyPI.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'pypi', target: 'ansible' },
+      latestSource: { type: 'pypi', target: 'ansible' },
+      evidenceUrl: 'https://pypi.org/project/ansible/',
+    },
+    {
+      id: 'core',
+      label: 'Ansible Core (ansible-core PyPI)',
+      description: 'Ansible Core minimal package. Version from PyPI.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'pypi', target: 'ansible-core' },
+      latestSource: { type: 'pypi', target: 'ansible-core' },
+      evidenceUrl: 'https://pypi.org/project/ansible-core/',
+    },
+    {
+      id: 'awx',
+      label: 'AWX / Ansible Automation Platform (Self-Hosted)',
+      description: 'AWX is the upstream of Red Hat AAP. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'ansible/awx' },
+      latestSource: { type: 'github-releases', target: 'ansible/awx' },
+      evidenceUrl: 'https://github.com/ansible/awx/releases',
+    },
+  ],
+
+  'pulumi': [
+    {
+      id: 'oss',
+      label: 'Pulumi (OSS CLI)',
+      description: 'Pulumi infrastructure as code CLI. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'pulumi/pulumi' },
+      latestSource: { type: 'github-releases', target: 'pulumi/pulumi' },
+      evidenceUrl: 'https://www.pulumi.com/docs/install/',
+    },
+    {
+      id: 'cloud',
+      label: 'Pulumi Cloud (SaaS)',
+      description: 'Pulumi Cloud managed service at app.pulumi.com.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'pulumi/pulumi' },
+      latestSource: { type: 'github-releases', target: 'pulumi/pulumi' },
+      evidenceUrl: 'https://www.pulumi.com/product/pulumi-cloud/',
+    },
+  ],
+
+  'saltstack': [
+    {
+      id: 'self-hosted',
+      label: 'SaltStack / Salt (Self-Hosted)',
+      description: 'Salt configuration management system. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'saltstack/salt' },
+      latestSource: { type: 'github-releases', target: 'saltstack/salt' },
+      evidenceUrl: 'https://docs.saltproject.io/salt/install-guide/en/latest/',
+    },
+  ],
+
+  'chef': [
+    {
+      id: 'infra',
+      label: 'Chef Infra Client (Open Source)',
+      description: 'Chef Infra Client configuration management. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'chef/chef' },
+      latestSource: { type: 'github-releases', target: 'chef/chef' },
+      evidenceUrl: 'https://docs.chef.io/chef_install_script/',
+    },
+    {
+      id: 'automate',
+      label: 'Chef Automate (Self-Hosted)',
+      description: 'Chef Automate self-hosted management platform.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'chef/automate' },
+      latestSource: { type: 'github-releases', target: 'chef/automate' },
+      evidenceUrl: 'https://docs.chef.io/automate/install/',
+    },
+  ],
+
+  'puppet': [
+    {
+      id: 'open-source',
+      label: 'Puppet (Open Source)',
+      description: 'Puppet open-source configuration management. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'puppetlabs/puppet' },
+      latestSource: { type: 'github-releases', target: 'puppetlabs/puppet' },
+      evidenceUrl: 'https://www.puppet.com/docs/puppet/latest/install_puppet.html',
+    },
+    {
+      id: 'enterprise',
+      label: 'Puppet Enterprise (Self-Hosted)',
+      description: 'Puppet Enterprise on-prem. Version via PE API /pe-info endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://puppet.example.com:4433',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/pe-info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+      },
+      latestSource: { type: 'github-releases', target: 'puppetlabs/puppet' },
+      evidenceUrl: 'https://www.puppet.com/docs/pe/latest/api_index.html',
+    },
+  ],
+
+  'gocd': [
+    {
+      id: 'self-hosted',
+      label: 'GoCD (Self-Hosted)',
+      description: 'GoCD CI/CD server. Version via /go/api/version JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://gocd.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/go/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'gocd/gocd' },
+      evidenceUrl: 'https://api.gocd.org/#version',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // CMS / Headless
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'strapi': [
+    {
+      id: 'self-hosted',
+      label: 'Strapi (Self-Hosted)',
+      description: 'Strapi headless CMS. Version from npm registry.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: '@strapi/strapi' },
+      latestSource: { type: 'npm-registry', target: '@strapi/strapi' },
+      evidenceUrl: 'https://www.npmjs.com/package/@strapi/strapi',
+    },
+    {
+      id: 'cloud',
+      label: 'Strapi Cloud',
+      description: 'Strapi managed cloud platform.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: '@strapi/strapi' },
+      latestSource: { type: 'npm-registry', target: '@strapi/strapi' },
+      evidenceUrl: 'https://strapi.io/cloud',
+    },
+  ],
+
+  'directus': [
+    {
+      id: 'self-hosted',
+      label: 'Directus (Self-Hosted)',
+      description: 'Directus data platform. Version via /server/info JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://directus.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/server/info',
+        jsonPath: '$.data.directus',
+        jsonPathExtractors: ['data.directus', 'directus'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'directus/directus' },
+      evidenceUrl: 'https://docs.directus.io/reference/system/server.html',
+    },
+    {
+      id: 'cloud',
+      label: 'Directus Cloud',
+      description: 'Directus managed cloud. Tracks GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'directus/directus' },
+      latestSource: { type: 'github-releases', target: 'directus/directus' },
+      evidenceUrl: 'https://directus.cloud',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Analytics
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'matomo': [
+    {
+      id: 'self-hosted',
+      label: 'Matomo (Self-Hosted)',
+      description: 'Matomo web analytics. Version via /index.php?module=API&method=API.getMatomoVersion.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://matomo.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/index.php?module=API&method=API.getMatomoVersion&format=JSON',
+        jsonPath: '$.value',
+        jsonPathExtractors: ['value'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'matomo-org/matomo' },
+      evidenceUrl: 'https://developer.matomo.org/api-reference/reporting-api#api',
+    },
+    {
+      id: 'cloud',
+      label: 'Matomo Cloud',
+      description: 'Matomo managed cloud service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'matomo-org/matomo' },
+      latestSource: { type: 'github-releases', target: 'matomo-org/matomo' },
+      evidenceUrl: 'https://matomo.org/matomo-cloud/',
+    },
+  ],
+
+  'umami': [
+    {
+      id: 'self-hosted',
+      label: 'Umami (Self-Hosted)',
+      description: 'Umami privacy-focused analytics. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'umami-software/umami' },
+      latestSource: { type: 'github-releases', target: 'umami-software/umami' },
+      evidenceUrl: 'https://umami.is/docs/install',
+    },
+    {
+      id: 'cloud',
+      label: 'Umami Cloud',
+      description: 'Umami managed cloud at umami.is/cloud.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'umami-software/umami' },
+      latestSource: { type: 'github-releases', target: 'umami-software/umami' },
+      evidenceUrl: 'https://umami.is/cloud',
+    },
+  ],
+
+  'fail2ban': [
+    {
+      id: 'self-hosted',
+      label: 'Fail2ban (Self-Hosted)',
+      description: 'Fail2ban intrusion prevention. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'fail2ban/fail2ban' },
+      latestSource: { type: 'github-releases', target: 'fail2ban/fail2ban' },
+      evidenceUrl: 'https://github.com/fail2ban/fail2ban/releases',
+    },
+  ],
+
+  'nagios': [
+    {
+      id: 'core',
+      label: 'Nagios Core (Self-Hosted)',
+      description: 'Nagios Core open-source monitoring. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'NagiosEnterprises/nagioscore' },
+      latestSource: { type: 'github-releases', target: 'NagiosEnterprises/nagioscore' },
+      evidenceUrl: 'https://github.com/NagiosEnterprises/nagioscore/releases',
+    },
+    {
+      id: 'xi',
+      label: 'Nagios XI (Commercial)',
+      description: 'Nagios XI commercial edition. Tracks core version as reference.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'NagiosEnterprises/nagioscore' },
+      latestSource: { type: 'github-releases', target: 'NagiosEnterprises/nagioscore' },
+      evidenceUrl: 'https://www.nagios.com/products/nagios-xi/',
+    },
+  ],
+
 };
 
 /**

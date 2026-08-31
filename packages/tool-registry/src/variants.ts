@@ -6279,6 +6279,391 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+  'organizr': [
+    {
+      id: 'self-hosted',
+      label: 'Organizr (Self-Hosted)',
+      description: 'Organizr HTPC/homelab services organizer. Version via /api/?v=&apikey={{apiKey}}&action=getVersion (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://organizr.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/?v=&apikey={{apiKey}}&action=getVersion',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/?v=&action=getVersion'],
+      },
+      latestSource: { type: 'github-releases', target: 'causefx/Organizr' },
+      evidenceUrl: 'https://docs.organizr.app/books/api',
+    },
+  ],
+
+  'archivebox': [
+    {
+      id: 'self-hosted',
+      label: 'ArchiveBox (Self-Hosted)',
+      description: 'ArchiveBox self-hosted web archiving. Version via /api/v1/docs (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://archivebox.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'ArchiveBox/ArchiveBox' },
+      evidenceUrl: 'https://docs.archivebox.io/en/latest/apidocs/',
+    },
+  ],
+
+  'shiori': [
+    {
+      id: 'self-hosted',
+      label: 'Shiori (Self-Hosted)',
+      description: 'Shiori simple bookmarks manager. Version via /api/v1/system/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://shiori.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/system/info',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/system/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'go-shiori/shiori' },
+      evidenceUrl: 'https://github.com/go-shiori/shiori/blob/master/docs/API.md',
+    },
+  ],
+
+  'readeck': [
+    {
+      id: 'self-hosted',
+      label: 'Readeck (Self-Hosted)',
+      description: 'Readeck bookmarks and read-later app. Version via /api/bookmarks (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://readeck.example.com:8000',
+      versionSource: { type: 'github-releases', target: 'readeck/readeck' },
+      latestSource: { type: 'github-releases', target: 'readeck/readeck' },
+      evidenceUrl: 'https://readeck.org/en/',
+    },
+  ],
+
+  'stash': [
+    {
+      id: 'self-hosted',
+      label: 'Stash (Self-Hosted)',
+      description: 'Stash self-hosted media organizer. Version via /api/version (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://stash.example.com:9999',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'stashapp/stash' },
+      evidenceUrl: 'https://docs.stashapp.cc/in-app-manual/configuration/api/',
+    },
+  ],
+
+  'gotosocial': [
+    {
+      id: 'self-hosted',
+      label: 'GoToSocial (Self-Hosted)',
+      description: 'GoToSocial lightweight ActivityPub server. Version via /api/v1/instance (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://gotosocial.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/instance',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/instance'],
+      },
+      latestSource: { type: 'github-releases', target: 'superseriousbusiness/gotosocial' },
+      evidenceUrl: 'https://docs.gotosocial.org/en/latest/api/swagger/',
+    },
+  ],
+
+  'signal-cli-rest-api': [
+    {
+      id: 'self-hosted',
+      label: 'Signal CLI REST API (Self-Hosted)',
+      description: 'Signal CLI REST API wrapper. Version via /v1/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://signal-cli-rest-api.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/v1/version', '/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'bbernhard/signal-cli-rest-api' },
+      evidenceUrl: 'https://bbernhard.github.io/signal-cli-rest-api/',
+    },
+  ],
+
+  'cosmos-server': [
+    {
+      id: 'self-hosted',
+      label: 'Cosmos Server (Self-Hosted)',
+      description: 'Cosmos Server self-hosted cloud OS. Version via /cosmos/api/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://cosmos.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/cosmos/api/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/cosmos/api/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'azukaar/Cosmos-Server' },
+      evidenceUrl: 'https://cosmos-cloud.io/doc/1%20Getting%20Started',
+    },
+  ],
+
+  'goauthentik': [
+    {
+      id: 'self-hosted',
+      label: 'Authentik (Self-Hosted)',
+      description: 'Authentik identity provider. Version via /api/v3/core/version/ (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://authentik.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v3/core/version/',
+        jsonPath: '$.version_current',
+        jsonPathExtractors: ['version_current', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v3/core/version/', '/api/v3/root/config/'],
+      },
+      latestSource: { type: 'github-releases', target: 'goauthentik/authentik' },
+      evidenceUrl: 'https://docs.goauthentik.io/developer-docs/api/',
+    },
+  ],
+
+  'apache-guacamole': [
+    {
+      id: 'self-hosted',
+      label: 'Apache Guacamole (Self-Hosted)',
+      description: 'Apache Guacamole remote desktop gateway. Version via /api/patches (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://guacamole.example.com/guacamole',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/patches',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/patches'],
+      },
+      latestSource: { type: 'github-releases', target: 'apache/guacamole-client' },
+      evidenceUrl: 'https://guacamole.apache.org/doc/gug/rest-api.html',
+    },
+  ],
+
+  'flood': [
+    {
+      id: 'self-hosted',
+      label: 'Flood (Self-Hosted)',
+      description: 'Flood modern torrent client web UI. Version via /api/auth/verify (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://flood.example.com:3000',
+      versionSource: { type: 'github-releases', target: 'jesec/flood' },
+      latestSource: { type: 'github-releases', target: 'jesec/flood' },
+      evidenceUrl: 'https://github.com/jesec/flood',
+    },
+  ],
+
+  'pyload': [
+    {
+      id: 'self-hosted',
+      label: 'pyLoad (Self-Hosted)',
+      description: 'pyLoad download manager. Version via /api/get_server_version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://pyload.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/get_server_version',
+        jsonPath: '$',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/get_server_version'],
+      },
+      latestSource: { type: 'github-releases', target: 'pyload/pyload' },
+      evidenceUrl: 'https://pyload.net/api/',
+    },
+  ],
+
+  'jdownloader': [
+    {
+      id: 'self-hosted',
+      label: 'JDownloader 2 (Self-Hosted)',
+      description: 'JDownloader 2 via MyJDownloader API. No local HTTP version endpoint — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://jdownloader.example.com:3129',
+      versionSource: { type: 'github-releases', target: 'AppWork-GmbH/jdownloader' },
+      latestSource: { type: 'github-releases', target: 'AppWork-GmbH/jdownloader' },
+      evidenceUrl: 'https://my.jdownloader.org/developers/',
+    },
+  ],
+
+  'zincsearch': [
+    {
+      id: 'self-hosted',
+      label: 'ZincSearch (Self-Hosted)',
+      description: 'ZincSearch full-text search engine. Version via /api/zinc/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://zincsearch.example.com:4080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/zinc/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/zinc/version', '/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'zincsearch/zincsearch' },
+      evidenceUrl: 'https://zincsearch-docs.zinc.dev/api/',
+    },
+  ],
+
+  'searxng': [
+    {
+      id: 'self-hosted',
+      label: 'SearXNG (Self-Hosted)',
+      description: 'SearXNG privacy-preserving metasearch engine. Version via / HTML page — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://searxng.example.com:8080',
+      versionSource: { type: 'github-releases', target: 'searxng/searxng' },
+      latestSource: { type: 'github-releases', target: 'searxng/searxng' },
+      evidenceUrl: 'https://docs.searxng.org/',
+    },
+  ],
+
+  'fluidd': [
+    {
+      id: 'self-hosted',
+      label: 'Fluidd (Self-Hosted)',
+      description: 'Fluidd Klipper 3D printer web interface. Version via /api/v1/server/info (Moonraker API, no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://fluidd.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/server/info',
+        jsonPath: '$.result.software_version',
+        jsonPathExtractors: ['result.software_version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/server/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'fluidd-core/fluidd' },
+      evidenceUrl: 'https://moonraker.readthedocs.io/en/latest/web_api/',
+    },
+  ],
+
+  'eramba': [
+    {
+      id: 'self-hosted',
+      label: 'Eramba (Self-Hosted)',
+      description: 'Eramba GRC platform. Version via /settings/version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://eramba.example.com',
+      versionSource: { type: 'github-releases', target: 'eramba/eramba' },
+      latestSource: { type: 'github-releases', target: 'eramba/eramba' },
+      evidenceUrl: 'https://www.eramba.org/documentation',
+    },
+  ],
+
+  'appsmith': [
+    {
+      id: 'self-hosted',
+      label: 'Appsmith (Self-Hosted)',
+      description: 'Appsmith low-code app builder. Version via /api/v1/admin/version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://appsmith.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/admin/version',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/admin/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'appsmithorg/appsmith' },
+      evidenceUrl: 'https://docs.appsmith.com/reference/api',
+    },
+  ],
+
+  'tooljet': [
+    {
+      id: 'self-hosted',
+      label: 'ToolJet (Self-Hosted)',
+      description: 'ToolJet open-source low-code builder. Version via /api/v1/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://tooljet.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/version',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v2/version', '/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'ToolJet/ToolJet' },
+      evidenceUrl: 'https://docs.tooljet.com/docs/tooljet-concepts/what-is-tooljet',
+    },
+  ],
+
+  'budibase': [
+    {
+      id: 'self-hosted',
+      label: 'Budibase (Self-Hosted)',
+      description: 'Budibase open-source low-code platform. Version via /api/global/installation (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://budibase.example.com:10000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/global/installation',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/global/installation'],
+      },
+      latestSource: { type: 'github-releases', target: 'Budibase/budibase' },
+      evidenceUrl: 'https://docs.budibase.com/docs/public-api',
+    },
+  ],
+
 };
 
 /**

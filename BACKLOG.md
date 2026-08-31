@@ -1,3 +1,12 @@
+## Status Summary (2026-08-31 22:45 UTC)
+- **Build/Test/Audit:** ✅ Build passes. Web: 5698 tests (257 files). API: 5327 tests (239 files). TypeScript clean. 0 vulnerabilities.
+- **Deployment:** ⚠️ Docker/dind unavailable in sandbox — infrastructure only.
+- **Branch:** heartbeat/2026-08-31-noon (20 commits, pushed; rotation due ~00:00 UTC)
+- **Changes (21:40–22:45 UTC):**
+  - [x] **feat(registry): 22 more variants (695 → 717)** — networking: headscale, coredns, nginx-ingress; storage/backup: openebs, velero, restic, kopia (+server), borgbackup, duplicati, seaweedfs, juicefs (+cloud), ceph (+Rook); CMS: keystonejs, craft-cms (+cloud), processwire; comms: jitsi-meet (+JaaS), bigbluebutton, livekit (+cloud), ejabberd (+business), prosody, mumble, coturn.
+  - [x] **feat(registry): 20 more variants (717 → 737)** — CMS: microweber, cockpit-cms, decap-cms; notifications: ntfy (+cloud); media/books: kavita, komga, calibre-web, audiobookshelf, tautulli, bazarr; runtimes: deno (+Deploy), bun, devpod, act, hoppscotch (+cloud), gitea-actions, gitness; project mgmt: plane (+cloud), linear-oss.
+  - **Registry: 737 / 1292 tools with variants** (+ 207 today total, 915 still missing).
+
 ## Status Summary (2026-08-31 21:40 UTC)
 - **Build/Test/Audit:** ✅ Build passes. Web: 5698 tests. API: 5327 tests. TypeScript clean. 0 vulnerabilities.
 - **Deployment:** ⚠️ Docker/dind unavailable in sandbox — infrastructure only.

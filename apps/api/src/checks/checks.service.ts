@@ -877,7 +877,7 @@ export class ChecksService {
         ok: run.ok,
         latencyMs: run.latencyMs,
         message: run.message,
-        checkedAt: typeof run.checkedAt === 'string' ? run.checkedAt : new Date(run.checkedAt as unknown as Date).toISOString(),
+        checkedAt: new Date(run.checkedAt).toISOString(),
       };
       const body = JSON.stringify(payload);
       const headers: Record<string, string> = {

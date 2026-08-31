@@ -14407,6 +14407,329 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Security policy / secrets / scanning
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'opa': [
+    {
+      id: 'self-hosted',
+      label: 'Open Policy Agent (OPA) (Self-Hosted)',
+      description: 'OPA policy engine. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'open-policy-agent/opa' },
+      latestSource: { type: 'github-releases', target: 'open-policy-agent/opa' },
+      evidenceUrl: 'https://www.openpolicyagent.org/docs/latest/#running-opa',
+    },
+  ],
+
+  'kyverno': [
+    {
+      id: 'self-hosted',
+      label: 'Kyverno (Self-Hosted on Kubernetes)',
+      description: 'Kyverno Kubernetes-native policy engine. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'kyverno/kyverno' },
+      latestSource: { type: 'github-releases', target: 'kyverno/kyverno' },
+      evidenceUrl: 'https://kyverno.io/docs/installation/',
+    },
+  ],
+
+  'boundary': [
+    {
+      id: 'self-hosted',
+      label: 'HashiCorp Boundary (Self-Hosted)',
+      description: 'Boundary identity-based access management. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hashicorp/boundary' },
+      latestSource: { type: 'github-releases', target: 'hashicorp/boundary' },
+      evidenceUrl: 'https://developer.hashicorp.com/boundary/install',
+    },
+    {
+      id: 'hcp',
+      label: 'HCP Boundary (HashiCorp Cloud Platform)',
+      description: 'Boundary managed on HCP.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hashicorp/boundary' },
+      latestSource: { type: 'github-releases', target: 'hashicorp/boundary' },
+      evidenceUrl: 'https://developer.hashicorp.com/hcp/docs/boundary',
+    },
+  ],
+
+  'external-secrets': [
+    {
+      id: 'self-hosted',
+      label: 'External Secrets Operator (Self-Hosted)',
+      description: 'Kubernetes operator for syncing secrets from external stores.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'external-secrets/external-secrets' },
+      latestSource: { type: 'github-releases', target: 'external-secrets/external-secrets' },
+      evidenceUrl: 'https://external-secrets.io/latest/introduction/getting-started/',
+    },
+  ],
+
+  'grype': [
+    {
+      id: 'cli',
+      label: 'Grype (CLI Vulnerability Scanner)',
+      description: 'Anchore Grype container vulnerability scanner. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'anchore/grype' },
+      latestSource: { type: 'github-releases', target: 'anchore/grype' },
+      evidenceUrl: 'https://github.com/anchore/grype#installation',
+    },
+  ],
+
+  'syft': [
+    {
+      id: 'cli',
+      label: 'Syft (SBOM CLI Tool)',
+      description: 'Anchore Syft software bill of materials generator. Version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'anchore/syft' },
+      latestSource: { type: 'github-releases', target: 'anchore/syft' },
+      evidenceUrl: 'https://github.com/anchore/syft#installation',
+    },
+  ],
+
+  'semgrep': [
+    {
+      id: 'cli',
+      label: 'Semgrep (CLI / Self-Hosted)',
+      description: 'Semgrep static analysis tool. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'semgrep/semgrep' },
+      latestSource: { type: 'github-releases', target: 'semgrep/semgrep' },
+      evidenceUrl: 'https://semgrep.dev/docs/getting-started/quickstart/',
+    },
+    {
+      id: 'cloud',
+      label: 'Semgrep Cloud Platform',
+      description: 'Semgrep managed cloud SAST platform at semgrep.dev.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'semgrep/semgrep' },
+      latestSource: { type: 'github-releases', target: 'semgrep/semgrep' },
+      evidenceUrl: 'https://semgrep.dev',
+    },
+  ],
+
+  'infisical': [
+    {
+      id: 'self-hosted',
+      label: 'Infisical (Self-Hosted)',
+      description: 'Infisical open-source secrets manager. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Infisical/infisical' },
+      latestSource: { type: 'github-releases', target: 'Infisical/infisical' },
+      evidenceUrl: 'https://infisical.com/docs/self-hosting/overview',
+    },
+    {
+      id: 'cloud',
+      label: 'Infisical Cloud',
+      description: 'Infisical managed cloud secrets platform.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Infisical/infisical' },
+      latestSource: { type: 'github-releases', target: 'Infisical/infisical' },
+      evidenceUrl: 'https://app.infisical.com',
+    },
+  ],
+
+  'openbao': [
+    {
+      id: 'self-hosted',
+      label: 'OpenBao (Self-Hosted)',
+      description: 'OpenBao open-source HashiCorp Vault fork. Version from GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://openbao.example.com:8200',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/sys/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'openbao/openbao' },
+      evidenceUrl: 'https://openbao.org/docs/install/',
+    },
+  ],
+
+  'checkov': [
+    {
+      id: 'cli',
+      label: 'Checkov (CLI IaC Scanner)',
+      description: 'Bridgecrew Checkov static IaC analysis. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'bridgecrewio/checkov' },
+      latestSource: { type: 'github-releases', target: 'bridgecrewio/checkov' },
+      evidenceUrl: 'https://www.checkov.io/1.Welcome/Quick%20Start.html',
+    },
+  ],
+
+  'sops': [
+    {
+      id: 'cli',
+      label: 'SOPS (Secrets OPerationS CLI)',
+      description: 'Mozilla/CNCF SOPS encrypted files tool. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'getsops/sops' },
+      latestSource: { type: 'github-releases', target: 'getsops/sops' },
+      evidenceUrl: 'https://getsops.io/docs/#stable-releases',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Networking / VPN / DNS
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'cilium': [
+    {
+      id: 'self-hosted',
+      label: 'Cilium (Self-Hosted on Kubernetes)',
+      description: 'Cilium eBPF-based networking and security. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'cilium/cilium' },
+      latestSource: { type: 'github-releases', target: 'cilium/cilium' },
+      evidenceUrl: 'https://docs.cilium.io/en/stable/gettingstarted/',
+    },
+  ],
+
+  'cloudflared': [
+    {
+      id: 'tunnel',
+      label: 'Cloudflare Tunnel (cloudflared)',
+      description: 'Cloudflare Tunnel daemon. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'cloudflare/cloudflared' },
+      latestSource: { type: 'github-releases', target: 'cloudflare/cloudflared' },
+      evidenceUrl: 'https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/',
+    },
+  ],
+
+  'zerotier': [
+    {
+      id: 'self-hosted',
+      label: 'ZeroTier (Self-Hosted Controller)',
+      description: 'ZeroTier Software-Defined WAN. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'zerotier/ZeroTierOne' },
+      latestSource: { type: 'github-releases', target: 'zerotier/ZeroTierOne' },
+      evidenceUrl: 'https://docs.zerotier.com/self-hosting/network-controllers/',
+    },
+    {
+      id: 'cloud',
+      label: 'ZeroTier Central (Cloud)',
+      description: 'ZeroTier managed control plane at my.zerotier.com.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'zerotier/ZeroTierOne' },
+      latestSource: { type: 'github-releases', target: 'zerotier/ZeroTierOne' },
+      evidenceUrl: 'https://my.zerotier.com',
+    },
+  ],
+
+  'openvpn': [
+    {
+      id: 'community',
+      label: 'OpenVPN Community (Self-Hosted)',
+      description: 'OpenVPN open-source VPN. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'OpenVPN/openvpn' },
+      latestSource: { type: 'github-releases', target: 'OpenVPN/openvpn' },
+      evidenceUrl: 'https://community.openvpn.net/openvpn/wiki/OpenvpnSoftwareRepos',
+    },
+    {
+      id: 'access-server',
+      label: 'OpenVPN Access Server (Commercial)',
+      description: 'OpenVPN Access Server with web UI and management API.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'OpenVPN/openvpn' },
+      latestSource: { type: 'github-releases', target: 'OpenVPN/openvpn' },
+      evidenceUrl: 'https://openvpn.net/access-server/',
+    },
+  ],
+
+  'netmaker': [
+    {
+      id: 'self-hosted',
+      label: 'Netmaker (Self-Hosted)',
+      description: 'Netmaker WireGuard mesh network manager. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'gravitl/netmaker' },
+      latestSource: { type: 'github-releases', target: 'gravitl/netmaker' },
+      evidenceUrl: 'https://docs.netmaker.io/quick-start.html',
+    },
+    {
+      id: 'cloud',
+      label: 'Netmaker Cloud (SaaS)',
+      description: 'Netmaker managed cloud network.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'gravitl/netmaker' },
+      latestSource: { type: 'github-releases', target: 'gravitl/netmaker' },
+      evidenceUrl: 'https://app.netmaker.io',
+    },
+  ],
+
+  'frp': [
+    {
+      id: 'self-hosted',
+      label: 'frp (Fast Reverse Proxy)',
+      description: 'frp fast reverse proxy for NAT traversal. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'fatedier/frp' },
+      latestSource: { type: 'github-releases', target: 'fatedier/frp' },
+      evidenceUrl: 'https://github.com/fatedier/frp#installation',
+    },
+  ],
+
+  'unbound': [
+    {
+      id: 'self-hosted',
+      label: 'Unbound DNS Resolver (Self-Hosted)',
+      description: 'NLnet Labs Unbound validating DNS resolver. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'NLnetLabs/unbound' },
+      latestSource: { type: 'github-releases', target: 'NLnetLabs/unbound' },
+      evidenceUrl: 'https://nlnetlabs.nl/documentation/unbound/howto-setup/',
+    },
+  ],
+
+  'rethinkdb': [
+    {
+      id: 'self-hosted',
+      label: 'RethinkDB (Self-Hosted)',
+      description: 'RethinkDB realtime document database. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'rethinkdb/rethinkdb' },
+      latestSource: { type: 'github-releases', target: 'rethinkdb/rethinkdb' },
+      evidenceUrl: 'https://rethinkdb.com/docs/install/',
+    },
+  ],
+
 };
 
 /**

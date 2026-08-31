@@ -4687,6 +4687,414 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+  'apprise': [
+    {
+      id: 'self-hosted',
+      label: 'Apprise API (Self-Hosted)',
+      description: 'Apprise notification API server. Version via /status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://apprise.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'caronc/apprise-api' },
+      evidenceUrl: 'https://github.com/caronc/apprise-api',
+    },
+  ],
+
+  'bookwyrm': [
+    {
+      id: 'self-hosted',
+      label: 'BookWyrm (Self-Hosted)',
+      description: 'BookWyrm federated reading tracker. Version via /api/v1/instance (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://bookwyrm.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/instance',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/instance'],
+      },
+      latestSource: { type: 'github-releases', target: 'bookwyrm-social/bookwyrm' },
+      evidenceUrl: 'https://docs.joinbookwyrm.com/',
+    },
+  ],
+
+  'pleroma': [
+    {
+      id: 'self-hosted',
+      label: 'Pleroma (Self-Hosted)',
+      description: 'Pleroma federated social network. Version via /api/v1/instance (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://pleroma.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/instance',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/instance'],
+      },
+      latestSource: { type: 'github-releases', target: 'elixir-horizon/pleroma' },
+      evidenceUrl: 'https://docs-develop.pleroma.social/backend/API/pleroma_api/',
+    },
+  ],
+
+  'funkwhale': [
+    {
+      id: 'self-hosted',
+      label: 'Funkwhale (Self-Hosted)',
+      description: 'Funkwhale federated music platform. Version via /api/v2/instance/ (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://funkwhale.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/instance/',
+        jsonPath: '$.funkwhale_version',
+        jsonPathExtractors: ['funkwhale_version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v2/instance/', '/api/v1/instance/'],
+      },
+      latestSource: { type: 'github-releases', target: 'funkwhale/funkwhale' },
+      evidenceUrl: 'https://docs.funkwhale.audio/api/',
+    },
+  ],
+
+  'mediamtx': [
+    {
+      id: 'self-hosted',
+      label: 'MediaMTX (Self-Hosted)',
+      description: 'MediaMTX (formerly rtsp-simple-server) media server. Version via /v3/general (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://mediamtx.example.com:9997',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v3/general',
+        jsonPath: '$.serverVersion',
+        jsonPathExtractors: ['serverVersion', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/v3/general', '/v2/config/global/get'],
+      },
+      latestSource: { type: 'github-releases', target: 'bluenviron/mediamtx' },
+      evidenceUrl: 'https://github.com/bluenviron/mediamtx/blob/main/apidocs/openapi.yaml',
+    },
+  ],
+
+  'ttyd': [
+    {
+      id: 'self-hosted',
+      label: 'ttyd (Self-Hosted)',
+      description: 'ttyd web-based terminal. No version HTTP endpoint — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://ttyd.example.com:7681',
+      versionSource: {
+        type: 'github-releases',
+        target: 'tsl0922/ttyd',
+      },
+      latestSource: { type: 'github-releases', target: 'tsl0922/ttyd' },
+      evidenceUrl: 'https://github.com/tsl0922/ttyd',
+    },
+  ],
+
+  'wetty': [
+    {
+      id: 'self-hosted',
+      label: 'WeTTY (Self-Hosted)',
+      description: 'WeTTY web-based terminal. No version HTTP endpoint — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://wetty.example.com:3000',
+      versionSource: {
+        type: 'github-releases',
+        target: 'butlerx/wetty',
+      },
+      latestSource: { type: 'github-releases', target: 'butlerx/wetty' },
+      evidenceUrl: 'https://github.com/butlerx/wetty',
+    },
+  ],
+
+  'dashy': [
+    {
+      id: 'self-hosted',
+      label: 'Dashy (Self-Hosted)',
+      description: 'Dashy self-hosted dashboard. Version via /api/v1/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://dashy.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/status',
+        jsonPath: '$.serverVersion',
+        jsonPathExtractors: ['serverVersion', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'Lissy93/dashy' },
+      evidenceUrl: 'https://dashy.to/docs/api',
+    },
+  ],
+
+  'qbittorrent': [
+    {
+      id: 'self-hosted',
+      label: 'qBittorrent (Self-Hosted)',
+      description: 'qBittorrent torrent client with Web UI. Version via /api/v2/app/version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://qbittorrent.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/app/version',
+        jsonPath: '$',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v2/app/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'qbittorrent/qBittorrent' },
+      evidenceUrl: 'https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)',
+    },
+  ],
+
+  'transmission': [
+    {
+      id: 'self-hosted',
+      label: 'Transmission (Self-Hosted)',
+      description: 'Transmission torrent client. Version via RPC /transmission/rpc (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://transmission.example.com:9091',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/transmission/rpc',
+        jsonPath: '$.arguments.version',
+        jsonPathExtractors: ['arguments.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/transmission/rpc'],
+      },
+      latestSource: { type: 'github-releases', target: 'transmission/transmission' },
+      evidenceUrl: 'https://github.com/transmission/transmission/blob/main/docs/rpc-spec.md',
+    },
+  ],
+
+  'deluge': [
+    {
+      id: 'self-hosted',
+      label: 'Deluge (Self-Hosted)',
+      description: 'Deluge torrent client with Web UI. Version via /json (JSON-RPC, requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://deluge.example.com:8112',
+      versionSource: {
+        type: 'github-releases',
+        target: 'deluge-torrent/deluge',
+      },
+      latestSource: { type: 'github-releases', target: 'deluge-torrent/deluge' },
+      evidenceUrl: 'https://deluge.readthedocs.io/en/latest/reference/api.html',
+    },
+  ],
+
+  'sabnzbd': [
+    {
+      id: 'self-hosted',
+      label: 'SABnzbd (Self-Hosted)',
+      description: 'SABnzbd Usenet downloader. Version via /api?mode=version (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://sabnzbd.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api?mode=version&apikey={{apiKey}}&output=json',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api?mode=version'],
+      },
+      latestSource: { type: 'github-releases', target: 'sabnzbd/sabnzbd' },
+      evidenceUrl: 'https://sabnzbd.org/wiki/advanced/api',
+    },
+  ],
+
+  'nzbget': [
+    {
+      id: 'self-hosted',
+      label: 'NZBGet (Self-Hosted)',
+      description: 'NZBGet Usenet downloader. Version via /jsonrpc (JSON-RPC, requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://nzbget.example.com:6789',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/jsonrpc/version',
+        jsonPath: '$.result',
+        jsonPathExtractors: ['result', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/jsonrpc/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'nzbgetcom/nzbget' },
+      evidenceUrl: 'https://nzbget.net/api/',
+    },
+  ],
+
+  'text-generation-webui': [
+    {
+      id: 'self-hosted',
+      label: 'Text Generation WebUI (Self-Hosted)',
+      description: 'oobabooga text-generation-webui for running LLMs. Version via /api/v1/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://textgen.example.com:5000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/info', '/api/v1/model'],
+      },
+      latestSource: { type: 'github-releases', target: 'oobabooga/text-generation-webui' },
+      evidenceUrl: 'https://github.com/oobabooga/text-generation-webui/wiki/12-%E2%80%90-OpenAI-API',
+    },
+  ],
+
+  'stable-diffusion-webui': [
+    {
+      id: 'self-hosted',
+      label: 'Stable Diffusion WebUI (Self-Hosted)',
+      description: 'AUTOMATIC1111 Stable Diffusion WebUI. Version via /internal/sysinfo (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://sdwebui.example.com:7860',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/internal/sysinfo',
+        jsonPath: '$.Version',
+        jsonPathExtractors: ['Version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/internal/sysinfo', '/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'AUTOMATIC1111/stable-diffusion-webui' },
+      evidenceUrl: 'https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/API',
+    },
+  ],
+
+  'langflow': [
+    {
+      id: 'self-hosted',
+      label: 'Langflow (Self-Hosted)',
+      description: 'Langflow LLM flow builder. Version via /api/v1/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://langflow.example.com:7860',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/version', '/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'langflow-ai/langflow' },
+      evidenceUrl: 'https://docs.langflow.org/configuration-api-keys',
+    },
+  ],
+
+  'tabbyml': [
+    {
+      id: 'self-hosted',
+      label: 'Tabby (Self-Hosted)',
+      description: 'Tabby self-hosted AI coding assistant. Version via /v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://tabby.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'TabbyML/tabby' },
+      evidenceUrl: 'https://tabby.tabbyml.com/api/',
+    },
+  ],
+
+  'chromadb': [
+    {
+      id: 'self-hosted',
+      label: 'ChromaDB (Self-Hosted)',
+      description: 'Chroma AI-native vector database. Version via /api/v2/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://chromadb.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/version',
+        jsonPath: '$',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v2/version', '/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'chroma-core/chroma' },
+      evidenceUrl: 'https://docs.trychroma.com/reference/py-client',
+    },
+  ],
+
+  'apache-nifi': [
+    {
+      id: 'self-hosted',
+      label: 'Apache NiFi (Self-Hosted)',
+      description: 'Apache NiFi data flow automation. Version via /nifi-api/flow/about (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://nifi.example.com:8443',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/nifi-api/flow/about',
+        jsonPath: '$.about.version',
+        jsonPathExtractors: ['about.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/nifi-api/flow/about'],
+      },
+      latestSource: { type: 'github-releases', target: 'apache/nifi' },
+      evidenceUrl: 'https://nifi.apache.org/docs/nifi-docs/rest-api/',
+    },
+  ],
+
+  'debezium': [
+    {
+      id: 'self-hosted',
+      label: 'Debezium (Self-Hosted)',
+      description: 'Debezium CDC platform (via Kafka Connect). Version via /connectors (requires Kafka Connect REST).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://debezium.example.com:8083',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/', '/connectors'],
+      },
+      latestSource: { type: 'github-releases', target: 'debezium/debezium' },
+      evidenceUrl: 'https://debezium.io/documentation/reference/stable/operations/rest-api.html',
+    },
+  ],
+
 };
 
 /**

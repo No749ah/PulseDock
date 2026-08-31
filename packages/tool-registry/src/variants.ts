@@ -11929,6 +11929,426 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // CI/CD
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'fluxcd': [
+    {
+      id: 'self-hosted',
+      label: 'Flux CD (Self-Hosted / GitOps)',
+      description: 'Flux v2 GitOps toolkit. Version tracked from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'fluxcd/flux2' },
+      latestSource: { type: 'github-releases', target: 'fluxcd/flux2' },
+      evidenceUrl: 'https://github.com/fluxcd/flux2/releases',
+    },
+  ],
+
+  'tekton': [
+    {
+      id: 'pipelines',
+      label: 'Tekton Pipelines (Self-Hosted)',
+      description: 'Tekton Pipelines on Kubernetes. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'tektoncd/pipeline' },
+      latestSource: { type: 'github-releases', target: 'tektoncd/pipeline' },
+      evidenceUrl: 'https://github.com/tektoncd/pipeline/releases',
+    },
+    {
+      id: 'triggers',
+      label: 'Tekton Triggers (Self-Hosted)',
+      description: 'Tekton Triggers component. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'tektoncd/triggers' },
+      latestSource: { type: 'github-releases', target: 'tektoncd/triggers' },
+      evidenceUrl: 'https://github.com/tektoncd/triggers/releases',
+    },
+  ],
+
+  'concourse-ci': [
+    {
+      id: 'self-hosted',
+      label: 'Concourse CI (Self-Hosted)',
+      description: 'Concourse CI server. Version via /api/v1/info JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://concourse.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'concourse/concourse' },
+      evidenceUrl: 'https://concourse-ci.org/concourse-info.html',
+    },
+    {
+      id: 'cloud',
+      label: 'Concourse CI (Cloud / Hosted)',
+      description: 'Hosted Concourse CI. Tracks release version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'concourse/concourse' },
+      latestSource: { type: 'github-releases', target: 'concourse/concourse' },
+      evidenceUrl: 'https://github.com/concourse/concourse/releases',
+    },
+  ],
+
+  'teamcity': [
+    {
+      id: 'self-hosted',
+      label: 'TeamCity (Self-Hosted)',
+      description: 'JetBrains TeamCity server. Version via /app/rest/server JSON.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://teamcity.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/app/rest/server',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'docker-hub', target: 'jetbrains/teamcity-server' },
+      evidenceUrl: 'https://www.jetbrains.com/help/teamcity/rest/get-started-with-rest-api.html',
+    },
+    {
+      id: 'cloud',
+      label: 'TeamCity Cloud (JetBrains Cloud)',
+      description: 'TeamCity Cloud managed service by JetBrains.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'jetbrains/teamcity-server' },
+      latestSource: { type: 'docker-hub', target: 'jetbrains/teamcity-server' },
+      evidenceUrl: 'https://www.jetbrains.com/teamcity/cloud/',
+    },
+  ],
+
+  'fleet': [
+    {
+      id: 'self-hosted',
+      label: 'Rancher Fleet (Self-Hosted)',
+      description: 'Rancher Fleet GitOps at scale. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'rancher/fleet' },
+      latestSource: { type: 'github-releases', target: 'rancher/fleet' },
+      evidenceUrl: 'https://fleet.rancher.io/installation',
+    },
+  ],
+
+  'okd': [
+    {
+      id: 'self-hosted',
+      label: 'OKD (Self-Hosted OpenShift Origin)',
+      description: 'OKD Kubernetes distribution (OpenShift community). Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'openshift/okd' },
+      latestSource: { type: 'github-releases', target: 'openshift/okd' },
+      evidenceUrl: 'https://www.okd.io/installation/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // More databases
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'duckdb': [
+    {
+      id: 'embedded',
+      label: 'DuckDB (Embedded / CLI)',
+      description: 'DuckDB in-process analytical database. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'duckdb/duckdb' },
+      latestSource: { type: 'github-releases', target: 'duckdb/duckdb' },
+      evidenceUrl: 'https://github.com/duckdb/duckdb/releases',
+    },
+  ],
+
+  'typesense': [
+    {
+      id: 'self-hosted',
+      label: 'Typesense (Self-Hosted)',
+      description: 'Typesense search engine. Version via /health JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://typesense.example.com:8108',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'typesense/typesense' },
+      evidenceUrl: 'https://typesense.org/docs/guide/running-in-production.html',
+    },
+    {
+      id: 'cloud',
+      label: 'Typesense Cloud',
+      description: 'Typesense managed cloud service. Tracks release from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'typesense/typesense' },
+      latestSource: { type: 'github-releases', target: 'typesense/typesense' },
+      evidenceUrl: 'https://cloud.typesense.org',
+    },
+  ],
+
+  'surrealdb': [
+    {
+      id: 'self-hosted',
+      label: 'SurrealDB (Self-Hosted)',
+      description: 'SurrealDB multi-model database. Version via /version endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://localhost:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'surrealdb/surrealdb' },
+      evidenceUrl: 'https://surrealdb.com/docs/surrealdb/cli/start',
+    },
+  ],
+
+  'valkey': [
+    {
+      id: 'self-hosted',
+      label: 'Valkey (Self-Hosted)',
+      description: 'Valkey open-source Redis fork. Version from GitHub releases or Docker Hub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'valkey-io/valkey' },
+      latestSource: { type: 'github-releases', target: 'valkey-io/valkey' },
+      evidenceUrl: 'https://valkey.io/download/',
+    },
+    {
+      id: 'docker',
+      label: 'Valkey (Docker / docker.io/valkey)',
+      description: 'Official Docker Hub Valkey image.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'valkey/valkey' },
+      latestSource: { type: 'github-releases', target: 'valkey-io/valkey' },
+      evidenceUrl: 'https://hub.docker.com/r/valkey/valkey',
+    },
+  ],
+
+  'timescaledb': [
+    {
+      id: 'self-hosted',
+      label: 'TimescaleDB (Self-Hosted)',
+      description: 'TimescaleDB time-series PostgreSQL extension. Version via Docker Hub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'timescale/timescaledb' },
+      latestSource: { type: 'docker-hub', target: 'timescale/timescaledb' },
+      evidenceUrl: 'https://docs.timescale.com/self-hosted/latest/install/',
+    },
+    {
+      id: 'cloud',
+      label: 'Timescale Cloud',
+      description: 'Fully managed TimescaleDB in the cloud.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'timescale/timescaledb' },
+      latestSource: { type: 'docker-hub', target: 'timescale/timescaledb' },
+      evidenceUrl: 'https://www.timescale.com/cloud',
+    },
+  ],
+
+  'cockroachdb': [
+    {
+      id: 'self-hosted',
+      label: 'CockroachDB (Self-Hosted)',
+      description: 'CockroachDB distributed SQL. Version via /_status/version or GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'cockroachdb/cockroach' },
+      latestSource: { type: 'github-releases', target: 'cockroachdb/cockroach' },
+      evidenceUrl: 'https://www.cockroachlabs.com/docs/stable/install-cockroachdb.html',
+    },
+    {
+      id: 'cloud',
+      label: 'CockroachDB Cloud (Serverless / Dedicated)',
+      description: 'CockroachDB managed cloud (Serverless or Dedicated clusters).',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'cockroachdb/cockroach' },
+      latestSource: { type: 'github-releases', target: 'cockroachdb/cockroach' },
+      evidenceUrl: 'https://www.cockroachlabs.com/product/cockroachdb-cloud/',
+    },
+  ],
+
+  'cassandra': [
+    {
+      id: 'self-hosted',
+      label: 'Apache Cassandra (Self-Hosted)',
+      description: 'Apache Cassandra distributed database. Version via Docker Hub image tag.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'library/cassandra' },
+      latestSource: { type: 'docker-hub', target: 'library/cassandra' },
+      evidenceUrl: 'https://cassandra.apache.org/doc/latest/cassandra/getting_started/installing.html',
+    },
+  ],
+
+  'opensearch': [
+    {
+      id: 'self-hosted',
+      label: 'OpenSearch (Self-Hosted)',
+      description: 'OpenSearch distributed search. Version via /_cat/nodes or GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://opensearch.example.com:9200',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/',
+        jsonPath: '$.version.number',
+        jsonPathExtractors: ['version.number'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'opensearch-project/OpenSearch' },
+      evidenceUrl: 'https://opensearch.org/docs/latest/getting-started/intro/',
+    },
+    {
+      id: 'cloud',
+      label: 'Amazon OpenSearch Service',
+      description: 'AWS managed OpenSearch Service. Tracks upstream releases from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'opensearch-project/OpenSearch' },
+      latestSource: { type: 'github-releases', target: 'opensearch-project/OpenSearch' },
+      evidenceUrl: 'https://docs.aws.amazon.com/opensearch-service/',
+    },
+  ],
+
+  'keydb': [
+    {
+      id: 'self-hosted',
+      label: 'KeyDB (Self-Hosted)',
+      description: 'KeyDB high-performance Redis fork. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Snapchat/KeyDB' },
+      latestSource: { type: 'github-releases', target: 'Snapchat/KeyDB' },
+      evidenceUrl: 'https://docs.keydb.dev/docs/installation/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Observability (traces / telemetry)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'opentelemetry-collector': [
+    {
+      id: 'self-hosted',
+      label: 'OpenTelemetry Collector (Self-Hosted)',
+      description: 'OTel Collector. Deployed version via GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'open-telemetry/opentelemetry-collector' },
+      latestSource: { type: 'github-releases', target: 'open-telemetry/opentelemetry-collector' },
+      evidenceUrl: 'https://opentelemetry.io/docs/collector/',
+    },
+    {
+      id: 'contrib',
+      label: 'OpenTelemetry Collector Contrib',
+      description: 'OTel Collector Contrib distribution with extra receivers/exporters.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'open-telemetry/opentelemetry-collector-contrib' },
+      latestSource: { type: 'github-releases', target: 'open-telemetry/opentelemetry-collector-contrib' },
+      evidenceUrl: 'https://github.com/open-telemetry/opentelemetry-collector-contrib/releases',
+    },
+  ],
+
+  'tempo': [
+    {
+      id: 'self-hosted',
+      label: 'Grafana Tempo (Self-Hosted)',
+      description: 'Grafana Tempo distributed tracing. Version via /api/status/buildinfo.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://tempo.example.com:3200',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/status/buildinfo',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'grafana/tempo' },
+      evidenceUrl: 'https://grafana.com/docs/tempo/latest/api_docs/',
+    },
+  ],
+
+  'zipkin': [
+    {
+      id: 'self-hosted',
+      label: 'Zipkin (Self-Hosted)',
+      description: 'Zipkin distributed tracing. Version via /api/v2/version JSON.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://zipkin.example.com:9411',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'openzipkin/zipkin' },
+      evidenceUrl: 'https://zipkin.io/pages/quickstart.html',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Security / Scanners
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'trivy': [
+    {
+      id: 'cli',
+      label: 'Trivy (CLI / Local)',
+      description: 'Aqua Trivy vulnerability scanner. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'aquasecurity/trivy' },
+      latestSource: { type: 'github-releases', target: 'aquasecurity/trivy' },
+      evidenceUrl: 'https://aquasecurity.github.io/trivy/latest/',
+    },
+    {
+      id: 'server',
+      label: 'Trivy Server (Self-Hosted)',
+      description: 'Trivy in server mode. Version via /version JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://trivy-server.example.com:4954',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.Version',
+        jsonPathExtractors: ['Version', 'version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'aquasecurity/trivy' },
+      evidenceUrl: 'https://aquasecurity.github.io/trivy/latest/docs/references/modes/server/',
+    },
+  ],
+
 };
 
 /**

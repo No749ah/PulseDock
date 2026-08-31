@@ -260,12 +260,12 @@ describe('MetricsService', () => {
             type: 'HTTP',
             target: 'https://api.example.com',
             enabled: true,
-            runs: [{ status: 'up', latencyMs: 42, checkedAt: new Date() }],
+            runs: [{ ok: true, latencyMs: 42, checkedAt: new Date() }],
           },
         ],
         runCounts: [
-          { monitorId: 'mon-1', status: 'up', _count: { _all: 100 } },
-          { monitorId: 'mon-1', status: 'down', _count: { _all: 2 } },
+          { monitorId: 'mon-1', ok: true, _count: { _all: 100 } },
+          { monitorId: 'mon-1', ok: false, _count: { _all: 2 } },
         ],
       });
 
@@ -310,7 +310,7 @@ describe('MetricsService', () => {
             type: 'HTTP',
             target: 'https://alpha.example.com',
             enabled: true,
-            runs: [{ status: 'down', latencyMs: null, checkedAt: new Date() }],
+            runs: [{ ok: false, latencyMs: null, checkedAt: new Date() }],
           },
         ],
       });

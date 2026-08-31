@@ -11151,6 +11151,377 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+  'polyaxon': [
+    {
+      id: 'self-hosted',
+      label: 'Polyaxon (Self-Hosted)',
+      description: 'Polyaxon MLOps platform. Version via /api/v1/version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://polyaxon.example.com:80',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.app',
+        jsonPathExtractors: ['app', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'polyaxon/polyaxon' },
+      evidenceUrl: 'https://polyaxon.com/docs/core/api/',
+    },
+  ],
+
+  'woocommerce': [
+    {
+      id: 'self-hosted',
+      label: 'WooCommerce (Self-Hosted)',
+      description: 'WooCommerce WordPress e-commerce plugin. Version via /wp-json/wc/v3/system_status (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://woocommerce.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/wp-json/wc/v3/system_status',
+        jsonPath: '$.environment.wc_version',
+        jsonPathExtractors: ['environment.wc_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/wp-json/wc/v3/system_status'],
+      },
+      latestSource: { type: 'github-releases', target: 'woocommerce/woocommerce' },
+      evidenceUrl: 'https://woocommerce.github.io/woocommerce-rest-api-docs/',
+    },
+  ],
+
+  'magento': [
+    {
+      id: 'open-source',
+      label: 'Magento Open Source (Self-Hosted)',
+      description: 'Adobe Magento Open Source e-commerce. Version via /rest/V1/modules (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://magento.example.com',
+      versionSource: { type: 'github-releases', target: 'magento/magento2' },
+      latestSource: { type: 'github-releases', target: 'magento/magento2' },
+      evidenceUrl: 'https://adobe-commerce.redoc.ly/',
+    },
+  ],
+
+  'opencart': [
+    {
+      id: 'self-hosted',
+      label: 'OpenCart (Self-Hosted)',
+      description: 'OpenCart e-commerce platform. Version via /index.php?route=api/account/login (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://opencart.example.com',
+      versionSource: { type: 'github-releases', target: 'opencart/opencart' },
+      latestSource: { type: 'github-releases', target: 'opencart/opencart' },
+      evidenceUrl: 'https://docs.opencart.com/en-gb/system/users/api/',
+    },
+  ],
+
+  'vendure': [
+    {
+      id: 'self-hosted',
+      label: 'Vendure (Self-Hosted)',
+      description: 'Vendure headless e-commerce framework. Version via /health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://vendure.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'vendure-ecommerce/vendure' },
+      evidenceUrl: 'https://docs.vendure.io/reference/graphql-api/',
+    },
+  ],
+
+  'bagisto': [
+    {
+      id: 'self-hosted',
+      label: 'Bagisto (Self-Hosted)',
+      description: 'Bagisto Laravel-based e-commerce. Version via /api/v1/version (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://bagisto.example.com',
+      versionSource: { type: 'github-releases', target: 'bagisto/bagisto' },
+      latestSource: { type: 'github-releases', target: 'bagisto/bagisto' },
+      evidenceUrl: 'https://devdocs.bagisto.com/',
+    },
+  ],
+
+  'netdata-monitor': [
+    {
+      id: 'self-hosted',
+      label: 'Netdata Monitor (Self-Hosted)',
+      description: 'Netdata real-time monitoring. Version via /api/v1/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://netdata.example.com:19999',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'netdata/netdata' },
+      evidenceUrl: 'https://learn.netdata.cloud/docs/api/',
+    },
+  ],
+
+  'atlantis-iac': [
+    {
+      id: 'self-hosted',
+      label: 'Atlantis (Self-Hosted)',
+      description: 'Atlantis Terraform pull request automation. Version via /healthz (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://atlantis.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/healthz',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/healthz'],
+      },
+      latestSource: { type: 'github-releases', target: 'runatlantis/atlantis' },
+      evidenceUrl: 'https://www.runatlantis.io/docs/server-configuration.html',
+    },
+  ],
+
+  'nats-server': [
+    {
+      id: 'self-hosted',
+      label: 'NATS Server (Self-Hosted)',
+      description: 'NATS cloud-native messaging. Version via /varz (no auth required by default).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://nats.example.com:8222',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/varz',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/varz', '/healthz'],
+      },
+      latestSource: { type: 'github-releases', target: 'nats-io/nats-server' },
+      evidenceUrl: 'https://docs.nats.io/running-a-nats-service/nats_admin/monitoring',
+    },
+  ],
+
+  'vernemq': [
+    {
+      id: 'self-hosted',
+      label: 'VerneMQ (Self-Hosted)',
+      description: 'VerneMQ MQTT broker. Version via /api/v1/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://vernemq.example.com:8888',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'vernemq/vernemq' },
+      evidenceUrl: 'https://docs.vernemq.com/administration/http_api',
+    },
+  ],
+
+  'apachemq-rabbitmq-alt': [
+    {
+      id: 'self-hosted',
+      label: 'Apache ActiveMQ Classic (Self-Hosted)',
+      description: 'Apache ActiveMQ Classic message broker. Version via /admin/xml/queues.jsp (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://activemq.example.com:8161',
+      versionSource: { type: 'github-releases', target: 'apache/activemq' },
+      latestSource: { type: 'github-releases', target: 'apache/activemq' },
+      evidenceUrl: 'https://activemq.apache.org/rest',
+    },
+  ],
+
+  'liftbridge': [
+    {
+      id: 'self-hosted',
+      label: 'Liftbridge (Self-Hosted)',
+      description: 'Liftbridge fault-tolerant message streams. Version via /v1/metadata (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://liftbridge.example.com:8080',
+      versionSource: { type: 'github-releases', target: 'liftbridge-io/liftbridge' },
+      latestSource: { type: 'github-releases', target: 'liftbridge-io/liftbridge' },
+      evidenceUrl: 'https://liftbridge.io/docs/',
+    },
+  ],
+
+  'gerrit-review': [
+    {
+      id: 'self-hosted',
+      label: 'Gerrit Code Review (Self-Hosted)',
+      description: 'Gerrit web-based code review. Version via /config/server/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://gerrit-review.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/config/server/version',
+        jsonPath: '$',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/config/server/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'GerritCodeReview/gerrit' },
+      evidenceUrl: 'https://gerrit-review.googlesource.com/Documentation/rest-api-config.html',
+    },
+  ],
+
+  'allura': [
+    {
+      id: 'self-hosted',
+      label: 'Apache Allura (Self-Hosted)',
+      description: 'Apache Allura open-source forge. Version via /rest/version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://allura.example.com',
+      versionSource: { type: 'github-releases', target: 'apache/allura' },
+      latestSource: { type: 'github-releases', target: 'apache/allura' },
+      evidenceUrl: 'https://allura.apache.org/docs/',
+    },
+  ],
+
+  'sourcehut': [
+    {
+      id: 'self-hosted',
+      label: 'Sourcehut (Self-Hosted)',
+      description: 'Sourcehut open-source development forge. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://sourcehut.example.com',
+      versionSource: { type: 'github-releases', target: 'sourcehut/sourcehut' },
+      latestSource: { type: 'github-releases', target: 'sourcehut/sourcehut' },
+      evidenceUrl: 'https://man.sr.ht/api-conventions.md',
+    },
+  ],
+
+  'jfrog-artifactory': [
+    {
+      id: 'self-hosted',
+      label: 'JFrog Artifactory (Self-Hosted)',
+      description: 'JFrog Artifactory artifact repository. Version via /artifactory/api/system/version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://artifactory.example.com:8082',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/artifactory/api/system/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/artifactory/api/system/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'jfrog/jfrog-cli' },
+      evidenceUrl: 'https://jfrog.com/help/r/jfrog-rest-apis/get-version-and-add-ons-information',
+    },
+  ],
+
+  'nexus-repository': [
+    {
+      id: 'self-hosted',
+      label: 'Sonatype Nexus Repository (Self-Hosted)',
+      description: 'Sonatype Nexus Repository Manager. Version via /service/rest/v1/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://nexus.example.com:8081',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/service/rest/v1/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/service/rest/v1/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'sonatype/nexus-public' },
+      evidenceUrl: 'https://help.sonatype.com/en/rest-and-integration-api.html',
+    },
+  ],
+
+  'verdaccio': [
+    {
+      id: 'self-hosted',
+      label: 'Verdaccio (Self-Hosted)',
+      description: 'Verdaccio private npm registry. Version via /-/ping (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://verdaccio.example.com:4873',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/-/ping',
+        jsonPath: '$.customData.version',
+        jsonPathExtractors: ['customData.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/-/ping', '/'],
+      },
+      latestSource: { type: 'github-releases', target: 'verdaccio/verdaccio' },
+      evidenceUrl: 'https://verdaccio.org/docs/api/',
+    },
+  ],
+
+  'harbor-registry': [
+    {
+      id: 'self-hosted',
+      label: 'Harbor Registry (Self-Hosted)',
+      description: 'Harbor container image registry. Version via /api/v2.0/systeminfo (requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://harbor-registry.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2.0/systeminfo',
+        jsonPath: '$.harbor_version',
+        jsonPathExtractors: ['harbor_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v2.0/systeminfo'],
+      },
+      latestSource: { type: 'github-releases', target: 'goharbor/harbor' },
+      evidenceUrl: 'https://harbor.io/docs/latest/',
+    },
+  ],
+
+  'distribution-registry': [
+    {
+      id: 'self-hosted',
+      label: 'Docker Distribution Registry (Self-Hosted)',
+      description: 'CNCF Distribution container registry (Docker Registry v2). Version via /v2/ (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://registry.example.com:5000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v2/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/v2/'],
+      },
+      latestSource: { type: 'github-releases', target: 'distribution/distribution' },
+      evidenceUrl: 'https://distribution.github.io/distribution/',
+    },
+  ],
+
 };
 
 /**

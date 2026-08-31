@@ -8211,6 +8211,398 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+  'go2rtc': [
+    {
+      id: 'self-hosted',
+      label: 'go2rtc (Self-Hosted)',
+      description: 'go2rtc ultimate camera streaming application. Version via /api (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://go2rtc.example.com:1984',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api'],
+      },
+      latestSource: { type: 'github-releases', target: 'AlexxIT/go2rtc' },
+      evidenceUrl: 'https://github.com/AlexxIT/go2rtc',
+    },
+  ],
+
+  'evcc': [
+    {
+      id: 'self-hosted',
+      label: 'evcc (Self-Hosted)',
+      description: 'evcc EV charge controller. Version via /api/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://evcc.example.com:7070',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/state',
+        jsonPath: '$.result.version',
+        jsonPathExtractors: ['result.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/state', '/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'evcc-io/evcc' },
+      evidenceUrl: 'https://docs.evcc.io/docs/reference/api/',
+    },
+  ],
+
+  'emoncms': [
+    {
+      id: 'self-hosted',
+      label: 'EmonCMS (Self-Hosted)',
+      description: 'EmonCMS energy monitoring platform. Version via /emoncms/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://emoncms.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/emoncms/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/emoncms/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'emoncms/emoncms' },
+      evidenceUrl: 'https://emoncms.org/',
+    },
+  ],
+
+  'rtsp-simple-server': [
+    {
+      id: 'self-hosted',
+      label: 'RTSP Simple Server (Self-Hosted)',
+      description: 'rtsp-simple-server (now MediaMTX) camera streaming. Version via /v3/general (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://rtsp-simple-server.example.com:9997',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v3/general',
+        jsonPath: '$.serverVersion',
+        jsonPathExtractors: ['serverVersion', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/v3/general', '/v2/config/global/get'],
+      },
+      latestSource: { type: 'github-releases', target: 'bluenviron/mediamtx' },
+      evidenceUrl: 'https://github.com/bluenviron/mediamtx',
+    },
+  ],
+
+  'amp-cubecoders': [
+    {
+      id: 'self-hosted',
+      label: 'AMP (CubeCoders, Self-Hosted)',
+      description: 'AMP game server management panel. Version via /API/Core/GetModuleInfo (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://amp.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/API/Core/GetModuleInfo',
+        jsonPath: '$.result.Version',
+        jsonPathExtractors: ['result.Version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/API/Core/GetModuleInfo'],
+      },
+      latestSource: { type: 'github-releases', target: 'CubeCoders/AMP' },
+      evidenceUrl: 'https://github.com/CubeCoders/AMP/wiki/API',
+    },
+  ],
+
+  'piwigo-gallery': [
+    {
+      id: 'self-hosted',
+      label: 'Piwigo (Self-Hosted)',
+      description: 'Piwigo photo gallery. Version via /ws.php?format=json&method=pwg.getVersion (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://piwigo.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/ws.php?format=json&method=pwg.getVersion',
+        jsonPath: '$.result',
+        jsonPathExtractors: ['result', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/ws.php?format=json&method=pwg.getVersion'],
+      },
+      latestSource: { type: 'github-releases', target: 'Piwigo/Piwigo' },
+      evidenceUrl: 'https://piwigo.org/doc/doku.php?id=api',
+    },
+  ],
+
+  'chevereto': [
+    {
+      id: 'self-hosted',
+      label: 'Chevereto (Self-Hosted)',
+      description: 'Chevereto image hosting platform. Version via /api/1 (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://chevereto.example.com',
+      versionSource: { type: 'github-releases', target: 'chevereto/chevereto' },
+      latestSource: { type: 'github-releases', target: 'chevereto/chevereto' },
+      evidenceUrl: 'https://v4-docs.chevereto.com/developer/api/api-v1.html',
+    },
+  ],
+
+  'pinry': [
+    {
+      id: 'self-hosted',
+      label: 'Pinry (Self-Hosted)',
+      description: 'Pinry self-hosted image board. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://pinry.example.com',
+      versionSource: { type: 'github-releases', target: 'pinry/pinry' },
+      latestSource: { type: 'github-releases', target: 'pinry/pinry' },
+      evidenceUrl: 'https://github.com/pinry/pinry',
+    },
+  ],
+
+  'photostructure': [
+    {
+      id: 'self-hosted',
+      label: 'PhotoStructure (Self-Hosted)',
+      description: 'PhotoStructure photo/video organizer. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://photostructure.example.com:1787',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'photostructure/photostructure-for-servers' },
+      evidenceUrl: 'https://photostructure.com/server/',
+    },
+  ],
+
+  'coppermine': [
+    {
+      id: 'self-hosted',
+      label: 'Coppermine Photo Gallery (Self-Hosted)',
+      description: 'Coppermine web-based photo gallery. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://coppermine.example.com',
+      versionSource: { type: 'github-releases', target: 'coppermine-gallery/coppermine' },
+      latestSource: { type: 'github-releases', target: 'coppermine-gallery/coppermine' },
+      evidenceUrl: 'https://coppermine-gallery.net/',
+    },
+  ],
+
+  'mayan-edms': [
+    {
+      id: 'self-hosted',
+      label: 'Mayan EDMS (Self-Hosted)',
+      description: 'Mayan EDMS document management. Version via /api/v4/ root (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://mayan.example.com:80',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v4/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v4/'],
+      },
+      latestSource: { type: 'github-releases', target: 'mayan-edms/mayan-edms' },
+      evidenceUrl: 'https://docs.mayan-edms.com/parts/development/api.html',
+    },
+  ],
+
+  'memoria-photos': [
+    {
+      id: 'self-hosted',
+      label: 'Memoria (Self-Hosted)',
+      description: 'Memoria self-hosted photo library. Version via /api/v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://memoria.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'unimorph/Memoria' },
+      evidenceUrl: 'https://github.com/unimorph/Memoria',
+    },
+  ],
+
+  'kroki': [
+    {
+      id: 'self-hosted',
+      label: 'Kroki (Self-Hosted)',
+      description: 'Kroki diagram rendering server. Version via /health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://kroki.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'yuzutech/kroki' },
+      evidenceUrl: 'https://kroki.io/docs/',
+    },
+  ],
+
+  'structurizr': [
+    {
+      id: 'self-hosted',
+      label: 'Structurizr (Self-Hosted)',
+      description: 'Structurizr architecture diagrams. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://structurizr.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'structurizr/onpremises' },
+      evidenceUrl: 'https://docs.structurizr.com/onpremises',
+    },
+  ],
+
+  'repetier-server': [
+    {
+      id: 'self-hosted',
+      label: 'Repetier Server (Self-Hosted)',
+      description: 'Repetier Server 3D printer management. Version via /server/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://repetier.example.com:3344',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/printer/info',
+        jsonPath: '$.serverVersion',
+        jsonPathExtractors: ['serverVersion', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/printer/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'repetier/Repetier-Server' },
+      evidenceUrl: 'https://www.repetier-server.com/manuals/0.93/en/ch01.html',
+    },
+  ],
+
+  'astroprint': [
+    {
+      id: 'self-hosted',
+      label: 'AstroPrint (Self-Hosted)',
+      description: 'AstroPrint 3D printer cloud platform. Version via /api/version (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://astroprint.example.com:5000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.api',
+        jsonPathExtractors: ['api', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'AstroPrint/AstroBox' },
+      evidenceUrl: 'https://github.com/AstroPrint/AstroBox',
+    },
+  ],
+
+  'duet-web': [
+    {
+      id: 'self-hosted',
+      label: 'Duet Web Control (Self-Hosted)',
+      description: 'Duet Web Control 3D printer interface. Version via /rr_config (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://duet.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/rr_status?type=2',
+        jsonPath: '$.firmwareVersion',
+        jsonPathExtractors: ['firmwareVersion', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/rr_status?type=2', '/machine/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'Duet3D/DuetWebControl' },
+      evidenceUrl: 'https://docs.duet3d.com/en/User_manual/Reference/Duet_Web_Control_API',
+    },
+  ],
+
+  'prusalink': [
+    {
+      id: 'self-hosted',
+      label: 'PrusaLink (Self-Hosted)',
+      description: 'PrusaLink Prusa printer web interface. Version via /api/version (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://prusalink.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.api',
+        jsonPathExtractors: ['api', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'prusa3d/Prusa-Link' },
+      evidenceUrl: 'https://github.com/prusa3d/Prusa-Link-Web',
+    },
+  ],
+
+  'code-server': [
+    {
+      id: 'self-hosted',
+      label: 'code-server (Self-Hosted)',
+      description: 'code-server VS Code in the browser. Version via /healthz (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://code-server.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/healthz',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/healthz', '/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'coder/code-server' },
+      evidenceUrl: 'https://coder.com/docs/code-server/latest',
+    },
+  ],
+
+  'theia-cloud': [
+    {
+      id: 'self-hosted',
+      label: 'Eclipse Theia (Self-Hosted)',
+      description: 'Eclipse Theia cloud IDE. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://theia.example.com:3000',
+      versionSource: { type: 'github-releases', target: 'eclipse-theia/theia' },
+      latestSource: { type: 'github-releases', target: 'eclipse-theia/theia' },
+      evidenceUrl: 'https://theia-ide.org/',
+    },
+  ],
+
 };
 
 /**

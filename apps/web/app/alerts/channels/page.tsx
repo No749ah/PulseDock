@@ -99,11 +99,11 @@ export default function AlertChannelsHealthPage() {
   async function testAll() {
     setTestingAll(true);
     try {
-      const data = await api<{ results: Array<{ channelId: string; name: string; ok: boolean; error: string | null }> }>(
+      type TestAllResult = { channelId: string; name: string; ok: boolean; error: string | null };
+      const data = await api<{ results: TestAllResult[] } | TestAllResult[]>(
         '/v1/alert-channels/test-all', undefined, { method: 'POST' }
       );
-      const results = data?.results ?? (data as unknown as Array<{ channelId: string; name: string; ok: boolean; error: string | null }>);
-      const arr = Array.isArray(results) ? results : [];
+      const arr: TestAllResult[] = Array.isArray(data) ? data : (data?.results ?? []);
       const ok = arr.filter(r => r.ok).length;
       const fail = arr.filter(r => !r.ok).length;
       if (fail === 0) {

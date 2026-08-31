@@ -8,7 +8,6 @@ export default defineConfig({
     globals: true,
     setupFiles: ['./vitest.setup.ts'],
     include: ['**/*.spec.{ts,tsx}'],
-    minWorkers: 1,
     maxWorkers: 4,
     css: false,
     env: {

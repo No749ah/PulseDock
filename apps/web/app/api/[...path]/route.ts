@@ -56,7 +56,7 @@ async function proxyHandler(request: Request, { params }: { params: Promise<{ pa
   });
 
   // Append each Set-Cookie individually so the browser receives all of them
-  const cookies = (upstream.headers as unknown as { getSetCookie?: () => string[] }).getSetCookie?.() ?? [];
+  const cookies = upstream.headers.getSetCookie();
   for (const cookie of cookies) {
     resHeaders.append('set-cookie', cookie);
   }

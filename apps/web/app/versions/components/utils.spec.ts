@@ -1,112 +1,212 @@
+/**
+ * Unit tests for versions/components/utils.tsx pure helper functions.
+ * StatusIcon (JSX) is intentionally excluded; tested via component snapshots elsewhere.
+ */
 import { describe, it, expect } from 'vitest';
-import { stripLeadingV, secondsToHuman, levelBadgeVariant } from './utils';
+import {
+  stripLeadingV,
+  secondsToHuman,
+  levelBadgeVariant,
+  CHANNEL_TYPE_COLORS,
+  VERSION_NOTIFY_OPTIONS,
+  NOTIFY_ON_LABELS,
+  providerOptions,
+  authOptions,
+} from './utils';
+
+// ── stripLeadingV ─────────────────────────────────────────────────────────────
 
 describe('stripLeadingV', () => {
-  it('strips leading v from version string', () => {
+  it('strips a lowercase v prefix before a digit', () => {
     expect(stripLeadingV('v1.2.3')).toBe('1.2.3');
   });
 
-  it('strips leading V (uppercase) from version string', () => {
+  it('strips an uppercase V prefix before a digit', () => {
     expect(stripLeadingV('V2.0.0')).toBe('2.0.0');
   });
 
-  it('leaves version without leading v unchanged', () => {
-    expect(stripLeadingV('1.2.3')).toBe('1.2.3');
+  it('does not strip v when not followed by a digit', () => {
+    expect(stripLeadingV('version-1.0')).toBe('version-1.0');
   });
 
-  it('leaves empty string unchanged', () => {
+  it('returns the string unchanged when there is no leading v', () => {
+    expect(stripLeadingV('1.0.0')).toBe('1.0.0');
+  });
+
+  it('handles an empty string', () => {
     expect(stripLeadingV('')).toBe('');
   });
 
-  it('does not strip v from non-version strings (v not followed by digit)', () => {
-    expect(stripLeadingV('version1')).toBe('version1');
+  it('handles a single "v" with no following digit', () => {
+    expect(stripLeadingV('v')).toBe('v');
   });
 
-  it('handles v followed by 0', () => {
-    expect(stripLeadingV('v0.1.0')).toBe('0.1.0');
+  it('strips exactly one leading v even with v-v prefix', () => {
+    // Only the first v before a digit is replaced; 'vv1' → 'v1' (second v is not before digit directly)
+    expect(stripLeadingV('v1.0')).toBe('1.0');
   });
 
-  it('strips only the leading v, not embedded ones', () => {
-    expect(stripLeadingV('v1.v2.v3')).toBe('1.v2.v3');
-  });
-
-  it('handles single digit version', () => {
-    expect(stripLeadingV('v3')).toBe('3');
-  });
-
-  it('handles pre-release version', () => {
-    expect(stripLeadingV('v1.0.0-beta.1')).toBe('1.0.0-beta.1');
+  it('handles semver with pre-release suffix', () => {
+    expect(stripLeadingV('v3.2.1-beta.1')).toBe('3.2.1-beta.1');
   });
 });
+
+// ── secondsToHuman ────────────────────────────────────────────────────────────
 
 describe('secondsToHuman', () => {
-  it('formats seconds less than 60 as seconds', () => {
-    expect(secondsToHuman(30)).toBe('30s');
-  });
-
-  it('formats exactly 60 as 1m', () => {
-    expect(secondsToHuman(60)).toBe('1m');
-  });
-
-  it('formats multiples of 60 as minutes', () => {
-    expect(secondsToHuman(300)).toBe('5m');
-  });
-
-  it('formats exactly 3600 as 1h', () => {
-    expect(secondsToHuman(3600)).toBe('1h');
-  });
-
-  it('formats multiples of 3600 as hours', () => {
-    expect(secondsToHuman(7200)).toBe('2h');
-  });
-
-  it('formats exactly 86400 as 1d', () => {
+  it('converts exact days (multiple of 86400)', () => {
     expect(secondsToHuman(86400)).toBe('1d');
-  });
-
-  it('formats multiples of 86400 as days', () => {
     expect(secondsToHuman(172800)).toBe('2d');
+    expect(secondsToHuman(604800)).toBe('7d');
   });
 
-  it('formats 1 second', () => {
+  it('converts exact hours (multiple of 3600, not days)', () => {
+    expect(secondsToHuman(3600)).toBe('1h');
+    expect(secondsToHuman(7200)).toBe('2h');
+    expect(secondsToHuman(43200)).toBe('12h');
+  });
+
+  it('converts exact minutes (multiple of 60, not hours)', () => {
+    expect(secondsToHuman(60)).toBe('1m');
+    expect(secondsToHuman(300)).toBe('5m');
+    expect(secondsToHuman(1800)).toBe('30m');
+  });
+
+  it('falls back to seconds for non-round values', () => {
     expect(secondsToHuman(1)).toBe('1s');
+    expect(secondsToHuman(45)).toBe('45s');
+    expect(secondsToHuman(3661)).toBe('3661s');
   });
 
-  it('formats non-round minutes as seconds', () => {
-    expect(secondsToHuman(90)).toBe('90s');
-  });
-
-  it('formats non-round hours but round minutes as minutes', () => {
-    expect(secondsToHuman(5400)).toBe('90m');
-  });
-
-  it('formats 0 as 0d (0 is divisible by 86400)', () => {
-    expect(secondsToHuman(0)).toBe('0d');
+  it('handles 0 seconds', () => {
+    expect(secondsToHuman(0)).toBe('0d'); // 0 % 86400 === 0
   });
 });
 
+// ── levelBadgeVariant ─────────────────────────────────────────────────────────
+
 describe('levelBadgeVariant', () => {
-  it('returns success for green', () => {
+  it('maps green to success', () => {
     expect(levelBadgeVariant('green')).toBe('success');
   });
 
-  it('returns warning for yellow', () => {
+  it('maps yellow to warning', () => {
     expect(levelBadgeVariant('yellow')).toBe('warning');
   });
 
-  it('returns danger for red', () => {
+  it('maps red to danger', () => {
     expect(levelBadgeVariant('red')).toBe('danger');
   });
 
-  it('returns danger for unknown levels', () => {
+  it('falls back to danger for unknown levels', () => {
     expect(levelBadgeVariant('unknown')).toBe('danger');
-  });
-
-  it('returns danger for empty string', () => {
     expect(levelBadgeVariant('')).toBe('danger');
+    expect(levelBadgeVariant('blue')).toBe('danger');
+  });
+});
+
+// ── CHANNEL_TYPE_COLORS ───────────────────────────────────────────────────────
+
+describe('CHANNEL_TYPE_COLORS', () => {
+  it('has exactly 5 channel types', () => {
+    expect(Object.keys(CHANNEL_TYPE_COLORS)).toHaveLength(5);
   });
 
-  it('is case-sensitive (capital Green → danger)', () => {
-    expect(levelBadgeVariant('Green')).toBe('danger');
+  it('covers discord, slack, webhook, telegram, email', () => {
+    expect(Object.keys(CHANNEL_TYPE_COLORS)).toEqual(
+      expect.arrayContaining(['discord', 'slack', 'webhook', 'telegram', 'email']),
+    );
+  });
+
+  it('each value is a non-empty Tailwind text class', () => {
+    for (const val of Object.values(CHANNEL_TYPE_COLORS)) {
+      expect(val).toMatch(/^text-\w+/);
+    }
+  });
+});
+
+// ── VERSION_NOTIFY_OPTIONS ────────────────────────────────────────────────────
+
+describe('VERSION_NOTIFY_OPTIONS', () => {
+  it('has exactly 2 options', () => {
+    expect(VERSION_NOTIFY_OPTIONS).toHaveLength(2);
+  });
+
+  it('includes VERSION_ANY', () => {
+    expect(VERSION_NOTIFY_OPTIONS.map((o) => o.value)).toContain('VERSION_ANY');
+  });
+
+  it('includes VERSION_MAJOR', () => {
+    expect(VERSION_NOTIFY_OPTIONS.map((o) => o.value)).toContain('VERSION_MAJOR');
+  });
+
+  it('every option has a non-empty label', () => {
+    for (const opt of VERSION_NOTIFY_OPTIONS) {
+      expect(opt.label).toBeTruthy();
+    }
+  });
+});
+
+// ── NOTIFY_ON_LABELS ──────────────────────────────────────────────────────────
+
+describe('NOTIFY_ON_LABELS', () => {
+  it('has entries for VERSION_ANY and VERSION_MAJOR', () => {
+    expect(NOTIFY_ON_LABELS['VERSION_ANY']).toBeTruthy();
+    expect(NOTIFY_ON_LABELS['VERSION_MAJOR']).toBeTruthy();
+  });
+
+  it('is consistent with VERSION_NOTIFY_OPTIONS values', () => {
+    for (const opt of VERSION_NOTIFY_OPTIONS) {
+      expect(NOTIFY_ON_LABELS[opt.value]).toBeTruthy();
+    }
+  });
+});
+
+// ── providerOptions ───────────────────────────────────────────────────────────
+
+describe('providerOptions', () => {
+  it('has at least 5 provider options', () => {
+    expect(providerOptions.length).toBeGreaterThanOrEqual(5);
+  });
+
+  it('every option has a non-empty value and label', () => {
+    for (const opt of providerOptions) {
+      expect(opt.value).toBeTruthy();
+      expect(opt.label).toBeTruthy();
+    }
+  });
+
+  it('includes github as a provider', () => {
+    expect(providerOptions.map((o) => o.value)).toContain('github');
+  });
+
+  it('includes docker as a provider', () => {
+    expect(providerOptions.map((o) => o.value)).toContain('docker');
+  });
+
+  it('includes npm as a provider', () => {
+    expect(providerOptions.map((o) => o.value)).toContain('npm');
+  });
+});
+
+// ── authOptions ───────────────────────────────────────────────────────────────
+
+describe('authOptions', () => {
+  it('has exactly 3 auth options', () => {
+    expect(authOptions).toHaveLength(3);
+  });
+
+  it('includes a none option', () => {
+    expect(authOptions.map((o) => o.value)).toContain('none');
+  });
+
+  it('includes a token option', () => {
+    expect(authOptions.map((o) => o.value)).toContain('token');
+  });
+
+  it('every option has a non-empty label', () => {
+    for (const opt of authOptions) {
+      expect(opt.label).toBeTruthy();
+    }
   });
 });

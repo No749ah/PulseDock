@@ -148,7 +148,14 @@ export class AuthService {
    * @returns `{ accessToken, refreshToken, user }` on success, or `{ requires2fa: true, tempToken }` when 2FA is pending
    * @throws UnauthorizedException if credentials are invalid, the account is locked, or email is not verified
    */
-  async login(email: string, password: string, context?: { userAgent?: string | null; ipAddress?: string | null }) {
+  async login(
+    email: string,
+    password: string,
+    context?: { userAgent?: string | null; ipAddress?: string | null },
+  ): Promise<
+    | { accessToken: string; refreshToken: string; user: AuthUser }
+    | { requires2fa: true; tempToken: string }
+  > {
     const user = await this.prisma.user.findUnique({ where: { email: email.toLowerCase() } });
     if (!user) throw new UnauthorizedException('invalid credentials');
 
@@ -192,7 +199,7 @@ export class AuthService {
           expiresIn: '5m' as ms.StringValue,
         },
       );
-      return { requires2fa: true, tempToken } as unknown as { accessToken: string; refreshToken: string; user: AuthUser };
+      return { requires2fa: true as const, tempToken };
     }
 
     const payloadUser = { id: user.id, email: user.email, role: user.role as 'admin' | 'user' };

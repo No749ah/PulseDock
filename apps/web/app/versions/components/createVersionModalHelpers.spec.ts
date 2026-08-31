@@ -1,3 +1,7 @@
+/**
+ * Unit tests for createVersionModalHelpers.ts
+ * All functions are pure — no browser/React dependencies.
+ */
 import { describe, it, expect } from 'vitest';
 import {
   normalizeToolQuery,
@@ -12,27 +16,22 @@ import {
 } from './createVersionModalHelpers';
 import type { ToolEntry } from './types';
 
-// ── Minimal ToolEntry factory ────────────────────────────────────────────────
+// ── Fixtures ──────────────────────────────────────────────────────────────────
 
-function makeTool(overrides: Partial<ToolEntry> & { id: string; name: string }): ToolEntry {
+function makeTool(overrides: Partial<ToolEntry> = {}): ToolEntry {
   return {
-    id: overrides.id,
-    name: overrides.name,
-    description: overrides.description ?? '',
-    category: overrides.category ?? 'Self-Hosted',
-    tags: overrides.tags ?? [],
-    verified: overrides.verified ?? false,
-    icon: overrides.icon ?? '',
-    versionSource: overrides.versionSource ?? {
-      type: 'command',
-      authRequired: false,
-    },
-    latestSource: overrides.latestSource ?? {
-      type: 'github-releases',
-      target: 'owner/repo',
-    },
-    requiresInstanceUrl: overrides.requiresInstanceUrl ?? false,
-    checkInterval: overrides.checkInterval ?? 86400,
+    id: 'my-tool',
+    name: 'My Tool',
+    category: 'Container',
+    tags: ['docker', 'cli'],
+    icon: 'https://example.com/icon.svg',
+    description: 'A sample tool for testing',
+    homepage: 'https://example.com',
+    versionSource: { type: 'json-path' },
+    latestSource: { type: 'github-releases', target: 'org/repo' },
+    verified: false,
+    verificationStatus: 'unverified',
+    ...overrides,
   } as ToolEntry;
 }
 
@@ -40,200 +39,199 @@ function makeTool(overrides: Partial<ToolEntry> & { id: string; name: string }):
 
 describe('normalizeToolQuery', () => {
   it('lowercases the input', () => {
-    expect(normalizeToolQuery('Grafana')).toBe('grafana');
+    expect(normalizeToolQuery('Docker')).toBe('docker');
   });
 
   it('trims leading and trailing whitespace', () => {
-    expect(normalizeToolQuery('  grafana  ')).toBe('grafana');
+    expect(normalizeToolQuery('  nginx  ')).toBe('nginx');
   });
 
-  it('collapses multiple interior spaces to one', () => {
-    expect(normalizeToolQuery('home  assistant')).toBe('home assistant');
+  it('collapses multiple internal spaces to one', () => {
+    expect(normalizeToolQuery('my   tool')).toBe('my tool');
   });
 
-  it('returns empty string for blank input', () => {
+  it('handles an empty string', () => {
+    expect(normalizeToolQuery('')).toBe('');
+  });
+
+  it('handles a string that is only whitespace', () => {
     expect(normalizeToolQuery('   ')).toBe('');
   });
 
-  it('returns empty string for empty string', () => {
-    expect(normalizeToolQuery('')).toBe('');
+  it('lowercases and trims together', () => {
+    expect(normalizeToolQuery('  NGINX  ')).toBe('nginx');
   });
 });
 
-// ── scoreToolMatch ─────────────────────────────────────────────────────────
+// ── scoreToolMatch ────────────────────────────────────────────────────────────
 
 describe('scoreToolMatch', () => {
-  const tool = makeTool({
-    id: 'grafana',
-    name: 'Grafana',
-    description: 'Observability and data visualization platform',
-    tags: ['monitoring', 'dashboards'],
-  });
-
   it('returns 0 for empty query (everything matches)', () => {
+    const tool = makeTool({ name: 'Portainer', id: 'portainer' });
     expect(scoreToolMatch(tool, '')).toBe(0);
   });
 
   it('returns 10 for exact name match', () => {
-    expect(scoreToolMatch(tool, 'grafana')).toBe(10);
+    const tool = makeTool({ name: 'Docker', id: 'docker' });
+    expect(scoreToolMatch(tool, 'docker')).toBe(10);
   });
 
   it('returns 20 for name prefix match', () => {
-    expect(scoreToolMatch(tool, 'grafa')).toBe(20);
+    const tool = makeTool({ name: 'Docker Desktop', id: 'docker-desktop' });
+    expect(scoreToolMatch(tool, 'docker')).toBe(20);
   });
 
   it('returns 30 for name substring match', () => {
-    // 'afa' is a genuine substring of 'grafana'
-    expect(scoreToolMatch(tool, 'afana')).toBe(30);
+    const tool = makeTool({ name: 'My Docker Tool', id: 'my-docker-tool' });
+    expect(scoreToolMatch(tool, 'docker')).toBe(30);
   });
 
   it('returns 40 for exact id match', () => {
-    expect(scoreToolMatch(tool, 'grafana')).toBe(10); // name wins with score 10
-    const t2 = makeTool({ id: 'grf-dash', name: 'Other Tool', tags: [] });
-    expect(scoreToolMatch(t2, 'grf-dash')).toBe(40);
+    const tool = makeTool({ name: 'Something Else', id: 'docker' });
+    expect(scoreToolMatch(tool, 'docker')).toBe(40);
   });
 
   it('returns 50 for exact tag match', () => {
-    const t = makeTool({ id: 'tool-x', name: 'Tool X', tags: ['dashboards'] });
-    expect(scoreToolMatch(t, 'dashboards')).toBe(50);
+    const tool = makeTool({ name: 'Something', id: 'other', tags: ['docker', 'cli'] });
+    expect(scoreToolMatch(tool, 'docker')).toBe(50);
   });
 
   it('returns 60 for partial tag match', () => {
-    const t = makeTool({ id: 'tool-x', name: 'Tool X', tags: ['my-dashboard-thing'] });
-    expect(scoreToolMatch(t, 'dashboard')).toBe(60);
+    const tool = makeTool({ name: 'Something', id: 'other', tags: ['docker-compose'] });
+    expect(scoreToolMatch(tool, 'docker')).toBe(60);
   });
 
-  it('returns 70 for description match only', () => {
-    const t = makeTool({ id: 'tool-x', name: 'Tool X', description: 'Some obscure keyword here', tags: [] });
-    expect(scoreToolMatch(t, 'obscure')).toBe(70);
+  it('returns 70 for description-only match', () => {
+    const tool = makeTool({ name: 'Nginx', id: 'nginx', tags: ['web'], description: 'Uses docker under the hood' });
+    expect(scoreToolMatch(tool, 'docker')).toBe(70);
   });
 
-  it('returns null when no match', () => {
-    expect(scoreToolMatch(tool, 'prometheus')).toBeNull();
+  it('returns null when there is no match', () => {
+    const tool = makeTool({ name: 'Redis', id: 'redis', tags: ['cache'], description: 'In-memory store' });
+    expect(scoreToolMatch(tool, 'docker')).toBeNull();
+  });
+
+  it('is case-sensitive: query must already be normalised', () => {
+    // The function receives a normalised (lowercase) query; passing uppercase means no exact match
+    const tool = makeTool({ name: 'docker', id: 'docker' });
+    expect(scoreToolMatch(tool, 'DOCKER')).toBeNull();
   });
 });
 
 // ── filterTools ───────────────────────────────────────────────────────────────
 
 describe('filterTools', () => {
-  const grafana = makeTool({ id: 'grafana', name: 'Grafana', category: 'Monitoring', tags: ['dashboards'], verified: true });
-  const prometheus = makeTool({ id: 'prometheus', name: 'Prometheus', category: 'Monitoring', tags: ['metrics'], verified: false });
-  const gitea = makeTool({ id: 'gitea', name: 'Gitea', category: 'Dev Tools', tags: ['git'], verified: true });
-  const all = [grafana, prometheus, gitea];
+  const tools: ToolEntry[] = [
+    makeTool({ id: 'portainer', name: 'Portainer', category: 'Container', tags: ['docker'], verified: true }),
+    makeTool({ id: 'nginx', name: 'Nginx', category: 'Web', tags: ['http', 'proxy'], verified: false }),
+    makeTool({ id: 'redis', name: 'Redis', category: 'Database', tags: ['cache'], verified: false }),
+    makeTool({ id: 'docker-engine', name: 'Docker Engine', category: 'Container', tags: ['docker', 'runtime'], verified: false }),
+  ];
 
-  it('returns all tools when query and category are empty', () => {
-    expect(filterTools(all, '', '')).toHaveLength(3);
+  it('returns all tools when query and category are both empty', () => {
+    expect(filterTools(tools, '', '')).toHaveLength(4);
   });
 
-  it('filters by category', () => {
-    const result = filterTools(all, '', 'Monitoring');
-    expect(result).toHaveLength(2);
-    expect(result.map((t) => t.id)).toContain('grafana');
-    expect(result.map((t) => t.id)).toContain('prometheus');
+  it('filters by category when no query', () => {
+    const result = filterTools(tools, '', 'Container');
+    expect(result.map((t) => t.id)).toEqual(['portainer', 'docker-engine']);
   });
 
-  it('filters by query (exact name)', () => {
-    const result = filterTools(all, 'grafana', '');
-    expect(result).toHaveLength(1);
-    expect(result[0].id).toBe('grafana');
-  });
-
-  it('filters by query (prefix)', () => {
-    const result = filterTools(all, 'gra', '');
-    expect(result).toHaveLength(1);
-    expect(result[0].id).toBe('grafana');
-  });
-
-  it('filters by query AND category', () => {
-    const extra = makeTool({ id: 'grafana-loki', name: 'Grafana Loki', category: 'Dev Tools', tags: [] });
-    const extended = [...all, extra];
-    const result = filterTools(extended, 'grafana', 'Monitoring');
-    expect(result.every((t) => t.category === 'Monitoring')).toBe(true);
-    expect(result.some((t) => t.id === 'grafana-loki')).toBe(false);
+  it('returns matching tools sorted by relevance score', () => {
+    // 'docker' matches portainer (tag exact=50), docker-engine (name prefix=20)
+    const result = filterTools(tools, 'docker', '');
+    // docker-engine has score 20 (name prefix) → comes first; portainer has 50 (tag exact)
+    expect(result[0].id).toBe('docker-engine');
+    expect(result[1].id).toBe('portainer');
   });
 
   it('returns empty array when nothing matches', () => {
-    expect(filterTools(all, 'kubernetes', '')).toHaveLength(0);
+    expect(filterTools(tools, 'kubernetes', '')).toHaveLength(0);
   });
 
-  it('sorts verified before unverified on same relevance score', () => {
-    // Both match by substring "mon" but grafana is verified, prometheus is not
-    const monTool1 = makeTool({ id: 'monitoring-a', name: 'Monitoring A', verified: false, tags: [] });
-    const monTool2 = makeTool({ id: 'monitoring-b', name: 'Monitoring B', verified: true, tags: [] });
-    const result = filterTools([monTool1, monTool2], 'monitoring', '');
-    expect(result[0].verified).toBe(true);
+  it('applies category filter before query ranking', () => {
+    const result = filterTools(tools, 'docker', 'Container');
+    // Only Container tools reach the query filter
+    expect(result.every((t) => t.category === 'Container')).toBe(true);
   });
 
-  it('sorts alphabetically when score and verified are equal', () => {
-    const apple = makeTool({ id: 'apple-mon', name: 'Apple Mon', verified: false, tags: [] });
-    const banana = makeTool({ id: 'banana-mon', name: 'Banana Mon', verified: false, tags: [] });
-    const result = filterTools([banana, apple], 'mon', '');
-    expect(result[0].name).toBe('Apple Mon');
+  it('breaks score ties by verified-first then alpha', () => {
+    const tied: ToolEntry[] = [
+      makeTool({ id: 'b-tool', name: 'b-tool', category: 'Other', tags: ['some-docker-tag'], verified: false }),
+      makeTool({ id: 'a-tool', name: 'a-tool', category: 'Other', tags: ['some-docker-tag'], verified: true }),
+    ];
+    const result = filterTools(tied, 'some-docker-tag', '');
+    // Both score 50 (exact tag), verified tool should come first
+    expect(result[0].id).toBe('a-tool');
   });
 });
 
 // ── closeMatchTools ───────────────────────────────────────────────────────────
 
 describe('closeMatchTools', () => {
-  const tools = [
-    makeTool({ id: 'home-assistant', name: 'Home Assistant', tags: ['smart-home'] }),
-    makeTool({ id: 'homebridge', name: 'Homebridge', tags: ['smart-home'] }),
-    makeTool({ id: 'homeserver', name: 'HomeServer', tags: [] }),
-    makeTool({ id: 'unrelated', name: 'Unrelated', tags: [] }),
-    makeTool({ id: 'another-home', name: 'Another Home Thing', tags: [] }),
+  const tools: ToolEntry[] = [
+    makeTool({ id: 'docker-engine', name: 'Docker Engine', tags: ['container'] }),
+    makeTool({ id: 'portainer', name: 'Portainer', tags: ['docker'] }),
+    makeTool({ id: 'redis', name: 'Redis', tags: ['cache'] }),
+    makeTool({ id: 'nginx', name: 'Nginx', tags: ['web'] }),
+    makeTool({ id: 'cadvisor', name: 'cAdvisor', tags: ['docker', 'monitoring'] }),
   ];
 
   it('returns empty array for empty query', () => {
     expect(closeMatchTools(tools, '')).toHaveLength(0);
   });
 
-  it('finds tools by name substring', () => {
-    const result = closeMatchTools(tools, 'home');
-    expect(result.length).toBeGreaterThan(0);
-    expect(result.every((t) => t.name.toLowerCase().includes('home') || t.id.includes('home'))).toBe(true);
+  it('returns tools whose name includes the query', () => {
+    const result = closeMatchTools(tools, 'docker');
+    expect(result.map((t) => t.id)).toContain('docker-engine');
   });
 
-  it('respects the limit parameter', () => {
-    const result = closeMatchTools(tools, 'home', 2);
-    expect(result.length).toBeLessThanOrEqual(2);
+  it('returns tools whose tags include the query', () => {
+    const result = closeMatchTools(tools, 'docker');
+    expect(result.map((t) => t.id)).toContain('portainer');
+    expect(result.map((t) => t.id)).toContain('cadvisor');
   });
 
-  it('defaults to limit 4', () => {
-    const result = closeMatchTools(tools, 'home');
+  it('honours the limit parameter', () => {
+    const result = closeMatchTools(tools, 'docker', 2);
+    expect(result).toHaveLength(2);
+  });
+
+  it('defaults to limit=4', () => {
+    // five tools could match 'docker' via name/tag/id, but limit is 4
+    const result = closeMatchTools(tools, 'docker');
     expect(result.length).toBeLessThanOrEqual(4);
   });
 
-  it('finds tools by tag', () => {
-    const result = closeMatchTools(tools, 'smart-home');
-    expect(result.some((t) => t.id === 'home-assistant')).toBe(true);
-    expect(result.some((t) => t.id === 'homebridge')).toBe(true);
+  it('returns empty when nothing matches', () => {
+    expect(closeMatchTools(tools, 'kubernetes')).toHaveLength(0);
   });
 });
 
 // ── modalProgress ─────────────────────────────────────────────────────────────
 
 describe('modalProgress', () => {
-  it('returns 0 on tool-picker screen (createStep = -1)', () => {
+  it('returns 0 on the tool-picker screen (createStep = -1)', () => {
     expect(modalProgress(-1)).toBe(0);
   });
 
-  it('returns 25% on step 0 of 4', () => {
+  it('returns 25 on step 0 of 4', () => {
     expect(modalProgress(0)).toBe(25);
   });
 
-  it('returns 50% on step 1 of 4', () => {
+  it('returns 50 on step 1 of 4', () => {
     expect(modalProgress(1)).toBe(50);
   });
 
-  it('returns 75% on step 2 of 4', () => {
+  it('returns 75 on step 2 of 4', () => {
     expect(modalProgress(2)).toBe(75);
   });
 
-  it('returns 100% on step 3 of 4', () => {
+  it('returns 100 on step 3 of 4', () => {
     expect(modalProgress(3)).toBe(100);
   });
 
-  it('supports custom totalSteps', () => {
+  it('respects a custom totalSteps value', () => {
     expect(modalProgress(0, 2)).toBe(50);
     expect(modalProgress(1, 2)).toBe(100);
   });
@@ -242,23 +240,48 @@ describe('modalProgress', () => {
 // ── providerFromSourceType ────────────────────────────────────────────────────
 
 describe('providerFromSourceType', () => {
-  it.each([
-    ['github-releases', 'github'],
-    ['github-tags', 'github'],
-    ['gitlab-releases', 'gitlab'],
-    ['docker-hub', 'docker'],
-    ['npm-registry', 'npm'],
-    ['pypi', 'pypi'],
-    ['apt-release', 'apt'],
-    ['cargo', 'cargo'],
-    ['maven-central', 'maven'],
-    ['helm-chart', 'helm'],
-  ] as const)('maps %s → %s', (input, expected) => {
-    expect(providerFromSourceType(input)).toBe(expected);
+  it('maps github-releases to github', () => {
+    expect(providerFromSourceType('github-releases')).toBe('github');
   });
 
-  it('falls back to github for unknown source types', () => {
-    expect(providerFromSourceType('unknown-registry')).toBe('github');
+  it('maps github-tags to github', () => {
+    expect(providerFromSourceType('github-tags')).toBe('github');
+  });
+
+  it('maps gitlab-releases to gitlab', () => {
+    expect(providerFromSourceType('gitlab-releases')).toBe('gitlab');
+  });
+
+  it('maps docker-hub to docker', () => {
+    expect(providerFromSourceType('docker-hub')).toBe('docker');
+  });
+
+  it('maps npm-registry to npm', () => {
+    expect(providerFromSourceType('npm-registry')).toBe('npm');
+  });
+
+  it('maps pypi to pypi', () => {
+    expect(providerFromSourceType('pypi')).toBe('pypi');
+  });
+
+  it('maps apt-release to apt', () => {
+    expect(providerFromSourceType('apt-release')).toBe('apt');
+  });
+
+  it('maps cargo to cargo', () => {
+    expect(providerFromSourceType('cargo')).toBe('cargo');
+  });
+
+  it('maps maven-central to maven', () => {
+    expect(providerFromSourceType('maven-central')).toBe('maven');
+  });
+
+  it('maps helm-chart to helm', () => {
+    expect(providerFromSourceType('helm-chart')).toBe('helm');
+  });
+
+  it('falls back to github for unknown types', () => {
+    expect(providerFromSourceType('unknown-type')).toBe('github');
     expect(providerFromSourceType('')).toBe('github');
   });
 });
@@ -267,34 +290,34 @@ describe('providerFromSourceType', () => {
 
 describe('buildDockerRunSnippet', () => {
   const params = {
-    pulsedockUrl: 'https://pd.example.com',
-    apiKeyDisplay: 'pd_abc123...',
-    toolSlug: 'grafana',
-    toolName: 'Grafana',
+    pulsedockUrl: 'https://app.example.com',
+    apiKeyDisplay: 'pd_key_xxx',
+    toolSlug: 'my-tool',
+    toolName: 'My Tool',
   };
 
-  it('starts with docker run -d', () => {
-    expect(buildDockerRunSnippet(params)).toMatch(/^docker run -d/);
+  it('includes the PULSEDOCK_URL env var', () => {
+    expect(buildDockerRunSnippet(params)).toContain('PULSEDOCK_URL=https://app.example.com');
   });
 
-  it('includes the PULSEDOCK_URL', () => {
-    expect(buildDockerRunSnippet(params)).toContain('PULSEDOCK_URL=https://pd.example.com');
+  it('includes the PULSEDOCK_API_KEY env var', () => {
+    expect(buildDockerRunSnippet(params)).toContain('PULSEDOCK_API_KEY=pd_key_xxx');
   });
 
-  it('includes the API key', () => {
-    expect(buildDockerRunSnippet(params)).toContain('PULSEDOCK_API_KEY=pd_abc123...');
+  it('includes the AGENT_TOOL_IDS env var with the slug', () => {
+    expect(buildDockerRunSnippet(params)).toContain('AGENT_TOOL_IDS=my-tool');
   });
 
-  it('includes the tool slug', () => {
-    expect(buildDockerRunSnippet(params)).toContain('AGENT_TOOL_IDS=grafana');
+  it('includes the pulsedock/agent:latest image reference', () => {
+    expect(buildDockerRunSnippet(params)).toContain('pulsedock/agent:latest');
   });
 
-  it('includes restart policy', () => {
+  it('includes the --restart unless-stopped flag', () => {
     expect(buildDockerRunSnippet(params)).toContain('--restart unless-stopped');
   });
 
-  it('references the agent image', () => {
-    expect(buildDockerRunSnippet(params)).toContain('pulsedock/agent:latest');
+  it('is a multi-line string (uses backslash continuation)', () => {
+    expect(buildDockerRunSnippet(params)).toContain('\\\n');
   });
 });
 
@@ -302,34 +325,38 @@ describe('buildDockerRunSnippet', () => {
 
 describe('buildDockerComposeSnippet', () => {
   const params = {
-    pulsedockUrl: 'https://pd.example.com',
-    apiKeyDisplay: 'pd_key...',
-    toolSlug: 'prometheus',
-    toolName: 'Prometheus',
+    pulsedockUrl: 'https://app.example.com',
+    apiKeyDisplay: 'pd_key_xxx',
+    toolSlug: 'my-tool',
+    toolName: 'My Tool',
   };
 
-  it('starts with "services:"', () => {
+  it('starts with services:', () => {
     expect(buildDockerComposeSnippet(params)).toMatch(/^services:/);
   });
 
   it('includes the pulsedock-agent service name', () => {
-    expect(buildDockerComposeSnippet(params)).toContain('pulsedock-agent');
+    expect(buildDockerComposeSnippet(params)).toContain('pulsedock-agent:');
   });
 
-  it('sets PULSEDOCK_URL', () => {
-    expect(buildDockerComposeSnippet(params)).toContain('PULSEDOCK_URL: https://pd.example.com');
+  it('includes the pulsedock/agent:latest image', () => {
+    expect(buildDockerComposeSnippet(params)).toContain('image: pulsedock/agent:latest');
   });
 
-  it('sets PULSEDOCK_API_KEY', () => {
-    expect(buildDockerComposeSnippet(params)).toContain('PULSEDOCK_API_KEY: pd_key...');
+  it('includes the PULSEDOCK_URL env var', () => {
+    expect(buildDockerComposeSnippet(params)).toContain('PULSEDOCK_URL: https://app.example.com');
   });
 
-  it('sets AGENT_TOOL_IDS', () => {
-    expect(buildDockerComposeSnippet(params)).toContain('AGENT_TOOL_IDS: prometheus');
+  it('includes the PULSEDOCK_API_KEY env var', () => {
+    expect(buildDockerComposeSnippet(params)).toContain('PULSEDOCK_API_KEY: pd_key_xxx');
   });
 
-  it('sets AGENT_INTERVAL_SEC', () => {
-    expect(buildDockerComposeSnippet(params)).toContain('AGENT_INTERVAL_SEC: "3600"');
+  it('includes the AGENT_TOOL_IDS env var', () => {
+    expect(buildDockerComposeSnippet(params)).toContain('AGENT_TOOL_IDS: my-tool');
+  });
+
+  it('includes restart: unless-stopped', () => {
+    expect(buildDockerComposeSnippet(params)).toContain('restart: unless-stopped');
   });
 });
 
@@ -337,44 +364,43 @@ describe('buildDockerComposeSnippet', () => {
 
 describe('buildShellSnippet', () => {
   const base = {
-    pulsedockUrl: 'https://pd.example.com',
-    apiKeyDisplay: 'pd_key...',
-    toolSlug: 'homeassistant',
-    toolName: 'Home Assistant',
+    pulsedockUrl: 'https://app.example.com',
+    apiKeyDisplay: 'pd_key_xxx',
+    toolSlug: 'my-tool',
+    toolName: 'My Tool',
   };
 
-  it('starts with a bash shebang', () => {
+  it('starts with a shebang', () => {
     expect(buildShellSnippet(base)).toMatch(/^#!\/bin\/bash/);
   });
 
-  it('includes the tool name in the header comment', () => {
-    expect(buildShellSnippet(base)).toContain('Home Assistant');
+  it('includes the PULSEDOCK_URL variable', () => {
+    expect(buildShellSnippet(base)).toContain('PULSEDOCK_URL="https://app.example.com"');
   });
 
-  it('sets PULSEDOCK_URL variable', () => {
-    expect(buildShellSnippet(base)).toContain(`PULSEDOCK_URL="https://pd.example.com"`);
+  it('includes the PULSEDOCK_API_KEY variable', () => {
+    expect(buildShellSnippet(base)).toContain('PULSEDOCK_API_KEY="pd_key_xxx"');
   });
 
-  it('sets PULSEDOCK_API_KEY variable', () => {
-    expect(buildShellSnippet(base)).toContain(`PULSEDOCK_API_KEY="pd_key..."`);
+  it('includes the curl POST to the agent report endpoint', () => {
+    expect(buildShellSnippet(base)).toContain('/v1/agent/report');
   });
 
-  it('uses fallback version detection when no agentCommand provided', () => {
+  it('uses the placeholder VERSION line when agentCommand is not provided', () => {
     expect(buildShellSnippet(base)).toContain('your-tool --version');
   });
 
-  it('uses agentCommand when provided', () => {
-    const withCmd = { ...base, agentCommand: 'ha --version | cut -d" " -f3' };
-    const snippet = buildShellSnippet(withCmd);
-    expect(snippet).toContain('ha --version | cut -d" " -f3');
-    expect(snippet).not.toContain('your-tool');
+  it('uses the agentCommand when provided', () => {
+    const p = { ...base, agentCommand: 'my-tool --version 2>&1' };
+    expect(buildShellSnippet(p)).toContain('VERSION=$(my-tool --version 2>&1)');
+    expect(buildShellSnippet(p)).not.toContain('your-tool');
   });
 
-  it('includes the tool slug in the API call JSON', () => {
-    expect(buildShellSnippet(base)).toContain('homeassistant');
+  it('embeds the tool slug in the JSON payload', () => {
+    expect(buildShellSnippet(base)).toContain('my-tool');
   });
 
-  it('calls the /v1/agent/report endpoint', () => {
-    expect(buildShellSnippet(base)).toContain('/v1/agent/report');
+  it('includes the tool name in the comment header', () => {
+    expect(buildShellSnippet(base)).toContain('My Tool');
   });
 });

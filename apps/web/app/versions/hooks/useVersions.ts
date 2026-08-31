@@ -149,7 +149,7 @@ export function useVersions(): UseVersionsReturn {
       const [data, monitors] = await Promise.all([
         api<Summary>('/v1/monitors/version-summary').catch((error) => {
           console.error('Failed to load version summary', error);
-          return { stats: { total: 0, upToDate: 0, outdated: 0, unknown: 0 }, items: [] } as Summary;
+          return { stats: { total: 0, green: 0, yellow: 0, red: 0 }, items: [] } as Summary;
         }),
         api<MonitorDetails[]>('/v1/monitors').catch((error) => {
           console.error('Failed to load monitors for versions', error);

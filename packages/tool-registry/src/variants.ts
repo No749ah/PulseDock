@@ -2575,6 +2575,426 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+  'emqx': [
+    {
+      id: 'self-hosted',
+      label: 'EMQX (Self-Hosted)',
+      description: 'EMQX MQTT broker. Version via /api/v5/broker (requires Basic auth with api_key:api_secret).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://emqx.example.com:18083',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v5/broker',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v5/broker', '/api/v4/brokers'],
+      },
+      latestSource: { type: 'github-releases', target: 'emqx/emqx' },
+      evidenceUrl: 'https://www.emqx.io/docs/en/latest/admin/api.html',
+    },
+  ],
+
+  'nifi': [
+    {
+      id: 'self-hosted',
+      label: 'Apache NiFi (Self-Hosted)',
+      description: 'Apache NiFi data flow platform. Version via /nifi-api/system-diagnostics (auth required).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://nifi.example.com:8443',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/nifi-api/flow/about',
+        jsonPath: '$.about.version',
+        jsonPathExtractors: ['about.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/nifi-api/flow/about', '/nifi-api/system-diagnostics'],
+      },
+      latestSource: { type: 'github-releases', target: 'apache/nifi' },
+      evidenceUrl: 'https://nifi.apache.org/docs/nifi-docs/rest-api/index.html',
+    },
+  ],
+
+  'mailcow': [
+    {
+      id: 'self-hosted',
+      label: 'Mailcow (Self-Hosted)',
+      description: 'Mailcow dockerized mail server. Version via /api/v1/get/status/containers (requires API key header).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://mail.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/get/status/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/get/status/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'mailcow/mailcow-dockerized' },
+      evidenceUrl: 'https://docs.mailcow.email/manual-guides/mailcow-api/',
+    },
+  ],
+
+  'mailpit': [
+    {
+      id: 'self-hosted',
+      label: 'Mailpit (Self-Hosted)',
+      description: 'Mailpit email testing tool. Version via /api/v1/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://mailpit.example.com:8025',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/info',
+        jsonPath: '$.Version',
+        jsonPathExtractors: ['Version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'axllent/mailpit' },
+      evidenceUrl: 'https://mailpit.axllent.org/docs/api-v1/',
+    },
+  ],
+
+  'openhab': [
+    {
+      id: 'self-hosted',
+      label: 'openHAB (Self-Hosted)',
+      description: 'openHAB home automation platform. Version via /rest/systeminfo (no auth required by default).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://openhab.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/rest/systeminfo',
+        jsonPath: '$.systemInfo.version',
+        jsonPathExtractors: ['systemInfo.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/rest/systeminfo'],
+      },
+      latestSource: { type: 'github-releases', target: 'openhab/openhab-distro' },
+      evidenceUrl: 'https://www.openhab.org/docs/configuration/restdocs.html',
+    },
+  ],
+
+  'domoticz': [
+    {
+      id: 'self-hosted',
+      label: 'Domoticz (Self-Hosted)',
+      description: 'Domoticz home automation. Version via /json.htm?type=command&param=getversion (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://domoticz.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/json.htm?type=command&param=getversion',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/json.htm?type=command&param=getversion'],
+      },
+      latestSource: { type: 'github-releases', target: 'domoticz/domoticz' },
+      evidenceUrl: 'https://www.domoticz.com/wiki/Domoticz_API/JSON_URL%27s',
+    },
+  ],
+
+  'esphome': [
+    {
+      id: 'self-hosted',
+      label: 'ESPHome (Self-Hosted)',
+      description: 'ESPHome dashboard for ESP microcontrollers. Version via /version endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://esphome.example.com:6052',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'esphome/esphome' },
+      evidenceUrl: 'https://esphome.io/guides/api',
+    },
+  ],
+
+  'zwavejs2mqtt': [
+    {
+      id: 'self-hosted',
+      label: 'Z-Wave JS UI (Self-Hosted)',
+      description: 'Z-Wave JS UI (zwavejs2mqtt). Version via /health endpoint (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://zwavejs.example.com:8091',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health', '/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'zwave-js/zwave-js-ui' },
+      evidenceUrl: 'https://zwave-js.github.io/zwave-js-ui/guide/api.html',
+    },
+  ],
+
+  'firefly-iii': [
+    {
+      id: 'self-hosted',
+      label: 'Firefly III (Self-Hosted)',
+      description: 'Firefly III personal finance manager. Version via /api/v1/about (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://firefly.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/about',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/about'],
+      },
+      latestSource: { type: 'github-releases', target: 'firefly-iii/firefly-iii' },
+      evidenceUrl: 'https://api-docs.firefly-iii.org/#/about/getAbout',
+    },
+  ],
+
+  'actual-budget': [
+    {
+      id: 'self-hosted',
+      label: 'Actual Budget (Self-Hosted)',
+      description: 'Actual Budget personal finance app. Version via /api/account (no auth required for version check).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://actual.example.com:5006',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/account',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/account'],
+      },
+      latestSource: { type: 'github-releases', target: 'actualbudget/actual' },
+      evidenceUrl: 'https://actualbudget.org/docs/api/',
+    },
+  ],
+
+  'miniflux': [
+    {
+      id: 'self-hosted',
+      label: 'Miniflux (Self-Hosted)',
+      description: 'Miniflux RSS reader. Version via /version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://miniflux.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/version', '/api/me'],
+      },
+      latestSource: { type: 'github-releases', target: 'miniflux/v2' },
+      evidenceUrl: 'https://miniflux.app/docs/api.html',
+    },
+  ],
+
+  'memos': [
+    {
+      id: 'self-hosted',
+      label: 'Memos (Self-Hosted)',
+      description: 'Memos lightweight note-taking app. Version via /api/v1/workspace/profile (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://memos.example.com:5230',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/workspace/profile',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/workspace/profile', '/api/v1/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'usememos/memos' },
+      evidenceUrl: 'https://www.usememos.com/docs/api',
+    },
+  ],
+
+  'openproject': [
+    {
+      id: 'self-hosted',
+      label: 'OpenProject (Self-Hosted)',
+      description: 'OpenProject project management. Version via /api/v3 root endpoint (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://openproject.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v3',
+        jsonPath: '$.coreVersion',
+        jsonPathExtractors: ['coreVersion', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v3'],
+      },
+      latestSource: { type: 'github-releases', target: 'opf/openproject' },
+      evidenceUrl: 'https://www.openproject.org/docs/api/introduction/',
+    },
+  ],
+
+  'vikunja': [
+    {
+      id: 'self-hosted',
+      label: 'Vikunja (Self-Hosted)',
+      description: 'Vikunja task manager. Version via /api/v1/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://vikunja.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'go-vikunja/vikunja' },
+      evidenceUrl: 'https://vikunja.io/docs/api-usage',
+    },
+  ],
+
+  'focalboard': [
+    {
+      id: 'self-hosted',
+      label: 'Focalboard (Self-Hosted)',
+      description: 'Focalboard project management (Mattermost Boards). Version via /api/v2/clientConfig (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://focalboard.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/clientConfig',
+        jsonPath: '$.serverVersion',
+        jsonPathExtractors: ['serverVersion', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v2/clientConfig'],
+      },
+      latestSource: { type: 'github-releases', target: 'mattermost/focalboard' },
+      evidenceUrl: 'https://www.focalboard.com/contribute/getting-started/personal-server-setup/',
+    },
+  ],
+
+  'pgadmin': [
+    {
+      id: 'self-hosted',
+      label: 'pgAdmin 4 (Self-Hosted)',
+      description: 'pgAdmin 4 PostgreSQL administration tool. Version via /misc/ping (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://pgadmin.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/misc/ping',
+        jsonPath: '$.pgadmin_version',
+        jsonPathExtractors: ['pgadmin_version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/misc/ping', '/'],
+      },
+      latestSource: { type: 'github-releases', target: 'pgadmin-org/pgadmin4' },
+      evidenceUrl: 'https://www.pgadmin.org/docs/pgadmin4/latest/api.html',
+    },
+  ],
+
+  'cloudbeaver': [
+    {
+      id: 'self-hosted',
+      label: 'CloudBeaver (Self-Hosted)',
+      description: 'CloudBeaver web-based database manager. Version via /api/gql (GraphQL, requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://cloudbeaver.example.com:8978',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/product/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/product/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'dbeaver/cloudbeaver' },
+      evidenceUrl: 'https://github.com/dbeaver/cloudbeaver',
+    },
+  ],
+
+  'netbox': [
+    {
+      id: 'self-hosted',
+      label: 'NetBox (Self-Hosted)',
+      description: 'NetBox IPAM/DCIM tool. Version via /api/ root endpoint (no auth required, may require token for some setups).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://netbox.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/',
+        jsonPath: '$.netbox-version',
+        jsonPathExtractors: ['netbox-version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/', '/api/status/'],
+      },
+      latestSource: { type: 'github-releases', target: 'netbox-community/netbox' },
+      evidenceUrl: 'https://docs.netbox.dev/en/stable/rest-api/overview/',
+    },
+  ],
+
+  'opnsense': [
+    {
+      id: 'self-hosted',
+      label: 'OPNsense (Self-Hosted)',
+      description: 'OPNsense firewall/router. Version via /api/core/firmware/info (requires API key:secret Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://opnsense.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/core/firmware/running',
+        jsonPath: '$.product_version',
+        jsonPathExtractors: ['product_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/core/firmware/running', '/api/core/firmware/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'opnsense/core' },
+      evidenceUrl: 'https://docs.opnsense.org/development/api/core/firmware.html',
+    },
+  ],
+
+  'speedtest-tracker': [
+    {
+      id: 'self-hosted',
+      label: 'Speedtest Tracker (Self-Hosted)',
+      description: 'Speedtest Tracker self-hosted internet speed monitoring. Version via /api/healthcheck (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://speedtest-tracker.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/healthcheck',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/healthcheck', '/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'alexjustesen/speedtest-tracker' },
+      evidenceUrl: 'https://docs.speedtest-tracker.dev/',
+    },
+  ],
+
 };
 
 /**

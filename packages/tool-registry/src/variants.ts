@@ -9674,6 +9674,363 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+  'nessus': [
+    {
+      id: 'essentials',
+      label: 'Nessus Essentials (Self-Hosted)',
+      description: 'Tenable Nessus vulnerability scanner. Version via /server/status (requires auth token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://nessus.example.com:8834',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/server/status',
+        jsonPath: '$.server_version',
+        jsonPathExtractors: ['server_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/server/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'tenable/nessus' },
+      evidenceUrl: 'https://developer.tenable.com/reference/navigate',
+    },
+  ],
+
+  'dex-idp': [
+    {
+      id: 'self-hosted',
+      label: 'Dex IdP (Self-Hosted)',
+      description: 'Dex federated OIDC provider. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://dex.example.com:5556',
+      versionSource: { type: 'github-releases', target: 'dexidp/dex' },
+      latestSource: { type: 'github-releases', target: 'dexidp/dex' },
+      evidenceUrl: 'https://dexidp.io/docs/',
+    },
+  ],
+
+  'pomerium': [
+    {
+      id: 'self-hosted',
+      label: 'Pomerium (Self-Hosted)',
+      description: 'Pomerium identity-aware access proxy. Version via /.pomerium/api/v1/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://pomerium.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/.pomerium/api/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/.pomerium/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'pomerium/pomerium' },
+      evidenceUrl: 'https://www.pomerium.com/docs/reference/api',
+    },
+  ],
+
+  'smallstep': [
+    {
+      id: 'self-hosted',
+      label: 'Smallstep CA (Self-Hosted)',
+      description: 'Smallstep open-source certificate authority. Version via /health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://smallstep.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/version', '/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'smallstep/certificates' },
+      evidenceUrl: 'https://smallstep.com/docs/step-ca/configuration/',
+    },
+  ],
+
+  'cyberark-conjur': [
+    {
+      id: 'self-hosted',
+      label: 'CyberArk Conjur OSS (Self-Hosted)',
+      description: 'CyberArk Conjur secrets management. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://conjur.example.com:80',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.conjur.version',
+        jsonPathExtractors: ['conjur.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'cyberark/conjur' },
+      evidenceUrl: 'https://docs.conjur.org/Latest/en/Content/Developer/Conjur_API.htm',
+    },
+  ],
+
+  'awx': [
+    {
+      id: 'self-hosted',
+      label: 'AWX (Self-Hosted)',
+      description: 'Red Hat AWX Ansible automation. Version via /api/v2/ root (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://awx.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/',
+        jsonPath: '$.ansible_version',
+        jsonPathExtractors: ['ansible_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v2/', '/api/v1/'],
+      },
+      latestSource: { type: 'github-releases', target: 'ansible/awx' },
+      evidenceUrl: 'https://ansible.readthedocs.io/projects/awx/en/latest/api_ref/',
+    },
+  ],
+
+  'kuma': [
+    {
+      id: 'self-hosted',
+      label: 'Kuma Service Mesh (Self-Hosted)',
+      description: 'Kuma (Kong) service mesh. Version via /api (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://kuma.example.com:5681',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api'],
+      },
+      latestSource: { type: 'github-releases', target: 'kumahq/kuma' },
+      evidenceUrl: 'https://kuma.io/docs/',
+    },
+  ],
+
+  'cilium-service-mesh': [
+    {
+      id: 'self-hosted',
+      label: 'Cilium (Self-Hosted)',
+      description: 'Cilium eBPF-based networking/service mesh. Version via /healthz (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://cilium.example.com',
+      versionSource: { type: 'github-releases', target: 'cilium/cilium' },
+      latestSource: { type: 'github-releases', target: 'cilium/cilium' },
+      evidenceUrl: 'https://docs.cilium.io/en/stable/cmdref/cilium/',
+    },
+  ],
+
+  'traefik-mesh': [
+    {
+      id: 'self-hosted',
+      label: 'Traefik Mesh (Self-Hosted)',
+      description: 'Traefik Mesh lightweight service mesh. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://traefik-mesh.example.com:9000',
+      versionSource: { type: 'github-releases', target: 'traefik/mesh' },
+      latestSource: { type: 'github-releases', target: 'traefik/mesh' },
+      evidenceUrl: 'https://doc.traefik.io/traefik-mesh/',
+    },
+  ],
+
+  'weave-gitops': [
+    {
+      id: 'self-hosted',
+      label: 'Weave GitOps (Self-Hosted)',
+      description: 'Weave GitOps Flux UI. Version via /api/v1/version (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://weave-gitops.example.com:9001',
+      versionSource: { type: 'github-releases', target: 'weaveworks/weave-gitops' },
+      latestSource: { type: 'github-releases', target: 'weaveworks/weave-gitops' },
+      evidenceUrl: 'https://docs.gitops.weave.works/docs/',
+    },
+  ],
+
+  'jenkinsx': [
+    {
+      id: 'self-hosted',
+      label: 'Jenkins X (Self-Hosted)',
+      description: 'Jenkins X cloud-native CI/CD for Kubernetes. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://jenkinsx.example.com',
+      versionSource: { type: 'github-releases', target: 'jenkins-x/jx' },
+      latestSource: { type: 'github-releases', target: 'jenkins-x/jx' },
+      evidenceUrl: 'https://jenkins-x.io/docs/',
+    },
+  ],
+
+  'kratix': [
+    {
+      id: 'self-hosted',
+      label: 'Kratix (Self-Hosted)',
+      description: 'Kratix platform-as-a-product framework. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://kratix.example.com',
+      versionSource: { type: 'github-releases', target: 'syntasso/kratix' },
+      latestSource: { type: 'github-releases', target: 'syntasso/kratix' },
+      evidenceUrl: 'https://kratix.io/docs/',
+    },
+  ],
+
+  'opencost': [
+    {
+      id: 'self-hosted',
+      label: 'OpenCost (Self-Hosted)',
+      description: 'OpenCost Kubernetes cost monitoring. Version via /version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://opencost.example.com:9090',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/version', '/healthz'],
+      },
+      latestSource: { type: 'github-releases', target: 'opencost/opencost' },
+      evidenceUrl: 'https://www.opencost.io/docs/api',
+    },
+  ],
+
+  'litmus-chaos': [
+    {
+      id: 'self-hosted',
+      label: 'Litmus Chaos (Self-Hosted)',
+      description: 'LitmusChaos chaos engineering platform. Version via /auth/dex/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://litmus.example.com:9091',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'litmuschaos/litmus' },
+      evidenceUrl: 'https://litmuschaos.io/docs/',
+    },
+  ],
+
+  'chaos-mesh': [
+    {
+      id: 'self-hosted',
+      label: 'Chaos Mesh (Self-Hosted)',
+      description: 'Chaos Mesh cloud-native chaos engineering. Version via /api/common/config (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://chaos-mesh.example.com:2333',
+      versionSource: { type: 'github-releases', target: 'chaos-mesh/chaos-mesh' },
+      latestSource: { type: 'github-releases', target: 'chaos-mesh/chaos-mesh' },
+      evidenceUrl: 'https://chaos-mesh.org/docs/',
+    },
+  ],
+
+  'singlestore': [
+    {
+      id: 'self-hosted',
+      label: 'SingleStore (Self-Hosted)',
+      description: 'SingleStore (MemSQL) distributed database. Version via /api/v1/version (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://singlestore.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'memsql/singlestoredb-dev-image' },
+      evidenceUrl: 'https://docs.singlestore.com/cloud/reference/api-reference/',
+    },
+  ],
+
+  'rqlite': [
+    {
+      id: 'self-hosted',
+      label: 'rqlite (Self-Hosted)',
+      description: 'rqlite lightweight distributed relational database. Version via /status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://rqlite.example.com:4001',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/status',
+        jsonPath: '$.build.version',
+        jsonPathExtractors: ['build.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/status', '/readyz'],
+      },
+      latestSource: { type: 'github-releases', target: 'rqlite/rqlite' },
+      evidenceUrl: 'https://rqlite.io/docs/api/api/',
+    },
+  ],
+
+  'citus': [
+    {
+      id: 'self-hosted',
+      label: 'Citus (Self-Hosted)',
+      description: 'Citus distributed PostgreSQL extension. Version via PostgreSQL SQL query — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'postgresql://citus.example.com:5432',
+      versionSource: { type: 'github-releases', target: 'citusdata/citus' },
+      latestSource: { type: 'github-releases', target: 'citusdata/citus' },
+      evidenceUrl: 'https://docs.citusdata.com/',
+    },
+  ],
+
+  'opentsdb': [
+    {
+      id: 'self-hosted',
+      label: 'OpenTSDB (Self-Hosted)',
+      description: 'OpenTSDB time-series database. Version via /version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://opentsdb.example.com:4242',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/version', '/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'OpenTSDB/opentsdb' },
+      evidenceUrl: 'http://opentsdb.net/docs/build/html/api_http/version.html',
+    },
+  ],
+
+  'typedb': [
+    {
+      id: 'self-hosted',
+      label: 'TypeDB (Self-Hosted)',
+      description: 'TypeDB polymorphic knowledge graph database. Version via /version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://typedb.example.com:1729',
+      versionSource: { type: 'github-releases', target: 'typedb/typedb' },
+      latestSource: { type: 'github-releases', target: 'typedb/typedb' },
+      evidenceUrl: 'https://typedb.com/docs/',
+    },
+  ],
+
 };
 
 /**

@@ -13948,6 +13948,465 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Kubernetes distros / operators
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'microk8s': [
+    {
+      id: 'self-hosted',
+      label: 'MicroK8s (Self-Hosted)',
+      description: 'Canonical MicroK8s low-ops Kubernetes. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'canonical/microk8s' },
+      latestSource: { type: 'github-releases', target: 'canonical/microk8s' },
+      evidenceUrl: 'https://microk8s.io/docs/getting-started',
+    },
+  ],
+
+  'talos': [
+    {
+      id: 'self-hosted',
+      label: 'Talos Linux (Self-Hosted)',
+      description: 'Talos immutable Kubernetes OS. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'siderolabs/talos' },
+      latestSource: { type: 'github-releases', target: 'siderolabs/talos' },
+      evidenceUrl: 'https://www.talos.dev/latest/introduction/getting-started/',
+    },
+  ],
+
+  'crossplane': [
+    {
+      id: 'self-hosted',
+      label: 'Crossplane (Self-Hosted on Kubernetes)',
+      description: 'Crossplane cloud-native control plane. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'crossplane/crossplane' },
+      latestSource: { type: 'github-releases', target: 'crossplane/crossplane' },
+      evidenceUrl: 'https://docs.crossplane.io/latest/software/install/',
+    },
+  ],
+
+  'actions-runner-controller': [
+    {
+      id: 'self-hosted',
+      label: 'Actions Runner Controller (ARC)',
+      description: 'Kubernetes controller for GitHub Actions self-hosted runners.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'actions/actions-runner-controller' },
+      latestSource: { type: 'github-releases', target: 'actions/actions-runner-controller' },
+      evidenceUrl: 'https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners-with-actions-runner-controller',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // CI/CD build tools
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'argo-workflows': [
+    {
+      id: 'self-hosted',
+      label: 'Argo Workflows (Self-Hosted)',
+      description: 'Argo Workflows Kubernetes workflow engine. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'argoproj/argo-workflows' },
+      latestSource: { type: 'github-releases', target: 'argoproj/argo-workflows' },
+      evidenceUrl: 'https://argo-workflows.readthedocs.io/en/latest/installation/',
+    },
+  ],
+
+  'argo-events': [
+    {
+      id: 'self-hosted',
+      label: 'Argo Events (Self-Hosted)',
+      description: 'Argo Events event-driven workflow automation. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'argoproj/argo-events' },
+      latestSource: { type: 'github-releases', target: 'argoproj/argo-events' },
+      evidenceUrl: 'https://argoproj.github.io/argo-events/installation/',
+    },
+  ],
+
+  'dagger': [
+    {
+      id: 'cli',
+      label: 'Dagger (CLI / Self-Hosted)',
+      description: 'Dagger portable CI/CD engine. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'dagger/dagger' },
+      latestSource: { type: 'github-releases', target: 'dagger/dagger' },
+      evidenceUrl: 'https://docs.dagger.io/install',
+    },
+    {
+      id: 'cloud',
+      label: 'Dagger Cloud',
+      description: 'Dagger Cloud managed CI/CD visualizer.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'dagger/dagger' },
+      latestSource: { type: 'github-releases', target: 'dagger/dagger' },
+      evidenceUrl: 'https://dagger.io/cloud',
+    },
+  ],
+
+  'earthly': [
+    {
+      id: 'cli',
+      label: 'Earthly (CLI)',
+      description: 'Earthly reproducible build tool. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'earthly/earthly' },
+      latestSource: { type: 'github-releases', target: 'earthly/earthly' },
+      evidenceUrl: 'https://docs.earthly.dev/docs/earthly-in-5-minutes',
+    },
+  ],
+
+  'buildkite-agent': [
+    {
+      id: 'self-hosted',
+      label: 'Buildkite Agent (Self-Hosted)',
+      description: 'Buildkite CI/CD agent. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'buildkite/agent' },
+      latestSource: { type: 'github-releases', target: 'buildkite/agent' },
+      evidenceUrl: 'https://buildkite.com/docs/agent/v3/installation',
+    },
+    {
+      id: 'cloud',
+      label: 'Buildkite (Cloud / SaaS)',
+      description: 'Buildkite managed CI/CD at buildkite.com.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'buildkite/agent' },
+      latestSource: { type: 'github-releases', target: 'buildkite/agent' },
+      evidenceUrl: 'https://buildkite.com',
+    },
+  ],
+
+  'spinnaker': [
+    {
+      id: 'self-hosted',
+      label: 'Spinnaker (Self-Hosted)',
+      description: 'Spinnaker multi-cloud CD platform. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'spinnaker/spinnaker' },
+      latestSource: { type: 'github-releases', target: 'spinnaker/spinnaker' },
+      evidenceUrl: 'https://spinnaker.io/docs/setup/install/',
+    },
+  ],
+
+  'gitlab-runner': [
+    {
+      id: 'self-hosted',
+      label: 'GitLab Runner (Self-Hosted)',
+      description: 'GitLab CI/CD runner. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'gitlabhq/gitlab-runner' },
+      latestSource: { type: 'github-releases', target: 'gitlabhq/gitlab-runner' },
+      evidenceUrl: 'https://docs.gitlab.com/runner/install/',
+    },
+    {
+      id: 'saas',
+      label: 'GitLab.com Shared Runners (SaaS)',
+      description: 'GitLab.com hosted runners. Tracks runner version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'gitlabhq/gitlab-runner' },
+      latestSource: { type: 'github-releases', target: 'gitlabhq/gitlab-runner' },
+      evidenceUrl: 'https://docs.gitlab.com/ee/ci/runners/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // More databases
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'scylladb': [
+    {
+      id: 'self-hosted',
+      label: 'ScyllaDB (Self-Hosted)',
+      description: 'ScyllaDB Cassandra-compatible database. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'scylladb/scylla' },
+      latestSource: { type: 'github-releases', target: 'scylladb/scylla' },
+      evidenceUrl: 'https://www.scylladb.com/download/',
+    },
+    {
+      id: 'cloud',
+      label: 'ScyllaDB Cloud',
+      description: 'ScyllaDB managed cloud service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'scylladb/scylla' },
+      latestSource: { type: 'github-releases', target: 'scylladb/scylla' },
+      evidenceUrl: 'https://cloud.scylladb.com',
+    },
+  ],
+
+  'yugabytedb': [
+    {
+      id: 'self-hosted',
+      label: 'YugabyteDB (Self-Hosted)',
+      description: 'YugabyteDB distributed SQL. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'yugabyte/yugabyte-db' },
+      latestSource: { type: 'github-releases', target: 'yugabyte/yugabyte-db' },
+      evidenceUrl: 'https://docs.yugabyte.com/preview/quick-start/',
+    },
+    {
+      id: 'cloud',
+      label: 'YugabyteDB Aeon (Managed Cloud)',
+      description: 'YugabyteDB Aeon managed cloud database.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'yugabyte/yugabyte-db' },
+      latestSource: { type: 'github-releases', target: 'yugabyte/yugabyte-db' },
+      evidenceUrl: 'https://www.yugabyte.com/yugabytedb-aeon/',
+    },
+  ],
+
+  'tidb': [
+    {
+      id: 'self-hosted',
+      label: 'TiDB (Self-Hosted)',
+      description: 'TiDB distributed NewSQL database. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'pingcap/tidb' },
+      latestSource: { type: 'github-releases', target: 'pingcap/tidb' },
+      evidenceUrl: 'https://docs.pingcap.com/tidb/stable/quick-start-with-tidb',
+    },
+    {
+      id: 'cloud',
+      label: 'TiDB Cloud (Serverless / Dedicated)',
+      description: 'PingCAP TiDB Cloud managed service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'pingcap/tidb' },
+      latestSource: { type: 'github-releases', target: 'pingcap/tidb' },
+      evidenceUrl: 'https://tidbcloud.com',
+    },
+  ],
+
+  'ferretdb': [
+    {
+      id: 'self-hosted',
+      label: 'FerretDB (Self-Hosted)',
+      description: 'FerretDB MongoDB-compatible database on PostgreSQL. Version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'FerretDB/FerretDB' },
+      latestSource: { type: 'github-releases', target: 'FerretDB/FerretDB' },
+      evidenceUrl: 'https://docs.ferretdb.io/quickstart-guide/',
+    },
+  ],
+
+  'edgedb': [
+    {
+      id: 'self-hosted',
+      label: 'EdgeDB (Self-Hosted)',
+      description: 'EdgeDB graph-relational database. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'edgedb/edgedb' },
+      latestSource: { type: 'github-releases', target: 'edgedb/edgedb' },
+      evidenceUrl: 'https://www.edgedb.com/docs/intro/install',
+    },
+    {
+      id: 'cloud',
+      label: 'EdgeDB Cloud',
+      description: 'EdgeDB managed cloud service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'edgedb/edgedb' },
+      latestSource: { type: 'github-releases', target: 'edgedb/edgedb' },
+      evidenceUrl: 'https://www.edgedb.com/cloud',
+    },
+  ],
+
+  'dragonfly': [
+    {
+      id: 'self-hosted',
+      label: 'DragonflyDB (Self-Hosted)',
+      description: 'Dragonfly Redis-compatible high-performance store. Version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'dragonflydb/dragonfly' },
+      latestSource: { type: 'github-releases', target: 'dragonflydb/dragonfly' },
+      evidenceUrl: 'https://www.dragonflydb.io/docs/getting-started',
+    },
+    {
+      id: 'cloud',
+      label: 'Dragonfly Cloud',
+      description: 'DragonflyDB managed cloud service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'dragonflydb/dragonfly' },
+      latestSource: { type: 'github-releases', target: 'dragonflydb/dragonfly' },
+      evidenceUrl: 'https://www.dragonflydb.io/cloud',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Observability — log shippers / next-gen stacks
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'fluentd': [
+    {
+      id: 'self-hosted',
+      label: 'Fluentd (Self-Hosted)',
+      description: 'Fluentd unified logging layer. Version from GitHub tags.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-tags', target: 'fluent/fluentd' },
+      latestSource: { type: 'github-tags', target: 'fluent/fluentd' },
+      evidenceUrl: 'https://www.fluentd.org/download',
+    },
+    {
+      id: 'td-agent',
+      label: 'td-agent / Fluent Package (Treasure Data)',
+      description: 'Fluentd packaged as td-agent by Treasure Data.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-tags', target: 'fluent/fluentd' },
+      latestSource: { type: 'github-tags', target: 'fluent/fluentd' },
+      evidenceUrl: 'https://www.fluentd.org/download',
+    },
+  ],
+
+  'fluent-bit': [
+    {
+      id: 'self-hosted',
+      label: 'Fluent Bit (Self-Hosted)',
+      description: 'Fluent Bit lightweight log processor. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'fluent/fluent-bit' },
+      latestSource: { type: 'github-releases', target: 'fluent/fluent-bit' },
+      evidenceUrl: 'https://docs.fluentbit.io/manual/installation/getting-started-with-fluent-bit',
+    },
+  ],
+
+  'signoz': [
+    {
+      id: 'self-hosted',
+      label: 'SigNoz (Self-Hosted)',
+      description: 'SigNoz open-source observability platform. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'SigNoz/signoz' },
+      latestSource: { type: 'github-releases', target: 'SigNoz/signoz' },
+      evidenceUrl: 'https://signoz.io/docs/install/',
+    },
+    {
+      id: 'cloud',
+      label: 'SigNoz Cloud',
+      description: 'SigNoz managed cloud observability.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'SigNoz/signoz' },
+      latestSource: { type: 'github-releases', target: 'SigNoz/signoz' },
+      evidenceUrl: 'https://signoz.io/teams/',
+    },
+  ],
+
+  'openobserve': [
+    {
+      id: 'self-hosted',
+      label: 'OpenObserve (Self-Hosted)',
+      description: 'OpenObserve log/metric/trace platform. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'openobserve/openobserve' },
+      latestSource: { type: 'github-releases', target: 'openobserve/openobserve' },
+      evidenceUrl: 'https://openobserve.ai/docs/quickstart/',
+    },
+    {
+      id: 'cloud',
+      label: 'OpenObserve Cloud',
+      description: 'OpenObserve managed cloud service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'openobserve/openobserve' },
+      latestSource: { type: 'github-releases', target: 'openobserve/openobserve' },
+      evidenceUrl: 'https://cloud.openobserve.ai',
+    },
+  ],
+
+  'pyroscope': [
+    {
+      id: 'self-hosted',
+      label: 'Grafana Pyroscope (Self-Hosted)',
+      description: 'Grafana Pyroscope continuous profiling. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'grafana/pyroscope' },
+      latestSource: { type: 'github-releases', target: 'grafana/pyroscope' },
+      evidenceUrl: 'https://grafana.com/docs/pyroscope/latest/configure-server/',
+    },
+  ],
+
+  'coroot': [
+    {
+      id: 'self-hosted',
+      label: 'Coroot (Self-Hosted)',
+      description: 'Coroot eBPF-based observability. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'coroot/coroot' },
+      latestSource: { type: 'github-releases', target: 'coroot/coroot' },
+      evidenceUrl: 'https://coroot.com/docs/coroot-community-edition/getting-started/',
+    },
+    {
+      id: 'cloud',
+      label: 'Coroot Cloud',
+      description: 'Coroot managed cloud observability.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'coroot/coroot' },
+      latestSource: { type: 'github-releases', target: 'coroot/coroot' },
+      evidenceUrl: 'https://coroot.com/cloud',
+    },
+  ],
+
+  'quickwit': [
+    {
+      id: 'self-hosted',
+      label: 'Quickwit (Self-Hosted)',
+      description: 'Quickwit cloud-native search engine. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'quickwit-oss/quickwit' },
+      latestSource: { type: 'github-releases', target: 'quickwit-oss/quickwit' },
+      evidenceUrl: 'https://quickwit.io/docs/get-started/quickstart',
+    },
+    {
+      id: 'cloud',
+      label: 'Quickwit Cloud',
+      description: 'Quickwit managed cloud search.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'quickwit-oss/quickwit' },
+      latestSource: { type: 'github-releases', target: 'quickwit-oss/quickwit' },
+      evidenceUrl: 'https://quickwit.io/cloud',
+    },
+  ],
+
 };
 
 /**

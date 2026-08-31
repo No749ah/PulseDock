@@ -13256,6 +13256,326 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Security / Scanning
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'openvas': [
+    {
+      id: 'self-hosted',
+      label: 'OpenVAS / Greenbone Community Edition (Self-Hosted)',
+      description: 'OpenVAS vulnerability scanner. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'greenbone/openvas-scanner' },
+      latestSource: { type: 'github-releases', target: 'greenbone/openvas-scanner' },
+      evidenceUrl: 'https://greenbone.github.io/docs/latest/22.4/container/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Storage / NAS
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'openmediavault': [
+    {
+      id: 'self-hosted',
+      label: 'OpenMediaVault (Self-Hosted NAS)',
+      description: 'OpenMediaVault NAS solution. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'openmediavault/openmediavault' },
+      latestSource: { type: 'github-releases', target: 'openmediavault/openmediavault' },
+      evidenceUrl: 'https://docs.openmediavault.org/en/latest/installation/index.html',
+    },
+  ],
+
+  'garage': [
+    {
+      id: 'self-hosted',
+      label: 'Garage (Self-Hosted S3)',
+      description: 'Garage distributed S3-compatible object store. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'deuxfleurs/garage' },
+      latestSource: { type: 'github-releases', target: 'deuxfleurs/garage' },
+      evidenceUrl: 'https://garagehq.deuxfleurs.fr/documentation/quick-start/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Communication (self-hosted)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'revolt': [
+    {
+      id: 'self-hosted',
+      label: 'Revolt (Self-Hosted)',
+      description: 'Revolt open-source Discord alternative. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'revoltchat/backend' },
+      latestSource: { type: 'github-releases', target: 'revoltchat/backend' },
+      evidenceUrl: 'https://revolt.chat/install',
+    },
+    {
+      id: 'cloud',
+      label: 'Revolt Cloud (revolt.chat)',
+      description: 'Revolt managed cloud at revolt.chat.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'revoltchat/backend' },
+      latestSource: { type: 'github-releases', target: 'revoltchat/backend' },
+      evidenceUrl: 'https://revolt.chat',
+    },
+  ],
+
+  'element': [
+    {
+      id: 'web',
+      label: 'Element Web (Self-Hosted)',
+      description: 'Element Matrix client (web app). Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'element-hq/element-web' },
+      latestSource: { type: 'github-releases', target: 'element-hq/element-web' },
+      evidenceUrl: 'https://github.com/element-hq/element-web/releases',
+    },
+    {
+      id: 'desktop',
+      label: 'Element Desktop',
+      description: 'Element desktop app. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'element-hq/element-desktop' },
+      latestSource: { type: 'github-releases', target: 'element-hq/element-desktop' },
+      evidenceUrl: 'https://github.com/element-hq/element-desktop/releases',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Dev Tools / Workflow
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'windmill': [
+    {
+      id: 'self-hosted',
+      label: 'Windmill (Self-Hosted)',
+      description: 'Windmill developer platform for scripts and workflows. Version from GitHub.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://windmill.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'windmill-labs/windmill' },
+      evidenceUrl: 'https://www.windmill.dev/docs/advanced/self-host',
+    },
+    {
+      id: 'cloud',
+      label: 'Windmill Cloud',
+      description: 'Windmill managed cloud at app.windmill.dev.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'windmill-labs/windmill' },
+      latestSource: { type: 'github-releases', target: 'windmill-labs/windmill' },
+      evidenceUrl: 'https://app.windmill.dev',
+    },
+  ],
+
+  'temporal': [
+    {
+      id: 'self-hosted',
+      label: 'Temporal (Self-Hosted)',
+      description: 'Temporal workflow orchestration. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'temporalio/temporal' },
+      latestSource: { type: 'github-releases', target: 'temporalio/temporal' },
+      evidenceUrl: 'https://docs.temporal.io/self-hosted-guide',
+    },
+    {
+      id: 'cloud',
+      label: 'Temporal Cloud',
+      description: 'Temporal managed cloud at cloud.temporal.io.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'temporalio/temporal' },
+      latestSource: { type: 'github-releases', target: 'temporalio/temporal' },
+      evidenceUrl: 'https://cloud.temporal.io',
+    },
+  ],
+
+  'prefect': [
+    {
+      id: 'self-hosted',
+      label: 'Prefect (Self-Hosted / Prefect Server)',
+      description: 'Prefect workflow orchestration server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'PrefectHQ/prefect' },
+      latestSource: { type: 'github-releases', target: 'PrefectHQ/prefect' },
+      evidenceUrl: 'https://docs.prefect.io/v3/get-started/server',
+    },
+    {
+      id: 'cloud',
+      label: 'Prefect Cloud',
+      description: 'Prefect managed cloud at app.prefect.cloud.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'PrefectHQ/prefect' },
+      latestSource: { type: 'github-releases', target: 'PrefectHQ/prefect' },
+      evidenceUrl: 'https://app.prefect.cloud',
+    },
+  ],
+
+  'coder': [
+    {
+      id: 'self-hosted',
+      label: 'Coder (Self-Hosted)',
+      description: 'Coder remote development platform. Version via /api/v2/buildinfo JSON.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://coder.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/buildinfo',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'coder/coder' },
+      evidenceUrl: 'https://coder.com/docs/v2/latest/reference/api/buildinfo',
+    },
+    {
+      id: 'cloud',
+      label: 'Coder Cloud',
+      description: 'Coder managed cloud at coder.com.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'coder/coder' },
+      latestSource: { type: 'github-releases', target: 'coder/coder' },
+      evidenceUrl: 'https://coder.com/docs/v2/latest/platforms/cloud',
+    },
+  ],
+
+  'airflow': [
+    {
+      id: 'self-hosted',
+      label: 'Apache Airflow (Self-Hosted)',
+      description: 'Apache Airflow workflow platform. Version via /api/v1/version JSON.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://airflow.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'apache/airflow' },
+      evidenceUrl: 'https://airflow.apache.org/docs/apache-airflow/stable/stable-rest-api-ref.html',
+    },
+    {
+      id: 'managed',
+      label: 'Managed Airflow (MWAA / Cloud Composer / Astro)',
+      description: 'Managed Airflow on AWS MWAA, GCP Cloud Composer, or Astronomer Astro.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'apache/airflow' },
+      latestSource: { type: 'github-releases', target: 'apache/airflow' },
+      evidenceUrl: 'https://airflow.apache.org/docs/apache-airflow/stable/installation/index.html',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Helm charts (single-edition, tracked via ArtifactHub)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'helm-postgresql': [
+    {
+      id: 'bitnami',
+      label: 'Bitnami PostgreSQL Helm Chart',
+      description: 'Bitnami PostgreSQL Helm chart. App version tracked via ArtifactHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'helm-chart', target: 'bitnami/postgresql' },
+      latestSource: { type: 'helm-chart', target: 'bitnami/postgresql' },
+      evidenceUrl: 'https://artifacthub.io/packages/helm/bitnami/postgresql',
+    },
+  ],
+
+  'helm-redis': [
+    {
+      id: 'bitnami',
+      label: 'Bitnami Redis Helm Chart',
+      description: 'Bitnami Redis Helm chart. App version tracked via ArtifactHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'helm-chart', target: 'bitnami/redis' },
+      latestSource: { type: 'helm-chart', target: 'bitnami/redis' },
+      evidenceUrl: 'https://artifacthub.io/packages/helm/bitnami/redis',
+    },
+  ],
+
+  'helm-ingress-nginx': [
+    {
+      id: 'ingress-nginx',
+      label: 'ingress-nginx Helm Chart',
+      description: 'Kubernetes ingress-nginx controller Helm chart. Version via ArtifactHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'helm-chart', target: 'ingress-nginx/ingress-nginx' },
+      latestSource: { type: 'helm-chart', target: 'ingress-nginx/ingress-nginx' },
+      evidenceUrl: 'https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx',
+    },
+  ],
+
+  'helm-cert-manager': [
+    {
+      id: 'cert-manager',
+      label: 'cert-manager Helm Chart',
+      description: 'cert-manager Kubernetes certificate controller. Version via ArtifactHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'helm-chart', target: 'cert-manager/cert-manager' },
+      latestSource: { type: 'helm-chart', target: 'cert-manager/cert-manager' },
+      evidenceUrl: 'https://artifacthub.io/packages/helm/cert-manager/cert-manager',
+    },
+  ],
+
+  'helm-prometheus': [
+    {
+      id: 'prometheus-community',
+      label: 'kube-prometheus-stack Helm Chart',
+      description: 'Prometheus + Grafana + Alertmanager stack chart. Version via ArtifactHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'helm-chart', target: 'prometheus-community/kube-prometheus-stack' },
+      latestSource: { type: 'helm-chart', target: 'prometheus-community/kube-prometheus-stack' },
+      evidenceUrl: 'https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack',
+    },
+  ],
+
+  'helm-grafana': [
+    {
+      id: 'grafana',
+      label: 'Grafana Helm Chart',
+      description: 'Grafana Helm chart by grafana.io. Version via ArtifactHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'helm-chart', target: 'grafana/grafana' },
+      latestSource: { type: 'helm-chart', target: 'grafana/grafana' },
+      evidenceUrl: 'https://artifacthub.io/packages/helm/grafana/grafana',
+    },
+  ],
+
 };
 
 /**

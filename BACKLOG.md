@@ -1,3 +1,13 @@
+## Status Summary (2026-08-31 09:52 UTC)
+- **Build/Test/Audit:** ✅ Build passes (`npm run build` exit 0). Web: 5687 tests pass (257 files). API TypeScript clean (exit 0). 0 npm vulnerabilities.
+- **Deployment:** ⚠️ Web server running locally (port 1234). Public URL returning 502 — Docker/dind unavailable in sandbox so API not running; reverse proxy can't route without backend. Infrastructure issue, not a code issue.
+- **Branch:** heartbeat/2026-08-11-boot (active; 3 new commits this session)
+- **Changes (09:52 UTC):**
+  - [x] **fix(security): bump esbuild to clear low-severity dev-server advisory** — `GHSA-g7r4-m6w7-qqqr`; `npm audit --audit-level=high` now returns 0 vulnerabilities.
+  - [x] **fix(types): correct Summary stats shape in version hook fallback** — `useVersions.ts` error-fallback used stale `{ upToDate, outdated, unknown }` field names instead of current `{ green, yellow, red }` required by `Summary` type; fixed to match the live API contract.
+  - [x] **fix(config): remove invalid vitest minWorkers option** — `apps/web/vitest.config.ts` had `minWorkers: 1` which doesn't exist in vitest's `InlineConfig`; removed. Config is now type-clean.
+  - [x] **test(versions): add 101 unit tests for createVersionModalHelpers and utils pure helpers** — full coverage of `normalizeToolQuery`, `scoreToolMatch`, `filterTools`, `closeMatchTools`, `modalProgress`, `providerFromSourceType`, `buildDockerRunSnippet`, `buildDockerComposeSnippet`, `buildShellSnippet`, `stripLeadingV`, `secondsToHuman`, `levelBadgeVariant`, and all constants/options in `CHANNEL_TYPE_COLORS`, `VERSION_NOTIFY_OPTIONS`, `NOTIFY_ON_LABELS`, `providerOptions`, `authOptions`.
+
 ## Status Summary (2026-04-14 08:16 UTC)
 - **Build/Test/Audit:** ✅ Full heartbeat checks passed after stabilization fix (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`, 0 vulnerabilities).
 - **Deployment:** ⏳ Pending restart + deploy verification (Steps 3-5 will run after commit).

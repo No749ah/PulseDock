@@ -327,7 +327,7 @@ export class MetricsService implements OnModuleInit, OnModuleDestroy {
           orderBy: { checkedAt: 'desc' },
           take: 1,
           select: {
-            status: true,
+            ok: true,
             latencyMs: true,
             checkedAt: true,
           },
@@ -338,7 +338,7 @@ export class MetricsService implements OnModuleInit, OnModuleDestroy {
     // Compute 7-day uptime per monitor in a single batched query
     const since7d = new Date(Date.now() - 7 * 86_400_000);
     const runCounts = await prisma.monitorRun.groupBy({
-      by: ['monitorId', 'status'],
+      by: ['monitorId', 'ok'],
       where: {
         monitorId: { in: monitors.map((m) => m.id) },
         checkedAt: { gte: since7d },
@@ -351,8 +351,7 @@ export class MetricsService implements OnModuleInit, OnModuleDestroy {
     for (const row of runCounts) {
       const current = uptimeMap.get(row.monitorId) ?? { up: 0, total: 0 };
       current.total += row._count._all;
-      // row.status is typed as an enum — compare as string via cast
-      if ((row.status as unknown as string) === 'up') current.up += row._count._all;
+      if (row.ok) current.up += row._count._all;
       uptimeMap.set(row.monitorId, current);
     }
 
@@ -368,7 +367,7 @@ export class MetricsService implements OnModuleInit, OnModuleDestroy {
     const checksTotalLines: string[] = [];
 
     for (const monitor of monitors) {
-      const latestRun = monitor.runs[0] as unknown as { status: string; latencyMs: number | null; checkedAt: Date } | undefined;
+      const latestRun = monitor.runs[0] as { ok: boolean; latencyMs: number | null; checkedAt: Date } | undefined;
       const id = sanitizeLabel(monitor.id);
       const name = sanitizeLabel(monitor.name);
       const type = sanitizeLabel(monitor.type);
@@ -384,7 +383,7 @@ export class MetricsService implements OnModuleInit, OnModuleDestroy {
       } else if (!latestRun) {
         upValue = -1; // no data yet
         totalPaused++;
-      } else if (latestRun.status === 'up') {
+      } else if (latestRun.ok) {
         upValue = 1;
         totalUp++;
       } else {

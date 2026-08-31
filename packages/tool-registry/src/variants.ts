@@ -7056,6 +7056,370 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+  'maybe-finance': [
+    {
+      id: 'self-hosted',
+      label: 'Maybe Finance (Self-Hosted)',
+      description: 'Maybe personal finance app. Version via /api/v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://maybe.example.com:3000',
+      versionSource: { type: 'github-releases', target: 'maybe-finance/maybe' },
+      latestSource: { type: 'github-releases', target: 'maybe-finance/maybe' },
+      evidenceUrl: 'https://github.com/maybe-finance/maybe',
+    },
+  ],
+
+  'hoarder': [
+    {
+      id: 'self-hosted',
+      label: 'Hoarder (Self-Hosted)',
+      description: 'Hoarder bookmark manager with AI tagging. Version via /api/v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://hoarder.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'hoarder-app/hoarder' },
+      evidenceUrl: 'https://docs.hoarder.app/',
+    },
+  ],
+
+  'karakeep': [
+    {
+      id: 'self-hosted',
+      label: 'Karakeep (Self-Hosted)',
+      description: 'Karakeep (formerly Hoarder) bookmark manager. Version via /api/v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://karakeep.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'karakeep-app/karakeep' },
+      evidenceUrl: 'https://karakeep.app/',
+    },
+  ],
+
+  'it-tools': [
+    {
+      id: 'self-hosted',
+      label: 'IT Tools (Self-Hosted)',
+      description: 'IT Tools collection of handy online tools. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://it-tools.example.com',
+      versionSource: { type: 'github-releases', target: 'CorentinTh/it-tools' },
+      latestSource: { type: 'github-releases', target: 'CorentinTh/it-tools' },
+      evidenceUrl: 'https://github.com/CorentinTh/it-tools',
+    },
+  ],
+
+  'traggo': [
+    {
+      id: 'self-hosted',
+      label: 'Traggo (Self-Hosted)',
+      description: 'Traggo time tracking tool. Version via /api/graphql (GraphQL, no auth for schema).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://traggo.example.com:3030',
+      versionSource: { type: 'github-releases', target: 'traggo/server' },
+      latestSource: { type: 'github-releases', target: 'traggo/server' },
+      evidenceUrl: 'https://traggo.net/',
+    },
+  ],
+
+  'reactive-resume': [
+    {
+      id: 'self-hosted',
+      label: 'Reactive Resume (Self-Hosted)',
+      description: 'Reactive Resume open-source resume builder. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://rxresume.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'AmruthPillai/Reactive-Resume' },
+      evidenceUrl: 'https://docs.rxresu.me/',
+    },
+  ],
+
+  'kasm-workspaces': [
+    {
+      id: 'self-hosted',
+      label: 'Kasm Workspaces (Self-Hosted)',
+      description: 'Kasm container streaming platform. Version via /api/public/get_client_settings (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://kasm.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/public/get_client_settings',
+        jsonPath: '$.response.server_settings.desktop_header_subtitle',
+        jsonPathExtractors: ['response.server_settings.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/public/get_client_settings'],
+      },
+      latestSource: { type: 'github-releases', target: 'kasmtech/KasmVNC' },
+      evidenceUrl: 'https://kasmweb.com/docs/latest/how_to_guides/developer_api.html',
+    },
+  ],
+
+  'webtop': [
+    {
+      id: 'self-hosted',
+      label: 'Webtop (Self-Hosted)',
+      description: 'Webtop containerized Linux desktop. No HTTP version API — tracks LSIO Docker Hub tags.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://webtop.example.com:3000',
+      versionSource: { type: 'docker-hub', target: 'linuxserver/webtop' },
+      latestSource: { type: 'docker-hub', target: 'linuxserver/webtop' },
+      evidenceUrl: 'https://docs.linuxserver.io/images/docker-webtop/',
+    },
+  ],
+
+  'langfuse': [
+    {
+      id: 'self-hosted',
+      label: 'Langfuse (Self-Hosted)',
+      description: 'Langfuse LLM observability platform. Version via /api/public/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://langfuse.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/public/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/public/version', '/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'langfuse/langfuse' },
+      evidenceUrl: 'https://langfuse.com/docs/api',
+    },
+  ],
+
+  'excalidraw-plus': [
+    {
+      id: 'self-hosted',
+      label: 'Excalidraw (Self-Hosted)',
+      description: 'Excalidraw collaborative virtual whiteboard. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://excalidraw.example.com',
+      versionSource: { type: 'github-releases', target: 'excalidraw/excalidraw' },
+      latestSource: { type: 'github-releases', target: 'excalidraw/excalidraw' },
+      evidenceUrl: 'https://github.com/excalidraw/excalidraw',
+    },
+  ],
+
+  'teable': [
+    {
+      id: 'self-hosted',
+      label: 'Teable (Self-Hosted)',
+      description: 'Teable no-code database. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://teable.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'teableio/teable' },
+      evidenceUrl: 'https://docs.teable.io/developer/api',
+    },
+  ],
+
+  'dokploy': [
+    {
+      id: 'self-hosted',
+      label: 'Dokploy (Self-Hosted)',
+      description: 'Dokploy open-source PaaS. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://dokploy.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'Dokploy/dokploy' },
+      evidenceUrl: 'https://docs.dokploy.com/',
+    },
+  ],
+
+  'cacti': [
+    {
+      id: 'self-hosted',
+      label: 'Cacti (Self-Hosted)',
+      description: 'Cacti network graphing solution. Version via /cacti/utilities.php (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://cacti.example.com',
+      versionSource: { type: 'github-releases', target: 'Cacti/cacti' },
+      latestSource: { type: 'github-releases', target: 'Cacti/cacti' },
+      evidenceUrl: 'https://docs.cacti.net/',
+    },
+  ],
+
+  'smokeping': [
+    {
+      id: 'self-hosted',
+      label: 'SmokePing (Self-Hosted)',
+      description: 'SmokePing network latency monitor. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://smokeping.example.com',
+      versionSource: { type: 'github-releases', target: 'oetiker/SmokePing' },
+      latestSource: { type: 'github-releases', target: 'oetiker/SmokePing' },
+      evidenceUrl: 'https://oss.oetiker.ch/smokeping/',
+    },
+  ],
+
+  'librenms': [
+    {
+      id: 'self-hosted',
+      label: 'LibreNMS (Self-Hosted)',
+      description: 'LibreNMS network monitoring. Version via /api/v0/version (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://librenms.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v0/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v0/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'librenms/librenms' },
+      evidenceUrl: 'https://docs.librenms.org/API/',
+    },
+  ],
+
+  'icinga2': [
+    {
+      id: 'self-hosted',
+      label: 'Icinga 2 (Self-Hosted)',
+      description: 'Icinga 2 monitoring system. Version via /v1/status (requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://icinga.example.com:5665',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/status/IcingaApplication',
+        jsonPath: '$.results[0].status.icingaapplication.app.version',
+        jsonPathExtractors: ['results.0.status.icingaapplication.app.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/v1/status/IcingaApplication', '/v1/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'Icinga/icinga2' },
+      evidenceUrl: 'https://icinga.com/docs/icinga-2/latest/doc/12-icinga2-api/',
+    },
+  ],
+
+  'observium': [
+    {
+      id: 'self-hosted',
+      label: 'Observium (Self-Hosted)',
+      description: 'Observium network monitoring platform. No public HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://observium.example.com',
+      versionSource: { type: 'github-releases', target: 'observium/observium-community-edition' },
+      latestSource: { type: 'github-releases', target: 'observium/observium-community-edition' },
+      evidenceUrl: 'https://docs.observium.org/',
+    },
+  ],
+
+  'monit': [
+    {
+      id: 'self-hosted',
+      label: 'Monit (Self-Hosted)',
+      description: 'Monit process/service monitoring. Version via /_status?format=json (requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://monit.example.com:2812',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/_status?format=json',
+        jsonPath: '$.monit.version',
+        jsonPathExtractors: ['monit.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/_status?format=json'],
+      },
+      latestSource: { type: 'github-releases', target: 'watchingfrog/monit' },
+      evidenceUrl: 'https://mmonit.com/monit/documentation/monit.html',
+    },
+  ],
+
+  'prometheus-pushgateway': [
+    {
+      id: 'self-hosted',
+      label: 'Prometheus Pushgateway (Self-Hosted)',
+      description: 'Prometheus Pushgateway for ephemeral jobs. Version via /api/v1/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://pushgateway.example.com:9091',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/status',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/status', '/metrics'],
+      },
+      latestSource: { type: 'github-releases', target: 'prometheus/pushgateway' },
+      evidenceUrl: 'https://github.com/prometheus/pushgateway#api',
+    },
+  ],
+
+  'grafana-mimir': [
+    {
+      id: 'self-hosted',
+      label: 'Grafana Mimir (Self-Hosted)',
+      description: 'Grafana Mimir long-term Prometheus metrics storage. Version via /ready (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://mimir.example.com:9009',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/status', '/ready'],
+      },
+      latestSource: { type: 'github-releases', target: 'grafana/mimir' },
+      evidenceUrl: 'https://grafana.com/docs/mimir/latest/references/http-api/',
+    },
+  ],
+
 };
 
 /**

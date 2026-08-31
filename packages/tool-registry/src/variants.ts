@@ -2995,6 +2995,426 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+  'coolify': [
+    {
+      id: 'self-hosted',
+      label: 'Coolify (Self-Hosted)',
+      description: 'Coolify open-source PaaS. Version via /api/v1/version (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://coolify.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'coollabsio/coolify' },
+      evidenceUrl: 'https://coolify.io/docs/api-reference/get-version',
+    },
+  ],
+
+  'caprover': [
+    {
+      id: 'self-hosted',
+      label: 'CapRover (Self-Hosted)',
+      description: 'CapRover self-hosted PaaS. Version via /api/v2/user/system (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://captain.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/user/system',
+        jsonPath: '$.data.captainVersion',
+        jsonPathExtractors: ['data.captainVersion', 'captainVersion'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v2/user/system'],
+      },
+      latestSource: { type: 'github-releases', target: 'caprover/caprover' },
+      evidenceUrl: 'https://caprover.com/docs/api.html',
+    },
+  ],
+
+  'cockpit': [
+    {
+      id: 'self-hosted',
+      label: 'Cockpit (Self-Hosted)',
+      description: 'Cockpit Linux web-based server management. Version via /api/login (no dedicated version endpoint; check GitHub releases).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://cockpit.example.com:9090',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/login',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/login', '/'],
+      },
+      latestSource: { type: 'github-releases', target: 'cockpit-project/cockpit' },
+      evidenceUrl: 'https://cockpit-project.org/guide/latest/api-base1.html',
+    },
+  ],
+
+  'glances': [
+    {
+      id: 'self-hosted',
+      label: 'Glances (Self-Hosted)',
+      description: 'Glances system monitoring tool. Version via /api/3/all (no auth required by default).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://glances.example.com:61208',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/3/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/3/info', '/api/2/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'nicolargo/glances' },
+      evidenceUrl: 'https://glances.readthedocs.io/en/latest/api.html',
+    },
+  ],
+
+  'kanidm': [
+    {
+      id: 'self-hosted',
+      label: 'Kanidm (Self-Hosted)',
+      description: 'Kanidm identity management system. Version via /status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://kanidm.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/debug/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/v1/debug/version', '/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'kanidm/kanidm' },
+      evidenceUrl: 'https://kanidm.github.io/kanidm/master/apis.html',
+    },
+  ],
+
+  'paperless-ngx': [
+    {
+      id: 'self-hosted',
+      label: 'Paperless-ngx (Self-Hosted)',
+      description: 'Paperless-ngx document management. Version via /api/ root (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://paperless.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/', '/api/v1/'],
+      },
+      latestSource: { type: 'github-releases', target: 'paperless-ngx/paperless-ngx' },
+      evidenceUrl: 'https://docs.paperless-ngx.com/api/',
+    },
+  ],
+
+  'mealie': [
+    {
+      id: 'self-hosted',
+      label: 'Mealie (Self-Hosted)',
+      description: 'Mealie recipe manager. Version via /api/app/about (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://mealie.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/app/about',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/app/about'],
+      },
+      latestSource: { type: 'github-releases', target: 'mealie-recipes/mealie' },
+      evidenceUrl: 'https://nightly.mealie.io/api/docs#/App%20Routes/get_app_info_api_app_about_get',
+    },
+  ],
+
+  'grocy': [
+    {
+      id: 'self-hosted',
+      label: 'Grocy (Self-Hosted)',
+      description: 'Grocy household management. Version via /api/system/info (requires GROCY-API-KEY header).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://grocy.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/system/info',
+        jsonPath: '$.grocy_version',
+        jsonPathExtractors: ['grocy_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/system/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'grocy/grocy' },
+      evidenceUrl: 'https://demo.grocy.info/api/#/System/get_system_info',
+    },
+  ],
+
+  'tandoor': [
+    {
+      id: 'self-hosted',
+      label: 'Tandoor Recipes (Self-Hosted)',
+      description: 'Tandoor recipe manager. Version via /api/ root (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://tandoor.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/', '/api/v1/'],
+      },
+      latestSource: { type: 'github-releases', target: 'TandoorRecipes/recipes' },
+      evidenceUrl: 'https://docs.tandoor.dev/system/api/',
+    },
+  ],
+
+  'owncloud': [
+    {
+      id: 'self-hosted',
+      label: 'ownCloud (Self-Hosted)',
+      description: 'ownCloud file sharing platform. Version via /status.php (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://owncloud.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/status.php',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/status.php', '/ocs/v2.php/apps/serverinfo/api/v1/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'owncloud/core' },
+      evidenceUrl: 'https://doc.owncloud.com/server/next/developer_manual/core/apis/ocs-api.html',
+    },
+  ],
+
+  'jellyseerr': [
+    {
+      id: 'self-hosted',
+      label: 'Jellyseerr (Self-Hosted)',
+      description: 'Jellyseerr media request manager (Jellyfin fork of Overseerr). Version via /api/v1/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://jellyseerr.example.com:5055',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'Fallenbagel/jellyseerr' },
+      evidenceUrl: 'https://github.com/Fallenbagel/jellyseerr',
+    },
+  ],
+
+  'readarr': [
+    {
+      id: 'self-hosted',
+      label: 'Readarr (Self-Hosted)',
+      description: 'Readarr ebook manager. Version via /api/v1/system/status (requires X-Api-Key header).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://readarr.example.com:8787',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/system/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/system/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'Readarr/Readarr' },
+      evidenceUrl: 'https://readarr.com/docs/api/#/SystemStatus/get_api_v1_system_status',
+    },
+  ],
+
+  'mastodon': [
+    {
+      id: 'self-hosted',
+      label: 'Mastodon (Self-Hosted)',
+      description: 'Mastodon federated social network. Version via /api/v1/instance (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://mastodon.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/instance',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/instance', '/api/v2/instance'],
+      },
+      latestSource: { type: 'github-releases', target: 'mastodon/mastodon' },
+      evidenceUrl: 'https://docs.joinmastodon.org/methods/instance/',
+    },
+  ],
+
+  'misskey': [
+    {
+      id: 'self-hosted',
+      label: 'Misskey (Self-Hosted)',
+      description: 'Misskey federated social network. Version via /api/meta (POST, no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://misskey.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/meta',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/meta'],
+      },
+      latestSource: { type: 'github-releases', target: 'misskey-dev/misskey' },
+      evidenceUrl: 'https://misskey-hub.net/docs/api/',
+    },
+  ],
+
+  'peertube': [
+    {
+      id: 'self-hosted',
+      label: 'PeerTube (Self-Hosted)',
+      description: 'PeerTube federated video platform. Version via /api/v1/config (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://peertube.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/config',
+        jsonPath: '$.serverVersion',
+        jsonPathExtractors: ['serverVersion', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/config'],
+      },
+      latestSource: { type: 'github-releases', target: 'Chocobozzz/PeerTube' },
+      evidenceUrl: 'https://docs.joinpeertube.org/api-rest-reference.html#tag/Config/operation/getConfig',
+    },
+  ],
+
+  'lemmy': [
+    {
+      id: 'self-hosted',
+      label: 'Lemmy (Self-Hosted)',
+      description: 'Lemmy federated link aggregator. Version via /api/v3/site (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://lemmy.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v3/site',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v3/site'],
+      },
+      latestSource: { type: 'github-releases', target: 'LemmyNet/lemmy' },
+      evidenceUrl: 'https://join-lemmy.org/api/interfaces/GetSiteResponse.html',
+    },
+  ],
+
+  'jupyterhub': [
+    {
+      id: 'self-hosted',
+      label: 'JupyterHub (Self-Hosted)',
+      description: 'JupyterHub multi-user notebook server. Version via /hub/api/ root (requires token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://jupyterhub.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/hub/api/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/hub/api/', '/hub/api'],
+      },
+      latestSource: { type: 'github-releases', target: 'jupyterhub/jupyterhub' },
+      evidenceUrl: 'https://jupyterhub.readthedocs.io/en/stable/reference/rest-api.html',
+    },
+  ],
+
+  'influxdb2': [
+    {
+      id: 'self-hosted',
+      label: 'InfluxDB 2.x (Self-Hosted)',
+      description: 'InfluxDB 2.x time-series database. Version via /health endpoint (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://influxdb.example.com:8086',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/health', '/ping'],
+      },
+      latestSource: { type: 'github-releases', target: 'influxdata/influxdb' },
+      evidenceUrl: 'https://docs.influxdata.com/influxdb/v2/api/#operation/GetHealth',
+    },
+  ],
+
+  'yacht': [
+    {
+      id: 'self-hosted',
+      label: 'Yacht (Self-Hosted)',
+      description: 'Yacht container management UI. Version via /api/version (requires auth token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://yacht.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'SelfhostedPro/Yacht' },
+      evidenceUrl: 'https://yacht.sh/docs/Introduction',
+    },
+  ],
+
+  'dockge': [
+    {
+      id: 'self-hosted',
+      label: 'Dockge (Self-Hosted)',
+      description: 'Dockge Docker Compose manager. Version via /api/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://dockge.example.com:5001',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'louislam/dockge' },
+      evidenceUrl: 'https://github.com/louislam/dockge',
+    },
+  ],
+
 };
 
 /**

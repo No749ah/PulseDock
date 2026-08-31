@@ -8593,13 +8593,335 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     {
       id: 'self-hosted',
       label: 'Eclipse Theia (Self-Hosted)',
-      description: 'Eclipse Theia cloud IDE. Version via /api/version (no auth required).',
+      description: 'Eclipse Theia cloud IDE. No HTTP version API — tracks GitHub releases.',
       requiresInstanceUrl: true,
       authRequired: false,
       urlPlaceholder: 'http://theia.example.com:3000',
       versionSource: { type: 'github-releases', target: 'eclipse-theia/theia' },
       latestSource: { type: 'github-releases', target: 'eclipse-theia/theia' },
       evidenceUrl: 'https://theia-ide.org/',
+    },
+  ],
+
+  'eclipse-che': [
+    {
+      id: 'self-hosted',
+      label: 'Eclipse Che (Self-Hosted)',
+      description: 'Eclipse Che cloud development environment. Version via /api/system/state (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://che.example.com',
+      versionSource: { type: 'github-releases', target: 'eclipse-che/che-server' },
+      latestSource: { type: 'github-releases', target: 'eclipse-che/che-server' },
+      evidenceUrl: 'https://eclipse.dev/che/docs/',
+    },
+  ],
+
+  'remotely': [
+    {
+      id: 'self-hosted',
+      label: 'Remotely (Self-Hosted)',
+      description: 'Remotely remote desktop and screen sharing. Version via /api/Version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://remotely.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/Version',
+        jsonPath: '$',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/Version', '/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'immense-networks/Remotely' },
+      evidenceUrl: 'https://remotely.one/docs/',
+    },
+  ],
+
+  'pockethost': [
+    {
+      id: 'self-hosted',
+      label: 'PocketHost (Self-Hosted)',
+      description: 'PocketHost managed PocketBase hosting. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://pockethost.example.com:3000',
+      versionSource: { type: 'github-releases', target: 'pockethost/pockethost' },
+      latestSource: { type: 'github-releases', target: 'pockethost/pockethost' },
+      evidenceUrl: 'https://pockethost.io/docs/',
+    },
+  ],
+
+  'huly-app': [
+    {
+      id: 'self-hosted',
+      label: 'Huly (Self-Hosted)',
+      description: 'Huly all-in-one project management. Version via /api/v1/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://huly.example.com:8083',
+      versionSource: { type: 'github-releases', target: 'hcengineering/huly-selfhost' },
+      latestSource: { type: 'github-releases', target: 'hcengineering/huly-selfhost' },
+      evidenceUrl: 'https://github.com/hcengineering/huly-selfhost',
+    },
+  ],
+
+  'jira-dc': [
+    {
+      id: 'data-center',
+      label: 'Jira Data Center (Self-Hosted)',
+      description: 'Atlassian Jira Data Center. Version via /rest/api/2/serverInfo (requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://jira.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/rest/api/2/serverInfo',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/rest/api/2/serverInfo'],
+      },
+      latestSource: { type: 'github-releases', target: 'atlassian/jira' },
+      evidenceUrl: 'https://developer.atlassian.com/server/jira/platform/rest/v10000/',
+    },
+  ],
+
+  'confluence-dc': [
+    {
+      id: 'data-center',
+      label: 'Confluence Data Center (Self-Hosted)',
+      description: 'Atlassian Confluence Data Center. Version via /rest/api/space (requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://confluence.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/rest/api/2/serverInfo',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/rest/api/2/serverInfo'],
+      },
+      latestSource: { type: 'github-releases', target: 'atlassian/confluence-server' },
+      evidenceUrl: 'https://developer.atlassian.com/server/confluence/confluence-server-rest-api/',
+    },
+  ],
+
+  'kresus': [
+    {
+      id: 'self-hosted',
+      label: 'Kresus (Self-Hosted)',
+      description: 'Kresus personal finance manager. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://kresus.example.com:9876',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'kresusapp/kresus' },
+      evidenceUrl: 'https://kresus.org/blog/kresus-api.html',
+    },
+  ],
+
+  'hledger-web': [
+    {
+      id: 'self-hosted',
+      label: 'hledger-web (Self-Hosted)',
+      description: 'hledger-web plain-text accounting web UI. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://hledger.example.com:5000',
+      versionSource: { type: 'github-releases', target: 'simonmichael/hledger' },
+      latestSource: { type: 'github-releases', target: 'simonmichael/hledger' },
+      evidenceUrl: 'https://hledger.org/hledger-web.html',
+    },
+  ],
+
+  'moodle': [
+    {
+      id: 'self-hosted',
+      label: 'Moodle (Self-Hosted)',
+      description: 'Moodle LMS. Version via /webservice/rest/server.php (requires token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://moodle.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/webservice/rest/server.php?wstoken={{apiKey}}&wsfunction=core_webservice_get_site_info&moodlewsrestformat=json',
+        jsonPath: '$.release',
+        jsonPathExtractors: ['release', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/webservice/rest/server.php'],
+      },
+      latestSource: { type: 'github-releases', target: 'moodle/moodle' },
+      evidenceUrl: 'https://moodledev.io/docs/apis/subsystems/external/rest/overview',
+    },
+  ],
+
+  'canvas-lms': [
+    {
+      id: 'self-hosted',
+      label: 'Canvas LMS (Self-Hosted)',
+      description: 'Instructure Canvas LMS. Version via /api/v1/accounts (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://canvas.example.com',
+      versionSource: { type: 'github-releases', target: 'instructure/canvas-lms' },
+      latestSource: { type: 'github-releases', target: 'instructure/canvas-lms' },
+      evidenceUrl: 'https://canvas.instructure.com/doc/api/',
+    },
+  ],
+
+  'open-edx': [
+    {
+      id: 'self-hosted',
+      label: 'Open edX (Self-Hosted)',
+      description: 'Open edX online learning platform. Version via /heartbeat (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://openedx.example.com',
+      versionSource: { type: 'github-releases', target: 'openedx/edx-platform' },
+      latestSource: { type: 'github-releases', target: 'openedx/edx-platform' },
+      evidenceUrl: 'https://docs.openedx.org/en/latest/developers/references/api.html',
+    },
+  ],
+
+  'sakai-lms': [
+    {
+      id: 'self-hosted',
+      label: 'Sakai LMS (Self-Hosted)',
+      description: 'Sakai learning management system. Version via /direct/server-info (requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://sakai.example.com',
+      versionSource: { type: 'github-releases', target: 'sakaiproject/sakai' },
+      latestSource: { type: 'github-releases', target: 'sakaiproject/sakai' },
+      evidenceUrl: 'https://www.sakailms.org/learn/developer-resources/',
+    },
+  ],
+
+  'chamilo': [
+    {
+      id: 'self-hosted',
+      label: 'Chamilo LMS (Self-Hosted)',
+      description: 'Chamilo LMS e-learning platform. Version via /api/v2/index.php (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://chamilo.example.com',
+      versionSource: { type: 'github-releases', target: 'chamilo/chamilo-lms' },
+      latestSource: { type: 'github-releases', target: 'chamilo/chamilo-lms' },
+      evidenceUrl: 'https://docs.chamilo.org/developer-documentation/api/',
+    },
+  ],
+
+  'ilias-lms': [
+    {
+      id: 'self-hosted',
+      label: 'ILIAS LMS (Self-Hosted)',
+      description: 'ILIAS open-source LMS. Version via REST API (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://ilias.example.com',
+      versionSource: { type: 'github-releases', target: 'ILIAS-eLearning/ILIAS' },
+      latestSource: { type: 'github-releases', target: 'ILIAS-eLearning/ILIAS' },
+      evidenceUrl: 'https://www.ilias.de/dokumentation/',
+    },
+  ],
+
+  'claroline': [
+    {
+      id: 'self-hosted',
+      label: 'Claroline (Self-Hosted)',
+      description: 'Claroline open-source LMS. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://claroline.example.com',
+      versionSource: { type: 'github-releases', target: 'claroline/Claroline' },
+      latestSource: { type: 'github-releases', target: 'claroline/Claroline' },
+      evidenceUrl: 'https://claroline.github.io/Claroline/',
+    },
+  ],
+
+  'opigno': [
+    {
+      id: 'self-hosted',
+      label: 'Opigno LMS (Self-Hosted)',
+      description: 'Opigno Drupal-based LMS. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://opigno.example.com',
+      versionSource: { type: 'github-releases', target: 'opigno/opigno' },
+      latestSource: { type: 'github-releases', target: 'opigno/opigno' },
+      evidenceUrl: 'https://www.opigno.org/',
+    },
+  ],
+
+  'forma-lms': [
+    {
+      id: 'self-hosted',
+      label: 'Forma LMS (Self-Hosted)',
+      description: 'Forma LMS e-learning platform. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://forma.example.com',
+      versionSource: { type: 'github-releases', target: 'formalms/formalms' },
+      latestSource: { type: 'github-releases', target: 'formalms/formalms' },
+      evidenceUrl: 'https://www.formalms.org/',
+    },
+  ],
+
+  'atutor': [
+    {
+      id: 'self-hosted',
+      label: 'ATutor LMS (Self-Hosted)',
+      description: 'ATutor accessible LMS. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://atutor.example.com',
+      versionSource: { type: 'github-releases', target: 'atutor/atutor' },
+      latestSource: { type: 'github-releases', target: 'atutor/atutor' },
+      evidenceUrl: 'https://atutor.github.io/',
+    },
+  ],
+
+  'orangehrm': [
+    {
+      id: 'self-hosted',
+      label: 'OrangeHRM (Self-Hosted)',
+      description: 'OrangeHRM open-source HR management. Version via /api/v2/system/info (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://orangehrm.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/system/info',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v2/system/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'orangehrm/orangehrm' },
+      evidenceUrl: 'https://orangehrm.github.io/orangehrm-api-doc/',
+    },
+  ],
+
+  'sentrifugo': [
+    {
+      id: 'self-hosted',
+      label: 'Sentrifugo HRMS (Self-Hosted)',
+      description: 'Sentrifugo free HR management system. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://sentrifugo.example.com',
+      versionSource: { type: 'github-releases', target: 'sapplica/sentrifugo' },
+      latestSource: { type: 'github-releases', target: 'sapplica/sentrifugo' },
+      evidenceUrl: 'https://www.sentrifugo.com/',
     },
   ],
 

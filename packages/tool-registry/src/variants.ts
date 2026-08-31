@@ -5495,6 +5495,384 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+  'goaccess': [
+    {
+      id: 'self-hosted',
+      label: 'GoAccess (Self-Hosted)',
+      description: 'GoAccess real-time web log analyzer. Version via its WebSocket stream — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://goaccess.example.com:7890',
+      versionSource: { type: 'github-releases', target: 'allinurl/goaccess' },
+      latestSource: { type: 'github-releases', target: 'allinurl/goaccess' },
+      evidenceUrl: 'https://goaccess.io/man',
+    },
+  ],
+
+  'kestra': [
+    {
+      id: 'self-hosted',
+      label: 'Kestra (Self-Hosted)',
+      description: 'Kestra workflow orchestration. Version via /api/v1/serverInfos (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://kestra.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/serverInfos',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/serverInfos'],
+      },
+      latestSource: { type: 'github-releases', target: 'kestra-io/kestra' },
+      evidenceUrl: 'https://kestra.io/docs/api-reference',
+    },
+  ],
+
+  'huginn': [
+    {
+      id: 'self-hosted',
+      label: 'Huginn (Self-Hosted)',
+      description: 'Huginn automation agent platform. No public HTTP version endpoint — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://huginn.example.com:3000',
+      versionSource: { type: 'github-releases', target: 'huginn/huginn' },
+      latestSource: { type: 'github-releases', target: 'huginn/huginn' },
+      evidenceUrl: 'https://github.com/huginn/huginn',
+    },
+  ],
+
+  'akkoma': [
+    {
+      id: 'self-hosted',
+      label: 'Akkoma (Self-Hosted)',
+      description: 'Akkoma federated social platform (Pleroma fork). Version via /api/v1/instance (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://akkoma.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/instance',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/instance'],
+      },
+      latestSource: { type: 'github-releases', target: 'AkkomaGang/akkoma' },
+      evidenceUrl: 'https://docs.akkoma.dev/stable/development/API/',
+    },
+  ],
+
+  'kbin': [
+    {
+      id: 'self-hosted',
+      label: 'kbin (Self-Hosted)',
+      description: 'kbin federated link aggregator. Version via /api/v2/instance (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://kbin.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/instance',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v2/instance'],
+      },
+      latestSource: { type: 'github-releases', target: 'mbajur/kbin' },
+      evidenceUrl: 'https://kbin.social/api/doc',
+    },
+  ],
+
+  'flarum': [
+    {
+      id: 'self-hosted',
+      label: 'Flarum (Self-Hosted)',
+      description: 'Flarum community forum. Version via /api (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://flarum.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api',
+        jsonPath: '$.data.attributes.coreVersion',
+        jsonPathExtractors: ['data.attributes.coreVersion', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api'],
+      },
+      latestSource: { type: 'github-releases', target: 'flarum/framework' },
+      evidenceUrl: 'https://docs.flarum.org/rest-api/',
+    },
+  ],
+
+  'nodebb': [
+    {
+      id: 'self-hosted',
+      label: 'NodeBB (Self-Hosted)',
+      description: 'NodeBB community forum. Version via /api/config (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://nodebb.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/config',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/config'],
+      },
+      latestSource: { type: 'github-releases', target: 'NodeBB/NodeBB' },
+      evidenceUrl: 'https://docs.nodebb.org/api/',
+    },
+  ],
+
+  'vanilla-forums': [
+    {
+      id: 'self-hosted',
+      label: 'Vanilla Forums (Self-Hosted)',
+      description: 'Vanilla Forums open-source community. Version via /api/v2/discussions (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://vanilla.example.com',
+      versionSource: { type: 'github-releases', target: 'vanilla/vanilla' },
+      latestSource: { type: 'github-releases', target: 'vanilla/vanilla' },
+      evidenceUrl: 'https://success.vanillaforums.com/kb/articles/189-api-v2',
+    },
+  ],
+
+  'cronicle': [
+    {
+      id: 'self-hosted',
+      label: 'Cronicle (Self-Hosted)',
+      description: 'Cronicle task scheduler and runner. Version via /api/app/get_version (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://cronicle.example.com:3012',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/app/get_version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/app/get_version'],
+      },
+      latestSource: { type: 'github-releases', target: 'jhuckaby/Cronicle' },
+      evidenceUrl: 'https://github.com/jhuckaby/Cronicle/blob/master/docs/API.md',
+    },
+  ],
+
+  'shopware': [
+    {
+      id: 'self-hosted',
+      label: 'Shopware (Self-Hosted)',
+      description: 'Shopware e-commerce platform. Version via /api/info (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://shopware.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/info', '/api/v2/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'shopware/shopware' },
+      evidenceUrl: 'https://shopware.stoplight.io/docs/admin-api/',
+    },
+  ],
+
+  'prestashop': [
+    {
+      id: 'self-hosted',
+      label: 'PrestaShop (Self-Hosted)',
+      description: 'PrestaShop e-commerce platform. Version via /api (requires Basic auth with API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://prestashop.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/?schema=details&output_format=JSON',
+        jsonPath: '$.prestashop.prestashop.version',
+        jsonPathExtractors: ['prestashop.prestashop.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/?schema=details&output_format=JSON'],
+      },
+      latestSource: { type: 'github-releases', target: 'PrestaShop/PrestaShop' },
+      evidenceUrl: 'https://devdocs.prestashop-project.org/8/webservice/',
+    },
+  ],
+
+  'medusa': [
+    {
+      id: 'self-hosted',
+      label: 'Medusa (Self-Hosted)',
+      description: 'Medusa open-source e-commerce. Version via /health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://medusa.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/health', '/store/products'],
+      },
+      latestSource: { type: 'github-releases', target: 'medusajs/medusa' },
+      evidenceUrl: 'https://docs.medusajs.com/api/store',
+    },
+  ],
+
+  'saleor': [
+    {
+      id: 'self-hosted',
+      label: 'Saleor (Self-Hosted)',
+      description: 'Saleor headless e-commerce. Version via /api/ GraphQL introspection (no auth required for public fields).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://saleor.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/',
+        jsonPath: '$.data.shop.version',
+        jsonPathExtractors: ['data.shop.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/'],
+      },
+      latestSource: { type: 'github-releases', target: 'saleor/saleor' },
+      evidenceUrl: 'https://docs.saleor.io/api-reference/',
+    },
+  ],
+
+  'bytebase': [
+    {
+      id: 'self-hosted',
+      label: 'Bytebase (Self-Hosted)',
+      description: 'Bytebase database schema change management. Version via /v1/actuator/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://bytebase.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/actuator/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/v1/actuator/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'bytebase/bytebase' },
+      evidenceUrl: 'https://www.bytebase.com/docs/api/overview/',
+    },
+  ],
+
+  'pghero': [
+    {
+      id: 'self-hosted',
+      label: 'PgHero (Self-Hosted)',
+      description: 'PgHero PostgreSQL performance dashboard. No dedicated version HTTP endpoint — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://pghero.example.com',
+      versionSource: { type: 'github-releases', target: 'ankane/pghero' },
+      latestSource: { type: 'github-releases', target: 'ankane/pghero' },
+      evidenceUrl: 'https://github.com/ankane/pghero',
+    },
+  ],
+
+  'healthchecks-io': [
+    {
+      id: 'self-hosted',
+      label: 'Healthchecks.io (Self-Hosted)',
+      description: 'Healthchecks.io cron monitoring (self-hosted edition). Version via /api/v3/status/ (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://healthchecks.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v3/status/',
+        jsonPath: '$.server_version',
+        jsonPathExtractors: ['server_version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v3/status/', '/api/v2/status/'],
+      },
+      latestSource: { type: 'github-releases', target: 'healthchecks/healthchecks' },
+      evidenceUrl: 'https://healthchecks.io/docs/api/',
+    },
+  ],
+
+  'dependency-track': [
+    {
+      id: 'self-hosted',
+      label: 'Dependency-Track (Self-Hosted)',
+      description: 'OWASP Dependency-Track SBOM/SCA platform. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://dependency-track.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'DependencyTrack/dependency-track' },
+      evidenceUrl: 'https://docs.dependencytrack.org/integrations/rest-api/',
+    },
+  ],
+
+  'defectdojo': [
+    {
+      id: 'self-hosted',
+      label: 'DefectDojo (Self-Hosted)',
+      description: 'DefectDojo vulnerability management. Version via /api/v2/system_settings/ (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://defectdojo.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/system_settings/',
+        jsonPath: '$.results[0].system_message',
+        jsonPathExtractors: ['results.0.system_message', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v2/system_settings/'],
+      },
+      latestSource: { type: 'github-releases', target: 'DefectDojo/django-DefectDojo' },
+      evidenceUrl: 'https://defectdojo.github.io/django-DefectDojo/integrations/api-v2-docs/',
+    },
+  ],
+
+  'headlamp': [
+    {
+      id: 'self-hosted',
+      label: 'Headlamp (Self-Hosted)',
+      description: 'Headlamp Kubernetes dashboard. Version via /api/v1 (proxied from Kubernetes API, requires token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://headlamp.example.com:4466',
+      versionSource: { type: 'github-releases', target: 'headlamp-k8s/headlamp' },
+      latestSource: { type: 'github-releases', target: 'headlamp-k8s/headlamp' },
+      evidenceUrl: 'https://headlamp.dev/docs/',
+    },
+  ],
+
+  'skooner': [
+    {
+      id: 'self-hosted',
+      label: 'Skooner (Self-Hosted)',
+      description: 'Skooner (formerly k8dash) Kubernetes dashboard. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://skooner.example.com',
+      versionSource: { type: 'github-releases', target: 'skooner-k8s/skooner' },
+      latestSource: { type: 'github-releases', target: 'skooner-k8s/skooner' },
+      evidenceUrl: 'https://github.com/skooner-k8s/skooner',
+    },
+  ],
+
 };
 
 /**

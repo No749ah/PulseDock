@@ -5,6 +5,8 @@ export interface Me {
   id: string;
   email: string;
   role: "admin" | "user";
+  displayName?: string;
+  timezone?: string;
   mustChangePassword?: boolean;
   totpEnabled?: boolean;
 }

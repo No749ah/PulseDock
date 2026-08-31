@@ -81,9 +81,9 @@ export default function AccountPage() {
         setSessions(sess);
         setApiKeys(keys);
         setInitialEmail(profile.email);
-        const dn = (profile as unknown as { displayName?: string }).displayName ?? "";
+        const dn = profile.displayName ?? "";
         setInitialDisplayName(dn);
-        setInitialTimezone((profile as unknown as { timezone?: string }).timezone ?? "UTC");
+        setInitialTimezone(profile.timezone ?? "UTC");
 
         // Lazy loads
         api<AuditLogEntry[]>("/v1/auth/audit-log", userId).then(setAuditLog).catch(() => {});

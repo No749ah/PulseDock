@@ -9279,7 +9279,7 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     {
       id: 'self-hosted',
       label: 'SuperTokens Core (Self-Hosted)',
-      description: 'SuperTokens open-source auth solution. Version via /hello (no auth required).',
+      description: 'SuperTokens open-source auth solution. Version via /apiversion (no auth required).',
       requiresInstanceUrl: true,
       authRequired: false,
       urlPlaceholder: 'http://supertokens.example.com:3567',
@@ -9293,6 +9293,384 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
       },
       latestSource: { type: 'github-releases', target: 'supertokens/supertokens-core' },
       evidenceUrl: 'https://app.swaggerhub.com/apis/supertokens/CDI',
+    },
+  ],
+
+  'logto-core': [
+    {
+      id: 'self-hosted',
+      label: 'Logto (Self-Hosted)',
+      description: 'Logto identity/auth platform. Version via /api/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://logto.example.com:3001',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'logto-io/logto' },
+      evidenceUrl: 'https://docs.logto.io/integrate-logto/interact-with-management-api/',
+    },
+  ],
+
+  'ory-keto-core': [
+    {
+      id: 'self-hosted',
+      label: 'Ory Keto (Self-Hosted)',
+      description: 'Ory Keto permission server. Version via /version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://keto.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/version', '/health/alive'],
+      },
+      latestSource: { type: 'github-releases', target: 'ory/keto' },
+      evidenceUrl: 'https://www.ory.sh/docs/keto/reference/api',
+    },
+  ],
+
+  'keycloakx-core': [
+    {
+      id: 'self-hosted',
+      label: 'Keycloak X (Self-Hosted)',
+      description: 'Keycloak Quarkus distribution. Version via /realms/master (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://keycloak.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/realms/master',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/realms/master', '/'],
+      },
+      latestSource: { type: 'github-releases', target: 'keycloak/keycloak' },
+      evidenceUrl: 'https://www.keycloak.org/docs/latest/server_admin/',
+    },
+  ],
+
+  'gerrit': [
+    {
+      id: 'self-hosted',
+      label: 'Gerrit (Self-Hosted)',
+      description: 'Gerrit code review system. Version via /config/server/info (no auth required for version info).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://gerrit.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/config/server/version',
+        jsonPath: '$',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/config/server/version', '/config/server/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'GerritCodeReview/gerrit' },
+      evidenceUrl: 'https://gerrit-review.googlesource.com/Documentation/rest-api-config.html',
+    },
+  ],
+
+  'reviewboard': [
+    {
+      id: 'self-hosted',
+      label: 'Review Board (Self-Hosted)',
+      description: 'Review Board code review tool. Version via /api/ root (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://reviewboard.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/',
+        jsonPath: '$.product.version',
+        jsonPathExtractors: ['product.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/'],
+      },
+      latestSource: { type: 'github-releases', target: 'reviewboard/reviewboard' },
+      evidenceUrl: 'https://www.reviewboard.org/docs/codebase/api/',
+    },
+  ],
+
+  'vscode-server': [
+    {
+      id: 'self-hosted',
+      label: 'VS Code Server (Self-Hosted)',
+      description: 'VS Code Server (code-server or openvscode-server). Version via /healthz (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://vscode-server.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/healthz',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/healthz', '/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'gitpod-io/openvscode-server' },
+      evidenceUrl: 'https://coder.com/docs/code-server/latest',
+    },
+  ],
+
+  'rstudio-server': [
+    {
+      id: 'self-hosted',
+      label: 'RStudio Server (Self-Hosted)',
+      description: 'RStudio Server R IDE. Version via /api/server-settings (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://rstudio.example.com:8787',
+      versionSource: { type: 'github-releases', target: 'rstudio/rstudio' },
+      latestSource: { type: 'github-releases', target: 'rstudio/rstudio' },
+      evidenceUrl: 'https://docs.posit.co/rspm/api/',
+    },
+  ],
+
+  'anchore': [
+    {
+      id: 'self-hosted',
+      label: 'Anchore Engine (Self-Hosted)',
+      description: 'Anchore container image security analysis. Version via /version (requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://anchore.example.com:8228',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.service.version',
+        jsonPathExtractors: ['service.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/version', '/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'anchore/anchore-engine' },
+      evidenceUrl: 'https://docs.anchore.com/current/docs/deployment/anchore_api/',
+    },
+  ],
+
+  'elastic-apm': [
+    {
+      id: 'self-hosted',
+      label: 'Elastic APM Server (Self-Hosted)',
+      description: 'Elastic APM Server for application performance monitoring. Version via / (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://apm.example.com:8200',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/', '/healthcheck'],
+      },
+      latestSource: { type: 'github-releases', target: 'elastic/apm-server' },
+      evidenceUrl: 'https://www.elastic.co/guide/en/apm/server/current/api.html',
+    },
+  ],
+
+  'victorialogs': [
+    {
+      id: 'self-hosted',
+      label: 'VictoriaLogs (Self-Hosted)',
+      description: 'VictoriaLogs fast log storage. Version via /api/v1/status/buildinfo (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://victorialogs.example.com:9428',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/status/buildinfo',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/status/buildinfo'],
+      },
+      latestSource: { type: 'github-releases', target: 'VictoriaMetrics/VictoriaMetrics' },
+      evidenceUrl: 'https://docs.victoriametrics.com/victorialogs/',
+    },
+  ],
+
+  'm3db': [
+    {
+      id: 'self-hosted',
+      label: 'M3DB (Self-Hosted)',
+      description: 'M3DB distributed time-series database. Version via /api/v1/services/m3db/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://m3db.example.com:7201',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/services/m3db/status',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/services/m3db/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'm3db/m3' },
+      evidenceUrl: 'https://m3db.io/docs/operational_guide/m3coordinator_config/',
+    },
+  ],
+
+  'skywalking': [
+    {
+      id: 'self-hosted',
+      label: 'Apache SkyWalking (Self-Hosted)',
+      description: 'Apache SkyWalking APM. Version via /api/version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://skywalking.example.com:12800',
+      versionSource: { type: 'github-releases', target: 'apache/skywalking' },
+      latestSource: { type: 'github-releases', target: 'apache/skywalking' },
+      evidenceUrl: 'https://skywalking.apache.org/docs/',
+    },
+  ],
+
+  'pinpoint': [
+    {
+      id: 'self-hosted',
+      label: 'Pinpoint APM (Self-Hosted)',
+      description: 'Pinpoint distributed systems APM. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://pinpoint.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.data.pinpointVersion',
+        jsonPathExtractors: ['data.pinpointVersion', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'pinpoint-apm/pinpoint' },
+      evidenceUrl: 'https://pinpoint-apm.gitbook.io/pinpoint/',
+    },
+  ],
+
+  'glitchtip': [
+    {
+      id: 'self-hosted',
+      label: 'GlitchTip (Self-Hosted)',
+      description: 'GlitchTip open-source error tracking. Version via /api/v1/health/ (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://glitchtip.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/health/'],
+      },
+      latestSource: { type: 'github-releases', target: 'glitchtip/glitchtip' },
+      evidenceUrl: 'https://glitchtip.com/documentation',
+    },
+  ],
+
+  'ossec': [
+    {
+      id: 'self-hosted',
+      label: 'OSSEC (Self-Hosted)',
+      description: 'OSSEC open-source HIDS. Version via /api/version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://ossec.example.com:55000',
+      versionSource: { type: 'github-releases', target: 'ossec/ossec-hids' },
+      latestSource: { type: 'github-releases', target: 'ossec/ossec-hids' },
+      evidenceUrl: 'https://www.ossec.net/docs/',
+    },
+  ],
+
+  'alienvault-ossim': [
+    {
+      id: 'self-hosted',
+      label: 'AlienVault OSSIM (Self-Hosted)',
+      description: 'AlienVault OSSIM open-source SIEM. Version via /ossim/conf/ (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://ossim.example.com',
+      versionSource: { type: 'github-releases', target: 'AlienVault/OSSIM' },
+      latestSource: { type: 'github-releases', target: 'AlienVault/OSSIM' },
+      evidenceUrl: 'https://cybersecurity.att.com/products/ossim',
+    },
+  ],
+
+  'panther-siem': [
+    {
+      id: 'self-hosted',
+      label: 'Panther SIEM (Self-Hosted)',
+      description: 'Panther cloud-native SIEM. Version via /health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://panther.example.com',
+      versionSource: { type: 'github-releases', target: 'panther-labs/panther' },
+      latestSource: { type: 'github-releases', target: 'panther-labs/panther' },
+      evidenceUrl: 'https://docs.panther.com/',
+    },
+  ],
+
+  'elastic-siem': [
+    {
+      id: 'self-hosted',
+      label: 'Elastic SIEM (Self-Hosted)',
+      description: 'Elastic Security SIEM (self-hosted). Version via /api/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://elastic-siem.example.com:5601',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/status',
+        jsonPath: '$.version.number',
+        jsonPathExtractors: ['version.number', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'elastic/kibana' },
+      evidenceUrl: 'https://www.elastic.co/guide/en/kibana/current/api.html',
+    },
+  ],
+
+  'ibm-qradar': [
+    {
+      id: 'self-hosted',
+      label: 'IBM QRadar (Self-Hosted)',
+      description: 'IBM QRadar SIEM. Version via /api/version (requires auth token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://qradar.example.com',
+      versionSource: { type: 'github-releases', target: 'IBM/qradar-sample-apps' },
+      latestSource: { type: 'github-releases', target: 'IBM/qradar-sample-apps' },
+      evidenceUrl: 'https://www.ibm.com/docs/en/qradar-siem',
+    },
+  ],
+
+  'greenbone': [
+    {
+      id: 'community',
+      label: 'Greenbone Community Edition (Self-Hosted)',
+      description: 'Greenbone OpenVAS vulnerability scanner CE. Version via /api/v1/health (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://greenbone.example.com:9392',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health',
+        jsonPath: '$.gvmd.version',
+        jsonPathExtractors: ['gvmd.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'greenbone/openvas-scanner' },
+      evidenceUrl: 'https://greenbone.github.io/docs/',
     },
   ],
 

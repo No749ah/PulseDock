@@ -1,3 +1,12 @@
+## Status Summary (2026-08-31 15:40 UTC)
+- **Build/Test/Audit:** ✅ Build passes. Web: 5698 tests pass (257 files). API: 5301 tests (239 files, +35 from new provider coverage). TypeScript clean x2. 0 npm vulnerabilities.
+- **Deployment:** ⚠️ Docker/dind unavailable in sandbox — infrastructure issue, not code. Services offline locally.
+- **Branch:** heartbeat/2026-08-31-noon (rotated from heartbeat/2026-08-11-boot at 12:00 UTC)
+- **Changes (15:40 UTC):**
+  - [x] **fix(test): reliability-trend mixed-fleet spec day-of-week agnostic** — `monitors.reliability.spec.ts` failed on Mondays because the calendar-week bucket starts today; added `makeDate(0)` runs so two distinct week buckets always exist.
+  - [x] **test(api): full coverage for 8 untested version-check providers** — added 35 unit tests for `nuget`, `rubygems`/`gem`, `go`/`golang`/`gomod`, `forgejo`, `gitea` providers in `version-detection.service.spec.ts`; covers happy paths, aliases, error cases, prefix stripping, host defaults, and auth header injection.
+  - [x] **feat(registry): add variants for 18 core tools (530 → 548)** — databases: postgresql, mysql, mariadb, redis, mongodb, clickhouse (APT/Docker/cloud editions); observability: alertmanager, loki, jaeger, zabbix, graylog (instance-URL JSON endpoints); security: bitwarden, crowdsec, wazuh; infrastructure: podman, nomad, k0s, drone-ci.
+
 ## Status Summary (2026-08-31 10:15 UTC)
 - **Build/Test/Audit:** ✅ Build passes. Web: 5698 tests pass (257 files, +11 from new specs). API TypeScript clean. Web TypeScript clean. 0 npm vulnerabilities.
 - **Deployment:** ⚠️ Web server running locally (port 1234). Public URL returning 502 — Docker/dind unavailable in sandbox (no API), infrastructure issue not a code issue.

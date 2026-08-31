@@ -305,6 +305,7 @@ describe('AuthService', () => {
       const result = await svc.login('test@example.com', 'ValidPass1!');
       expect(result).toHaveProperty('accessToken');
       expect(result).toHaveProperty('refreshToken');
+      if ('requires2fa' in result) throw new Error('Expected full auth result, got 2FA prompt');
       expect(result.user).toHaveProperty('id');
       expect(result.user).toHaveProperty('email');
       expect(result.user).toHaveProperty('role');

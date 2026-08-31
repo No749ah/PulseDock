@@ -108,6 +108,9 @@ export class AuthController {
       userAgent: req.headers['user-agent'] ?? null,
       ipAddress: req.ip ?? null,
     });
+    if ('requires2fa' in result) {
+      return result;
+    }
     setAuthCookies(res, result.accessToken, result.refreshToken, req);
     return { ...result, user: { id: user.id, email: user.email, role: user.role, mustChangePassword: false } };
   }
@@ -135,6 +138,9 @@ export class AuthController {
       userAgent: req.headers['user-agent'] ?? null,
       ipAddress: req.ip ?? null,
     });
+    if ('requires2fa' in result) {
+      return result;
+    }
     setAuthCookies(res, result.accessToken, result.refreshToken, req);
     return result;
   }

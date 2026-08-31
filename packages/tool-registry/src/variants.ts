@@ -10402,6 +10402,370 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+  'sealed-secrets': [
+    {
+      id: 'self-hosted',
+      label: 'Sealed Secrets (Self-Hosted)',
+      description: 'Bitnami Sealed Secrets Kubernetes controller. Version via /v1/secret (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://sealed-secrets.example.com:8080',
+      versionSource: { type: 'github-releases', target: 'bitnami-labs/sealed-secrets' },
+      latestSource: { type: 'github-releases', target: 'bitnami-labs/sealed-secrets' },
+      evidenceUrl: 'https://github.com/bitnami-labs/sealed-secrets',
+    },
+  ],
+
+  'prometheus-alertmanager': [
+    {
+      id: 'self-hosted',
+      label: 'Prometheus Alertmanager (Self-Hosted)',
+      description: 'Prometheus Alertmanager. Version via /api/v2/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://alertmanager.example.com:9093',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/status',
+        jsonPath: '$.versionInfo.version',
+        jsonPathExtractors: ['versionInfo.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v2/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'prometheus/alertmanager' },
+      evidenceUrl: 'https://prometheus.io/docs/alerting/latest/alertmanager/',
+    },
+  ],
+
+  'grafana-oncall': [
+    {
+      id: 'self-hosted',
+      label: 'Grafana OnCall (Self-Hosted)',
+      description: 'Grafana OnCall on-call management. Version via /api/v1/info (requires API token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://oncall.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'grafana/oncall' },
+      evidenceUrl: 'https://grafana.com/docs/oncall/latest/',
+    },
+  ],
+
+  'cachet': [
+    {
+      id: 'self-hosted',
+      label: 'Cachet (Self-Hosted)',
+      description: 'Cachet open-source status page. Version via /api/v1/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://cachet.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.data.tag',
+        jsonPathExtractors: ['data.tag', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'CachetHQ/Cachet' },
+      evidenceUrl: 'https://docs.cachethq.io/',
+    },
+  ],
+
+  'uptrace': [
+    {
+      id: 'self-hosted',
+      label: 'Uptrace (Self-Hosted)',
+      description: 'Uptrace open-source APM with OpenTelemetry. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://uptrace.example.com:14318',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'uptrace/uptrace' },
+      evidenceUrl: 'https://uptrace.dev/docs/',
+    },
+  ],
+
+  'nagios-xi': [
+    {
+      id: 'self-hosted',
+      label: 'Nagios XI (Self-Hosted)',
+      description: 'Nagios XI enterprise monitoring. Version via /nagiosxi/api/v1/system/info (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://nagios.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/nagiosxi/api/v1/system/info',
+        jsonPath: '$.xi_version',
+        jsonPathExtractors: ['xi_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/nagiosxi/api/v1/system/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'nagios/nagiosxi' },
+      evidenceUrl: 'https://support.nagios.com/kb/article/nagios-xi-api-how-to-use-the-nagios-xi-api-274.html',
+    },
+  ],
+
+  'prtg': [
+    {
+      id: 'self-hosted',
+      label: 'PRTG Network Monitor (Self-Hosted)',
+      description: 'Paessler PRTG network monitoring. Version via /api/info.xml (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://prtg.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/info.json',
+        jsonPath: '$.prtgversion',
+        jsonPathExtractors: ['prtgversion', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/info.json'],
+      },
+      latestSource: { type: 'github-releases', target: 'paessler/prtg' },
+      evidenceUrl: 'https://www.paessler.com/manuals/prtg/http_api',
+    },
+  ],
+
+  'statsd': [
+    {
+      id: 'self-hosted',
+      label: 'StatsD (Self-Hosted)',
+      description: 'StatsD metrics aggregation daemon. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://statsd.example.com:8126',
+      versionSource: { type: 'github-releases', target: 'statsd/statsd' },
+      latestSource: { type: 'github-releases', target: 'statsd/statsd' },
+      evidenceUrl: 'https://github.com/statsd/statsd',
+    },
+  ],
+
+  'dynamodb-local': [
+    {
+      id: 'self-hosted',
+      label: 'DynamoDB Local (Self-Hosted)',
+      description: 'Amazon DynamoDB Local for development. No HTTP version API — tracks GitHub/release pages.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://dynamodb-local.example.com:8000',
+      versionSource: { type: 'github-releases', target: 'aws-samples/aws-dynamodb-examples' },
+      latestSource: { type: 'github-releases', target: 'aws-samples/aws-dynamodb-examples' },
+      evidenceUrl: 'https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html',
+    },
+  ],
+
+  'daytona': [
+    {
+      id: 'self-hosted',
+      label: 'Daytona (Self-Hosted)',
+      description: 'Daytona dev environment manager. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://daytona.example.com:3986',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'daytonaio/daytona' },
+      evidenceUrl: 'https://www.daytona.io/docs/',
+    },
+  ],
+
+  'turborepo-remote-cache': [
+    {
+      id: 'self-hosted',
+      label: 'Turborepo Remote Cache (Self-Hosted)',
+      description: 'Turborepo remote caching server. Version via /v8/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://turborepo-cache.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v8/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/v8/health', '/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'ducktors/turborepo-remote-cache' },
+      evidenceUrl: 'https://github.com/ducktors/turborepo-remote-cache',
+    },
+  ],
+
+  'unifi-controller': [
+    {
+      id: 'self-hosted',
+      label: 'UniFi Controller (Self-Hosted)',
+      description: 'Ubiquiti UniFi Network Controller. Version via /api/v2/system/version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://unifi.example.com:8443',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/system/version',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v2/system/version', '/api/stat/sysinfo'],
+      },
+      latestSource: { type: 'github-releases', target: 'nicehash/NiceHashQuickMiner' },
+      evidenceUrl: 'https://ubntwiki.com/products/software/unifi-controller/api',
+    },
+  ],
+
+  'ntopng': [
+    {
+      id: 'self-hosted',
+      label: 'ntopng (Self-Hosted)',
+      description: 'ntopng network traffic analyzer. Version via /lua/rest/v2/get/ntopng/info.lua (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://ntopng.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/lua/rest/v2/get/ntopng/info.lua',
+        jsonPath: '$.rsp.version',
+        jsonPathExtractors: ['rsp.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/lua/rest/v2/get/ntopng/info.lua'],
+      },
+      latestSource: { type: 'github-releases', target: 'ntop/ntopng' },
+      evidenceUrl: 'https://www.ntop.org/products/traffic-analysis/ntop/',
+    },
+  ],
+
+  'logrhythm': [
+    {
+      id: 'self-hosted',
+      label: 'LogRhythm SIEM (Self-Hosted)',
+      description: 'LogRhythm SIEM platform. Version via REST API (requires auth token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://logrhythm.example.com',
+      versionSource: { type: 'github-releases', target: 'LogRhythm/API-Science' },
+      latestSource: { type: 'github-releases', target: 'LogRhythm/API-Science' },
+      evidenceUrl: 'https://docs.logrhythm.com/lrsiem/',
+    },
+  ],
+
+  'rapid7-nexpose': [
+    {
+      id: 'self-hosted',
+      label: 'Rapid7 Nexpose (Self-Hosted)',
+      description: 'Rapid7 Nexpose vulnerability scanner. Version via /api/3/administration/settings (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://nexpose.example.com:3780',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/3/administration/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/3/administration/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'rapid7/nexpose-client-python' },
+      evidenceUrl: 'https://help.rapid7.com/insightvm/en-us/api/index.html',
+    },
+  ],
+
+  'tenable-sc': [
+    {
+      id: 'self-hosted',
+      label: 'Tenable.sc (Self-Hosted)',
+      description: 'Tenable Security Center vulnerability management. Version via /rest/system (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://tenable-sc.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/rest/system',
+        jsonPath: '$.response.version',
+        jsonPathExtractors: ['response.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/rest/system'],
+      },
+      latestSource: { type: 'github-releases', target: 'tenable/pyTenable' },
+      evidenceUrl: 'https://docs.tenable.com/tenablesc/api/',
+    },
+  ],
+
+  'netflow-analyzer': [
+    {
+      id: 'self-hosted',
+      label: 'ManageEngine NetFlow Analyzer (Self-Hosted)',
+      description: 'NetFlow Analyzer network traffic analysis. Version via /api/json/v3/dashboard (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://netflow.example.com:8080',
+      versionSource: { type: 'github-releases', target: 'ManageEngine/NetFlowAnalyzer' },
+      latestSource: { type: 'github-releases', target: 'ManageEngine/NetFlowAnalyzer' },
+      evidenceUrl: 'https://www.manageengine.com/products/netflow/restapi.html',
+    },
+  ],
+
+  'ibm-db2': [
+    {
+      id: 'self-hosted',
+      label: 'IBM Db2 (Self-Hosted)',
+      description: 'IBM Db2 relational database. Version via Db2 REST services (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://db2.example.com:50050',
+      versionSource: { type: 'github-releases', target: 'ibmdb/node-ibm_db' },
+      latestSource: { type: 'github-releases', target: 'ibmdb/node-ibm_db' },
+      evidenceUrl: 'https://www.ibm.com/docs/en/db2/latest?topic=interfaces-db2-rest-services',
+    },
+  ],
+
+  'sap-hana': [
+    {
+      id: 'self-hosted',
+      label: 'SAP HANA (Self-Hosted)',
+      description: 'SAP HANA in-memory database. Version via OData service (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://hana.example.com:8090',
+      versionSource: { type: 'github-releases', target: 'SAP/node-hdb' },
+      latestSource: { type: 'github-releases', target: 'SAP/node-hdb' },
+      evidenceUrl: 'https://help.sap.com/docs/SAP_HANA_PLATFORM',
+    },
+  ],
+
+  'oracle-db': [
+    {
+      id: 'self-hosted',
+      label: 'Oracle Database (Self-Hosted)',
+      description: 'Oracle Database relational DBMS. Version via ORDS or Enterprise Manager (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://oracle.example.com:1521',
+      versionSource: { type: 'github-releases', target: 'oracle/docker-images' },
+      latestSource: { type: 'github-releases', target: 'oracle/docker-images' },
+      evidenceUrl: 'https://docs.oracle.com/en/database/',
+    },
+  ],
+
 };
 
 /**

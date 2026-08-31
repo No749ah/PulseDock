@@ -8925,6 +8925,377 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+  'icehrm': [
+    {
+      id: 'self-hosted',
+      label: 'IceHrm (Self-Hosted)',
+      description: 'IceHrm open-source HR management. Version via /app/service.php (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://icehrm.example.com',
+      versionSource: { type: 'github-releases', target: 'gamonoid/icehrm' },
+      latestSource: { type: 'github-releases', target: 'gamonoid/icehrm' },
+      evidenceUrl: 'https://icehrm.com/docs/',
+    },
+  ],
+
+  'openhrms': [
+    {
+      id: 'self-hosted',
+      label: 'OpenHRMS (Self-Hosted)',
+      description: 'OpenHRMS Odoo-based HR management. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://openhrms.example.com',
+      versionSource: { type: 'github-releases', target: 'CybroOdoo/OpenHRMS' },
+      latestSource: { type: 'github-releases', target: 'CybroOdoo/OpenHRMS' },
+      evidenceUrl: 'https://github.com/CybroOdoo/OpenHRMS',
+    },
+  ],
+
+  'erpnext-hr': [
+    {
+      id: 'self-hosted',
+      label: 'ERPNext HR (Self-Hosted)',
+      description: 'ERPNext HR module. Version via /api/method/frappe.utils.change_log.get_change_log (requires session auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://erpnext.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/method/frappe.client.get_value',
+        jsonPath: '$.message.app_version',
+        jsonPathExtractors: ['message.app_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/method/frappe.client.get_value'],
+      },
+      latestSource: { type: 'github-releases', target: 'frappe/erpnext' },
+      evidenceUrl: 'https://docs.erpnext.com/docs/en/api',
+    },
+  ],
+
+  'zitadel-core': [
+    {
+      id: 'self-hosted',
+      label: 'ZITADEL (Self-Hosted)',
+      description: 'ZITADEL identity provider. Version via /debug/healthz (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://zitadel.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/debug/healthz',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/debug/healthz', '/debug/ready'],
+      },
+      latestSource: { type: 'github-releases', target: 'zitadel/zitadel' },
+      evidenceUrl: 'https://zitadel.com/docs/apis/introduction',
+    },
+  ],
+
+  'authentik-core': [
+    {
+      id: 'self-hosted',
+      label: 'Authentik Core (Self-Hosted)',
+      description: 'Authentik identity provider. Version via /api/v3/core/version/ (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://authentik.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v3/core/version/',
+        jsonPath: '$.version_current',
+        jsonPathExtractors: ['version_current', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v3/core/version/'],
+      },
+      latestSource: { type: 'github-releases', target: 'goauthentik/authentik' },
+      evidenceUrl: 'https://docs.goauthentik.io/developer-docs/api/',
+    },
+  ],
+
+  'casdoor-core': [
+    {
+      id: 'self-hosted',
+      label: 'Casdoor (Self-Hosted)',
+      description: 'Casdoor SSO identity server. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://casdoor.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'casdoor/casdoor' },
+      evidenceUrl: 'https://casdoor.org/docs/developer-guide/restful-api/',
+    },
+  ],
+
+  'kanidm-core': [
+    {
+      id: 'self-hosted',
+      label: 'Kanidm Core (Self-Hosted)',
+      description: 'Kanidm identity management core. Version via /v1/debug/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://kanidm.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/debug/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/v1/debug/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'kanidm/kanidm' },
+      evidenceUrl: 'https://kanidm.github.io/kanidm/master/apis.html',
+    },
+  ],
+
+  'lldap-core': [
+    {
+      id: 'self-hosted',
+      label: 'lldap (Self-Hosted)',
+      description: 'lldap lightweight LDAP server. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://lldap.example.com:3890',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'lldap/lldap' },
+      evidenceUrl: 'https://github.com/lldap/lldap',
+    },
+  ],
+
+  'authelia-core': [
+    {
+      id: 'self-hosted',
+      label: 'Authelia (Self-Hosted)',
+      description: 'Authelia SSO/MFA authentication server. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://authelia.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health', '/api/state'],
+      },
+      latestSource: { type: 'github-releases', target: 'authelia/authelia' },
+      evidenceUrl: 'https://www.authelia.com/reference/guides/introduction/',
+    },
+  ],
+
+  'ory-hydra-core': [
+    {
+      id: 'self-hosted',
+      label: 'Ory Hydra Core (Self-Hosted)',
+      description: 'Ory Hydra OAuth2/OIDC server. Version via /version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://hydra.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/version', '/health/alive'],
+      },
+      latestSource: { type: 'github-releases', target: 'ory/hydra' },
+      evidenceUrl: 'https://www.ory.sh/docs/hydra/reference/api',
+    },
+  ],
+
+  'ory-kratos-core': [
+    {
+      id: 'self-hosted',
+      label: 'Ory Kratos Core (Self-Hosted)',
+      description: 'Ory Kratos identity server. Version via /version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://kratos.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'ory/kratos' },
+      evidenceUrl: 'https://www.ory.sh/docs/kratos/reference/api',
+    },
+  ],
+
+  'ory-oathkeeper-core': [
+    {
+      id: 'self-hosted',
+      label: 'Ory Oathkeeper (Self-Hosted)',
+      description: 'Ory Oathkeeper identity & access proxy. Version via /version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://oathkeeper.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/version', '/health/alive'],
+      },
+      latestSource: { type: 'github-releases', target: 'ory/oathkeeper' },
+      evidenceUrl: 'https://www.ory.sh/docs/oathkeeper/reference/api',
+    },
+  ],
+
+  'dex-core': [
+    {
+      id: 'self-hosted',
+      label: 'Dex IdP (Self-Hosted)',
+      description: 'Dex federated OpenID Connect provider. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://dex.example.com',
+      versionSource: { type: 'github-releases', target: 'dexidp/dex' },
+      latestSource: { type: 'github-releases', target: 'dexidp/dex' },
+      evidenceUrl: 'https://dexidp.io/docs/',
+    },
+  ],
+
+  'vouch-proxy-core': [
+    {
+      id: 'self-hosted',
+      label: 'Vouch Proxy (Self-Hosted)',
+      description: 'Vouch Proxy SSO authentication proxy. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://vouch.example.com',
+      versionSource: { type: 'github-releases', target: 'vouch/vouch-proxy' },
+      latestSource: { type: 'github-releases', target: 'vouch/vouch-proxy' },
+      evidenceUrl: 'https://github.com/vouch/vouch-proxy',
+    },
+  ],
+
+  'pomerium-core': [
+    {
+      id: 'self-hosted',
+      label: 'Pomerium (Self-Hosted)',
+      description: 'Pomerium identity-aware access proxy. Version via /.pomerium/api/v1/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://pomerium.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/.pomerium/api/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/.pomerium/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'pomerium/pomerium' },
+      evidenceUrl: 'https://www.pomerium.com/docs/reference/api',
+    },
+  ],
+
+  'oauth2-proxy-core': [
+    {
+      id: 'self-hosted',
+      label: 'OAuth2 Proxy (Self-Hosted)',
+      description: 'OAuth2 Proxy reverse proxy authentication. Version via /ping (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://oauth2-proxy.example.com',
+      versionSource: { type: 'github-releases', target: 'oauth2-proxy/oauth2-proxy' },
+      latestSource: { type: 'github-releases', target: 'oauth2-proxy/oauth2-proxy' },
+      evidenceUrl: 'https://oauth2-proxy.github.io/oauth2-proxy/docs/',
+    },
+  ],
+
+  'glauth-core': [
+    {
+      id: 'self-hosted',
+      label: 'GLAuth (Self-Hosted)',
+      description: 'GLAuth simplified LDAP server. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://glauth.example.com:5555',
+      versionSource: { type: 'github-releases', target: 'glauth/glauth' },
+      latestSource: { type: 'github-releases', target: 'glauth/glauth' },
+      evidenceUrl: 'https://glauth.github.io/',
+    },
+  ],
+
+  'lemonldap-core': [
+    {
+      id: 'self-hosted',
+      label: 'LemonLDAP::NG (Self-Hosted)',
+      description: 'LemonLDAP::NG SSO/IAM solution. Version via /manager.psgi/sessions/global (requires admin auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://sso.example.com',
+      versionSource: { type: 'github-releases', target: 'LemonLDAPNG/lemonldap-ng' },
+      latestSource: { type: 'github-releases', target: 'LemonLDAPNG/lemonldap-ng' },
+      evidenceUrl: 'https://lemonldap-ng.org/documentation/',
+    },
+  ],
+
+  'privacyidea-core': [
+    {
+      id: 'self-hosted',
+      label: 'privacyIDEA (Self-Hosted)',
+      description: 'privacyIDEA MFA/token management server. Version via /version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://privacyidea.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.result.value',
+        jsonPathExtractors: ['result.value', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/version', '/healthcheck'],
+      },
+      latestSource: { type: 'github-releases', target: 'privacyidea/privacyidea' },
+      evidenceUrl: 'https://privacyidea.readthedocs.io/en/latest/installation/index.html',
+    },
+  ],
+
+  'supertokens-core': [
+    {
+      id: 'self-hosted',
+      label: 'SuperTokens Core (Self-Hosted)',
+      description: 'SuperTokens open-source auth solution. Version via /hello (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://supertokens.example.com:3567',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/apiversion',
+        jsonPath: '$.versions[0]',
+        jsonPathExtractors: ['versions.0', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/apiversion', '/hello'],
+      },
+      latestSource: { type: 'github-releases', target: 'supertokens/supertokens-core' },
+      evidenceUrl: 'https://app.swaggerhub.com/apis/supertokens/CDI',
+    },
+  ],
+
 };
 
 /**

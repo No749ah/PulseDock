@@ -11522,6 +11522,413 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Databases
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'postgresql': [
+    {
+      id: 'self-hosted',
+      label: 'PostgreSQL (Self-Hosted / APT)',
+      description: 'PostgreSQL installed from apt. Version detected via apt-cache policy postgresql.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'apt-release', target: 'postgresql' },
+      latestSource: { type: 'github-releases', target: 'postgres/postgres' },
+      evidenceUrl: 'https://apt.postgresql.org/',
+    },
+    {
+      id: 'docker',
+      label: 'PostgreSQL (Docker / docker.io/postgres)',
+      description: 'Official Docker Hub postgres image. Tracks latest tag for version.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'library/postgres' },
+      latestSource: { type: 'github-releases', target: 'postgres/postgres' },
+      evidenceUrl: 'https://hub.docker.com/_/postgres',
+    },
+  ],
+
+  'mysql': [
+    {
+      id: 'community',
+      label: 'MySQL Community (APT / Self-Hosted)',
+      description: 'MySQL Community Edition installed from APT. Version via apt-cache.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'apt-release', target: 'mysql-server' },
+      latestSource: { type: 'github-releases', target: 'mysql/mysql-server' },
+      evidenceUrl: 'https://dev.mysql.com/downloads/mysql/',
+    },
+    {
+      id: 'docker',
+      label: 'MySQL (Docker / docker.io/mysql)',
+      description: 'Official Docker Hub MySQL image.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'library/mysql' },
+      latestSource: { type: 'github-releases', target: 'mysql/mysql-server' },
+      evidenceUrl: 'https://hub.docker.com/_/mysql',
+    },
+  ],
+
+  'mariadb': [
+    {
+      id: 'self-hosted',
+      label: 'MariaDB (APT / Self-Hosted)',
+      description: 'MariaDB installed from APT package manager.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'apt-release', target: 'mariadb-server' },
+      latestSource: { type: 'github-releases', target: 'MariaDB/server' },
+      evidenceUrl: 'https://mariadb.com/downloads/',
+    },
+    {
+      id: 'docker',
+      label: 'MariaDB (Docker / docker.io/mariadb)',
+      description: 'Official Docker Hub MariaDB image.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'library/mariadb' },
+      latestSource: { type: 'github-releases', target: 'MariaDB/server' },
+      evidenceUrl: 'https://hub.docker.com/_/mariadb',
+    },
+  ],
+
+  'redis': [
+    {
+      id: 'oss',
+      label: 'Redis OSS (APT / Self-Hosted)',
+      description: 'Redis open-source. Version detected via apt-cache or docker image tag.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'apt-release', target: 'redis-server' },
+      latestSource: { type: 'github-releases', target: 'redis/redis' },
+      evidenceUrl: 'https://redis.io/downloads/',
+    },
+    {
+      id: 'docker',
+      label: 'Redis (Docker / docker.io/redis)',
+      description: 'Official Docker Hub Redis image.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'library/redis' },
+      latestSource: { type: 'github-releases', target: 'redis/redis' },
+      evidenceUrl: 'https://hub.docker.com/_/redis',
+    },
+  ],
+
+  'mongodb': [
+    {
+      id: 'community',
+      label: 'MongoDB Community (Self-Hosted)',
+      description: 'MongoDB Community Edition. Version via Docker Hub image tag.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'library/mongo' },
+      latestSource: { type: 'github-releases', target: 'mongodb/mongo' },
+      evidenceUrl: 'https://www.mongodb.com/try/download/community',
+    },
+    {
+      id: 'atlas',
+      label: 'MongoDB Atlas (Cloud)',
+      description: 'MongoDB Atlas managed cloud service. Tracks server version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'mongodb/mongo' },
+      latestSource: { type: 'github-releases', target: 'mongodb/mongo' },
+      evidenceUrl: 'https://www.mongodb.com/cloud/atlas',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Observability / Monitoring
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'alertmanager': [
+    {
+      id: 'self-hosted',
+      label: 'Alertmanager (Self-Hosted)',
+      description: 'Prometheus Alertmanager. Version via /-/status JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://alertmanager.example.com:9093',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/-/status',
+        jsonPath: '$.versionInfo.version',
+        jsonPathExtractors: ['versionInfo.version', 'version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'prometheus/alertmanager' },
+      evidenceUrl: 'https://prometheus.io/docs/alerting/latest/alertmanager/',
+    },
+  ],
+
+  'loki': [
+    {
+      id: 'self-hosted',
+      label: 'Grafana Loki (Self-Hosted)',
+      description: 'Grafana Loki log aggregation. Version via /loki/api/v1/status/buildinfo.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://loki.example.com:3100',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/loki/api/v1/status/buildinfo',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'grafana/loki' },
+      evidenceUrl: 'https://grafana.com/docs/loki/latest/reference/api/#get-lokiapiv1statusbuildinfo',
+    },
+  ],
+
+  'jaeger': [
+    {
+      id: 'self-hosted',
+      label: 'Jaeger (Self-Hosted)',
+      description: 'Jaeger distributed tracing. Version via /metrics Prometheus exposition or GitHub release.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'jaegertracing/jaeger' },
+      latestSource: { type: 'github-releases', target: 'jaegertracing/jaeger' },
+      evidenceUrl: 'https://www.jaegertracing.io/docs/latest/deployment/',
+    },
+  ],
+
+  'zabbix': [
+    {
+      id: 'self-hosted',
+      label: 'Zabbix (Self-Hosted)',
+      description: 'Zabbix monitoring server. Version via Zabbix API jsonrpc endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://zabbix.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api_jsonrpc.php',
+        jsonPath: '$.result',
+        jsonPathExtractors: ['result'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'zabbix/zabbix' },
+      evidenceUrl: 'https://www.zabbix.com/documentation/current/en/manual/api',
+    },
+  ],
+
+  'graylog': [
+    {
+      id: 'self-hosted',
+      label: 'Graylog (Self-Hosted)',
+      description: 'Graylog log management platform. Version via /api/system endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://graylog.example.com:9000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/system',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+      },
+      latestSource: { type: 'github-releases', target: 'Graylog2/graylog2-server' },
+      evidenceUrl: 'https://go2docs.graylog.org/current/setting_up_graylog/rest_api.html',
+    },
+    {
+      id: 'cloud',
+      label: 'Graylog Cloud',
+      description: 'Graylog managed cloud service. Tracks release version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Graylog2/graylog2-server' },
+      latestSource: { type: 'github-releases', target: 'Graylog2/graylog2-server' },
+      evidenceUrl: 'https://graylog.org/products/cloud/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Security
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'bitwarden': [
+    {
+      id: 'self-hosted',
+      label: 'Bitwarden Server (Self-Hosted)',
+      description: 'Bitwarden open-source server. Deployed via Docker. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'bitwarden/server' },
+      latestSource: { type: 'github-releases', target: 'bitwarden/server' },
+      evidenceUrl: 'https://bitwarden.com/help/install-on-premise-linux/',
+    },
+    {
+      id: 'cloud',
+      label: 'Bitwarden Cloud (SaaS)',
+      description: 'Bitwarden SaaS service at bitwarden.com. Tracks server release from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'bitwarden/server' },
+      latestSource: { type: 'github-releases', target: 'bitwarden/server' },
+      evidenceUrl: 'https://bitwarden.com',
+    },
+  ],
+
+  'crowdsec': [
+    {
+      id: 'self-hosted',
+      label: 'CrowdSec (Self-Hosted)',
+      description: 'CrowdSec collaborative security engine. Version via /v1/version API.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://localhost:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'crowdsecurity/crowdsec' },
+      evidenceUrl: 'https://docs.crowdsec.net/docs/local_api/intro/',
+    },
+  ],
+
+  'wazuh': [
+    {
+      id: 'self-hosted',
+      label: 'Wazuh (Self-Hosted)',
+      description: 'Wazuh SIEM/XDR platform. Version via Wazuh API /version endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://wazuh.example.com:55000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.data.api_version',
+        jsonPathExtractors: ['data.api_version', 'version'],
+        authRequired: true,
+      },
+      latestSource: { type: 'github-releases', target: 'wazuh/wazuh' },
+      evidenceUrl: 'https://documentation.wazuh.com/current/user-manual/api/reference.html',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Container / Infrastructure
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'podman': [
+    {
+      id: 'self-hosted',
+      label: 'Podman (Local / Self-Hosted)',
+      description: 'Daemonless container engine. Version detected from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'containers/podman' },
+      latestSource: { type: 'github-releases', target: 'containers/podman' },
+      evidenceUrl: 'https://github.com/containers/podman/releases',
+    },
+  ],
+
+  'nomad': [
+    {
+      id: 'self-hosted',
+      label: 'HashiCorp Nomad (Self-Hosted)',
+      description: 'Nomad workload orchestrator. Deployed version via Nomad Agent API.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://nomad.example.com:4646',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/agent/self',
+        jsonPath: '$.member.Tags.build',
+        jsonPathExtractors: ['member.Tags.build', 'config.Version.Version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'hashicorp/nomad' },
+      evidenceUrl: 'https://developer.hashicorp.com/nomad/api-docs/agent',
+    },
+    {
+      id: 'hcp',
+      label: 'HCP Nomad (HashiCorp Cloud Platform)',
+      description: 'Managed Nomad on HashiCorp Cloud Platform.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hashicorp/nomad' },
+      latestSource: { type: 'github-releases', target: 'hashicorp/nomad' },
+      evidenceUrl: 'https://developer.hashicorp.com/hcp/docs/nomad',
+    },
+  ],
+
+  'k0s': [
+    {
+      id: 'self-hosted',
+      label: 'k0s (Self-Hosted Kubernetes)',
+      description: 'Zero-friction Kubernetes distribution. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'k0sproject/k0s' },
+      latestSource: { type: 'github-releases', target: 'k0sproject/k0s' },
+      evidenceUrl: 'https://docs.k0sproject.io/stable/',
+    },
+  ],
+
+  'drone-ci': [
+    {
+      id: 'self-hosted',
+      label: 'Drone CI (Self-Hosted)',
+      description: 'Drone CI server. Version via /version JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://drone.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version', 'source'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'harness/drone' },
+      evidenceUrl: 'https://docs.drone.io/server/reference/',
+    },
+    {
+      id: 'cloud',
+      label: 'Drone CI Cloud (drone.io)',
+      description: 'Drone CI hosted at drone.io. Tracks release version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'harness/drone' },
+      latestSource: { type: 'github-releases', target: 'harness/drone' },
+      evidenceUrl: 'https://drone.io',
+    },
+  ],
+
+  'clickhouse': [
+    {
+      id: 'self-hosted',
+      label: 'ClickHouse (Self-Hosted)',
+      description: 'ClickHouse OLAP database. Version via /ping or GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'ClickHouse/ClickHouse' },
+      latestSource: { type: 'github-releases', target: 'ClickHouse/ClickHouse' },
+      evidenceUrl: 'https://clickhouse.com/docs/en/getting-started/install',
+    },
+    {
+      id: 'cloud',
+      label: 'ClickHouse Cloud',
+      description: 'ClickHouse managed cloud service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'ClickHouse/ClickHouse' },
+      latestSource: { type: 'github-releases', target: 'ClickHouse/ClickHouse' },
+      evidenceUrl: 'https://clickhouse.com/cloud',
+    },
+  ],
+
 };
 
 /**

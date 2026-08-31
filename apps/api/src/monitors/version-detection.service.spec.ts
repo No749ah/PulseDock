@@ -478,5 +478,224 @@ describe('VersionDetectionService', () => {
       expect(result.ok).toBe(true);
       expect(result.latestVersion).toBeNull();
     });
+
+    // ── NuGet ───────────────────────────────────────────────────────────────
+
+    it('returns NuGet stable version', async () => {
+      mockFetch(async () => jsonResponse({ versions: ['1.0.0', '2.0.0', '3.0.0-beta', '2.1.0'] }));
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'nuget', target: 'Newtonsoft.Json' });
+      expect(result.ok).toBe(true);
+      // stable versions filter excludes beta; last stable is 2.1.0
+      expect(result.latestVersion).toBe('2.1.0');
+    });
+
+    it('falls back to newest version when all NuGet versions are pre-release', async () => {
+      mockFetch(async () => jsonResponse({ versions: ['1.0.0-alpha', '2.0.0-beta'] }));
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'nuget', target: 'MyPkg' });
+      expect(result.ok).toBe(true);
+      expect(result.latestVersion).toBe('2.0.0-beta');
+    });
+
+    it('returns error when NuGet versions list is empty', async () => {
+      mockFetch(async () => jsonResponse({ versions: [] }));
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'nuget', target: 'Missing' });
+      expect(result.ok).toBe(false);
+      expect(result.message).toMatch(/No NuGet versions/);
+    });
+
+    it('returns error for NuGet HTTP failure', async () => {
+      mockFetch(async () => new Response('{}', { status: 404 }));
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'nuget', target: 'Missing' });
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain('404');
+    });
+
+    it('returns error for empty NuGet target', async () => {
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'nuget', target: '' });
+      expect(result.ok).toBe(false);
+      expect(result.message).toMatch(/Invalid NuGet/);
+    });
+
+    it('strips nuget: prefix from target', async () => {
+      let capturedUrl = '';
+      mockFetch(async (url) => { capturedUrl = url; return jsonResponse({ versions: ['1.0.0'] }); });
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      await svc.testVersionConnection({ provider: 'nuget', target: 'nuget:Serilog' });
+      expect(capturedUrl).toContain('serilog');
+      expect(capturedUrl).not.toContain('nuget:');
+    });
+
+    // ── RubyGems ─────────────────────────────────────────────────────────────
+
+    it('returns RubyGems version', async () => {
+      mockFetch(async () => jsonResponse({ version: '7.1.3' }));
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'rubygems', target: 'rails' });
+      expect(result.ok).toBe(true);
+      expect(result.latestVersion).toBe('7.1.3');
+    });
+
+    it('accepts gem alias for rubygems provider', async () => {
+      mockFetch(async () => jsonResponse({ version: '3.5.0' }));
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'gem', target: 'devise' });
+      expect(result.ok).toBe(true);
+      expect(result.latestVersion).toBe('3.5.0');
+    });
+
+    it('returns error for RubyGems HTTP failure', async () => {
+      mockFetch(async () => new Response('{}', { status: 404 }));
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'rubygems', target: 'nonexistent-gem' });
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain('404');
+    });
+
+    it('returns error for empty gem name', async () => {
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'gem', target: '' });
+      expect(result.ok).toBe(false);
+      expect(result.message).toMatch(/Invalid gem/);
+    });
+
+    it('strips gem: prefix from target', async () => {
+      let capturedUrl = '';
+      mockFetch(async (url) => { capturedUrl = url; return jsonResponse({ version: '1.0.0' }); });
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      await svc.testVersionConnection({ provider: 'gem', target: 'gem:rake' });
+      expect(capturedUrl).toContain('/rake.json');
+    });
+
+    // ── Go module proxy ───────────────────────────────────────────────────────
+
+    it('returns Go module version via go provider', async () => {
+      mockFetch(async () => jsonResponse({ Version: 'v1.21.0' }));
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'go', target: 'golang.org/x/net' });
+      expect(result.ok).toBe(true);
+      expect(result.latestVersion).toBe('v1.21.0');
+    });
+
+    it('accepts golang alias for go provider', async () => {
+      mockFetch(async () => jsonResponse({ Version: 'v0.5.0' }));
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'golang', target: 'github.com/gin-gonic/gin' });
+      expect(result.ok).toBe(true);
+      expect(result.latestVersion).toBe('v0.5.0');
+    });
+
+    it('accepts gomod alias for go provider', async () => {
+      mockFetch(async () => jsonResponse({ Version: 'v2.0.0' }));
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'gomod', target: 'github.com/spf13/cobra' });
+      expect(result.ok).toBe(true);
+      expect(result.latestVersion).toBe('v2.0.0');
+    });
+
+    it('returns error when Go proxy returns Error field', async () => {
+      mockFetch(async () => jsonResponse({ Error: 'not found' }));
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'go', target: 'example.com/no-such-module' });
+      expect(result.ok).toBe(false);
+      expect(result.message).toMatch(/not found/);
+    });
+
+    it('returns error for Go proxy HTTP failure', async () => {
+      mockFetch(async () => new Response('{}', { status: 410 }));
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'go', target: 'example.com/pkg' });
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain('410');
+    });
+
+    it('returns error for empty Go module path', async () => {
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'go', target: '' });
+      expect(result.ok).toBe(false);
+      expect(result.message).toMatch(/Invalid Go module/);
+    });
+
+    it('strips go: prefix from target', async () => {
+      let capturedUrl = '';
+      mockFetch(async (url) => { capturedUrl = url; return jsonResponse({ Version: 'v1.0.0' }); });
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      await svc.testVersionConnection({ provider: 'go', target: 'go:golang.org/x/tools' });
+      expect(capturedUrl).toContain('golang.org%2Fx%2Ftools');
+    });
+
+    // ── Forgejo / Gitea ───────────────────────────────────────────────────────
+
+    it('returns Forgejo release version', async () => {
+      mockFetch(async () => jsonResponse([{ tag_name: 'v7.0.5' }]));
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'forgejo', target: 'forgejo/forgejo' });
+      expect(result.ok).toBe(true);
+      expect(result.latestVersion).toBe('v7.0.5');
+    });
+
+    it('uses codeberg.org as default host for forgejo provider', async () => {
+      let capturedUrl = '';
+      mockFetch(async (url) => { capturedUrl = url; return jsonResponse([{ tag_name: 'v1.0.0' }]); });
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      await svc.testVersionConnection({ provider: 'forgejo', target: 'owner/repo' });
+      expect(capturedUrl).toContain('codeberg.org');
+    });
+
+    it('accepts custom host for forgejo (host/owner/repo format)', async () => {
+      let capturedUrl = '';
+      mockFetch(async (url) => { capturedUrl = url; return jsonResponse([{ tag_name: 'v2.0.0' }]); });
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      await svc.testVersionConnection({ provider: 'forgejo', target: 'git.example.com/myorg/myrepo' });
+      expect(capturedUrl).toContain('git.example.com');
+      expect(capturedUrl).toContain('myorg/myrepo');
+    });
+
+    it('returns Gitea release version', async () => {
+      mockFetch(async () => jsonResponse([{ tag_name: 'v1.22.1' }]));
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'gitea', target: 'gitea/gitea' });
+      expect(result.ok).toBe(true);
+      expect(result.latestVersion).toBe('v1.22.1');
+    });
+
+    it('returns null latestVersion when Forgejo release list is empty', async () => {
+      mockFetch(async () => jsonResponse([]));
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'forgejo', target: 'owner/repo' });
+      expect(result.ok).toBe(true);
+      expect(result.latestVersion).toBeNull();
+    });
+
+    it('returns error when forgejo target has no slash (invalid format)', async () => {
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'forgejo', target: 'justarepo' });
+      expect(result.ok).toBe(false);
+      expect(result.message).toMatch(/owner\/repo/);
+    });
+
+    it('returns error for Forgejo HTTP failure', async () => {
+      mockFetch(async () => new Response('{}', { status: 403 }));
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      const result = await svc.testVersionConnection({ provider: 'forgejo', target: 'owner/private-repo' });
+      expect(result.ok).toBe(false);
+      expect(result.message).toContain('403');
+    });
+
+    it('passes token as Authorization header for Gitea private repos', async () => {
+      let capturedHeaders: Record<string, string> = {};
+      mockFetch(async (_url, init) => {
+        capturedHeaders = Object.fromEntries(new Headers(init?.headers).entries());
+        return jsonResponse([{ tag_name: 'v1.0.0' }]);
+      });
+      const svc = new (service.constructor as typeof VersionDetectionService)(makePrisma() as never);
+      await svc.testVersionConnection({ provider: 'gitea', target: 'owner/repo', token: 'my-token' });
+      expect(capturedHeaders['authorization']).toBe('token my-token');
+    });
   });
 });
+

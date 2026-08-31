@@ -14730,6 +14730,393 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Networking / DNS / Ingress
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'headscale': [
+    {
+      id: 'self-hosted',
+      label: 'Headscale (Self-Hosted Tailscale Control)',
+      description: 'Headscale open-source Tailscale control server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'juanfont/headscale' },
+      latestSource: { type: 'github-releases', target: 'juanfont/headscale' },
+      evidenceUrl: 'https://headscale.net/running-headscale-linux/',
+    },
+  ],
+
+  'coredns': [
+    {
+      id: 'self-hosted',
+      label: 'CoreDNS (Self-Hosted)',
+      description: 'CoreDNS DNS server. Version via /metrics Prometheus or GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'coredns/coredns' },
+      latestSource: { type: 'github-releases', target: 'coredns/coredns' },
+      evidenceUrl: 'https://coredns.io/manual/installation/',
+    },
+  ],
+
+  'nginx-ingress': [
+    {
+      id: 'kubernetes',
+      label: 'NGINX Ingress Controller (Kubernetes)',
+      description: 'Kubernetes NGINX ingress controller. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'kubernetes/ingress-nginx' },
+      latestSource: { type: 'github-releases', target: 'kubernetes/ingress-nginx' },
+      evidenceUrl: 'https://kubernetes.github.io/ingress-nginx/deploy/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Storage / Backup
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'openebs': [
+    {
+      id: 'self-hosted',
+      label: 'OpenEBS (Self-Hosted on Kubernetes)',
+      description: 'OpenEBS container-native storage for Kubernetes. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'openebs/openebs' },
+      latestSource: { type: 'github-releases', target: 'openebs/openebs' },
+      evidenceUrl: 'https://openebs.io/docs/user-guides/installation',
+    },
+  ],
+
+  'velero': [
+    {
+      id: 'self-hosted',
+      label: 'Velero (Self-Hosted on Kubernetes)',
+      description: 'Velero Kubernetes backup and restore. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'vmware-tanzu/velero' },
+      latestSource: { type: 'github-releases', target: 'vmware-tanzu/velero' },
+      evidenceUrl: 'https://velero.io/docs/latest/basic-install/',
+    },
+  ],
+
+  'restic': [
+    {
+      id: 'cli',
+      label: 'Restic (CLI Backup Tool)',
+      description: 'Restic fast and secure backup program. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'restic/restic' },
+      latestSource: { type: 'github-releases', target: 'restic/restic' },
+      evidenceUrl: 'https://restic.readthedocs.io/en/latest/020_installation.html',
+    },
+  ],
+
+  'kopia': [
+    {
+      id: 'cli',
+      label: 'Kopia (CLI / Self-Hosted)',
+      description: 'Kopia fast and incremental backup tool. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'kopia/kopia' },
+      latestSource: { type: 'github-releases', target: 'kopia/kopia' },
+      evidenceUrl: 'https://kopia.io/docs/installation/',
+    },
+    {
+      id: 'server',
+      label: 'Kopia Server (Self-Hosted UI)',
+      description: 'Kopia running in server mode with web UI. Version from GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://kopia.example.com:51515',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/repo/status',
+        jsonPath: '$.buildInfo.buildVersion',
+        jsonPathExtractors: ['buildInfo.buildVersion', 'version'],
+        authRequired: true,
+      },
+      latestSource: { type: 'github-releases', target: 'kopia/kopia' },
+      evidenceUrl: 'https://kopia.io/docs/reference/server/',
+    },
+  ],
+
+  'borgbackup': [
+    {
+      id: 'cli',
+      label: 'BorgBackup (CLI)',
+      description: 'BorgBackup deduplicating archiver. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'borgbackup/borg' },
+      latestSource: { type: 'github-releases', target: 'borgbackup/borg' },
+      evidenceUrl: 'https://borgbackup.readthedocs.io/en/stable/installation.html',
+    },
+  ],
+
+  'duplicati': [
+    {
+      id: 'self-hosted',
+      label: 'Duplicati (Self-Hosted)',
+      description: 'Duplicati free backup client with web UI. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'duplicati/duplicati' },
+      latestSource: { type: 'github-releases', target: 'duplicati/duplicati' },
+      evidenceUrl: 'https://duplicati.readthedocs.io/en/latest/01-installation/',
+    },
+  ],
+
+  'seaweedfs': [
+    {
+      id: 'self-hosted',
+      label: 'SeaweedFS (Self-Hosted)',
+      description: 'SeaweedFS distributed storage. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'seaweedfs/seaweedfs' },
+      latestSource: { type: 'github-releases', target: 'seaweedfs/seaweedfs' },
+      evidenceUrl: 'https://github.com/seaweedfs/seaweedfs/wiki/Getting-Started',
+    },
+  ],
+
+  'juicefs': [
+    {
+      id: 'self-hosted',
+      label: 'JuiceFS (Self-Hosted)',
+      description: 'JuiceFS cloud-native distributed file system. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'juicedata/juicefs' },
+      latestSource: { type: 'github-releases', target: 'juicedata/juicefs' },
+      evidenceUrl: 'https://juicefs.com/docs/community/introduction/',
+    },
+    {
+      id: 'cloud',
+      label: 'JuiceFS Cloud',
+      description: 'JuiceFS managed cloud file system.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'juicedata/juicefs' },
+      latestSource: { type: 'github-releases', target: 'juicedata/juicefs' },
+      evidenceUrl: 'https://juicefs.com/cloud/',
+    },
+  ],
+
+  'ceph': [
+    {
+      id: 'self-hosted',
+      label: 'Ceph (Self-Hosted)',
+      description: 'Ceph distributed storage cluster. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'ceph/ceph' },
+      latestSource: { type: 'github-releases', target: 'ceph/ceph' },
+      evidenceUrl: 'https://docs.ceph.com/en/latest/start/intro/',
+    },
+    {
+      id: 'rook',
+      label: 'Rook-Ceph (Kubernetes Operator)',
+      description: 'Ceph managed by Rook operator on Kubernetes.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'rook/rook' },
+      latestSource: { type: 'github-releases', target: 'rook/rook' },
+      evidenceUrl: 'https://rook.io/docs/rook/latest-release/Getting-Started/intro/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // CMS
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'keystonejs': [
+    {
+      id: 'npm',
+      label: 'KeystoneJS (npm)',
+      description: 'KeystoneJS Node.js headless CMS. Version from npm registry.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: '@keystone-6/core' },
+      latestSource: { type: 'npm-registry', target: '@keystone-6/core' },
+      evidenceUrl: 'https://www.npmjs.com/package/@keystone-6/core',
+    },
+  ],
+
+  'craft-cms': [
+    {
+      id: 'self-hosted',
+      label: 'Craft CMS (Self-Hosted)',
+      description: 'Craft CMS flexible content management. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'craftcms/cms' },
+      latestSource: { type: 'github-releases', target: 'craftcms/cms' },
+      evidenceUrl: 'https://craftcms.com/docs/5.x/install.html',
+    },
+    {
+      id: 'cloud',
+      label: 'Craft Cloud',
+      description: 'Craft CMS managed cloud hosting.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'craftcms/cms' },
+      latestSource: { type: 'github-releases', target: 'craftcms/cms' },
+      evidenceUrl: 'https://craftcms.com/cloud',
+    },
+  ],
+
+  'processwire': [
+    {
+      id: 'self-hosted',
+      label: 'ProcessWire (Self-Hosted)',
+      description: 'ProcessWire flexible CMS/CMF. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'processwire/processwire' },
+      latestSource: { type: 'github-releases', target: 'processwire/processwire' },
+      evidenceUrl: 'https://processwire.com/download/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Communication / Video conferencing / XMPP
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'jitsi-meet': [
+    {
+      id: 'self-hosted',
+      label: 'Jitsi Meet (Self-Hosted)',
+      description: 'Jitsi Meet open-source video conferencing. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'jitsi/jitsi-meet' },
+      latestSource: { type: 'github-releases', target: 'jitsi/jitsi-meet' },
+      evidenceUrl: 'https://jitsi.github.io/handbook/docs/devops-guide/devops-guide-docker',
+    },
+    {
+      id: 'cloud',
+      label: 'Jitsi as a Service (JaaS)',
+      description: '8x8 Jitsi as a Service managed platform.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'jitsi/jitsi-meet' },
+      latestSource: { type: 'github-releases', target: 'jitsi/jitsi-meet' },
+      evidenceUrl: 'https://jaas.8x8.vc',
+    },
+  ],
+
+  'bigbluebutton': [
+    {
+      id: 'self-hosted',
+      label: 'BigBlueButton (Self-Hosted)',
+      description: 'BigBlueButton open-source video conferencing for education.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://bbb.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/bigbluebutton/api',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'bigbluebutton/bigbluebutton' },
+      evidenceUrl: 'https://docs.bigbluebutton.org/administration/install/',
+    },
+  ],
+
+  'livekit': [
+    {
+      id: 'self-hosted',
+      label: 'LiveKit (Self-Hosted)',
+      description: 'LiveKit real-time video/audio infrastructure. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'livekit/livekit' },
+      latestSource: { type: 'github-releases', target: 'livekit/livekit' },
+      evidenceUrl: 'https://docs.livekit.io/realtime/self-hosting/local/',
+    },
+    {
+      id: 'cloud',
+      label: 'LiveKit Cloud',
+      description: 'LiveKit managed cloud real-time infrastructure.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'livekit/livekit' },
+      latestSource: { type: 'github-releases', target: 'livekit/livekit' },
+      evidenceUrl: 'https://livekit.io/cloud',
+    },
+  ],
+
+  'ejabberd': [
+    {
+      id: 'community',
+      label: 'ejabberd Community Edition (Self-Hosted)',
+      description: 'ejabberd XMPP/MQTT/SIP server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'processone/ejabberd' },
+      latestSource: { type: 'github-releases', target: 'processone/ejabberd' },
+      evidenceUrl: 'https://docs.ejabberd.im/admin/installation/',
+    },
+    {
+      id: 'business',
+      label: 'ejabberd Business Edition (Fluux.io)',
+      description: 'ejabberd Business Edition by ProcessOne with SLA.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'processone/ejabberd' },
+      latestSource: { type: 'github-releases', target: 'processone/ejabberd' },
+      evidenceUrl: 'https://www.process-one.net/en/ejabberd/',
+    },
+  ],
+
+  'prosody': [
+    {
+      id: 'self-hosted',
+      label: 'Prosody XMPP Server (Self-Hosted)',
+      description: 'Prosody modern XMPP server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'bjc/prosody' },
+      latestSource: { type: 'github-releases', target: 'bjc/prosody' },
+      evidenceUrl: 'https://prosody.im/doc/installing_from_source',
+    },
+  ],
+
+  'mumble': [
+    {
+      id: 'server',
+      label: 'Murmur (Mumble Server)',
+      description: 'Mumble open-source voice chat server (Murmur). Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'mumble-voip/mumble' },
+      latestSource: { type: 'github-releases', target: 'mumble-voip/mumble' },
+      evidenceUrl: 'https://wiki.mumble.info/wiki/Running_Murmur',
+    },
+  ],
+
+  'coturn': [
+    {
+      id: 'self-hosted',
+      label: 'Coturn (TURN/STUN Server)',
+      description: 'Coturn TURN/STUN server for WebRTC. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'coturn/coturn' },
+      latestSource: { type: 'github-releases', target: 'coturn/coturn' },
+      evidenceUrl: 'https://github.com/coturn/coturn/wiki/CoturnConfig',
+    },
+  ],
+
 };
 
 /**

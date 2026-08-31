@@ -10766,6 +10766,391 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+  'mssql': [
+    {
+      id: 'self-hosted',
+      label: 'Microsoft SQL Server (Self-Hosted)',
+      description: 'Microsoft SQL Server. Version via /healthz (no auth required for SQL Server 2022+).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://mssql.example.com:1433',
+      versionSource: { type: 'github-releases', target: 'microsoft/mssql-docker' },
+      latestSource: { type: 'github-releases', target: 'microsoft/mssql-docker' },
+      evidenceUrl: 'https://docs.microsoft.com/en-us/sql/linux/sql-server-linux-overview',
+    },
+  ],
+
+  'influxdb-v3': [
+    {
+      id: 'self-hosted',
+      label: 'InfluxDB v3 (Self-Hosted)',
+      description: 'InfluxDB v3 time-series platform. Version via /health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://influxdb3.example.com:8086',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/health', '/ping'],
+      },
+      latestSource: { type: 'github-releases', target: 'influxdata/influxdb' },
+      evidenceUrl: 'https://docs.influxdata.com/influxdb/v3/',
+    },
+  ],
+
+  'appwrite-db': [
+    {
+      id: 'self-hosted',
+      label: 'Appwrite (Self-Hosted)',
+      description: 'Appwrite backend-as-a-service. Version via /v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://appwrite.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/health/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/v1/health/version', '/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'appwrite/appwrite' },
+      evidenceUrl: 'https://appwrite.io/docs/apis/rest',
+    },
+  ],
+
+  'supabase-db': [
+    {
+      id: 'self-hosted',
+      label: 'Supabase (Self-Hosted)',
+      description: 'Supabase open-source Firebase alternative. Version via /health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://supabase.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/health', '/rest/v1/'],
+      },
+      latestSource: { type: 'github-releases', target: 'supabase/supabase' },
+      evidenceUrl: 'https://supabase.com/docs/guides/self-hosting',
+    },
+  ],
+
+  'lakefs': [
+    {
+      id: 'self-hosted',
+      label: 'lakeFS (Self-Hosted)',
+      description: 'lakeFS data lake version control. Version via /api/v1/config (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://lakefs.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/config',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/config', '/api/v1/healthcheck'],
+      },
+      latestSource: { type: 'github-releases', target: 'treeverse/lakeFS' },
+      evidenceUrl: 'https://docs.lakefs.io/reference/api.html',
+    },
+  ],
+
+  'terminusdb': [
+    {
+      id: 'self-hosted',
+      label: 'TerminusDB (Self-Hosted)',
+      description: 'TerminusDB document graph database. Version via /api (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://terminusdb.example.com:6363',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api'],
+      },
+      latestSource: { type: 'github-releases', target: 'terminusdb/terminusdb' },
+      evidenceUrl: 'https://terminusdb.com/docs/',
+    },
+  ],
+
+  'oxigraph': [
+    {
+      id: 'self-hosted',
+      label: 'Oxigraph (Self-Hosted)',
+      description: 'Oxigraph RDF triple store. Version via /version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://oxigraph.example.com:7878',
+      versionSource: { type: 'github-releases', target: 'oxigraph/oxigraph' },
+      latestSource: { type: 'github-releases', target: 'oxigraph/oxigraph' },
+      evidenceUrl: 'https://github.com/oxigraph/oxigraph',
+    },
+  ],
+
+  'virtuoso-db': [
+    {
+      id: 'self-hosted',
+      label: 'Virtuoso Universal Server (Self-Hosted)',
+      description: 'OpenLink Virtuoso RDF + relational database. Version via /sparql (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://virtuoso.example.com:8890',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/conductor/main_login.vsp',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/sparql', '/'],
+      },
+      latestSource: { type: 'github-releases', target: 'openlink/virtuoso-opensource' },
+      evidenceUrl: 'http://vos.openlinksw.com/owiki/wiki/VOS/',
+    },
+  ],
+
+  'stardog': [
+    {
+      id: 'self-hosted',
+      label: 'Stardog (Self-Hosted)',
+      description: 'Stardog enterprise knowledge graph. Version via /admin/status (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://stardog.example.com:5820',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/admin/status',
+        jsonPath: '$.dbms.build.version',
+        jsonPathExtractors: ['dbms.build.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/admin/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'stardog-union/stardog-docs' },
+      evidenceUrl: 'https://docs.stardog.com/operating-stardog/server-administration/server-monitoring/',
+    },
+  ],
+
+  'graphdb': [
+    {
+      id: 'self-hosted',
+      label: 'Ontotext GraphDB (Self-Hosted)',
+      description: 'Ontotext GraphDB RDF database. Version via /rest/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://graphdb.example.com:7200',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/rest/info',
+        jsonPath: '$.productVersion',
+        jsonPathExtractors: ['productVersion', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/rest/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'Ontotext-AD/graphdb-free' },
+      evidenceUrl: 'https://graphdb.ontotext.com/documentation/',
+    },
+  ],
+
+  'conduit-matrix': [
+    {
+      id: 'self-hosted',
+      label: 'Conduit (Matrix, Self-Hosted)',
+      description: 'Conduit fast Matrix homeserver. Version via /_matrix/client/versions (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://conduit.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/_matrix/client/versions',
+        jsonPath: '$.server.conduit',
+        jsonPathExtractors: ['server.conduit', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/_matrix/client/versions'],
+      },
+      latestSource: { type: 'github-releases', target: 'famedly/conduit' },
+      evidenceUrl: 'https://conduit.rs/deployment/',
+    },
+  ],
+
+  'dendrite-matrix': [
+    {
+      id: 'self-hosted',
+      label: 'Dendrite (Matrix, Self-Hosted)',
+      description: 'Dendrite Matrix homeserver. Version via /_matrix/client/versions (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://dendrite.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/_matrix/client/versions',
+        jsonPath: '$.server.dendrite',
+        jsonPathExtractors: ['server.dendrite', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/_matrix/client/versions'],
+      },
+      latestSource: { type: 'github-releases', target: 'matrix-org/dendrite' },
+      evidenceUrl: 'https://matrix-org.github.io/dendrite/',
+    },
+  ],
+
+  'element-web': [
+    {
+      id: 'self-hosted',
+      label: 'Element Web (Self-Hosted)',
+      description: 'Element Matrix web client. Version via /config.json (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://element.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/config.json',
+        jsonPath: '$.brand',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/config.json'],
+      },
+      latestSource: { type: 'github-releases', target: 'element-hq/element-web' },
+      evidenceUrl: 'https://github.com/element-hq/element-web',
+    },
+  ],
+
+  'hydrogen-matrix': [
+    {
+      id: 'self-hosted',
+      label: 'Hydrogen Matrix (Self-Hosted)',
+      description: 'Hydrogen Matrix web client. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://hydrogen.example.com',
+      versionSource: { type: 'github-releases', target: 'vector-im/hydrogen-web' },
+      latestSource: { type: 'github-releases', target: 'vector-im/hydrogen-web' },
+      evidenceUrl: 'https://github.com/vector-im/hydrogen-web',
+    },
+  ],
+
+  'cinny-matrix': [
+    {
+      id: 'self-hosted',
+      label: 'Cinny Matrix (Self-Hosted)',
+      description: 'Cinny Matrix web client. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://cinny.example.com',
+      versionSource: { type: 'github-releases', target: 'cinnyapp/cinny' },
+      latestSource: { type: 'github-releases', target: 'cinnyapp/cinny' },
+      evidenceUrl: 'https://github.com/cinnyapp/cinny',
+    },
+  ],
+
+  'matterbridge': [
+    {
+      id: 'self-hosted',
+      label: 'Matterbridge (Self-Hosted)',
+      description: 'Matterbridge multi-protocol chat bridge. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://matterbridge.example.com:4242',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: '42wim/matterbridge' },
+      evidenceUrl: 'https://github.com/42wim/matterbridge',
+    },
+  ],
+
+  'heisenbridge': [
+    {
+      id: 'self-hosted',
+      label: 'Heisenbridge (Self-Hosted)',
+      description: 'Heisenbridge Matrix IRC bridge. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://heisenbridge.example.com:9898',
+      versionSource: { type: 'github-releases', target: 'hifi/heisenbridge' },
+      latestSource: { type: 'github-releases', target: 'hifi/heisenbridge' },
+      evidenceUrl: 'https://github.com/hifi/heisenbridge',
+    },
+  ],
+
+  'obsidian-sync-server': [
+    {
+      id: 'self-hosted',
+      label: 'Obsidian Live Sync Server (Self-Hosted)',
+      description: 'Obsidian Live Sync (CouchDB-based). Version via CouchDB / root (no auth required by default).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://obsidian-sync.example.com:5984',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/'],
+      },
+      latestSource: { type: 'github-releases', target: 'vrtmrz/obsidian-livesync' },
+      evidenceUrl: 'https://github.com/vrtmrz/obsidian-livesync',
+    },
+  ],
+
+  'clearml': [
+    {
+      id: 'self-hosted',
+      label: 'ClearML Server (Self-Hosted)',
+      description: 'ClearML MLOps platform. Version via /api/v2.x/debug.get_logs (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://clearml.example.com:8008',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2.9/system.version',
+        jsonPath: '$.data.server',
+        jsonPathExtractors: ['data.server', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v2.9/system.version'],
+      },
+      latestSource: { type: 'github-releases', target: 'allegroai/clearml-server' },
+      evidenceUrl: 'https://clear.ml/docs/latest/docs/deploying_clearml/',
+    },
+  ],
+
+  'determined-ai': [
+    {
+      id: 'self-hosted',
+      label: 'Determined AI (Self-Hosted)',
+      description: 'Determined ML training platform. Version via /api/v1/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://determined.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'determined-ai/determined' },
+      evidenceUrl: 'https://docs.determined.ai/latest/reference/rest-api.html',
+    },
+  ],
+
 };
 
 /**

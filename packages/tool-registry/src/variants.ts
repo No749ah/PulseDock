@@ -15453,6 +15453,377 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Knowledge / Wiki / No-code
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'outline': [
+    {
+      id: 'self-hosted',
+      label: 'Outline (Self-Hosted)',
+      description: 'Outline knowledge base and wiki. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'outline/outline' },
+      latestSource: { type: 'github-releases', target: 'outline/outline' },
+      evidenceUrl: 'https://docs.getoutline.com/s/hosting',
+    },
+    {
+      id: 'cloud',
+      label: 'Outline Cloud',
+      description: 'Outline managed cloud at getoutline.com.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'outline/outline' },
+      latestSource: { type: 'github-releases', target: 'outline/outline' },
+      evidenceUrl: 'https://www.getoutline.com',
+    },
+  ],
+
+  'bookstack': [
+    {
+      id: 'self-hosted',
+      label: 'BookStack (Self-Hosted)',
+      description: 'BookStack simple wiki platform. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'BookStackApp/BookStack' },
+      latestSource: { type: 'github-releases', target: 'BookStackApp/BookStack' },
+      evidenceUrl: 'https://www.bookstackapp.com/docs/admin/installation/',
+    },
+  ],
+
+  'wiki-js': [
+    {
+      id: 'self-hosted',
+      label: 'Wiki.js (Self-Hosted)',
+      description: 'Wiki.js modern open-source wiki. Version from GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://wiki.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/healthz',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'requarks/wiki' },
+      evidenceUrl: 'https://docs.requarks.io/install',
+    },
+  ],
+
+  'nocodb': [
+    {
+      id: 'self-hosted',
+      label: 'NocoDB (Self-Hosted)',
+      description: 'NocoDB Airtable alternative. Version via /api/v1/meta/tables or GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'nocodb/nocodb' },
+      latestSource: { type: 'github-releases', target: 'nocodb/nocodb' },
+      evidenceUrl: 'https://docs.nocodb.com/getting-started/self-hosted/installation/',
+    },
+    {
+      id: 'cloud',
+      label: 'NocoDB Cloud',
+      description: 'NocoDB managed cloud at app.nocodb.com.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'nocodb/nocodb' },
+      latestSource: { type: 'github-releases', target: 'nocodb/nocodb' },
+      evidenceUrl: 'https://app.nocodb.com',
+    },
+  ],
+
+  'baserow': [
+    {
+      id: 'self-hosted',
+      label: 'Baserow (Self-Hosted)',
+      description: 'Baserow open-source no-code database. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'bram2w/baserow' },
+      latestSource: { type: 'github-releases', target: 'bram2w/baserow' },
+      evidenceUrl: 'https://baserow.io/docs/installation/install-on-debian',
+    },
+    {
+      id: 'cloud',
+      label: 'Baserow Cloud',
+      description: 'Baserow managed cloud at baserow.io.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'bram2w/baserow' },
+      latestSource: { type: 'github-releases', target: 'bram2w/baserow' },
+      evidenceUrl: 'https://baserow.io',
+    },
+  ],
+
+  'appflowy': [
+    {
+      id: 'self-hosted',
+      label: 'AppFlowy (Self-Hosted)',
+      description: 'AppFlowy open-source Notion alternative. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'AppFlowy-IO/AppFlowy' },
+      latestSource: { type: 'github-releases', target: 'AppFlowy-IO/AppFlowy' },
+      evidenceUrl: 'https://docs.appflowy.io/docs/self-hosting-appflowy/overview',
+    },
+    {
+      id: 'cloud',
+      label: 'AppFlowy Cloud',
+      description: 'AppFlowy managed cloud service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'AppFlowy-IO/AppFlowy' },
+      latestSource: { type: 'github-releases', target: 'AppFlowy-IO/AppFlowy' },
+      evidenceUrl: 'https://appflowy.io',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Diagramming (npm)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'excalidraw': [
+    {
+      id: 'npm',
+      label: 'Excalidraw (npm / Self-Hosted)',
+      description: 'Excalidraw virtual whiteboard library. Version from npm registry.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: '@excalidraw/excalidraw' },
+      latestSource: { type: 'npm-registry', target: '@excalidraw/excalidraw' },
+      evidenceUrl: 'https://www.npmjs.com/package/@excalidraw/excalidraw',
+    },
+    {
+      id: 'cloud',
+      label: 'Excalidraw+ (Cloud)',
+      description: 'Excalidraw managed cloud at plus.excalidraw.com.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: '@excalidraw/excalidraw' },
+      latestSource: { type: 'npm-registry', target: '@excalidraw/excalidraw' },
+      evidenceUrl: 'https://plus.excalidraw.com',
+    },
+  ],
+
+  'drawio': [
+    {
+      id: 'self-hosted',
+      label: 'draw.io (Self-Hosted)',
+      description: 'draw.io/diagrams.net diagramming tool. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'jgraph/drawio' },
+      latestSource: { type: 'github-releases', target: 'jgraph/drawio' },
+      evidenceUrl: 'https://github.com/jgraph/drawio/releases',
+    },
+    {
+      id: 'cloud',
+      label: 'diagrams.net (Cloud)',
+      description: 'diagrams.net managed cloud diagramming service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'jgraph/drawio' },
+      latestSource: { type: 'github-releases', target: 'jgraph/drawio' },
+      evidenceUrl: 'https://app.diagrams.net',
+    },
+  ],
+
+  'mermaid': [
+    {
+      id: 'npm',
+      label: 'Mermaid (npm)',
+      description: 'Mermaid diagram-as-code library. Version from npm registry.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'mermaid' },
+      latestSource: { type: 'npm-registry', target: 'mermaid' },
+      evidenceUrl: 'https://www.npmjs.com/package/mermaid',
+    },
+  ],
+
+  'stremio': [
+    {
+      id: 'self-hosted',
+      label: 'Stremio Server (Self-Hosted)',
+      description: 'Stremio media streaming server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Stremio/server-docker' },
+      latestSource: { type: 'github-releases', target: 'Stremio/server-docker' },
+      evidenceUrl: 'https://github.com/Stremio/server-docker',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // IaC / Cloud tooling (npm)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'vagrant': [
+    {
+      id: 'oss',
+      label: 'HashiCorp Vagrant (OSS)',
+      description: 'Vagrant development environment manager. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hashicorp/vagrant' },
+      latestSource: { type: 'github-releases', target: 'hashicorp/vagrant' },
+      evidenceUrl: 'https://developer.hashicorp.com/vagrant/install',
+    },
+  ],
+
+  'serverless-framework': [
+    {
+      id: 'npm',
+      label: 'Serverless Framework (npm)',
+      description: 'Serverless Framework for cloud functions. Version from npm.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'serverless' },
+      latestSource: { type: 'npm-registry', target: 'serverless' },
+      evidenceUrl: 'https://www.npmjs.com/package/serverless',
+    },
+    {
+      id: 'cloud',
+      label: 'Serverless.com Cloud (Serverless Console)',
+      description: 'Serverless.com managed observability for serverless apps.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'serverless' },
+      latestSource: { type: 'npm-registry', target: 'serverless' },
+      evidenceUrl: 'https://www.serverless.com/console',
+    },
+  ],
+
+  'cdk': [
+    {
+      id: 'aws-cdk',
+      label: 'AWS CDK (npm)',
+      description: 'AWS Cloud Development Kit. Version from npm registry.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'aws-cdk' },
+      latestSource: { type: 'npm-registry', target: 'aws-cdk' },
+      evidenceUrl: 'https://www.npmjs.com/package/aws-cdk',
+    },
+    {
+      id: 'cdk8s',
+      label: 'CDK for Kubernetes (cdk8s)',
+      description: 'CDK for Kubernetes. Version from npm registry.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'cdk8s' },
+      latestSource: { type: 'npm-registry', target: 'cdk8s' },
+      evidenceUrl: 'https://www.npmjs.com/package/cdk8s',
+    },
+  ],
+
+  'cdktf': [
+    {
+      id: 'npm',
+      label: 'CDKTF — CDK for Terraform (npm)',
+      description: 'Cloud Development Kit for Terraform. Version from npm.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'cdktf' },
+      latestSource: { type: 'npm-registry', target: 'cdktf' },
+      evidenceUrl: 'https://www.npmjs.com/package/cdktf',
+    },
+  ],
+
+  'atlantis': [
+    {
+      id: 'self-hosted',
+      label: 'Atlantis (Self-Hosted)',
+      description: 'Atlantis Terraform pull request automation. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'runatlantis/atlantis' },
+      latestSource: { type: 'github-releases', target: 'runatlantis/atlantis' },
+      evidenceUrl: 'https://www.runatlantis.io/docs/installation-guide.html',
+    },
+  ],
+
+  'infracost': [
+    {
+      id: 'cli',
+      label: 'Infracost (CLI)',
+      description: 'Infracost cloud cost estimation CLI. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'infracost/infracost' },
+      latestSource: { type: 'github-releases', target: 'infracost/infracost' },
+      evidenceUrl: 'https://www.infracost.io/docs/',
+    },
+    {
+      id: 'cloud',
+      label: 'Infracost Cloud',
+      description: 'Infracost Cloud CI/CD cost management platform.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'infracost/infracost' },
+      latestSource: { type: 'github-releases', target: 'infracost/infracost' },
+      evidenceUrl: 'https://www.infracost.io/cloud',
+    },
+  ],
+
+  'waypoint': [
+    {
+      id: 'self-hosted',
+      label: 'HashiCorp Waypoint (Self-Hosted)',
+      description: 'Waypoint application deployment lifecycle tool. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hashicorp/waypoint' },
+      latestSource: { type: 'github-releases', target: 'hashicorp/waypoint' },
+      evidenceUrl: 'https://developer.hashicorp.com/waypoint/tutorials/get-started-docker/get-started-install',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Messaging / Streaming (Apache)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'apache-pulsar': [
+    {
+      id: 'self-hosted',
+      label: 'Apache Pulsar (Self-Hosted)',
+      description: 'Apache Pulsar cloud-native messaging. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'apache/pulsar' },
+      latestSource: { type: 'github-releases', target: 'apache/pulsar' },
+      evidenceUrl: 'https://pulsar.apache.org/docs/getting-started-docker/',
+    },
+    {
+      id: 'cloud',
+      label: 'StreamNative Cloud (Managed Pulsar)',
+      description: 'StreamNative managed Apache Pulsar cloud service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'apache/pulsar' },
+      latestSource: { type: 'github-releases', target: 'apache/pulsar' },
+      evidenceUrl: 'https://streamnative.io/cloud',
+    },
+  ],
+
+  'apache-rocketmq': [
+    {
+      id: 'self-hosted',
+      label: 'Apache RocketMQ (Self-Hosted)',
+      description: 'Apache RocketMQ distributed messaging. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'apache/rocketmq' },
+      latestSource: { type: 'github-releases', target: 'apache/rocketmq' },
+      evidenceUrl: 'https://rocketmq.apache.org/docs/quick-start/',
+    },
+  ],
+
 };
 
 /**

@@ -15824,6 +15824,396 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Identity & SSO
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'supertokens': [
+    {
+      id: 'self-hosted',
+      label: 'SuperTokens (Self-Hosted)',
+      description: 'SuperTokens open-source auth. Version via /apiversion JSON.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://supertokens.example.com:3567',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/apiversion',
+        jsonPath: '$.versions[0]',
+        jsonPathExtractors: ['versions[0]', 'version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'supertokens/supertokens-core' },
+      evidenceUrl: 'https://supertokens.com/docs/community/installation',
+    },
+    {
+      id: 'cloud',
+      label: 'SuperTokens Managed Service',
+      description: 'SuperTokens hosted managed service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'supertokens/supertokens-core' },
+      latestSource: { type: 'github-releases', target: 'supertokens/supertokens-core' },
+      evidenceUrl: 'https://supertokens.com/pricing',
+    },
+  ],
+
+  'logto': [
+    {
+      id: 'self-hosted',
+      label: 'Logto (Self-Hosted)',
+      description: 'Logto modern Auth0 alternative. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'logto-io/logto' },
+      latestSource: { type: 'github-releases', target: 'logto-io/logto' },
+      evidenceUrl: 'https://docs.logto.io/docs/tutorials/get-started/',
+    },
+    {
+      id: 'cloud',
+      label: 'Logto Cloud',
+      description: 'Logto managed cloud at cloud.logto.io.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'logto-io/logto' },
+      latestSource: { type: 'github-releases', target: 'logto-io/logto' },
+      evidenceUrl: 'https://cloud.logto.io',
+    },
+  ],
+
+  'zitadel': [
+    {
+      id: 'self-hosted',
+      label: 'ZITADEL (Self-Hosted)',
+      description: 'ZITADEL identity platform. Version via /debug/healthz or GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'zitadel/zitadel' },
+      latestSource: { type: 'github-releases', target: 'zitadel/zitadel' },
+      evidenceUrl: 'https://zitadel.com/docs/self-hosting/deploy/overview',
+    },
+    {
+      id: 'cloud',
+      label: 'ZITADEL Cloud',
+      description: 'ZITADEL managed cloud identity service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'zitadel/zitadel' },
+      latestSource: { type: 'github-releases', target: 'zitadel/zitadel' },
+      evidenceUrl: 'https://zitadel.com/pricing',
+    },
+  ],
+
+  'casdoor': [
+    {
+      id: 'self-hosted',
+      label: 'Casdoor (Self-Hosted)',
+      description: 'Casdoor SSO/OAuth2/OIDC server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'casdoor/casdoor' },
+      latestSource: { type: 'github-releases', target: 'casdoor/casdoor' },
+      evidenceUrl: 'https://casdoor.org/docs/basic/server-installation',
+    },
+    {
+      id: 'cloud',
+      label: 'Casdoor Cloud',
+      description: 'Casdoor managed cloud service at door.casdoor.com.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'casdoor/casdoor' },
+      latestSource: { type: 'github-releases', target: 'casdoor/casdoor' },
+      evidenceUrl: 'https://door.casdoor.com',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // IaC / DevOps tooling
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'spacelift': [
+    {
+      id: 'cloud',
+      label: 'Spacelift (Cloud)',
+      description: 'Spacelift IaC management platform. Tracks agent version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'spacelift-io/spacelift-agent' },
+      latestSource: { type: 'github-releases', target: 'spacelift-io/spacelift-agent' },
+      evidenceUrl: 'https://docs.spacelift.io',
+    },
+    {
+      id: 'self-hosted',
+      label: 'Spacelift Worker Pool (Self-Hosted)',
+      description: 'Spacelift private worker pool for on-prem execution.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'spacelift-io/spacelift-agent' },
+      latestSource: { type: 'github-releases', target: 'spacelift-io/spacelift-agent' },
+      evidenceUrl: 'https://docs.spacelift.io/concepts/worker-pools',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // API Gateways (continued)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'krakend': [
+    {
+      id: 'ce',
+      label: 'KrakenD Community Edition (Self-Hosted)',
+      description: 'KrakenD ultra-high performance API gateway. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'luraproject/lura' },
+      latestSource: { type: 'github-releases', target: 'luraproject/lura' },
+      evidenceUrl: 'https://www.krakend.io/docs/getting-started/',
+    },
+    {
+      id: 'ee',
+      label: 'KrakenD Enterprise Edition',
+      description: 'KrakenD EE with advanced features. Tracks CE releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'luraproject/lura' },
+      latestSource: { type: 'github-releases', target: 'luraproject/lura' },
+      evidenceUrl: 'https://www.krakend.io/enterprise/',
+    },
+  ],
+
+  'gravitee': [
+    {
+      id: 'self-hosted',
+      label: 'Gravitee API Management (Self-Hosted)',
+      description: 'Gravitee.io APIM platform. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'gravitee-io/gravitee-api-management' },
+      latestSource: { type: 'github-releases', target: 'gravitee-io/gravitee-api-management' },
+      evidenceUrl: 'https://documentation.gravitee.io/apim/getting-started/install-gravitee-api-management',
+    },
+    {
+      id: 'cloud',
+      label: 'Gravitee Cloud',
+      description: 'Gravitee.io managed cloud APIM.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'gravitee-io/gravitee-api-management' },
+      latestSource: { type: 'github-releases', target: 'gravitee-io/gravitee-api-management' },
+      evidenceUrl: 'https://gravitee.io/cloud',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Messaging
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'nsq': [
+    {
+      id: 'self-hosted',
+      label: 'NSQ (Self-Hosted)',
+      description: 'NSQ realtime distributed messaging. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'nsqio/nsq' },
+      latestSource: { type: 'github-releases', target: 'nsqio/nsq' },
+      evidenceUrl: 'https://nsq.io/deployment/installing.html',
+    },
+  ],
+
+  'hivemq': [
+    {
+      id: 'community',
+      label: 'HiveMQ Community Edition (Self-Hosted)',
+      description: 'HiveMQ MQTT broker CE. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hivemq/hivemq-community-edition' },
+      latestSource: { type: 'github-releases', target: 'hivemq/hivemq-community-edition' },
+      evidenceUrl: 'https://github.com/hivemq/hivemq-community-edition/releases',
+    },
+    {
+      id: 'enterprise',
+      label: 'HiveMQ Enterprise (Self-Hosted)',
+      description: 'HiveMQ Enterprise MQTT broker with enhanced features.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hivemq/hivemq-community-edition' },
+      latestSource: { type: 'github-releases', target: 'hivemq/hivemq-community-edition' },
+      evidenceUrl: 'https://www.hivemq.com/hivemq/hivemq-enterprise/',
+    },
+    {
+      id: 'cloud',
+      label: 'HiveMQ Cloud',
+      description: 'HiveMQ managed MQTT cloud service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hivemq/hivemq-community-edition' },
+      latestSource: { type: 'github-releases', target: 'hivemq/hivemq-community-edition' },
+      evidenceUrl: 'https://www.hivemq.com/mqtt-cloud-broker/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Kubernetes local dev distros
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'k3d': [
+    {
+      id: 'cli',
+      label: 'k3d (Local k3s in Docker)',
+      description: 'k3d wrapper to run k3s in Docker. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'k3d-io/k3d' },
+      latestSource: { type: 'github-releases', target: 'k3d-io/k3d' },
+      evidenceUrl: 'https://k3d.io/stable/#installation',
+    },
+  ],
+
+  'kind': [
+    {
+      id: 'cli',
+      label: 'kind (Kubernetes in Docker)',
+      description: 'kind Kubernetes-in-Docker for local testing. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'kubernetes-sigs/kind' },
+      latestSource: { type: 'github-releases', target: 'kubernetes-sigs/kind' },
+      evidenceUrl: 'https://kind.sigs.k8s.io/docs/user/quick-start/#installation',
+    },
+  ],
+
+  'minikube': [
+    {
+      id: 'cli',
+      label: 'minikube (Local Kubernetes)',
+      description: 'minikube local Kubernetes cluster. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'kubernetes/minikube' },
+      latestSource: { type: 'github-releases', target: 'kubernetes/minikube' },
+      evidenceUrl: 'https://minikube.sigs.k8s.io/docs/start/',
+    },
+  ],
+
+  'kubeadm': [
+    {
+      id: 'self-hosted',
+      label: 'kubeadm (Production Kubernetes Bootstrap)',
+      description: 'kubeadm cluster bootstrapper. Tracks Kubernetes release from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'kubernetes/kubernetes' },
+      latestSource: { type: 'github-releases', target: 'kubernetes/kubernetes' },
+      evidenceUrl: 'https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Email servers
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'mailu': [
+    {
+      id: 'self-hosted',
+      label: 'Mailu (Self-Hosted)',
+      description: 'Mailu full-featured mail server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Mailu/Mailu' },
+      latestSource: { type: 'github-releases', target: 'Mailu/Mailu' },
+      evidenceUrl: 'https://mailu.io/master/setup/',
+    },
+  ],
+
+  'stalwart-mail': [
+    {
+      id: 'self-hosted',
+      label: 'Stalwart Mail Server (Self-Hosted)',
+      description: 'Stalwart modern all-in-one mail server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'stalwartlabs/mail-server' },
+      latestSource: { type: 'github-releases', target: 'stalwartlabs/mail-server' },
+      evidenceUrl: 'https://stalw.art/docs/install/linux',
+    },
+  ],
+
+  'roundcube': [
+    {
+      id: 'self-hosted',
+      label: 'Roundcube (Self-Hosted Webmail)',
+      description: 'Roundcube browser-based webmail. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'roundcube/roundcubemail' },
+      latestSource: { type: 'github-releases', target: 'roundcube/roundcubemail' },
+      evidenceUrl: 'https://roundcube.net/download/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // IoT / Home Automation
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'zigbee2mqtt': [
+    {
+      id: 'self-hosted',
+      label: 'Zigbee2MQTT (Self-Hosted)',
+      description: 'Zigbee2MQTT bridge. Version via frontend /api/health or GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Koenkk/zigbee2mqtt' },
+      latestSource: { type: 'github-releases', target: 'Koenkk/zigbee2mqtt' },
+      evidenceUrl: 'https://www.zigbee2mqtt.io/guide/installation/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Self-hosted dashboards / home apps
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'homarr': [
+    {
+      id: 'self-hosted',
+      label: 'Homarr (Self-Hosted Dashboard)',
+      description: 'Homarr homelab dashboard. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'ajnart/homarr' },
+      latestSource: { type: 'github-releases', target: 'ajnart/homarr' },
+      evidenceUrl: 'https://homarr.dev/docs/getting-started/installation/',
+    },
+  ],
+
+  'homer': [
+    {
+      id: 'self-hosted',
+      label: 'Homer (Self-Hosted Dashboard)',
+      description: 'Homer static homelab dashboard. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'bastienwirtz/homer' },
+      latestSource: { type: 'github-releases', target: 'bastienwirtz/homer' },
+      evidenceUrl: 'https://github.com/bastienwirtz/homer#getting-started',
+    },
+  ],
+
+  'flame': [
+    {
+      id: 'self-hosted',
+      label: 'Flame (Self-Hosted Startpage)',
+      description: 'Flame self-hosted startpage dashboard. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'pawelmalak/flame' },
+      latestSource: { type: 'github-releases', target: 'pawelmalak/flame' },
+      evidenceUrl: 'https://github.com/pawelmalak/flame#installation-with-docker',
+    },
+  ],
+
 };
 
 /**

@@ -16214,6 +16214,343 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // More dashboards / self-hosted utilities
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'dasherr': [
+    {
+      id: 'self-hosted',
+      label: 'Dasherr (Self-Hosted Dashboard)',
+      description: 'Dasherr minimal homelab dashboard. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'erohtar/Dasherr' },
+      latestSource: { type: 'github-releases', target: 'erohtar/Dasherr' },
+      evidenceUrl: 'https://github.com/erohtar/Dasherr',
+    },
+  ],
+
+  'dashdot': [
+    {
+      id: 'self-hosted',
+      label: 'dashdot (Server Monitoring Dashboard)',
+      description: 'dashdot self-hosted server metrics dashboard. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'MauriceNino/dashdot' },
+      latestSource: { type: 'github-releases', target: 'MauriceNino/dashdot' },
+      evidenceUrl: 'https://getdashdot.com/docs/installation',
+    },
+  ],
+
+  'librespeed': [
+    {
+      id: 'self-hosted',
+      label: 'LibreSpeed (Self-Hosted Speed Test)',
+      description: 'LibreSpeed network speed test server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'librespeed/speedtest' },
+      latestSource: { type: 'github-releases', target: 'librespeed/speedtest' },
+      evidenceUrl: 'https://github.com/librespeed/speedtest/wiki/Self-Hosting',
+    },
+  ],
+
+  'scrutiny': [
+    {
+      id: 'self-hosted',
+      label: 'Scrutiny (Self-Hosted S.M.A.R.T Monitor)',
+      description: 'Scrutiny hard drive health monitoring. Version from GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://scrutiny.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.success',
+        jsonPathExtractors: ['success'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'AnalogJ/scrutiny' },
+      evidenceUrl: 'https://github.com/AnalogJ/scrutiny#installation',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // RSS / Read later / Bookmarks
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'freshrss': [
+    {
+      id: 'self-hosted',
+      label: 'FreshRSS (Self-Hosted)',
+      description: 'FreshRSS RSS feed aggregator. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'FreshRSS/FreshRSS' },
+      latestSource: { type: 'github-releases', target: 'FreshRSS/FreshRSS' },
+      evidenceUrl: 'https://freshrss.github.io/FreshRSS/en/admins/02_Installation.html',
+    },
+  ],
+
+  'wallabag': [
+    {
+      id: 'self-hosted',
+      label: 'wallabag (Self-Hosted)',
+      description: 'wallabag read-later application. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'wallabag/wallabag' },
+      latestSource: { type: 'github-releases', target: 'wallabag/wallabag' },
+      evidenceUrl: 'https://doc.wallabag.org/en/admin/installation/installation.html',
+    },
+    {
+      id: 'cloud',
+      label: 'wallabag.it (Hosted)',
+      description: 'wallabag hosted service at wallabag.it.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'wallabag/wallabag' },
+      latestSource: { type: 'github-releases', target: 'wallabag/wallabag' },
+      evidenceUrl: 'https://www.wallabag.it/en',
+    },
+  ],
+
+  'linkding': [
+    {
+      id: 'self-hosted',
+      label: 'linkding (Self-Hosted Bookmarks)',
+      description: 'linkding bookmark manager. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'sissbruecker/linkding' },
+      latestSource: { type: 'github-releases', target: 'sissbruecker/linkding' },
+      evidenceUrl: 'https://github.com/sissbruecker/linkding/blob/master/README.md#installation',
+    },
+  ],
+
+  'linkwarden': [
+    {
+      id: 'self-hosted',
+      label: 'Linkwarden (Self-Hosted)',
+      description: 'Linkwarden collaborative bookmark manager. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'linkwarden/linkwarden' },
+      latestSource: { type: 'github-releases', target: 'linkwarden/linkwarden' },
+      evidenceUrl: 'https://docs.linkwarden.app/self-hosting/installation',
+    },
+    {
+      id: 'cloud',
+      label: 'Linkwarden Cloud',
+      description: 'Linkwarden managed cloud at cloud.linkwarden.app.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'linkwarden/linkwarden' },
+      latestSource: { type: 'github-releases', target: 'linkwarden/linkwarden' },
+      evidenceUrl: 'https://cloud.linkwarden.app',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Photo / Gallery
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'lychee': [
+    {
+      id: 'self-hosted',
+      label: 'Lychee (Self-Hosted Photo Manager)',
+      description: 'Lychee self-hosted photo management. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'LycheeOrg/Lychee' },
+      latestSource: { type: 'github-releases', target: 'LycheeOrg/Lychee' },
+      evidenceUrl: 'https://lychee.electerious.com/#installation',
+    },
+  ],
+
+  'photoview': [
+    {
+      id: 'self-hosted',
+      label: 'Photoview (Self-Hosted)',
+      description: 'Photoview photo gallery server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'photoview/photoview' },
+      latestSource: { type: 'github-releases', target: 'photoview/photoview' },
+      evidenceUrl: 'https://photoview.github.io/en/docs/installation-docker/',
+    },
+  ],
+
+  'piwigo': [
+    {
+      id: 'self-hosted',
+      label: 'Piwigo (Self-Hosted)',
+      description: 'Piwigo open-source photo gallery. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Piwigo/Piwigo' },
+      latestSource: { type: 'github-releases', target: 'Piwigo/Piwigo' },
+      evidenceUrl: 'https://piwigo.org/get-piwigo',
+    },
+    {
+      id: 'cloud',
+      label: 'Piwigo.com (Hosted)',
+      description: 'Piwigo hosted photo gallery at piwigo.com.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Piwigo/Piwigo' },
+      latestSource: { type: 'github-releases', target: 'Piwigo/Piwigo' },
+      evidenceUrl: 'https://piwigo.com',
+    },
+  ],
+
+  'pixelfed': [
+    {
+      id: 'self-hosted',
+      label: 'Pixelfed (Self-Hosted)',
+      description: 'Pixelfed federated photo sharing (ActivityPub). Version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'pixelfed/pixelfed' },
+      latestSource: { type: 'github-releases', target: 'pixelfed/pixelfed' },
+      evidenceUrl: 'https://docs.pixelfed.org/running-pixelfed/installation.html',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Notes / Productivity
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'standard-notes': [
+    {
+      id: 'self-hosted',
+      label: 'Standard Notes Server (Self-Hosted)',
+      description: 'Standard Notes encrypted notes server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'standardnotes/server' },
+      latestSource: { type: 'github-releases', target: 'standardnotes/server' },
+      evidenceUrl: 'https://docs.standardnotes.com/self-hosting/getting-started',
+    },
+    {
+      id: 'cloud',
+      label: 'Standard Notes (Cloud)',
+      description: 'Standard Notes managed cloud at app.standardnotes.com.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'standardnotes/server' },
+      latestSource: { type: 'github-releases', target: 'standardnotes/server' },
+      evidenceUrl: 'https://app.standardnotes.com',
+    },
+  ],
+
+  'leantime': [
+    {
+      id: 'self-hosted',
+      label: 'Leantime (Self-Hosted)',
+      description: 'Leantime open-source project management. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Leantime/leantime' },
+      latestSource: { type: 'github-releases', target: 'Leantime/leantime' },
+      evidenceUrl: 'https://docs.leantime.io/#/installation',
+    },
+    {
+      id: 'cloud',
+      label: 'Leantime Cloud',
+      description: 'Leantime managed cloud service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Leantime/leantime' },
+      latestSource: { type: 'github-releases', target: 'Leantime/leantime' },
+      evidenceUrl: 'https://leantime.io/pricing',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Database tools / Network / PaaS
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'adminer': [
+    {
+      id: 'self-hosted',
+      label: 'Adminer (Self-Hosted DB UI)',
+      description: 'Adminer lightweight database management UI. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'vrana/adminer' },
+      latestSource: { type: 'github-releases', target: 'vrana/adminer' },
+      evidenceUrl: 'https://www.adminer.org/#download',
+    },
+  ],
+
+  'pfsense': [
+    {
+      id: 'self-hosted',
+      label: 'pfSense (Self-Hosted Firewall/Router)',
+      description: 'pfSense open-source firewall. Monitored via PulseDock agent.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://pfsense.example.com',
+      versionSource: { type: 'pulsedock-agent' },
+      latestSource: { type: 'github-releases', target: 'pfsense/pfsense' },
+      evidenceUrl: 'https://docs.netgate.com/pfsense/en/latest/install/index.html',
+    },
+    {
+      id: 'plus',
+      label: 'pfSense Plus (Netgate Appliance)',
+      description: 'pfSense Plus commercial/appliance edition by Netgate.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://pfsense.example.com',
+      versionSource: { type: 'pulsedock-agent' },
+      latestSource: { type: 'github-releases', target: 'pfsense/pfsense' },
+      evidenceUrl: 'https://www.netgate.com/pfsense-plus-software',
+    },
+  ],
+
+  'dokku': [
+    {
+      id: 'self-hosted',
+      label: 'Dokku (Self-Hosted PaaS)',
+      description: 'Dokku Docker-based mini-Heroku PaaS. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'dokku/dokku' },
+      latestSource: { type: 'github-releases', target: 'dokku/dokku' },
+      evidenceUrl: 'https://dokku.com/docs/getting-started/installation/',
+    },
+  ],
+
+  'telegraf': [
+    {
+      id: 'self-hosted',
+      label: 'Telegraf (Self-Hosted Metrics Agent)',
+      description: 'InfluxData Telegraf metrics collection agent. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'influxdata/telegraf' },
+      latestSource: { type: 'github-releases', target: 'influxdata/telegraf' },
+      evidenceUrl: 'https://docs.influxdata.com/telegraf/v1/install/',
+    },
+  ],
+
+  'lldap': [
+    {
+      id: 'self-hosted',
+      label: 'LLDAP (Self-Hosted Lightweight LDAP)',
+      description: 'LLDAP lightweight LDAP server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'lldap/lldap' },
+      latestSource: { type: 'github-releases', target: 'lldap/lldap' },
+      evidenceUrl: 'https://github.com/lldap/lldap#getting-started',
+    },
+  ],
+
 };
 
 /**

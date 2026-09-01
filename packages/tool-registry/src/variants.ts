@@ -16551,6 +16551,317 @@ export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
     },
   ],
 
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Networking / Infra (agent-monitored)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'proxmox-ve': [
+    {
+      id: 'self-hosted',
+      label: 'Proxmox VE (Self-Hosted)',
+      description: 'Proxmox Virtual Environment hypervisor. Version via /api2/json/version.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://proxmox.example.com:8006',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api2/json/version',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: true,
+      },
+      latestSource: { type: 'github-releases', target: 'proxmox/pve-manager' },
+      evidenceUrl: 'https://pve.proxmox.com/wiki/Proxmox_VE_API',
+    },
+  ],
+
+  'unraid': [
+    {
+      id: 'self-hosted',
+      label: 'Unraid (Self-Hosted NAS/VM)',
+      description: 'Unraid OS for NAS and VMs. Monitored via PulseDock agent.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://unraid.local',
+      versionSource: { type: 'pulsedock-agent' },
+      latestSource: { type: 'github-releases', target: 'unraid/webgui' },
+      evidenceUrl: 'https://docs.unraid.net/unraid-os/getting-started/',
+    },
+  ],
+
+  'vyos': [
+    {
+      id: 'self-hosted',
+      label: 'VyOS (Self-Hosted Network OS)',
+      description: 'VyOS open-source network OS. Monitored via PulseDock agent.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://vyos.example.com',
+      versionSource: { type: 'pulsedock-agent' },
+      latestSource: { type: 'github-releases', target: 'vyos/vyos-1x' },
+      evidenceUrl: 'https://docs.vyos.io/en/latest/installation/install.html',
+    },
+    {
+      id: 'lts',
+      label: 'VyOS LTS (Subscription)',
+      description: 'VyOS Long Term Support release (subscription).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://vyos.example.com',
+      versionSource: { type: 'pulsedock-agent' },
+      latestSource: { type: 'github-releases', target: 'vyos/vyos-1x' },
+      evidenceUrl: 'https://vyos.io/subscriptions/',
+    },
+  ],
+
+  'openwrt': [
+    {
+      id: 'self-hosted',
+      label: 'OpenWrt (Self-Hosted Router OS)',
+      description: 'OpenWrt Linux-based router firmware. Monitored via PulseDock agent.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://192.168.1.1',
+      versionSource: { type: 'pulsedock-agent' },
+      latestSource: { type: 'github-releases', target: 'openwrt/openwrt' },
+      evidenceUrl: 'https://openwrt.org/docs/guide-user/installation/start',
+    },
+  ],
+
+  'wireguard-ui': [
+    {
+      id: 'self-hosted',
+      label: 'WireGuard UI (Self-Hosted)',
+      description: 'WireGuard web UI management panel. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'ngoduykhanh/wireguard-ui' },
+      latestSource: { type: 'github-releases', target: 'ngoduykhanh/wireguard-ui' },
+      evidenceUrl: 'https://github.com/ngoduykhanh/wireguard-ui#deployment',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Docker image versions
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'postgresql-docker': [
+    {
+      id: 'docker-hub',
+      label: 'PostgreSQL Docker Image (library/postgres)',
+      description: 'Official PostgreSQL Docker Hub image. Tag tracked via Docker Hub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'library/postgres' },
+      latestSource: { type: 'github-releases', target: 'postgres/postgres' },
+      evidenceUrl: 'https://hub.docker.com/_/postgres',
+    },
+  ],
+
+  'nginx-docker': [
+    {
+      id: 'docker-hub',
+      label: 'NGINX Docker Image (library/nginx)',
+      description: 'Official NGINX Docker Hub image. Tag tracked via Docker Hub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'library/nginx' },
+      latestSource: { type: 'github-releases', target: 'nginx/nginx' },
+      evidenceUrl: 'https://hub.docker.com/_/nginx',
+    },
+  ],
+
+  'apache-httpd': [
+    {
+      id: 'docker-hub',
+      label: 'Apache HTTPD Docker Image (library/httpd)',
+      description: 'Official Apache HTTPD Docker Hub image. Tag tracked via Docker Hub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'library/httpd' },
+      latestSource: { type: 'docker-hub', target: 'library/httpd' },
+      evidenceUrl: 'https://hub.docker.com/_/httpd',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Dev frameworks / tools (miscellaneous)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'hono': [
+    {
+      id: 'npm',
+      label: 'Hono (npm)',
+      description: 'Hono ultrafast web framework for edge runtimes. Version from npm.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'hono' },
+      latestSource: { type: 'npm-registry', target: 'hono' },
+      evidenceUrl: 'https://www.npmjs.com/package/hono',
+    },
+  ],
+
+  'garnet': [
+    {
+      id: 'self-hosted',
+      label: 'Microsoft Garnet (Self-Hosted)',
+      description: 'Garnet high-performance Redis-compatible cache store from Microsoft.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'microsoft/garnet' },
+      latestSource: { type: 'github-releases', target: 'microsoft/garnet' },
+      evidenceUrl: 'https://microsoft.github.io/garnet/docs/getting-started/run-garnet',
+    },
+  ],
+
+  'zeromq': [
+    {
+      id: 'library',
+      label: 'ZeroMQ (libzmq)',
+      description: 'ZeroMQ high-performance messaging library. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'zeromq/libzmq' },
+      latestSource: { type: 'github-releases', target: 'zeromq/libzmq' },
+      evidenceUrl: 'https://github.com/zeromq/libzmq/releases',
+    },
+  ],
+
+  'cert-manager': [
+    {
+      id: 'kubernetes',
+      label: 'cert-manager (Kubernetes)',
+      description: 'cert-manager X.509 certificate controller. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'cert-manager/cert-manager' },
+      latestSource: { type: 'github-releases', target: 'cert-manager/cert-manager' },
+      evidenceUrl: 'https://cert-manager.io/docs/installation/',
+    },
+  ],
+
+  'watchtower': [
+    {
+      id: 'self-hosted',
+      label: 'Watchtower (Self-Hosted)',
+      description: 'Watchtower automatic Docker container updates. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'containrrr/watchtower' },
+      latestSource: { type: 'github-releases', target: 'containrrr/watchtower' },
+      evidenceUrl: 'https://containrrr.dev/watchtower/getting-started/',
+    },
+  ],
+
+  'clair': [
+    {
+      id: 'self-hosted',
+      label: 'Clair (Self-Hosted)',
+      description: 'Quay/CNCF Clair container vulnerability scanner. Version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'quay/clair' },
+      latestSource: { type: 'github-releases', target: 'quay/clair' },
+      evidenceUrl: 'https://quay.github.io/clair/howto/getting_started.html',
+    },
+  ],
+
+  'writefreely': [
+    {
+      id: 'self-hosted',
+      label: 'WriteFreely (Self-Hosted)',
+      description: 'WriteFreely federated blogging platform (ActivityPub). Version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'writefreely/writefreely' },
+      latestSource: { type: 'github-releases', target: 'writefreely/writefreely' },
+      evidenceUrl: 'https://writefreely.org/start',
+    },
+    {
+      id: 'cloud',
+      label: 'Write.as (Cloud)',
+      description: 'Write.as managed cloud blogging at write.as.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'writefreely/writefreely' },
+      latestSource: { type: 'github-releases', target: 'writefreely/writefreely' },
+      evidenceUrl: 'https://write.as',
+    },
+  ],
+
+  'shaarli': [
+    {
+      id: 'self-hosted',
+      label: 'Shaarli (Self-Hosted Bookmarks)',
+      description: 'Shaarli personal minimalist link manager. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'shaarli/Shaarli' },
+      latestSource: { type: 'github-releases', target: 'shaarli/Shaarli' },
+      evidenceUrl: 'https://shaarli.readthedocs.io/en/master/Shaarli-installation/',
+    },
+  ],
+
+  'mylar3': [
+    {
+      id: 'self-hosted',
+      label: 'Mylar3 (Self-Hosted Comic Manager)',
+      description: 'Mylar3 automated comic book downloader. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'mylar3/mylar3' },
+      latestSource: { type: 'github-releases', target: 'mylar3/mylar3' },
+      evidenceUrl: 'https://github.com/mylar3/mylar3/wiki/Setup-Instructions',
+    },
+  ],
+
+  'gitpod': [
+    {
+      id: 'self-hosted',
+      label: 'Gitpod Self-Hosted',
+      description: 'Gitpod cloud dev environments on your own infra. Version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'gitpod-io/gitpod' },
+      latestSource: { type: 'github-releases', target: 'gitpod-io/gitpod' },
+      evidenceUrl: 'https://www.gitpod.io/docs/configure/self-hosted/latest',
+    },
+    {
+      id: 'cloud',
+      label: 'Gitpod Cloud (gitpod.io)',
+      description: 'Gitpod managed cloud dev environments at gitpod.io.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'gitpod-io/gitpod' },
+      latestSource: { type: 'github-releases', target: 'gitpod-io/gitpod' },
+      evidenceUrl: 'https://gitpod.io',
+    },
+  ],
+
+  'harness': [
+    {
+      id: 'self-hosted',
+      label: 'Harness Gitness (Self-Hosted)',
+      description: 'Harness open-source Gitness CI/SCM platform. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'harness/gitness' },
+      latestSource: { type: 'github-releases', target: 'harness/gitness' },
+      evidenceUrl: 'https://docs.gitness.com/installation',
+    },
+    {
+      id: 'cloud',
+      label: 'Harness Cloud Platform',
+      description: 'Harness managed SaaS CI/CD platform at app.harness.io.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'harness/gitness' },
+      latestSource: { type: 'github-releases', target: 'harness/gitness' },
+      evidenceUrl: 'https://app.harness.io',
+    },
+  ],
+
 };
 
 /**

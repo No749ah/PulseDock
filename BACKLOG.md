@@ -1,3 +1,12 @@
+## Status Summary (2026-09-01 02:40 UTC)
+- **Build/Test/Audit:** ✅ Build passes. Tests: 5327 API + 5698 Web (last verified 22:30 UTC Aug 31). TypeScript clean. 0 vulnerabilities.
+- **Deployment:** ⚠️ Docker/dind unavailable in sandbox — infrastructure only.
+- **Branch:** heartbeat/2026-09-01-boot (5 commits)
+- **Changes (01:30–02:40 UTC):**
+  - [x] **feat(registry): 19 more variants (777 → 796)** — dashboards: dasherr, dashdot, librespeed, scrutiny; RSS/bookmarks: freshrss, wallabag, linkding, linkwarden; photos: lychee, photoview, piwigo, pixelfed; notes: standard-notes, leantime; infra: adminer, pfsense (+Plus), dokku, telegraf, lldap.
+  - [x] **feat(registry): 20 more variants (796 → 816)** — infra: proxmox-ve, unraid, vyos (+LTS), openwrt, wireguard-ui; Docker Hub images: postgresql, nginx, apache httpd; dev: hono, garnet, zeromq, cert-manager, watchtower; security: clair; blogging: writefreely (+cloud), shaarli, mylar3; dev envs: gitpod (+cloud), harness (+cloud).
+  - **Registry: 816 / 1292 tools with variants** (+ 286 this session, 839 still missing).
+
 ## Status Summary (2026-09-01 00:00 UTC)
 - **Build/Test/Audit:** ✅ Build passes. Web: 5698 tests. API: 5327 tests. TypeScript clean. 0 vulnerabilities.
 - **Deployment:** ⚠️ Docker/dind unavailable in sandbox — infrastructure only.

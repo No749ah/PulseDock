@@ -418,6 +418,7 @@ export function AppFrame({
           <span className="text-lg font-bold text-text-primary tracking-tight">{workspaceName ?? 'PulseDock'}</span>
           {/* Close button (mobile only) */}
           <button
+            type="button"
             className="ml-auto sm:hidden p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
             onClick={() => setSidebarOpen(false)}
             aria-label="Close navigation"
@@ -460,6 +461,7 @@ export function AppFrame({
           {/* Left: burger (mobile) + page title */}
           <div className="flex items-center gap-3">
             <button
+              type="button"
               className="sm:hidden p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
               onClick={() => setSidebarOpen(true)}
               aria-label="Open navigation"
@@ -498,6 +500,7 @@ export function AppFrame({
           <div className="flex items-center gap-2">
             {/* Ctrl+K trigger (hidden on mobile) */}
             <button
+              type="button"
               className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg text-text-muted hover:text-text-secondary hover:bg-surface-elevated border border-border/60 transition-colors text-xs"
               onClick={() => {
                 window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }));
@@ -515,6 +518,7 @@ export function AppFrame({
             {/* Notifications bell */}
             <div className="relative" ref={notifRef}>
               <button
+                type="button"
                 className="relative p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
                 onClick={() => setNotifOpen((v) => !v)}
                 aria-label="Notifications"
@@ -541,6 +545,7 @@ export function AppFrame({
                       )}
                       {unreadNotifications.length > 0 && (
                         <button
+                          type="button"
                           onClick={markAllRead}
                           className="text-xs text-text-muted hover:text-accent transition-colors"
                         >
@@ -641,6 +646,7 @@ export function AppFrame({
 
             {/* Theme toggle */}
             <button
+              type="button"
               className="p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
               onClick={toggleTheme}
               aria-label="Toggle theme"
@@ -656,6 +662,7 @@ export function AppFrame({
             {/* User menu */}
             <div className="relative" ref={menuRef}>
             <button
+              type="button"
               className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-surface-elevated transition-colors"
               onClick={() => setUserMenuOpen((v) => !v)}
               aria-expanded={userMenuOpen}
@@ -686,6 +693,7 @@ export function AppFrame({
                 </div>
                 <div className="py-1">
                   <button
+                    type="button"
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-primary hover:bg-surface-elevated transition-colors text-left"
                     onClick={() => { setUserMenuOpen(false); router.push('/account'); }}
                   >
@@ -694,6 +702,7 @@ export function AppFrame({
                   </button>
                   {user?.role === 'admin' && (
                     <button
+                      type="button"
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-primary hover:bg-surface-elevated transition-colors text-left"
                       onClick={() => { setUserMenuOpen(false); router.push('/admin'); }}
                     >
@@ -704,6 +713,7 @@ export function AppFrame({
                 </div>
                 <div className="py-1 border-t border-border">
                   <button
+                    type="button"
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors text-left"
                     onClick={() => { void clearSession().then(() => router.push('/login')); }}
                   >

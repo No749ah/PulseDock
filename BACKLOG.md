@@ -1,5 +1,10 @@
 ## 🚨 FULL REFACTOR DIRECTIVE — 2026-09-03
 
+## Status Summary (2026-09-03 16:45 UTC)
+- **Validation:** ✅ Web build, web typecheck, focused Button/Card tests (37), and `npm audit --audit-level=moderate` pass. Full suite still exceeds the 240s sandbox timeout while emitting passing output.
+- **Deployment:** ⚠️ Docker/dind/API unavailable; web restart exits after readiness and local runtime probes return 000. Public `/login` remains 502.
+- **Changes:** Added `aria-current="page"` to active AppFrame navigation links, completing another shared accessibility slice.
+
 ## Status Summary (2026-09-03 16:35 UTC)
 - **Validation:** ✅ `npm run build` and web typecheck pass; focused Button/Card tests: 37 pass. `npm audit --audit-level=moderate` is clean after updating `fflate` and `qs` in the lockfile. The full test command exceeded 240s while still emitting passing tests and timed out without a failure summary.
 - **Deployment:** ⚠️ Web restart reports readiness but exits before follow-up probes; API and dind services are unavailable in the sandbox. Local web/API returned 000 and public `/login` returned 502.

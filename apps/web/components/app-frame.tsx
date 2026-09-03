@@ -520,6 +520,7 @@ export function AppFrame({
                 aria-label="Notifications"
                 aria-expanded={notifOpen}
                 aria-haspopup="true"
+                aria-controls="notification-menu"
               >
                 <Bell className="w-4 h-4" />
                 {/* Badge — shows unread failure count */}
@@ -531,7 +532,7 @@ export function AppFrame({
               </button>
 
               {notifOpen && (
-                <div className="absolute right-0 top-full mt-2 w-72 bg-surface border border-border rounded-xl shadow-xl shadow-black/30 overflow-hidden z-50">
+                <div id="notification-menu" className="absolute right-0 top-full mt-2 w-72 bg-surface border border-border rounded-xl shadow-xl shadow-black/30 overflow-hidden z-50">
                   <div className="px-4 py-3 border-b border-border flex items-center justify-between">
                     <p className="text-sm font-semibold text-text-primary">Alerts &amp; Updates</p>
                     <div className="flex items-center gap-2">
@@ -659,6 +660,7 @@ export function AppFrame({
               onClick={() => setUserMenuOpen((v) => !v)}
               aria-expanded={userMenuOpen}
               aria-haspopup="menu"
+              aria-controls="user-menu"
               aria-label={`User menu for ${userName}`}
             >
               <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-xs font-semibold text-accent select-none">
@@ -677,7 +679,7 @@ export function AppFrame({
 
             {/* Dropdown */}
             {userMenuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-52 bg-surface border border-border rounded-xl shadow-xl shadow-black/30 overflow-hidden z-50">
+              <div id="user-menu" className="absolute right-0 top-full mt-2 w-52 bg-surface border border-border rounded-xl shadow-xl shadow-black/30 overflow-hidden z-50">
                 <div className="px-4 py-3 border-b border-border">
                   <p className="text-xs font-medium text-text-secondary">Signed in as</p>
                   <p className="text-sm font-semibold text-text-primary truncate mt-0.5">{userName}</p>

@@ -1,5 +1,10 @@
 ## 🚨 FULL REFACTOR DIRECTIVE — 2026-09-03
 
+## Status Summary (2026-09-03 23:10 UTC)
+- **Validation:** ✅ Web typecheck, focused Button/Card tests (37), and full build pass. Offline high-severity audit reports 0 vulnerabilities.
+- **Deployment:** ⚠️ Docker/dind/API unavailable. Web restart reports readiness but exits before follow-up probes; required local routes/API return 000 and public `/login` returns 502.
+- **Changes:** Header notification and user-menu toggles now explicitly reference their controlled popup regions with `aria-controls`.
+
 ## Status Summary (2026-09-03 22:55 UTC)
 - **Validation:** ✅ Web typecheck, focused Button/Card tests (37), and full build pass. Offline high-severity audit reports 0 vulnerabilities; online audit remains registry-timeout prone.
 - **Deployment:** ⚠️ Docker/dind/API unavailable. Web restart reports readiness but exits before follow-up probes; required local routes/API return 000 and public `/login` returns 502.

@@ -1,3 +1,14 @@
+## 🚨 FULL REFACTOR DIRECTIVE — 2026-09-03
+
+The Dev-Agent has been upgraded to a new model. Treat the next cycles as a full, independent re-evaluation and refactor of PulseDock — not as a continuation of prior completion claims.
+
+- [ ] Audit the entire repository, architecture, API, database schema, workers, frontend, CLI, extension, deployment manifests, and documentation before choosing work.
+- [ ] Rebuild or refactor any code that is brittle, duplicated, over-complex, insecure, untested, misleading, or below production quality; preserve behavior only where it is verified and correct.
+- [ ] Re-check every completed backlog item against the actual implementation and running product. Reopen items when evidence is missing or requirements are incomplete.
+- [ ] Review all feature boundaries for consistency: API contracts, authorization, tenant isolation, error handling, observability, accessibility, responsive UI, migrations, and operational behavior.
+- [ ] Create tests and verification evidence for each refactor; run the complete build, test, audit, browser, and deployment checks after changes.
+- [ ] Keep this directive active until the codebase is genuinely production-ready. Do not start or propose another project, and do not label PulseDock feature-complete based only on passing tests.
+
 ## Status Summary (2026-09-01 02:40 UTC)
 - **Build/Test/Audit:** ✅ Build passes. Tests: 5327 API + 5698 Web (last verified 22:30 UTC Aug 31). TypeScript clean. 0 vulnerabilities.
 - **Deployment:** ⚠️ Docker/dind unavailable in sandbox — infrastructure only.
@@ -430,3 +441,48 @@
 - [x] Code quality automation (8 checks)
 
 </details>
+## 🔍 World-Class Reassessment Queue (added 2026-09-03)
+
+Before marking PulseDock complete, review and verify every item below against the running product, threat model, and real user workflows. Do not claim completion from static code inspection alone; add evidence (tests, browser checks, or deployment checks) to each completed item.
+
+### 🔴 Security & Trust
+- [ ] Run an OWASP ASVS/L1 + API security review and document pass/fail evidence.
+- [ ] Add MFA/TOTP with recovery codes, secure enrollment, reset flow, and step-up auth for sensitive actions.
+- [ ] Verify CSRF protection for every cookie-authenticated state-changing endpoint.
+- [ ] Add login/password-reset/email-verification abuse controls, lockout/backoff, and safe enumeration-resistant responses.
+- [ ] Review session rotation, refresh-token reuse detection, revocation, device management, and logout-all behavior.
+- [ ] Add secret redaction checks for logs, exports, errors, API responses, and client-side state.
+- [ ] Threat-model SSRF, webhook callbacks, URL imports, plugin execution, redirects, DNS rebinding, and private-network access.
+- [ ] Enforce safe outbound HTTP: scheme/host/IP validation, redirect policy, timeout, body-size, response-size, and concurrency limits.
+- [ ] Add security headers and cookie tests for production proxy deployments (HSTS, CSP, SameSite, Secure, HttpOnly).
+- [ ] Verify tenant isolation and authorization on every controller, bulk endpoint, export/import path, websocket event, and status page.
+- [ ] Add immutable audit-log integrity, retention, export authorization, pagination, and admin visibility tests.
+- [ ] Establish dependency/container/SBOM scanning, signed releases, secret scanning, and a vulnerability response policy.
+
+### 🟠 Reliability, Operations & Scale
+- [ ] Define SLOs for check latency, scheduler freshness, alert delivery, API availability, and recovery time.
+- [ ] Add scheduler lease/leader-election behavior for multi-instance deployments and prove no duplicate checks.
+- [ ] Add bounded queues, backpressure, per-tenant quotas, retry budgets, and circuit breakers for providers/channels.
+- [ ] Verify idempotency for checks, alerts, imports, bulk actions, and webhook retries.
+- [ ] Add graceful shutdown, readiness/liveness semantics, migration rollback guidance, and backup/restore drills.
+- [ ] Test PostgreSQL failure, Redis failure, provider timeouts, clock skew, partial deploys, and network partitions.
+- [ ] Add structured operational metrics/traces/log correlation with PII-safe defaults and cardinality limits.
+- [ ] Load-test realistic fleets and document supported limits for monitors, history, users, widgets, and websocket clients.
+
+### 🟡 UX, Accessibility & Product Completeness
+- [ ] Run WCAG 2.2 AA automated and keyboard/screen-reader audits across every route and modal.
+- [ ] Verify mobile layouts, touch targets, reduced-motion mode, contrast, focus restoration, and offline/reconnect behavior.
+- [ ] Standardize loading, empty, partial-failure, permission-denied, rate-limit, and retry states across all pages.
+- [ ] Add unsaved-change protection, optimistic-update rollback, bulk-action confirmation, and undo where appropriate.
+- [ ] Complete onboarding, first-monitor experience, contextual help, searchable docs, and actionable error messages.
+- [ ] Add localization architecture, timezone/DST correctness, locale-aware dates/numbers, and RTL readiness review.
+- [ ] Verify notification preferences, deduplication, escalation timing, quiet hours, templates, and delivery diagnostics.
+- [ ] Test status pages for custom domains, caching, incident lifecycle, accessibility, abuse protection, and privacy.
+
+### 🟢 Quality, Compatibility & Governance
+- [ ] Build a browser E2E matrix for Chromium/Firefox/Safari-equivalent flows and supported viewport sizes.
+- [ ] Add contract tests for all providers, alert channels, plugin APIs, CLI commands, and import/export formats.
+- [ ] Verify backwards compatibility, API deprecation policy, schema migration safety, and OpenAPI accuracy.
+- [ ] Add deterministic fixtures, seeded test data, flaky-test quarantine rules, and coverage thresholds by package.
+- [ ] Test Docker Compose and Kubernetes from clean environments, including non-root execution and upgrade paths.
+- [ ] Document support matrix, threat model, architecture decisions, incident response, privacy/data deletion, and release checklist.

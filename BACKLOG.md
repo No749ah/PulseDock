@@ -1,5 +1,10 @@
 ## 🚨 FULL REFACTOR DIRECTIVE — 2026-09-03
 
+## Status Summary (2026-09-03 22:55 UTC)
+- **Validation:** ✅ Web typecheck, focused Button/Card tests (37), and full build pass. Offline high-severity audit reports 0 vulnerabilities; online audit remains registry-timeout prone.
+- **Deployment:** ⚠️ Docker/dind/API unavailable. Web restart reports readiness but exits before follow-up probes; required local routes/API return 000 and public `/login` returns 502.
+- **Changes:** Mobile navigation now closes on `Escape`, in addition to the accessible toggle relationships and screenreader-hidden backdrop.
+
 ## Status Summary (2026-09-03 22:45 UTC)
 - **Validation:** ✅ Full build and test commands completed successfully (API agent tail: 12/12); web typecheck and focused Button/Card tests (37) pass. High-severity audit could not reach npm registry due network timeout.
 - **Deployment:** ⚠️ Docker/dind/API unavailable. Web restart reports readiness but exits before follow-up probes; required local routes/API return 000 and public `/login` returns 502.

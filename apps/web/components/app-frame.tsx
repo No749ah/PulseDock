@@ -321,6 +321,16 @@ export function AppFrame({
     setSidebarOpen(false);
   }, [pathname]);
 
+  // Escape closes the mobile navigation without requiring a pointer action.
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape') setSidebarOpen(false);
+    }
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [sidebarOpen]);
+
   // '/' keyboard shortcut → open command palette (when not focused in an input)
   useEffect(() => {
     function handleSlash(e: KeyboardEvent) {

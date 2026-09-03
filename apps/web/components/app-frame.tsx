@@ -122,11 +122,13 @@ function NavSidebar({
   pathname,
   isAdmin,
   downMonitorCount,
+  onNavigate,
 }: {
   navGroups: NavGroup[];
   pathname: string;
   isAdmin: boolean;
   downMonitorCount: number;
+  onNavigate?: () => void;
 }) {
   const renderItem = (item: NavItem) => {
     const isActive = pathname === item.href || (item.href !== '/dashboard' && item.href !== '/' && pathname.startsWith(item.href + '/'));
@@ -135,6 +137,7 @@ function NavSidebar({
         <Link
           href={item.href}
           aria-current={isActive ? 'page' : undefined}
+          onClick={onNavigate}
           className={[
             'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors relative',
             isActive
@@ -410,6 +413,7 @@ export function AppFrame({
           pathname={pathname}
           isAdmin={user?.role === 'admin'}
           downMonitorCount={downMonitorCount}
+          onNavigate={() => setSidebarOpen(false)}
         />
 
         {/* Sidebar footer */}

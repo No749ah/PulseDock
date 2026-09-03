@@ -1,5 +1,10 @@
 ## 🚨 FULL REFACTOR DIRECTIVE — 2026-09-03
 
+## Status Summary (2026-09-03 17:45 UTC)
+- **Validation:** ✅ Web build, web typecheck, focused Button/Card tests (37), and moderate npm audit pass. Full suite remains over the sandbox timeout without a failure summary.
+- **Deployment:** ⚠️ Docker/dind/API unavailable. Web restart reports readiness but exits before follow-up probes; all local routes/API checks returned 000 and public `/login` returned 502.
+- **Changes:** Mobile navigation now closes after selecting a route; active navigation exposes `aria-current="page"`.
+
 ## Status Summary (2026-09-03 16:45 UTC)
 - **Validation:** ✅ Web build, web typecheck, focused Button/Card tests (37), and `npm audit --audit-level=moderate` pass. Full suite still exceeds the 240s sandbox timeout while emitting passing output.
 - **Deployment:** ⚠️ Docker/dind/API unavailable; web restart exits after readiness and local runtime probes return 000. Public `/login` remains 502.

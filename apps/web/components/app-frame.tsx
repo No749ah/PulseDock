@@ -536,7 +536,7 @@ export function AppFrame({
               </button>
 
               {notifOpen && (
-                <div id="notification-menu" className="absolute right-0 top-full mt-2 w-72 bg-surface border border-border rounded-xl shadow-xl shadow-black/30 overflow-hidden z-50">
+                <div id="notification-menu" role="region" aria-label="Notifications panel" className="absolute right-0 top-full mt-2 w-72 bg-surface border border-border rounded-xl shadow-xl shadow-black/30 overflow-hidden z-50">
                   <div className="px-4 py-3 border-b border-border flex items-center justify-between">
                     <p className="text-sm font-semibold text-text-primary">Alerts &amp; Updates</p>
                     <div className="flex items-center gap-2">
@@ -686,7 +686,7 @@ export function AppFrame({
 
             {/* Dropdown */}
             {userMenuOpen && (
-              <div id="user-menu" className="absolute right-0 top-full mt-2 w-52 bg-surface border border-border rounded-xl shadow-xl shadow-black/30 overflow-hidden z-50">
+              <div id="user-menu" role="region" aria-label="User account menu" className="absolute right-0 top-full mt-2 w-52 bg-surface border border-border rounded-xl shadow-xl shadow-black/30 overflow-hidden z-50">
                 <div className="px-4 py-3 border-b border-border">
                   <p className="text-xs font-medium text-text-secondary">Signed in as</p>
                   <p className="text-sm font-semibold text-text-primary truncate mt-0.5">{userName}</p>

@@ -1,5 +1,10 @@
 ## 🚨 FULL REFACTOR DIRECTIVE — 2026-09-03
 
+## Status Summary (2026-09-03 18:45 UTC)
+- **Validation:** ✅ Web build, web typecheck, focused Button/Card tests (37), and moderate npm audit pass.
+- **Deployment:** ⚠️ Docker/dind/API unavailable. Web restart reports readiness but exits before probes; local routes/API return 000 and public `/login` returns 502.
+- **Changes:** Added a keyboard-focusable skip link to the main content landmark and documented the deployment limitation.
+
 ## Status Summary (2026-09-03 17:45 UTC)
 - **Validation:** ✅ Web build, web typecheck, focused Button/Card tests (37), and moderate npm audit pass. Full suite remains over the sandbox timeout without a failure summary.
 - **Deployment:** ⚠️ Docker/dind/API unavailable. Web restart reports readiness but exits before follow-up probes; all local routes/API checks returned 000 and public `/login` returned 502.

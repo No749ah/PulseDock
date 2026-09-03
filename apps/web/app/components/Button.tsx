@@ -45,6 +45,7 @@ export function Button({
       {...props}
       onClick={onClick}
       disabled={disabled || loading}
+      aria-busy={loading || undefined}
       className={`${BUTTON_BASE} ${variants[variant]} ${sizes[size]} ${className}`}
     >
       {children}

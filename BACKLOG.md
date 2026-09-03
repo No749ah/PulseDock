@@ -1,5 +1,10 @@
 ## 🚨 FULL REFACTOR DIRECTIVE — 2026-09-03
 
+## Status Summary (2026-09-03 19:45 UTC)
+- **Validation:** ✅ Web build, web typecheck, focused Button/Card tests (37), and high-severity npm audit pass.
+- **Deployment:** ⚠️ Docker/dind/API unavailable. Web restart reports readiness but exits before follow-up probes; local routes/API return 000 and public `/login` returns 502.
+- **Changes:** Shared `Button` now exposes `aria-busy` during loading, improving assistive-technology feedback.
+
 ## Status Summary (2026-09-03 18:45 UTC)
 - **Validation:** ✅ Web build, web typecheck, focused Button/Card tests (37), and moderate npm audit pass.
 - **Deployment:** ⚠️ Docker/dind/API unavailable. Web restart reports readiness but exits before probes; local routes/API return 000 and public `/login` returns 502.

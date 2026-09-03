@@ -378,6 +378,7 @@ export function AppFrame({
         <div
           className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm sm:hidden"
           onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
         />
       )}
 

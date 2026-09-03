@@ -1,5 +1,10 @@
 ## 🚨 FULL REFACTOR DIRECTIVE — 2026-09-03
 
+## Status Summary (2026-09-03 22:45 UTC)
+- **Validation:** ✅ Full build and test commands completed successfully (API agent tail: 12/12); web typecheck and focused Button/Card tests (37) pass. High-severity audit could not reach npm registry due network timeout.
+- **Deployment:** ⚠️ Docker/dind/API unavailable. Web restart reports readiness but exits before follow-up probes; required local routes/API return 000 and public `/login` returns 502.
+- **Changes:** Marked the mobile navigation backdrop as `aria-hidden` while retaining explicit sidebar relationships on toggle controls.
+
 ## Status Summary (2026-09-03 21:45 UTC)
 - **Validation:** ✅ Web typecheck, web build, focused Button/Card tests (37), and high-severity npm audit pass.
 - **Deployment:** ⚠️ Docker/dind/API unavailable. Web restart reports readiness but exits before follow-up probes; required local routes/API return 000 and public `/login` returns 502.

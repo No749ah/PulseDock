@@ -383,6 +383,7 @@ export function AppFrame({
 
       {/* Sidebar panel */}
       <aside
+        aria-label="Application sidebar"
         className={[
           'fixed inset-y-0 left-0 z-40 flex flex-col w-[280px]',
           'bg-surface/80 backdrop-blur-xl border-r border-border/60',

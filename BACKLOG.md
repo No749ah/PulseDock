@@ -1,5 +1,10 @@
 ## 🚨 FULL REFACTOR DIRECTIVE — 2026-09-03
 
+## Status Summary (2026-09-03 20:45 UTC)
+- **Validation:** ✅ Web build, web typecheck, and high-severity npm audit pass. Existing focused Button/Card tests remain green (37 tests).
+- **Deployment:** ⚠️ Docker/dind/API unavailable. Web restart reports readiness but exits before follow-up probes; required local routes/API return 000 and public `/login` returns 502.
+- **Changes:** Added an explicit accessible `aria-label` to the AppFrame sidebar landmark.
+
 ## Status Summary (2026-09-03 19:45 UTC)
 - **Validation:** ✅ Web build, web typecheck, focused Button/Card tests (37), and high-severity npm audit pass.
 - **Deployment:** ⚠️ Docker/dind/API unavailable. Web restart reports readiness but exits before follow-up probes; local routes/API return 000 and public `/login` returns 502.

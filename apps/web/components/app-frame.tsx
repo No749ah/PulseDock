@@ -383,6 +383,7 @@ export function AppFrame({
 
       {/* Sidebar panel */}
       <aside
+        id="application-sidebar"
         aria-label="Application sidebar"
         className={[
           'fixed inset-y-0 left-0 z-40 flex flex-col w-[280px]',
@@ -409,6 +410,8 @@ export function AppFrame({
             className="ml-auto sm:hidden p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
             onClick={() => setSidebarOpen(false)}
             aria-label="Close navigation"
+            aria-controls="application-sidebar"
+            aria-expanded={sidebarOpen}
           >
             <X className="w-4 h-4" />
           </button>
@@ -449,6 +452,8 @@ export function AppFrame({
               className="sm:hidden p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
               onClick={() => setSidebarOpen(true)}
               aria-label="Open navigation"
+              aria-controls="application-sidebar"
+              aria-expanded={sidebarOpen}
             >
               <Menu className="w-5 h-5" />
             </button>

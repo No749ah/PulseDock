@@ -1,5 +1,10 @@
 ## 🚨 FULL REFACTOR DIRECTIVE — 2026-09-03
 
+## Status Summary (2026-09-03 21:45 UTC)
+- **Validation:** ✅ Web typecheck, web build, focused Button/Card tests (37), and high-severity npm audit pass.
+- **Deployment:** ⚠️ Docker/dind/API unavailable. Web restart reports readiness but exits before follow-up probes; required local routes/API return 000 and public `/login` returns 502.
+- **Changes:** Linked the mobile navigation toggle controls to the sidebar with `aria-controls` and accurate `aria-expanded` state.
+
 ## Status Summary (2026-09-03 20:45 UTC)
 - **Validation:** ✅ Web build, web typecheck, and high-severity npm audit pass. Existing focused Button/Card tests remain green (37 tests).
 - **Deployment:** ⚠️ Docker/dind/API unavailable. Web restart reports readiness but exits before follow-up probes; required local routes/API return 000 and public `/login` returns 502.

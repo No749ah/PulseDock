@@ -1,5 +1,10 @@
 ## 🚨 FULL REFACTOR DIRECTIVE — 2026-09-03
 
+## Status Summary (2026-09-04 05:55 UTC)
+- **Validation:** ✅ Web typecheck, focused Button/Card tests (37), and full build pass. Offline high-severity audit reports 0 vulnerabilities.
+- **Deployment:** ⚠️ Docker/dind/API unavailable. Web restart reports readiness but exits before follow-up probes; required local routes/API return 000 and public `/login` returns 502.
+- **Changes:** Dashboard controls now use explicit non-submit buttons, accessible table/grid labels, and a descriptive fullscreen action.
+
 ## Status Summary (2026-09-04 04:55 UTC)
 - **Validation:** ✅ Web typecheck, focused Button/Card tests (37), and full build pass. Offline high-severity audit reports 0 vulnerabilities.
 - **Deployment:** ⚠️ Docker/dind/API unavailable. Web restart reports readiness but exits before follow-up probes; required local routes/API return 000 and public `/login` returns 502.

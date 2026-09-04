@@ -41,7 +41,7 @@ export function MonitorsSection({ monitors, runs, monitorView, setMonitorView, s
         </div>
         <div className="flex items-center gap-2">
           {monitors.length > 0 && (
-            <div className="flex items-center rounded-lg border border-border bg-surface overflow-hidden">
+            <div role="toolbar" aria-label="Monitor view" className="flex items-center rounded-lg border border-border bg-surface overflow-hidden">
               <button
                 type="button"
                 onClick={() => setMonitorView("table")}

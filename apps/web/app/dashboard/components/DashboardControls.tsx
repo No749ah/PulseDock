@@ -52,7 +52,7 @@ export function DashboardControls({
           Last {timeRange === "1h" ? "1 hour" : timeRange === "6h" ? "6 hours" : timeRange === "24h" ? "24 hours" : timeRange === "7d" ? "7 days" : "30 days"}
         </h2>
         {autoRefresh && (
-          <span className="flex items-center gap-1.5 text-xs text-green-400 font-medium">
+          <span role="status" aria-live="polite" className="flex items-center gap-1.5 text-xs text-green-400 font-medium">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
               <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
@@ -88,6 +88,7 @@ export function DashboardControls({
           <select
             value={refreshInterval}
             onChange={(e) => onSetRefreshInterval(Number(e.target.value))}
+            aria-label="Refresh interval"
             className="text-xs px-2 py-1 bg-surface border border-border rounded-md text-text-secondary focus:outline-none focus:ring-1 focus:ring-accent"
           >
             <option value={10}>10s</option>

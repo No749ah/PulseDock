@@ -3,7 +3,7 @@
 import React, { useEffect, useRef, useState } from "react";
 import { useSearchParams } from "next/navigation";
 import { useRouter } from "next/navigation";
-import { API_BASE, api } from "../../../lib/api";
+import { getApiBase, api } from "../../../lib/api";
 import { createRealtimeSocket } from "../../../lib/realtime";
 import { getUser } from "../../../components/auth";
 import { useToast } from "../../../components/ui/toast";
@@ -976,7 +976,7 @@ export function useMonitors() {
       const params = new URLSearchParams({ format: configExportFormat });
       if (configExportIncludeAlerts) params.set("includeAlertChannels", "true");
       if (selectedList.length > 0) params.set("ids", selectedList.join(","));
-      const resp = await fetch(`${API_BASE}/v1/monitors/export?${params.toString()}`, { credentials: "include" });
+      const resp = await fetch(`${getApiBase()}/v1/monitors/export?${params.toString()}`, { credentials: "include" });
       if (!resp.ok) throw new Error(`Export failed: ${resp.status}`);
       const blob = await resp.blob();
       const url = URL.createObjectURL(blob);

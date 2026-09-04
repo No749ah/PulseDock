@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { api, API_BASE } from "../../lib/api";
+import { api, getApiBase } from "../../lib/api";
 import { setSession } from "../../components/auth";
 import { FadeIn } from "../components/FadeIn";
 import { AlertCircle, Monitor, Loader2, Shield, Eye, EyeOff } from "lucide-react";
@@ -687,7 +687,7 @@ export default function LoginPage() {
                 {oauthProviders.github && (
                   <button
                     type="button"
-                    onClick={() => { window.location.href = `${API_BASE}/v1/auth/oauth/github`; }}
+                    onClick={() => { window.location.href = `${getApiBase()}/v1/auth/oauth/github`; }}
                     className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-border bg-surface-elevated hover:bg-surface-elevated/80 text-text-secondary text-sm font-medium transition-all hover:border-border-hover"
                   >
                     <svg viewBox="0 0 24 24" className="w-4 h-4 fill-current" aria-hidden="true">
@@ -699,7 +699,7 @@ export default function LoginPage() {
                 {oauthProviders.google && (
                   <button
                     type="button"
-                    onClick={() => { window.location.href = `${API_BASE}/v1/auth/oauth/google`; }}
+                    onClick={() => { window.location.href = `${getApiBase()}/v1/auth/oauth/google`; }}
                     className="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl border border-border bg-surface-elevated hover:bg-surface-elevated/80 text-text-secondary text-sm font-medium transition-all hover:border-border-hover"
                   >
                     <svg viewBox="0 0 24 24" className="w-4 h-4" aria-hidden="true">

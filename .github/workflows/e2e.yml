@@ -9,12 +9,46 @@ on:
 jobs:
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 30
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: pulsedock
+          POSTGRES_PASSWORD: pulsedock
+          POSTGRES_DB: pulsedock
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U pulsedock -d pulsedock"
+          --health-interval 5s --health-timeout 5s --health-retries 12
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s --health-timeout 3s --health-retries 12
+
+    env:
+      DATABASE_URL: postgresql://pulsedock:pulsedock@localhost:5432/pulsedock
+      REDIS_URL: redis://localhost:6379
+      JWT_ACCESS_SECRET: ci-access-secret-for-testing-only-32chars
+      JWT_REFRESH_SECRET: ci-refresh-secret-for-testing-only-32chars
+      JWT_ACCESS_EXPIRES: 15m
+      JWT_REFRESH_EXPIRES: 30d
+      API_PORT: 4321
+      WEB_PORT: 1234
+      APP_BASE_URL: http://localhost:1234
+      ALLOW_PUBLIC_REGISTRATION: "true"
+      DEFAULT_ADMIN_EMAIL: admin@example.com
+      DEFAULT_ADMIN_PASSWORD: admin123
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 20
           cache: npm
@@ -26,12 +60,52 @@ jobs:
         run: npx playwright install --with-deps chromium
         working-directory: packages/e2e
 
+      - name: Prepare database
+        run: |
+          npx prisma generate --schema=prisma/schema.prisma
+          npx prisma migrate deploy --schema=prisma/schema.prisma
+
+      - name: Build and start API
+        run: |
+          npm run build -w @pulsedock/api
+          # The API build includes shared workspace sources, so TypeScript
+          # emits the entrypoint at dist/apps/api/src/main.js.
+          node apps/api/dist/apps/api/src/main.js > /tmp/pulsedock-api.log 2>&1 &
+          for attempt in {1..30}; do
+            curl --fail --silent http://localhost:4321/health/live >/dev/null && break
+            if [ "$attempt" = 30 ]; then
+              cat /tmp/pulsedock-api.log
+              exit 1
+            fi
+            sleep 2
+          done
+
+      - name: Build and start web
+        env:
+          NEXT_PUBLIC_API_BASE_URL: http://localhost:4321
+        run: |
+          npm run build -w @pulsedock/web
+          npm run start -w @pulsedock/web > /tmp/pulsedock-web.log 2>&1 &
+          for attempt in {1..30}; do
+            curl --fail --silent http://localhost:1234/login >/dev/null && break
+            if [ "$attempt" = 30 ]; then
+              cat /tmp/pulsedock-web.log
+              exit 1
+            fi
+            sleep 2
+          done
+
+      - name: Seed E2E administrator
+        run: |
+          curl --fail --silent --show-error \
+            -X POST http://localhost:4321/v1/auth/setup \
+            -H 'content-type: application/json' \
+            --data '{"email":"admin@example.com","password":"admin123"}'
+
       - name: Run E2E tests
         run: npm run test:e2e
         env:
-          BASE_URL: ${{ secrets.E2E_BASE_URL || 'https://oc-dev-test.no749ah.com' }}
-          E2E_EMAIL: ${{ secrets.E2E_EMAIL || 'admin@example.com' }}
-          E2E_PASSWORD: ${{ secrets.E2E_PASSWORD || 'admin123' }}
+          BASE_URL: http://localhost:1234
 
       - name: Upload Playwright report
         uses: actions/upload-artifact@v4

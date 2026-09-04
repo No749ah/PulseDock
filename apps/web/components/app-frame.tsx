@@ -386,6 +386,19 @@ export function AppFrame({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [notifOpen]);
 
+  // Escape closes transient header popups consistently.
+  useEffect(() => {
+    if (!userMenuOpen && !notifOpen) return;
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setUserMenuOpen(false);
+        setNotifOpen(false);
+      }
+    }
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [userMenuOpen, notifOpen]);
+
   const userInitial = mounted
     ? (user?.name?.[0] ?? user?.email?.[0] ?? 'U').toUpperCase()
     : 'U';

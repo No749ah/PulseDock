@@ -242,6 +242,8 @@ export function AppFrame({
   const [downMonitorCount, setDownMonitorCount] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+  const sidebarTriggerRef = useRef<HTMLButtonElement>(null);
+  const sidebarWasOpenRef = useRef(false);
 
   const fetchNotifications = () => {
     const VERSION_TYPES = new Set(['GIT_RELEASE', 'DOCKER_IMAGE']);
@@ -320,6 +322,14 @@ export function AppFrame({
   useEffect(() => {
     setSidebarOpen(false);
   }, [pathname]);
+
+  // Return focus to the mobile menu trigger when the sidebar closes.
+  useEffect(() => {
+    if (sidebarWasOpenRef.current && !sidebarOpen && window.matchMedia('(max-width: 639px)').matches) {
+      sidebarTriggerRef.current?.focus();
+    }
+    sidebarWasOpenRef.current = sidebarOpen;
+  }, [sidebarOpen]);
 
   // Escape closes the mobile navigation without requiring a pointer action.
   useEffect(() => {
@@ -467,6 +477,7 @@ export function AppFrame({
           <div className="flex items-center gap-3">
             <button
               type="button"
+              ref={sidebarTriggerRef}
               className="sm:hidden p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
               onClick={() => setSidebarOpen(true)}
               aria-label="Open navigation"

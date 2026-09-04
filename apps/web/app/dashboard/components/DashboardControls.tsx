@@ -70,6 +70,7 @@ export function DashboardControls({
               key={r}
               type="button"
               onClick={() => onSetTimeRange(r)}
+              aria-pressed={timeRange === r}
               className={`px-2.5 py-1.5 text-xs font-medium transition-colors ${
                 timeRange === r ? "bg-accent/10 text-accent" : "text-text-secondary hover:text-text-primary"
               }`}
@@ -97,6 +98,7 @@ export function DashboardControls({
           <button
             type="button"
             onClick={onToggleAutoRefresh}
+            aria-pressed={autoRefresh}
             className="flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border border-border bg-surface text-text-secondary hover:text-text-primary hover:border-accent/50 transition-colors"
           >
             {autoRefresh ? <Pause className="w-3 h-3" /> : <Play className="w-3 h-3" />}
@@ -113,6 +115,7 @@ export function DashboardControls({
           <button
             type="button"
             onClick={onToggleCustomize}
+            aria-pressed={showCustomize}
             className={`flex items-center gap-1.5 px-2.5 py-1 text-xs rounded-md border transition-colors ${
               showCustomize ? "border-accent/50 bg-accent/10 text-accent" : "border-border bg-surface text-text-secondary hover:text-text-primary hover:border-accent/50"
             }`}

@@ -45,6 +45,7 @@ export function MonitorsSection({ monitors, runs, monitorView, setMonitorView, s
               <button
                 type="button"
                 onClick={() => setMonitorView("table")}
+                aria-pressed={monitorView === "table"}
                 className={`p-1.5 transition-colors ${monitorView === "table" ? "bg-accent/10 text-accent" : "text-text-secondary hover:text-text-primary"}`}
                 title="Table view"
                 aria-label="Table view"
@@ -54,6 +55,7 @@ export function MonitorsSection({ monitors, runs, monitorView, setMonitorView, s
               <button
                 type="button"
                 onClick={() => setMonitorView("grid")}
+                aria-pressed={monitorView === "grid"}
                 className={`p-1.5 transition-colors ${monitorView === "grid" ? "bg-accent/10 text-accent" : "text-text-secondary hover:text-text-primary"}`}
                 title="Grid view"
                 aria-label="Grid view"

@@ -1,5 +1,10 @@
 ## 🚨 FULL REFACTOR DIRECTIVE — 2026-09-03
 
+## Status Summary (2026-09-04 04:05 UTC)
+- **Validation:** ✅ Web typecheck, focused Button/Card tests (37), and full build pass. Offline high-severity audit reports 0 vulnerabilities.
+- **Deployment:** ⚠️ Docker/dind/API unavailable. Web restart reports readiness but exits before follow-up probes; required local routes/API return 000 and public `/login` returns 502.
+- **Changes:** Mobile navigation now moves focus to the close control on open and restores focus to the trigger on close.
+
 ## Status Summary (2026-09-04 02:50 UTC)
 - **Validation:** ✅ Web typecheck, focused Button/Card tests (37), and full build pass. Offline high-severity audit reports 0 vulnerabilities.
 - **Deployment:** ⚠️ Docker/dind/API unavailable. Web restart reports readiness but exits before follow-up probes; required local routes/API return 000 and public `/login` returns 502.

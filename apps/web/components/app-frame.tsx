@@ -243,6 +243,7 @@ export function AppFrame({
   const menuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
   const sidebarTriggerRef = useRef<HTMLButtonElement>(null);
+  const sidebarCloseRef = useRef<HTMLButtonElement>(null);
   const sidebarWasOpenRef = useRef(false);
 
   const fetchNotifications = () => {
@@ -325,7 +326,10 @@ export function AppFrame({
 
   // Return focus to the mobile menu trigger when the sidebar closes.
   useEffect(() => {
-    if (sidebarWasOpenRef.current && !sidebarOpen && window.matchMedia('(max-width: 639px)').matches) {
+    const isMobile = window.matchMedia('(max-width: 639px)').matches;
+    if (sidebarOpen && isMobile) {
+      sidebarCloseRef.current?.focus();
+    } else if (sidebarWasOpenRef.current && !sidebarOpen && isMobile) {
       sidebarTriggerRef.current?.focus();
     }
     sidebarWasOpenRef.current = sidebarOpen;
@@ -434,6 +438,7 @@ export function AppFrame({
           {/* Close button (mobile only) */}
           <button
             type="button"
+            ref={sidebarCloseRef}
             className="ml-auto sm:hidden p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
             onClick={() => setSidebarOpen(false)}
             aria-label="Close navigation"

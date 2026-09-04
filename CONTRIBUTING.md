@@ -1,199 +1,93 @@
 # Contributing to PulseDock
 
-Thanks for your interest in contributing! PulseDock is an open-source version intelligence & uptime monitoring tool. Contributions of all kinds are welcome — bug fixes, new features, docs, tests.
+Thanks for contributing to PulseDock, an open-source version-intelligence and uptime-monitoring tool.
 
-## Getting Started
+## Development workflow
 
 ### Prerequisites
 
 - Node.js 20+
-- Docker & Docker Compose (for local services)
-- Git
+- Docker and Docker Compose
+- Git, `gh`, and `rg`
 
-### Local Setup
+Start from the integration branch and create a focused author branch:
 
 ```bash
-# Clone the repo
-git clone https://github.com/No749ah/PulseDock.git
-cd PulseDock
-
-# Copy env template
-cp apps/api/.env.example apps/api/.env
-cp apps/web/.env.example apps/web/.env.local
-# Edit both files with your local database/redis credentials
-
-# Start PostgreSQL + Redis (Docker Compose)
-docker compose -f docker-compose.services.yml up -d
-
-# Install dependencies (monorepo root)
-npm install
-
-# Run database migrations
-npx prisma migrate dev --schema=apps/api/prisma/schema.prisma
-
-# Start API + Web in dev mode
-npm run dev
+git fetch origin
+git switch --create feat/<slug> origin/dev
+# or: git switch --create fix/<slug> origin/dev
 ```
 
-API runs at `http://localhost:4321`  
-Web runs at `http://localhost:1234`  
-Swagger docs at `http://localhost:4321/api/docs`
+Use `feat/<slug>` for features and `fix/<slug>` for bug fixes. Never work on `main`, `dev`, or `heartbeat/*`.
+Always commit from the repository root (`projects/PulseDock`). Keep changes sliced and reviewable.
 
-## Architecture Overview
+Run PulseDock services through Docker. Start dependencies with the repository's compose setup:
 
-PulseDock is a TypeScript monorepo with the following structure:
-
-```
-PulseDock/
-├── apps/
-│   ├── api/               NestJS backend (port 4321)
-│   │   ├── src/
-│   │   │   ├── auth/      JWT auth, 2FA, CSRF, sessions
-│   │   │   ├── monitors/  Monitor CRUD, bulk actions, templates
-│   │   │   ├── checks/    Scheduler, HTTP/TCP/SSL/HB runners
-│   │   │   ├── alerts/    Email, Slack, Discord, Telegram, Webhook
-│   │   │   ├── incidents/ Incident lifecycle + timeline
-│   │   │   ├── status-pages/  Public status page builder + widgets
-│   │   │   ├── maintenance/   Maintenance windows + alert suppression
-│   │   │   ├── realtime/      WebSocket gateway (socket.io)
-│   │   │   ├── agent/         PulseDock agent report endpoint
-│   │   │   └── common/        Logger, CSRF middleware, filters
-│   │   └── prisma/        Database schema + migrations
-│   └── web/               Next.js 15 frontend (port 1234)
-│       ├── app/           App Router pages
-│       │   ├── (landing)  Public marketing page
-│       │   ├── monitors/  Monitor list + detail
-│       │   ├── status/    Public status pages
-│       │   └── ...        All other app pages
-│       └── components/    Shared components + chart library
-├── packages/
-│   ├── tool-registry/     Pre-configured tool library (2500+ tools)
-│   ├── cli/               pulsedock CLI tool
-│   ├── agent/             Local version reporter daemon
-│   ├── extension/         Chrome browser extension
-│   └── e2e/               Playwright E2E test suite
-└── docs/                  All project documentation
+```bash
+docker compose up -d postgres redis
 ```
 
-### Key Concepts
+Run API/Web as containers when needed. Publish ports only for an explicitly requested browser review; do not start `npm run api` or `npm run web` directly in the agent shell because those processes do not survive gateway restarts.
 
-**Monitor Scheduler**: `ChecksScheduler` runs every 10s, loads all enabled monitors, dispatches due checks concurrently via `Promise.allSettled`. Supports HTTP, TCP, SSL, Heartbeat, and version checks.
+Run only the affected tests locally in a Docker container. The full suite is run by CI. Do not use real credentials, production data, or API keys in local or review environments.
 
-**Alert Delivery**: `AlertsService.sendWithRetry()` handles exponential backoff (1s/2s/4s) for webhook/Slack/Discord/Telegram channels. Every attempt is logged to `AlertDeliveryLog`.
+## Commits and pull requests
 
-**Status Pages**: JSON-based drag-and-drop layout stored in `StatusPage.layout`. Public renderer reads widget coordinates (x/y/w/h in 12-col grid) for layout. Per-widget data resolved server-side via `GET /v1/public/status/:slug/widget/:widgetId`.
+Use Conventional Commits, for example:
 
-**WebSocket Updates**: `RealtimeGateway` emits `monitor.checked` and `alert.triggered` events. Status pages join `status-page:{slug}` rooms for targeted push updates.
-
-**Tool Registry**: Static registry split across `packages/tool-registry/src/registry.ts` (PART1–PART9). Each entry defines `id`, `name`, `category`, `versionSource` (url + jsonPath), `latestSource` (github/docker/npm/pypi), and `icon` (Simple Icons slug).
-
-## Branching
-
-| Branch | Purpose |
-|---|---|
-| `main` | Stable releases only |
-| `dev` | Integration — all PRs target here |
-| `feat/<name>` | New feature branches |
-| `fix/<name>` | Bug fix branches |
-
-Always branch from `dev`. Open PRs targeting `dev`.
-
-## Commit Messages
-
-Follow [Conventional Commits](https://www.conventionalcommits.org/):
-
-```
+```text
 feat: add discord webhook notifications
 fix: handle null currentVersion in version check
-refactor: extract token refresh logic into helper
-docs: update README setup instructions
-test: add unit test for MonitorsService.runNow
-chore: bump nestjs dependencies
+refactor: extract token refresh logic
+docs: update deployment guide
+test: cover monitor export
+chore: update dependencies
 ```
 
-## Code Standards
-
-- **TypeScript strict mode** — no `any`, no implicit types
-- **No `console.log`** — use the structured logger from `apps/api/src/common/logger.ts`
-- **Error handling** — catch at service boundaries, throw typed NestJS exceptions
-- **Validation** — all API inputs must use class-validator DTOs
-- **Tests** — unit tests required for new services; run `npm run test` before pushing
-- **Lint** — `npm run lint` must pass
-- **Build** — `npm run build` must succeed
-
-## Testing
+Before opening a PR, run the relevant affected tests and build checks. Push the branch and open a PR targeting `dev`:
 
 ```bash
-# Run all tests (API + CLI + Agent)
-npm run test
-
-# Watch mode (from package directory)
-cd apps/api && npm run test:watch
-
-# Type-check only
-cd apps/api && npx tsc --noEmit
-cd apps/web && npx tsc --noEmit
-
-# Coverage report
-cd apps/api && npm run test:cov
+git push --set-upstream origin feat/<slug>
+gh pr create --base dev --fill
 ```
 
-Tests live in `*.spec.ts` files next to the code they test. We use [Vitest](https://vitest.dev/).
+Then stop. Authors never merge, push to `main`, or open PRs targeting `main`. Describe what changed, why, validation performed, and any known limitations. The integrator reviews and merges PRs into `dev` after required CI checks pass. Changes involving auth, billing, or database migrations require Noah's approval before merge.
 
-Current: **1490+ API tests**, **10 CLI tests**, **12 Agent tests**.
+## Integrator and releases
 
-## Adding a New API Endpoint
+The integrator follows `RELEASE_RUNBOOK.md`:
 
-1. Create/update a service method in the appropriate module
-2. Add a controller method with `@ApiOperation`, `@ApiResponse` decorators
-3. Create/update DTOs with class-validator decorators in `*.dto.ts`
-4. Add unit tests in `*.spec.ts`
-5. If it changes database schema: create a Prisma migration (`npx prisma migrate dev --name <name>`)
+1. Inventory branches and open PRs with `git fetch --all --prune` and `gh pr list --state open`.
+2. Open PRs to `dev` for branches that have no PR.
+3. Have a reviewer check correctness, tests, secrets, migrations, API compatibility, and repository boundaries.
+4. Merge to `dev` only after the reviewer approves and required checks pass.
+5. When `dev` is ready, open a release PR from `dev` to `main` with the semver-based changelog.
 
-## Adding a Status Page Widget
+No one except Noah merges the release PR to `main`. After Noah merges it, the integrator creates the GitHub release and opens the follow-up version bump PR to `dev`.
 
-1. Add widget type to `apps/api/src/status-pages/status-pages.service.ts` resolver map
-2. Create frontend component in `apps/web/app/status-pages/components/widgets/`
-3. Register in `apps/web/app/status/[slug]/widgets/index.tsx`
-4. Add palette entry in `apps/web/app/status-pages/[id]/edit/page.tsx` (PALETTE array)
-5. Add config panel section for configurable properties
+## Quality and security
 
-## Adding a Tool to the Registry
+- TypeScript strict mode; avoid `any` and debugging `console.log` calls.
+- Add or update tests for changed behavior.
+- API inputs use validated DTOs and documented responses.
+- Run build, relevant tests, typechecks, lint, and security checks appropriate to the change.
+- Never commit secrets, credentials, production data, generated workspace material, or gitlinks.
 
-1. Find the correct version endpoint (verify with curl — no guessing)
-2. Add entry to `packages/tool-registry/src/registry.ts` in the appropriate PART file
-3. Verify the Simple Icons slug at `https://unpkg.com/simple-icons@latest/icons/<slug>.svg`
-4. Test with `GET /v1/tool-registry?q=<toolname>` locally
-5. Mark entry as `verified: true` only if endpoint confirmed working
+## Project setup
 
-## Submitting a Pull Request
+```bash
+cp apps/api/.env.example apps/api/.env
+cp apps/web/.env.example apps/web/.env.local
+npm ci
+npx prisma generate --schema=apps/api/prisma/schema.prisma
+```
 
-1. Fork the repo and create your branch from `dev`
-2. Make your changes with conventional commits
-3. Ensure `npm run build && npm run test && npm run lint` all pass
-4. Open a PR to the `dev` branch
-5. Describe what you changed and why
-6. Link any related issues
+See the guides in `docs/`, including `GETTING-STARTED.md`, `ARCHITECTURE.md`, `DEPLOYMENT.md`, `SECURITY.md`, and `E2E.md`. API defaults to port 4321 and Web to port 1234.
 
-## Reporting Bugs
+## Reporting issues
 
-Open a [GitHub Issue](https://github.com/No749ah/PulseDock/issues) with:
-
-- PulseDock version
-- Steps to reproduce
-- Expected vs actual behavior
-- Relevant logs or screenshots
-
-## Feature Requests
-
-Open an issue with the `enhancement` label. Describe the use case — what problem does it solve? How does it fit PulseDock's scope?
-
-## Security
-
-Found a vulnerability? **Do not open a public issue.** Email `noah.bourgnon@gmail.com` directly with details. We'll acknowledge within 48 hours.
-
-See [docs/SECURITY.md](docs/SECURITY.md) for our full security policy.
+Open a GitHub issue with the PulseDock version, reproduction steps, expected behavior, actual behavior, and relevant sanitized logs. Report security vulnerabilities privately according to `docs/SECURITY.md`; do not publish exploit details in an issue.
 
 ## License
 
-By contributing, you agree that your contributions will be licensed under the [MIT License](LICENSE).
+By contributing, you agree that contributions are licensed under the MIT License.

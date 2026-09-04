@@ -523,7 +523,7 @@ export function AppFrame({
                 onClick={() => setNotifOpen((v) => !v)}
                 aria-label="Notifications"
                 aria-expanded={notifOpen}
-                aria-haspopup="true"
+                aria-haspopup="dialog"
                 aria-controls="notification-menu"
               >
                 <Bell className="w-4 h-4" />
@@ -686,7 +686,7 @@ export function AppFrame({
 
             {/* Dropdown */}
             {userMenuOpen && (
-              <div id="user-menu" role="region" aria-label="User account menu" className="absolute right-0 top-full mt-2 w-52 bg-surface border border-border rounded-xl shadow-xl shadow-black/30 overflow-hidden z-50">
+              <div id="user-menu" role="menu" aria-label="User account menu" className="absolute right-0 top-full mt-2 w-52 bg-surface border border-border rounded-xl shadow-xl shadow-black/30 overflow-hidden z-50">
                 <div className="px-4 py-3 border-b border-border">
                   <p className="text-xs font-medium text-text-secondary">Signed in as</p>
                   <p className="text-sm font-semibold text-text-primary truncate mt-0.5">{userName}</p>
@@ -694,6 +694,7 @@ export function AppFrame({
                 <div className="py-1">
                   <button
                     type="button"
+                    role="menuitem"
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-primary hover:bg-surface-elevated transition-colors text-left"
                     onClick={() => { setUserMenuOpen(false); router.push('/account'); }}
                   >
@@ -703,6 +704,7 @@ export function AppFrame({
                   {user?.role === 'admin' && (
                     <button
                       type="button"
+                      role="menuitem"
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-primary hover:bg-surface-elevated transition-colors text-left"
                       onClick={() => { setUserMenuOpen(false); router.push('/admin'); }}
                     >
@@ -714,6 +716,7 @@ export function AppFrame({
                 <div className="py-1 border-t border-border">
                   <button
                     type="button"
+                    role="menuitem"
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors text-left"
                     onClick={() => { void clearSession().then(() => router.push('/login')); }}
                   >

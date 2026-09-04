@@ -68,7 +68,9 @@ jobs:
       - name: Build and start API
         run: |
           npm run build -w @pulsedock/api
-          npm run start -w @pulsedock/api > /tmp/pulsedock-api.log 2>&1 &
+          # The API build includes shared workspace sources, so TypeScript
+          # emits the entrypoint at dist/apps/api/src/main.js.
+          node apps/api/dist/apps/api/src/main.js > /tmp/pulsedock-api.log 2>&1 &
           for attempt in {1..30}; do
             curl --fail --silent http://localhost:4321/health/live >/dev/null && break
             if [ "$attempt" = 30 ]; then

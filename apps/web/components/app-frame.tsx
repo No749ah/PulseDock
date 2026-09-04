@@ -328,7 +328,12 @@ export function AppFrame({
       if (e.key === 'Escape') setSidebarOpen(false);
     }
     window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = previousOverflow;
+    };
   }, [sidebarOpen]);
 
   // '/' keyboard shortcut → open command palette (when not focused in an input)

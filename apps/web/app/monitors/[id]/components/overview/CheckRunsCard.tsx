@@ -115,8 +115,8 @@ export function CheckRunsCard({
               title="Export all check history as CSV (up to 10,000 runs)"
               onClick={async () => {
                 try {
-                  const { API_BASE } = await import("../../../../../lib/api");
-                  const fetchRes = await fetch(`${API_BASE}/v1/monitors/${id}/runs/export`, {
+                  const { getApiBase } = await import("../../../../../lib/api");
+                  const fetchRes = await fetch(`${getApiBase()}/v1/monitors/${id}/runs/export`, {
                     credentials: "include",
                     cache: "no-store",
                   });

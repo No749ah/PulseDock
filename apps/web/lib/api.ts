@@ -25,9 +25,15 @@ function inferApiBaseFromLocation() {
   return `${protocol}//${host}/api`;
 }
 
-export const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  inferApiBaseFromLocation();
+/**
+ * Resolve the API base at request/use time. Next/Vite can evaluate modules
+ * once per test worker (and Next can bundle environment values at build time),
+ * so resolving this at module load makes the result stale when the host or
+ * test environment changes.
+ */
+export function getApiBase(): string {
+  return process.env.NEXT_PUBLIC_API_BASE_URL || inferApiBaseFromLocation();
+}
 
 // ─── CSRF ────────────────────────────────────────────────────────────────────
 
@@ -55,7 +61,7 @@ async function ensureCsrfToken(): Promise<string | undefined> {
   if (existing) return existing;
 
   try {
-    const resp = await fetch(`${API_BASE}/v1/auth/csrf`, {
+    const resp = await fetch(`${getApiBase()}/v1/auth/csrf`, {
       method: 'GET',
       credentials: 'include',
       cache: 'no-store',
@@ -98,7 +104,7 @@ export async function api<T>(path: string, _token?: string, init?: RequestInit):
   }
 
   const run = () =>
-    fetch(`${API_BASE}${path}`, {
+    fetch(`${getApiBase()}${path}`, {
       ...init,
       credentials: 'include', // httpOnly cookies sent automatically
       headers: {
@@ -113,7 +119,7 @@ export async function api<T>(path: string, _token?: string, init?: RequestInit):
 
   if (response.status === 401 && typeof window !== 'undefined' && !path.includes('/v1/auth/refresh')) {
     // Attempt a silent token refresh using the httpOnly refresh cookie.
-    const refreshResp = await fetch(`${API_BASE}/v1/auth/refresh`, {
+    const refreshResp = await fetch(`${getApiBase()}/v1/auth/refresh`, {
       method: 'POST',
       credentials: 'include', // sends pulsedock_refresh cookie
       headers: { 'content-type': 'application/json' },

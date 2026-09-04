@@ -229,9 +229,9 @@ export function AppFrame({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [readIds, setReadIds] = useState<Set<string>>(() => {
-    try { return new Set(JSON.parse(localStorage.getItem("notif-read-ids") || "[]")); } catch { return new Set(); }
-  });
+  // Read browser storage after hydration so the client component remains safe
+  // when Next.js renders the shell on the server.
+  const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
   const [notifications, setNotifications] = useState<Array<{
     id: string; message: string; level: string; checkedAt: string; ok: boolean;
     monitorId?: string; monitorName?: string | null; monitorType?: string | null;
@@ -293,6 +293,15 @@ export function AppFrame({
     const currentUser = getCachedUser() ?? getUser();
     setUser(currentUser);
     setMounted(true);
+    try {
+      const storedReadIds: unknown = JSON.parse(localStorage.getItem('notif-read-ids') || '[]');
+      if (Array.isArray(storedReadIds)) {
+        setReadIds(new Set(storedReadIds.filter((id): id is string => typeof id === 'string')));
+      }
+    } catch {
+      // Malformed notification state should not prevent the application shell
+      // from loading.
+    }
     // Fetch workspace branding
     if (currentUser?.id) {
       api<{ workspaceName: string | null; workspaceLogo: string | null }>('/v1/settings/workspace', currentUser.id)

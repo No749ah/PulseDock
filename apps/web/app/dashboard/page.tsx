@@ -22,7 +22,7 @@ const DASHBOARD_TOUR_STEPS: TourStep[] = [
     content: `${brand.name} monitors your self-hosted tools, tracks versions, and builds beautiful status pages. Let's take a quick tour to get you started.`,
   },
   {
-    target: "nav[aria-label='Navigation']",
+    target: "nav[aria-label='Main navigation']",
     placement: "right",
     title: "Navigation",
     content: "Use the left sidebar to navigate between Monitors, Alerts, Versions, Status Pages, and more. Each section has its own tools and views.",

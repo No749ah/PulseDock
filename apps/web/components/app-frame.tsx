@@ -122,11 +122,13 @@ function NavSidebar({
   pathname,
   isAdmin,
   downMonitorCount,
+  onNavigate,
 }: {
   navGroups: NavGroup[];
   pathname: string;
   isAdmin: boolean;
   downMonitorCount: number;
+  onNavigate?: () => void;
 }) {
   const renderItem = (item: NavItem) => {
     const isActive = pathname === item.href || (item.href !== '/dashboard' && item.href !== '/' && pathname.startsWith(item.href + '/'));
@@ -134,6 +136,8 @@ function NavSidebar({
       <li key={item.href}>
         <Link
           href={item.href}
+          aria-current={isActive ? 'page' : undefined}
+          onClick={onNavigate}
           className={[
             'flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors relative',
             isActive
@@ -225,9 +229,9 @@ export function AppFrame({
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [notifOpen, setNotifOpen] = useState(false);
-  const [readIds, setReadIds] = useState<Set<string>>(() => {
-    try { return new Set(JSON.parse(localStorage.getItem("notif-read-ids") || "[]")); } catch { return new Set(); }
-  });
+  // Read browser storage after hydration so the client component remains safe
+  // when Next.js renders the shell on the server.
+  const [readIds, setReadIds] = useState<Set<string>>(() => new Set());
   const [notifications, setNotifications] = useState<Array<{
     id: string; message: string; level: string; checkedAt: string; ok: boolean;
     monitorId?: string; monitorName?: string | null; monitorType?: string | null;
@@ -238,6 +242,9 @@ export function AppFrame({
   const [downMonitorCount, setDownMonitorCount] = useState(0);
   const menuRef = useRef<HTMLDivElement>(null);
   const notifRef = useRef<HTMLDivElement>(null);
+  const sidebarTriggerRef = useRef<HTMLButtonElement>(null);
+  const sidebarCloseRef = useRef<HTMLButtonElement>(null);
+  const sidebarWasOpenRef = useRef(false);
 
   const fetchNotifications = () => {
     const VERSION_TYPES = new Set(['GIT_RELEASE', 'DOCKER_IMAGE']);
@@ -286,6 +293,15 @@ export function AppFrame({
     const currentUser = getCachedUser() ?? getUser();
     setUser(currentUser);
     setMounted(true);
+    try {
+      const storedReadIds: unknown = JSON.parse(localStorage.getItem('notif-read-ids') || '[]');
+      if (Array.isArray(storedReadIds)) {
+        setReadIds(new Set(storedReadIds.filter((id): id is string => typeof id === 'string')));
+      }
+    } catch {
+      // Malformed notification state should not prevent the application shell
+      // from loading.
+    }
     // Fetch workspace branding
     if (currentUser?.id) {
       api<{ workspaceName: string | null; workspaceLogo: string | null }>('/v1/settings/workspace', currentUser.id)
@@ -316,6 +332,32 @@ export function AppFrame({
   useEffect(() => {
     setSidebarOpen(false);
   }, [pathname]);
+
+  // Return focus to the mobile menu trigger when the sidebar closes.
+  useEffect(() => {
+    const isMobile = window.matchMedia('(max-width: 639px)').matches;
+    if (sidebarOpen && isMobile) {
+      sidebarCloseRef.current?.focus();
+    } else if (sidebarWasOpenRef.current && !sidebarOpen && isMobile) {
+      sidebarTriggerRef.current?.focus();
+    }
+    sidebarWasOpenRef.current = sidebarOpen;
+  }, [sidebarOpen]);
+
+  // Escape closes the mobile navigation without requiring a pointer action.
+  useEffect(() => {
+    if (!sidebarOpen) return;
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape') setSidebarOpen(false);
+    }
+    window.addEventListener('keydown', handleEscape);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = previousOverflow;
+    };
+  }, [sidebarOpen]);
 
   // '/' keyboard shortcut → open command palette (when not focused in an input)
   useEffect(() => {
@@ -353,6 +395,19 @@ export function AppFrame({
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [notifOpen]);
 
+  // Escape closes transient header popups consistently.
+  useEffect(() => {
+    if (!userMenuOpen && !notifOpen) return;
+    function handleEscape(e: KeyboardEvent) {
+      if (e.key === 'Escape') {
+        setUserMenuOpen(false);
+        setNotifOpen(false);
+      }
+    }
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
+  }, [userMenuOpen, notifOpen]);
+
   const userInitial = mounted
     ? (user?.name?.[0] ?? user?.email?.[0] ?? 'U').toUpperCase()
     : 'U';
@@ -362,17 +417,26 @@ export function AppFrame({
 
   return (
     <div className="flex h-screen bg-bg overflow-hidden">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:rounded-lg focus:bg-accent focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-bg focus:outline-none focus:ring-2 focus:ring-accent/50"
+      >
+        Skip to main content
+      </a>
       {/* ── Sidebar ── */}
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
           className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm sm:hidden"
           onClick={() => setSidebarOpen(false)}
+          aria-hidden="true"
         />
       )}
 
       {/* Sidebar panel */}
       <aside
+        id="application-sidebar"
+        aria-label="Application sidebar"
         className={[
           'fixed inset-y-0 left-0 z-40 flex flex-col w-[280px]',
           'bg-surface/80 backdrop-blur-xl border-r border-border/60',
@@ -395,9 +459,13 @@ export function AppFrame({
           <span className="text-lg font-bold text-text-primary tracking-tight">{workspaceName ?? 'PulseDock'}</span>
           {/* Close button (mobile only) */}
           <button
+            type="button"
+            ref={sidebarCloseRef}
             className="ml-auto sm:hidden p-1.5 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
             onClick={() => setSidebarOpen(false)}
             aria-label="Close navigation"
+            aria-controls="application-sidebar"
+            aria-expanded={sidebarOpen}
           >
             <X className="w-4 h-4" />
           </button>
@@ -409,6 +477,7 @@ export function AppFrame({
           pathname={pathname}
           isAdmin={user?.role === 'admin'}
           downMonitorCount={downMonitorCount}
+          onNavigate={() => setSidebarOpen(false)}
         />
 
         {/* Sidebar footer */}
@@ -434,9 +503,13 @@ export function AppFrame({
           {/* Left: burger (mobile) + page title */}
           <div className="flex items-center gap-3">
             <button
+              type="button"
+              ref={sidebarTriggerRef}
               className="sm:hidden p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
               onClick={() => setSidebarOpen(true)}
               aria-label="Open navigation"
+              aria-controls="application-sidebar"
+              aria-expanded={sidebarOpen}
             >
               <Menu className="w-5 h-5" />
             </button>
@@ -470,6 +543,7 @@ export function AppFrame({
           <div className="flex items-center gap-2">
             {/* Ctrl+K trigger (hidden on mobile) */}
             <button
+              type="button"
               className="hidden sm:flex items-center gap-2 px-3 py-1.5 rounded-lg text-text-muted hover:text-text-secondary hover:bg-surface-elevated border border-border/60 transition-colors text-xs"
               onClick={() => {
                 window.dispatchEvent(new KeyboardEvent('keydown', { key: 'k', ctrlKey: true, bubbles: true }));
@@ -487,11 +561,13 @@ export function AppFrame({
             {/* Notifications bell */}
             <div className="relative" ref={notifRef}>
               <button
+                type="button"
                 className="relative p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
                 onClick={() => setNotifOpen((v) => !v)}
                 aria-label="Notifications"
                 aria-expanded={notifOpen}
-                aria-haspopup="true"
+                aria-haspopup="dialog"
+                aria-controls="notification-menu"
               >
                 <Bell className="w-4 h-4" />
                 {/* Badge — shows unread failure count */}
@@ -503,7 +579,7 @@ export function AppFrame({
               </button>
 
               {notifOpen && (
-                <div className="absolute right-0 top-full mt-2 w-72 bg-surface border border-border rounded-xl shadow-xl shadow-black/30 overflow-hidden z-50">
+                <div id="notification-menu" role="region" aria-label="Notifications panel" className="absolute right-0 top-full mt-2 w-72 bg-surface border border-border rounded-xl shadow-xl shadow-black/30 overflow-hidden z-50">
                   <div className="px-4 py-3 border-b border-border flex items-center justify-between">
                     <p className="text-sm font-semibold text-text-primary">Alerts &amp; Updates</p>
                     <div className="flex items-center gap-2">
@@ -512,6 +588,7 @@ export function AppFrame({
                       )}
                       {unreadNotifications.length > 0 && (
                         <button
+                          type="button"
                           onClick={markAllRead}
                           className="text-xs text-text-muted hover:text-accent transition-colors"
                         >
@@ -612,6 +689,7 @@ export function AppFrame({
 
             {/* Theme toggle */}
             <button
+              type="button"
               className="p-2 rounded-lg text-text-secondary hover:text-text-primary hover:bg-surface-elevated transition-colors"
               onClick={toggleTheme}
               aria-label="Toggle theme"
@@ -627,10 +705,12 @@ export function AppFrame({
             {/* User menu */}
             <div className="relative" ref={menuRef}>
             <button
+              type="button"
               className="flex items-center gap-2 px-3 py-2 rounded-lg hover:bg-surface-elevated transition-colors"
               onClick={() => setUserMenuOpen((v) => !v)}
               aria-expanded={userMenuOpen}
               aria-haspopup="menu"
+              aria-controls="user-menu"
               aria-label={`User menu for ${userName}`}
             >
               <div className="w-7 h-7 rounded-full bg-accent/20 border border-accent/40 flex items-center justify-center text-xs font-semibold text-accent select-none">
@@ -649,13 +729,15 @@ export function AppFrame({
 
             {/* Dropdown */}
             {userMenuOpen && (
-              <div className="absolute right-0 top-full mt-2 w-52 bg-surface border border-border rounded-xl shadow-xl shadow-black/30 overflow-hidden z-50">
+              <div id="user-menu" role="menu" aria-label="User account menu" className="absolute right-0 top-full mt-2 w-52 bg-surface border border-border rounded-xl shadow-xl shadow-black/30 overflow-hidden z-50">
                 <div className="px-4 py-3 border-b border-border">
                   <p className="text-xs font-medium text-text-secondary">Signed in as</p>
                   <p className="text-sm font-semibold text-text-primary truncate mt-0.5">{userName}</p>
                 </div>
                 <div className="py-1">
                   <button
+                    type="button"
+                    role="menuitem"
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-primary hover:bg-surface-elevated transition-colors text-left"
                     onClick={() => { setUserMenuOpen(false); router.push('/account'); }}
                   >
@@ -664,6 +746,8 @@ export function AppFrame({
                   </button>
                   {user?.role === 'admin' && (
                     <button
+                      type="button"
+                      role="menuitem"
                       className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-text-primary hover:bg-surface-elevated transition-colors text-left"
                       onClick={() => { setUserMenuOpen(false); router.push('/admin'); }}
                     >
@@ -674,6 +758,8 @@ export function AppFrame({
                 </div>
                 <div className="py-1 border-t border-border">
                   <button
+                    type="button"
+                    role="menuitem"
                     className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-danger hover:bg-danger/10 transition-colors text-left"
                     onClick={() => { void clearSession().then(() => router.push('/login')); }}
                   >

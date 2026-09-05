@@ -1,112 +1,19 @@
-## Status Summary (2026-09-01 02:40 UTC)
-- **Build/Test/Audit:** ✅ Build passes. Tests: 5327 API + 5698 Web (last verified 22:30 UTC Aug 31). TypeScript clean. 0 vulnerabilities.
-- **Deployment:** ⚠️ Docker/dind unavailable in sandbox — infrastructure only.
-- **Branch:** heartbeat/2026-09-01-boot (5 commits)
-- **Changes (01:30–02:40 UTC):**
-  - [x] **feat(registry): 19 more variants (777 → 796)** — dashboards: dasherr, dashdot, librespeed, scrutiny; RSS/bookmarks: freshrss, wallabag, linkding, linkwarden; photos: lychee, photoview, piwigo, pixelfed; notes: standard-notes, leantime; infra: adminer, pfsense (+Plus), dokku, telegraf, lldap.
-  - [x] **feat(registry): 20 more variants (796 → 816)** — infra: proxmox-ve, unraid, vyos (+LTS), openwrt, wireguard-ui; Docker Hub images: postgresql, nginx, apache httpd; dev: hono, garnet, zeromq, cert-manager, watchtower; security: clair; blogging: writefreely (+cloud), shaarli, mylar3; dev envs: gitpod (+cloud), harness (+cloud).
-  - **Registry: 816 / 1292 tools with variants** (+ 286 this session, 839 still missing).
+## 🚨 FULL REFACTOR DIRECTIVE — 2026-09-03
 
-## Status Summary (2026-09-01 00:00 UTC)
-- **Build/Test/Audit:** ✅ Build passes. Web: 5698 tests. API: 5327 tests. TypeScript clean. 0 vulnerabilities.
-- **Deployment:** ⚠️ Docker/dind unavailable in sandbox — infrastructure only.
-- **Branch:** heartbeat/2026-09-01-boot (1 commit; rotated from heartbeat/2026-08-31-noon ~23:30 UTC)
-- **Changes (22:45–00:00 UTC):**
-  - [x] **Branch rotation:** merged 21 commits into dev, created heartbeat/2026-09-01-boot
-  - [x] **feat(registry): 20 more variants (737 → 757)** — knowledge: outline, bookstack, wiki-js, nocodb, baserow, appflowy; diagramming: excalidraw, drawio, mermaid; media: stremio; IaC: vagrant, serverless-framework, cdk, cdktf, atlantis, infracost, waypoint; messaging: apache-pulsar, apache-rocketmq.
-  - **Registry: 757 / 1292 tools with variants** (+ 227 total this session, 897 still missing).
+## Status Summary (2026-09-04 08:40 UTC)
+- **Validation:** ✅ Full web build completed; API `/health` returns 200 with database, Redis, and scheduler checks green.
+- **Deployment:** ✅ Docker/dind, PostgreSQL, and Redis are reachable. ⚠️ Web process still exits after `next start`; local `/login` and public domain return 000/502.
+- **Cleanup:** Archived 30 obsolete historical status summaries. The remaining unchecked items are active refactor/reassessment work and were intentionally kept open.
 
-## Status Summary (2026-08-31 22:45 UTC)
-- **Build/Test/Audit:** ✅ Build passes. Web: 5698 tests (257 files). API: 5327 tests (239 files). TypeScript clean. 0 vulnerabilities.
-- **Deployment:** ⚠️ Docker/dind unavailable in sandbox — infrastructure only.
-- **Branch:** heartbeat/2026-08-31-noon (20 commits, pushed; rotation due ~00:00 UTC)
-- **Changes (21:40–22:45 UTC):**
-  - [x] **feat(registry): 22 more variants (695 → 717)** — networking: headscale, coredns, nginx-ingress; storage/backup: openebs, velero, restic, kopia (+server), borgbackup, duplicati, seaweedfs, juicefs (+cloud), ceph (+Rook); CMS: keystonejs, craft-cms (+cloud), processwire; comms: jitsi-meet (+JaaS), bigbluebutton, livekit (+cloud), ejabberd (+business), prosody, mumble, coturn.
-  - [x] **feat(registry): 20 more variants (717 → 737)** — CMS: microweber, cockpit-cms, decap-cms; notifications: ntfy (+cloud); media/books: kavita, komga, calibre-web, audiobookshelf, tautulli, bazarr; runtimes: deno (+Deploy), bun, devpod, act, hoppscotch (+cloud), gitea-actions, gitness; project mgmt: plane (+cloud), linear-oss.
-  - **Registry: 737 / 1292 tools with variants** (+ 207 today total, 915 still missing).
+## Status Summary (2026-09-04 06:55 UTC)
+- **Validation:** ✅ Web typecheck, focused Button/Card tests (37), and full build pass. Offline high-severity audit reports 0 vulnerabilities.
+- **Deployment:** ⚠️ Docker/dind/API unavailable. Web restart reports readiness but exits before follow-up probes; required local routes/API return 000 and public `/login` returns 502.
+- **Changes:** Dashboard toggles now expose their current state through `aria-pressed` for time range, auto-refresh, customization, and monitor view controls.
 
-## Status Summary (2026-08-31 21:40 UTC)
-- **Build/Test/Audit:** ✅ Build passes. Web: 5698 tests. API: 5327 tests. TypeScript clean. 0 vulnerabilities.
-- **Deployment:** ⚠️ Docker/dind unavailable in sandbox — infrastructure only.
-- **Branch:** heartbeat/2026-08-31-noon (17 commits, pushed; rotation due ~00:00 UTC)
-- **Changes (20:40–21:40 UTC):**
-  - [x] **feat(registry): 20 more variants (675 → 695)** — security: opa, kyverno, boundary (+HCP), external-secrets, grype, syft, semgrep (+cloud), infisical (+cloud), openbao, checkov, sops; networking: cilium, cloudflared, zerotier (+central), openvpn, netmaker (+cloud), frp, unbound; DB: rethinkdb.
-  - [x] **feat(registry): 22 more variants (695 → 717)** — networking: headscale, coredns, nginx-ingress; storage/backup: openebs, velero, restic, kopia (+server), borgbackup, duplicati, seaweedfs, juicefs (+cloud), ceph (+Rook); CMS: keystonejs, craft-cms (+cloud), processwire; comms: jitsi-meet (+JaaS), bigbluebutton, livekit (+cloud), ejabberd (+business), prosody, mumble, coturn.
-  - **Registry: 717 / 1292 tools with variants** (+ 187 today total, 935 still missing).
-
-## Status Summary (2026-08-31 20:40 UTC)
-- **Build/Test/Audit:** ✅ Build passes. Web: 5698 tests. API: 5327 tests. TypeScript clean. 0 vulnerabilities.
-- **Deployment:** ⚠️ Docker/dind unavailable in sandbox — infrastructure only.
-- **Branch:** heartbeat/2026-08-31-noon (15 commits, pushed; rotation due at 00:00 UTC)
-- **Changes (19:30–20:40 UTC):**
-  - [x] **feat(registry): 24 more variants (651 → 675)** — K8s distros (microk8s, talos, crossplane, ARC), CI/CD build tools (argo-workflows, argo-events, dagger, earthly, buildkite-agent, spinnaker, gitlab-runner), databases (scylladb, yugabytedb, tidb, ferretdb, edgedb, dragonfly), observability (fluentd, fluent-bit, signoz, openobserve, pyroscope, coroot, quickwit).
-  - [x] **feat(registry): 20 more variants (675 → 695)** — security: opa, kyverno, boundary, external-secrets, grype, syft, semgrep, infisical, openbao, checkov, sops; networking: cilium, cloudflared, zerotier, openvpn, netmaker, frp, unbound; DB: rethinkdb.
-  - **Registry: 695 / 1292 tools with variants** (+ 165 today total, 957 still missing).
-
-## Status Summary (2026-08-31 18:40 UTC)
-- **Build/Test/Audit:** ✅ Build passes. Web: 5698 tests (257 files). API: 5327 tests (239 files). TypeScript clean. 0 vulnerabilities.
-- **Deployment:** ⚠️ Docker/dind unavailable in sandbox — infrastructure only.
-- **Branch:** heartbeat/2026-08-31-noon (12 commits, pushed)
-- **Changes (17:30–18:40 UTC):**
-  - [x] **feat(registry): 21 more variants (608 → 630)** — security: openvas; storage: openmediavault, garage; comms: revolt, element; dev/workflow: windmill, temporal, prefect, coder, airflow; Helm: argocd, postgresql, redis, ingress-nginx, cert-manager, kube-prometheus-stack, grafana.
-  - [x] **feat(registry): 21 more variants (630 → 651)** — npm: jupyter, nestjs, nextjs, prisma, fastify; JVM/Maven: spring-boot, quarkus, micronaut, jackson-databind, log4j; API gateways: kong, apisix, tyk, hasura, postgrest; container runtimes: containerd, cri-o, keda, flagger; helm-argocd.
-  - **Registry: 651 / 1292 tools with variants** (+ 121 today total, 641 still missing).
-
-## Status Summary (2026-08-31 17:00 UTC)
-- **Build/Test/Audit:** ✅ Build passes. Web: 5698 tests (257 files). API: 5327 tests (239 files). TypeScript clean x2. 0 npm vulnerabilities.
-- **Deployment:** ⚠️ Docker/dind unavailable in sandbox — infrastructure issue, not code.
-- **Branch:** heartbeat/2026-08-31-noon (pushed; 5 commits this session)
-- **Changes (16:30–17:00 UTC):**
-  - [x] **feat(registry): 19 more tool variants (548 → 567)** — CI/CD: fluxcd, tekton (pipelines+triggers), concourse-ci, teamcity, fleet, okd; databases: duckdb, typesense, surrealdb, valkey, timescaledb, cockroachdb, cassandra, opensearch, keydb; observability: opentelemetry-collector (+contrib), tempo, zipkin; security: trivy (CLI+server).
-  - [x] **feat(registry): 20 more tool variants (567 → 587)** — networking: nginx (3 variants), caddy, haproxy, envoy, istio, linkerd; IaC: terraform, opentofu, ansible (3 variants), pulumi, saltstack, chef, puppet, gocd; CMS/analytics: strapi, directus, matomo, umami, fail2ban, nagios.
-  - Registry now has **587 / 1292 tools with variants** (+ 39 this session, + 57 today total).
-
-## Status Summary (2026-08-31 15:40 UTC)
-- **Build/Test/Audit:** ✅ Build passes. Web: 5698 tests pass (257 files). API: 5301 tests (239 files, +35 from new provider coverage). TypeScript clean x2. 0 npm vulnerabilities.
-- **Deployment:** ⚠️ Docker/dind unavailable in sandbox — infrastructure issue, not code. Services offline locally.
-- **Branch:** heartbeat/2026-08-31-noon (rotated from heartbeat/2026-08-11-boot at 12:00 UTC)
-- **Changes (15:40 UTC):**
-  - [x] **fix(test): reliability-trend mixed-fleet spec day-of-week agnostic** — `monitors.reliability.spec.ts` failed on Mondays because the calendar-week bucket starts today; added `makeDate(0)` runs so two distinct week buckets always exist.
-  - [x] **test(api): full coverage for 8 untested version-check providers** — added 35 unit tests for `nuget`, `rubygems`/`gem`, `go`/`golang`/`gomod`, `forgejo`, `gitea` providers in `version-detection.service.spec.ts`; covers happy paths, aliases, error cases, prefix stripping, host defaults, and auth header injection.
-  - [x] **feat(registry): add variants for 18 core tools (530 → 548)** — databases: postgresql, mysql, mariadb, redis, mongodb, clickhouse (APT/Docker/cloud editions); observability: alertmanager, loki, jaeger, zabbix, graylog (instance-URL JSON endpoints); security: bitwarden, crowdsec, wazuh; infrastructure: podman, nomad, k0s, drone-ci.
-
-## Status Summary (2026-08-31 10:15 UTC)
-- **Build/Test/Audit:** ✅ Build passes. Web: 5698 tests pass (257 files, +11 from new specs). API TypeScript clean. Web TypeScript clean. 0 npm vulnerabilities.
-- **Deployment:** ⚠️ Web server running locally (port 1234). Public URL returning 502 — Docker/dind unavailable in sandbox (no API), infrastructure issue not a code issue.
-- **Branch:** heartbeat/2026-08-11-boot (active; 11 commits this session)
-- **Changes (10:15 UTC):**
-  - [x] **fix(security): bump esbuild to clear low-severity dev-server advisory** — `GHSA-g7r4-m6w7-qqqr`; 0 vulnerabilities.
-  - [x] **fix(types): correct Summary stats shape in version hook fallback** — `useVersions.ts` error-fallback used stale `{ upToDate, outdated, unknown }` instead of `{ green, yellow, red }` required by `Summary` type.
-  - [x] **fix(config): remove invalid vitest minWorkers option** — `apps/web/vitest.config.ts` had `minWorkers: 1` which doesn't exist in vitest's `InlineConfig`; removed.
-  - [x] **test(versions): add 101 unit tests for createVersionModalHelpers and utils** — full coverage of `normalizeToolQuery`, `scoreToolMatch`, `filterTools`, `closeMatchTools`, `modalProgress`, `providerFromSourceType`, all snippet builders, `stripLeadingV`, `secondsToHuman`, `levelBadgeVariant`, and all option constants.
-  - [x] **fix(types): add displayName and timezone to Me interface** — `Me` was missing these fields; account page used `as unknown as` casts to access them. Fixed type definition, removed casts.
-  - [x] **fix(types): replace as-unknown-as cast in alerts/channels testAll** — used proper union type `{ results: TestAllResult[] } | TestAllResult[]` with `Array.isArray()` type guard.
-  - [x] **fix(types): remove redundant cast in API proxy route** — `Headers.getSetCookie()` is typed in `lib.dom.d.ts`; cast was unnecessary.
-  - [x] **fix(types): proper union return type on auth.service.login** — eliminated `as unknown as` cast; added type guards in controller (`'requires2fa' in result`) and spec.
-  - [x] **fix(metrics): correct Prometheus uptime calculation (real bug!)** — `MonitorRun.status` is `Int` (HTTP status code) and can never equal the string `'up'`; both `pulsedock_monitor_up` (per-monitor) and `pulsedock_monitor_uptime_pct_7d` metrics were always 0. Fixed by switching groupBy to `ok: Boolean` and `latestRun.ok` check; updated spec mocks accordingly.
-  - [x] **fix(types): simplify checkedAt normalisation** — `new Date(x).toISOString()` handles both string and Date without any cast.
-
-## Status Summary (2026-04-14 08:16 UTC)
-- **Build/Test/Audit:** ✅ Full heartbeat checks passed after stabilization fix (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`, 0 vulnerabilities).
-- **Deployment:** ⏳ Pending restart + deploy verification (Steps 3-5 will run after commit).
-- **Branch:** heartbeat/2026-04-10-noon (rotation check pending; current run remains outside 00:00/12:00 UTC windows).
-- **Last changes (08:16 UTC):**
-  - [x] **test(api): stabilize three flaky timeout-prone specs in loaded heartbeat runners** — added explicit `15000ms` per-test timeouts for Matrix non-ok handling (`alerts.service.spec.ts`), 2FA recovery-code disable path (`auth.service.spec.ts`), and status-page multi-monitor filtering (`status-pages.service.spec.ts`) to prevent false negative 5s default timeout failures.
-
-## Status Summary (2026-04-11 22:12 UTC)
-- **Build/Test/Audit:** ✅ Full heartbeat checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`) and post-change validation remained green (`npm run build && npm run test && npm audit --audit-level=high`, 0 vulnerabilities).
-- **Deployment:** ⏳ Pending restart + deploy verification (will be executed in Steps 3-5 after commit).
-- **Branch:** heartbeat/2026-04-10-noon (Step-6 rotation check pending; current run is outside scheduled 00:00/12:00 UTC window).
-- **Last changes (22:12 UTC):**
-  - [x] **fix(heartbeat): run frontend route/static audits in strict shell mode** — enabled `set -euo pipefail` in `scripts/audit-frontend-pages.sh` so unexpected command failures terminate Step-5 audits immediately instead of continuing in partially failed states.
-
-## Status Summary (2026-04-10 23:11 UTC)
-- **Build/Test/Audit:** ✅ Full heartbeat checks passed (`git pull --ff-only origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`) and post-change validation remained green (`npm run build && npm run test && npm audit --audit-level=high`, 0 vulnerabilities).
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` returned expected `401` with invalid bearer).
-- **Frontend Audit:** ✅ Required local + public route checks, static-asset checks, and HEAD checks passed (`npm run audit:frontend`, `npm run audit:frontend:heads`, `npm run audit:frontend:prod`, `npm run audit:frontend:heads:prod`; all green).
-- **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 23:11 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
-- **Last changes (23:11 UTC):**
-  - [x] **fix(heartbeat): fail HEAD audit on redirect drift** — hardened `scripts/heartbeat-curl-pages.sh` to follow redirects and compare `%{url_effective}` against expected required routes, so Step-5 HEAD checks now fail on silent route drift instead of accepting any final `200`.
+## Status Summary (2026-09-04 05:55 UTC)
+- **Validation:** ✅ Web typecheck, focused Button/Card tests (37), and full build pass. Offline high-severity audit reports 0 vulnerabilities.
+- **Deployment:** ⚠️ Docker/dind/API unavailable. Web restart reports readiness but exits before follow-up probes; required local routes/API return 000 and public `/login` returns 502.
+- **Changes:** Dashboard controls now use explicit non-submit buttons, accessible table/grid labels, and a descriptive fullscreen action.
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
@@ -430,3 +337,48 @@
 - [x] Code quality automation (8 checks)
 
 </details>
+## 🔍 World-Class Reassessment Queue (added 2026-09-03)
+
+Before marking PulseDock complete, review and verify every item below against the running product, threat model, and real user workflows. Do not claim completion from static code inspection alone; add evidence (tests, browser checks, or deployment checks) to each completed item.
+
+### 🔴 Security & Trust
+- [ ] Run an OWASP ASVS/L1 + API security review and document pass/fail evidence.
+- [ ] Add MFA/TOTP with recovery codes, secure enrollment, reset flow, and step-up auth for sensitive actions.
+- [ ] Verify CSRF protection for every cookie-authenticated state-changing endpoint.
+- [ ] Add login/password-reset/email-verification abuse controls, lockout/backoff, and safe enumeration-resistant responses.
+- [ ] Review session rotation, refresh-token reuse detection, revocation, device management, and logout-all behavior.
+- [ ] Add secret redaction checks for logs, exports, errors, API responses, and client-side state.
+- [ ] Threat-model SSRF, webhook callbacks, URL imports, plugin execution, redirects, DNS rebinding, and private-network access.
+- [ ] Enforce safe outbound HTTP: scheme/host/IP validation, redirect policy, timeout, body-size, response-size, and concurrency limits.
+- [ ] Add security headers and cookie tests for production proxy deployments (HSTS, CSP, SameSite, Secure, HttpOnly).
+- [ ] Verify tenant isolation and authorization on every controller, bulk endpoint, export/import path, websocket event, and status page.
+- [ ] Add immutable audit-log integrity, retention, export authorization, pagination, and admin visibility tests.
+- [ ] Establish dependency/container/SBOM scanning, signed releases, secret scanning, and a vulnerability response policy.
+
+### 🟠 Reliability, Operations & Scale
+- [ ] Define SLOs for check latency, scheduler freshness, alert delivery, API availability, and recovery time.
+- [ ] Add scheduler lease/leader-election behavior for multi-instance deployments and prove no duplicate checks.
+- [ ] Add bounded queues, backpressure, per-tenant quotas, retry budgets, and circuit breakers for providers/channels.
+- [ ] Verify idempotency for checks, alerts, imports, bulk actions, and webhook retries.
+- [ ] Add graceful shutdown, readiness/liveness semantics, migration rollback guidance, and backup/restore drills.
+- [ ] Test PostgreSQL failure, Redis failure, provider timeouts, clock skew, partial deploys, and network partitions.
+- [ ] Add structured operational metrics/traces/log correlation with PII-safe defaults and cardinality limits.
+- [ ] Load-test realistic fleets and document supported limits for monitors, history, users, widgets, and websocket clients.
+
+### 🟡 UX, Accessibility & Product Completeness
+- [ ] Run WCAG 2.2 AA automated and keyboard/screen-reader audits across every route and modal.
+- [ ] Verify mobile layouts, touch targets, reduced-motion mode, contrast, focus restoration, and offline/reconnect behavior.
+- [ ] Standardize loading, empty, partial-failure, permission-denied, rate-limit, and retry states across all pages.
+- [ ] Add unsaved-change protection, optimistic-update rollback, bulk-action confirmation, and undo where appropriate.
+- [ ] Complete onboarding, first-monitor experience, contextual help, searchable docs, and actionable error messages.
+- [ ] Add localization architecture, timezone/DST correctness, locale-aware dates/numbers, and RTL readiness review.
+- [ ] Verify notification preferences, deduplication, escalation timing, quiet hours, templates, and delivery diagnostics.
+- [ ] Test status pages for custom domains, caching, incident lifecycle, accessibility, abuse protection, and privacy.
+
+### 🟢 Quality, Compatibility & Governance
+- [ ] Build a browser E2E matrix for Chromium/Firefox/Safari-equivalent flows and supported viewport sizes.
+- [ ] Add contract tests for all providers, alert channels, plugin APIs, CLI commands, and import/export formats.
+- [ ] Verify backwards compatibility, API deprecation policy, schema migration safety, and OpenAPI accuracy.
+- [ ] Add deterministic fixtures, seeded test data, flaky-test quarantine rules, and coverage thresholds by package.
+- [ ] Test Docker Compose and Kubernetes from clean environments, including non-root execution and upgrade paths.
+- [ ] Document support matrix, threat model, architecture decisions, incident response, privacy/data deletion, and release checklist.

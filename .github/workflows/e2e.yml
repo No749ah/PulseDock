@@ -43,7 +43,8 @@ jobs:
       APP_BASE_URL: http://localhost:1234
       ALLOW_PUBLIC_REGISTRATION: "true"
       DEFAULT_ADMIN_EMAIL: admin@example.com
-      DEFAULT_ADMIN_PASSWORD: admin123
+      DEFAULT_ADMIN_PASSWORD: Admin123456!
+      E2E_PASSWORD: Admin123456!
 
     steps:
       - uses: actions/checkout@v5
@@ -100,7 +101,7 @@ jobs:
           curl --fail --silent --show-error \
             -X POST http://localhost:4321/v1/auth/setup \
             -H 'content-type: application/json' \
-            --data '{"email":"admin@example.com","password":"admin123"}'
+            --data '{"email":"admin@example.com","password":"Admin123456!"}'
 
       - name: Run E2E tests
         run: npm run test:e2e

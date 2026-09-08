@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 const E2E_EMAIL = process.env.E2E_EMAIL ?? "admin@example.com";
-const E2E_PASSWORD = process.env.E2E_PASSWORD ?? "admin123";
+const E2E_PASSWORD = process.env.E2E_PASSWORD ?? "Admin123456!";
 
 /**
  * Wait for the login form to be ready — the page fetches /setup-status first,

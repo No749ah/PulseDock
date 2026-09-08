@@ -58,4 +58,4 @@ USER pulsedock
 EXPOSE 4321
 
 # Run migrations then start
-CMD ["sh", "-c", "npx prisma migrate deploy && node apps/api/dist/main.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node apps/api/dist/apps/api/src/main.js"]

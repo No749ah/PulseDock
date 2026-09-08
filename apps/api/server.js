@@ -4,7 +4,7 @@ const socketio = require('socket.io');
 
 const APP_PORT = process.env.API_PORT || process.env.PORT || process.env.APP_PORT || 4000;
 const CONTROL_PORT = process.env.CONTROL_PORT || APP_PORT;
-const START_CMD = process.env.START_CMD || `node dist/main.js`;
+const START_CMD = process.env.START_CMD || `node dist/apps/api/src/main.js`;
 
 console.log('Starting api wrapper, will run:', START_CMD);
 

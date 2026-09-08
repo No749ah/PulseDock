@@ -12,6 +12,7 @@ import { randomUUID } from 'node:crypto';
 import { MetricsService } from './common/metrics.service';
 import { createLogger } from './common/logger';
 import { execSync } from 'child_process';
+import { appMetadata } from './common/app-metadata';
 
 // Minimal request/response interface for Express middleware
 interface AppRequest {
@@ -28,8 +29,6 @@ interface AppResponse {
   on(event: string, callback: () => void): void;
   writeHead(...args: unknown[]): unknown;
 }
-
-const pkg = require('../package.json');
 
 const logger = createLogger({ service: 'pulsedock-api' });
 
@@ -155,7 +154,7 @@ async function bootstrap() {
   const swaggerConfig = new DocumentBuilder()
     .setTitle('PulseDock API')
     .setDescription('API for monitoring, version checks, alerts, auth and public status pages.')
-    .setVersion(String(pkg.version ?? '0.1.0'))
+    .setVersion(String(appMetadata.version ?? '0.1.0'))
     .addBearerAuth()
     .build();
 
@@ -193,7 +192,7 @@ async function bootstrap() {
   await app.listen(port);
   logger.info('PulseDock API started', {
     port,
-    version: pkg.version ?? '0.1.0',
+    version: appMetadata.version ?? '0.1.0',
     nodeEnv: process.env.NODE_ENV,
     swaggerServerUrl,
   });

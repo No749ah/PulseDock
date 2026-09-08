@@ -10,7 +10,7 @@
     "test:integration": "NODE_ENV=test NODE_PATH=../../node_modules ../../node_modules/.bin/vitest run --config vitest.integration.config.ts --reporter=verbose",
     "test:typecheck": "tsc --noEmit -p tsconfig.json",
     "test:coverage": "NODE_ENV=test NODE_PATH=../../node_modules ../../node_modules/.bin/vitest run --coverage",
-    "start": "node dist/main.js"
+    "start": "node dist/apps/api/src/main.js"
   },
   "dependencies": {
     "@nestjs/common": "^11.1.17",

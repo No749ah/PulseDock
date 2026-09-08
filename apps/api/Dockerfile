@@ -28,7 +28,6 @@ RUN npx prisma generate
 
 # Copy API source and build
 COPY apps/api/ apps/api/
-COPY tsconfig.json ./
 RUN cd apps/api && npm run build
 
 # Copy tool registry (runtime dependency for API)

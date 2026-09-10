@@ -71,9 +71,9 @@ test.describe("Authentication flows", () => {
 
     await page.waitForLoadState("networkidle").catch(() => null);
 
-    const body = await page.locator("body").innerText();
-    // Dashboard renders monitor stats, status, or navigation
-    expect(body.toLowerCase()).toMatch(/monitor|uptime|status|dashboard/i);
+    // Wait for the dashboard data state, not only the route transition. The
+    // shell is intentionally rendered while its client-side data is loading.
+    await expect(page.locator("main")).toContainText(/monitor|uptime|status/i, { timeout: 15_000 });
   });
 
   test("unauthenticated access to /dashboard redirects to login", async ({ page }) => {

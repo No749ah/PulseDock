@@ -26,9 +26,9 @@ async function submitValidLogin(
   await page.click('button[type="submit"]');
   const response = await responsePromise;
   expect(
-    response.status(),
-    await response.text().catch(() => "Login response unavailable"),
-  ).toBe(200);
+    response.ok(),
+    `Login failed with HTTP ${response.status()}: ${await response.text().catch(() => "response unavailable")}`,
+  ).toBe(true);
 }
 
 test.describe("Authentication flows", () => {

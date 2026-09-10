@@ -105,7 +105,12 @@ export async function authenticate(page: Page): Promise<void> {
   // Persist storage state
   const dir = path.dirname(STORAGE_STATE_PATH);
   if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-  await page.context().storageState({ path: STORAGE_STATE_PATH });
+  // Playwright may authenticate multiple workers concurrently. Write to a
+  // worker-unique temporary file and rename atomically so readers never see a
+  // partially-written JSON document.
+  const tempStorageStatePath = `${STORAGE_STATE_PATH}.${process.pid}.${Date.now()}.${Math.random().toString(36).slice(2)}.tmp`;
+  await page.context().storageState({ path: tempStorageStatePath });
+  fs.renameSync(tempStorageStatePath, STORAGE_STATE_PATH);
 }
 
 /**

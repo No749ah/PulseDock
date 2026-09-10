@@ -16,8 +16,10 @@ cd "$REPO_ROOT"
 echo "Generating Prisma client..."
 DATABASE_URL="postgresql://pulsedock:pulsedock@dind:5432/pulsedock?schema=public" npx prisma generate 2>&1 | tail -3
 
-# API will load .env from root via node --env-file — run in background
-API_PORT=$API_PORT npm run dev:api >> "$LOG_DIR/pulsedock_api.log" 2>&1 &
+# Detach stdin and ignore terminal hangups so the API survives the restart
+# command's shell exiting (including PTY-backed heartbeat runners).
+nohup setsid env API_PORT="$API_PORT" npm run dev:api \
+  >> "$LOG_DIR/pulsedock_api.log" 2>&1 < /dev/null &
 API_PID=$!
 echo $API_PID > "$PID_FILE"
 echo "Started with PID $API_PID"

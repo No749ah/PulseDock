@@ -4,6 +4,7 @@
 - **Branch:** heartbeat/2026-09-10-boot-security
 - **Changes:**
   - [x] **fix(security): patch production dependency advisories** — upgraded Next.js to 16.3.4, sharp to 0.35.4, multer to 2.3.0, js-yaml to 5.x, and nodemailer to 10.0.3; refreshed the lockfile and verified the full build/test/audit suite.
+  - [x] **fix(ops): keep restarted services alive after heartbeat shell exit** — detached API/web stdin, ignored terminal hangups, and started each service in a new session, preventing heartbeat runners from immediately shutting down otherwise healthy services.
 
 ## Status Summary (2026-09-01 02:40 UTC)
 - **Build/Test/Audit:** ✅ Build passes. Tests: 5327 API + 5698 Web (last verified 22:30 UTC Aug 31). TypeScript clean. 0 vulnerabilities.

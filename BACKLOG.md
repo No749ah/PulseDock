@@ -3,6 +3,7 @@
 - **Deployment:** ⚠️ Services restarted and remain healthy locally (`/health` 200, `/login` 200, direct/proxied authenticated-path probes return expected 401). Public Cloudflare route is blocked upstream with HTTP 502 on every page/API path.
 - **Branch:** heartbeat/2026-09-10-boot-security
 - **Changes:**
+  - [x] **chore(web): migrate live URL checker off deprecated Edge Runtime** — switched `/api/check-url` to the supported Node.js route runtime and added a regression assertion so Next.js production builds no longer emit the Edge Runtime deprecation/static-generation warning.
   - [x] **fix(security): patch production dependency advisories** — upgraded Next.js to 16.3.4, sharp to 0.35.4, multer to 2.3.0, js-yaml to 5.x, and nodemailer to 10.0.3; refreshed the lockfile and verified the full build/test/audit suite.
   - [x] **fix(ops): keep restarted services alive after heartbeat shell exit** — detached API/web stdin, ignored terminal hangups, and started each service in a new session, preventing heartbeat runners from immediately shutting down otherwise healthy services.
 
@@ -103,6 +104,7 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Migrate live URL checker off deprecated Next.js Edge Runtime** - ✅ Done (2026-09-10). Switched `apps/web/app/api/check-url/route.ts` to the supported Node.js runtime and added a regression assertion; production builds no longer emit the Edge Runtime deprecation/static-generation warning.
 - [x] **Stabilize three timeout-prone API specs that intermittently fail heartbeat Step-1 test runs under load** - ✅ Done (2026-04-14). Added explicit `15000ms` per-test timeouts in `apps/api/src/alerts/alerts.service.spec.ts`, `apps/api/src/auth/auth.service.spec.ts`, and `apps/api/src/status-pages/status-pages.service.spec.ts` for known slow-path tests that occasionally exceed Vitest's default `5000ms` budget on busy runners.
 - [x] **Run Step-5 frontend route/static audits in strict shell mode** - ✅ Done (2026-04-11). Updated `scripts/audit-frontend-pages.sh` from `set -uo pipefail` to `set -euo pipefail` so unexpected command failures hard-stop the audit instead of being silently tolerated.
 - [x] **Fail heartbeat Step-5 HEAD route checks on redirect drift** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-curl-pages.sh` to follow redirects for HEAD checks, compare `%{url_effective}` against expected route targets, and fail when a required route silently resolves elsewhere despite final HTTP 200.

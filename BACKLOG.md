@@ -1,6 +1,6 @@
 ## Status Summary (2026-09-10 12:45 UTC)
 - **Build/Test/Audit:** ✅ Production build passes. Tests: 5698 Web + 5327 API + 114 CLI + 12 Agent. `npm audit --audit-level=high`: 0 vulnerabilities.
-- **Deployment:** ⏳ Pending restart and local/public verification.
+- **Deployment:** ⚠️ Services restarted and remain healthy locally (`/health` 200, `/login` 200, direct/proxied authenticated-path probes return expected 401). Public Cloudflare route is blocked upstream with HTTP 502 on every page/API path.
 - **Branch:** heartbeat/2026-09-10-boot-security
 - **Changes:**
   - [x] **fix(security): patch production dependency advisories** — upgraded Next.js to 16.3.4, sharp to 0.35.4, multer to 2.3.0, js-yaml to 5.x, and nodemailer to 10.0.3; refreshed the lockfile and verified the full build/test/audit suite.

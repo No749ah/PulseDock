@@ -13,6 +13,24 @@ async function waitForLoginForm(page: Parameters<typeof test>[1] extends (args: 
   await expect(page.locator("#password")).toBeVisible({ timeout: 20_000 });
 }
 
+async function submitValidLogin(
+  page: Parameters<typeof test>[1] extends (args: { page: infer P }) => unknown ? P : never,
+) {
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/v1/auth/login",
+    { timeout: 20_000 },
+  );
+
+  await page.click('button[type="submit"]');
+  const response = await responsePromise;
+  expect(
+    response.status(),
+    await response.text().catch(() => "Login response unavailable"),
+  ).toBe(200);
+}
+
 test.describe("Authentication flows", () => {
   test("login page loads with visible form", async ({ page }) => {
     await page.goto("/login");
@@ -42,7 +60,7 @@ test.describe("Authentication flows", () => {
 
     await page.fill("#email", E2E_EMAIL);
     await page.fill("#password", E2E_PASSWORD);
-    await page.click('button[type="submit"]');
+    await submitValidLogin(page as never);
 
     // Wait for redirect — may go to /dashboard or stay on login with email verification
     await Promise.race([
@@ -62,7 +80,7 @@ test.describe("Authentication flows", () => {
 
     await page.fill("#email", E2E_EMAIL);
     await page.fill("#password", E2E_PASSWORD);
-    await page.click('button[type="submit"]');
+    await submitValidLogin(page as never);
 
     await Promise.race([
       page.waitForURL("**/dashboard", { timeout: 25_000 }),

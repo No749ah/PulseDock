@@ -39,7 +39,7 @@
 ### 🔴 P0 - Architecture & Code Quality
 
 - [x] **2026-09-10 boot: patch production dependency advisories** — ✅ Done (2026-09-10). Upgraded Next.js to 16.3.4, sharp to 0.35.4, multer to 2.3.0, js-yaml to 5.x, and nodemailer to 10.0.3. Production build and all 11,151 tests pass; npm audit reports 0 vulnerabilities.
-- [ ] **Restore PR #6 E2E login checks** — CI run 34245858167 repeatedly times out waiting to leave `/login`; Build & Test and Security Audit passed on that run. Diagnose login response/cookie flow after security updates.
+- [x] **Restore PR #6 E2E login checks** — ✅ Done (2026-09-10). PR #6 merged after the E2E workflow passed in run 34466091039. Login fixtures and auth specs now assert the `/v1/auth/login` response before waiting for navigation, so future API failures report their HTTP status and response body instead of ending as opaque `/login` timeouts.
 
 - [x] **Refactor monitors.service.ts (9613 lines → modular)** - ✅ Done (2026-03-30). Split into 6 sub-services:
   - `monitors-crud.service.ts` - CRUD, list, clone, bulk operations

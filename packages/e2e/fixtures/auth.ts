@@ -45,6 +45,24 @@ async function handleSetup(page: Page): Promise<void> {
   await page.waitForURL("**/dashboard", { timeout: 20_000 });
 }
 
+async function submitLogin(page: Page): Promise<void> {
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname === "/v1/auth/login",
+    { timeout: 20_000 },
+  );
+
+  await page.click('button[type="submit"]');
+  const response = await responsePromise;
+  if (!response.ok()) {
+    const body = await response.text().catch(() => "<unavailable>");
+    throw new Error(
+      `Login API failed with HTTP ${response.status()}: ${body.slice(0, 500)}`,
+    );
+  }
+}
+
 /**
  * Perform login and save storage state for reuse.
  */
@@ -67,7 +85,7 @@ export async function authenticate(page: Page): Promise<void> {
 
     await page.fill("#email", E2E_EMAIL);
     await page.fill("#password", E2E_PASSWORD);
-    await page.click('button[type="submit"]');
+    await submitLogin(page);
 
     // Wait for redirect away from login (dashboard or any authenticated page)
     await Promise.race([

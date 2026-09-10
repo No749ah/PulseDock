@@ -19,7 +19,7 @@ async function submitValidLogin(
   const responsePromise = page.waitForResponse(
     (response) =>
       response.request().method() === "POST" &&
-      new URL(response.url()).pathname === "/v1/auth/login",
+      new URL(response.url()).pathname.endsWith("/v1/auth/login"),
     { timeout: 20_000 },
   );
 

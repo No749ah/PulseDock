@@ -67,13 +67,13 @@ describe('MonitorsService.reliabilityTrend', () => {
     const monitors: MockMonitor[] = [
       { id: 'm1', name: 'Flaky', type: 'HTTP', pinned: false, createdAt: new Date(), folder: null },
     ];
-    // Previous week (days 3-6): all ok, fast latency -> high score
+    // Previous week (days 8-11): all ok, fast latency -> high score
     // Current week (days 0-2): all fail -> low score -> degrading
     const runs: MockRun[] = [
-      { monitorId: 'm1', ok: true, latencyMs: 100, checkedAt: makeDate(3) },
-      { monitorId: 'm1', ok: true, latencyMs: 100, checkedAt: makeDate(4) },
-      { monitorId: 'm1', ok: true, latencyMs: 100, checkedAt: makeDate(5) },
-      { monitorId: 'm1', ok: true, latencyMs: 100, checkedAt: makeDate(6) },
+      { monitorId: 'm1', ok: true, latencyMs: 100, checkedAt: makeDate(8) },
+      { monitorId: 'm1', ok: true, latencyMs: 100, checkedAt: makeDate(9) },
+      { monitorId: 'm1', ok: true, latencyMs: 100, checkedAt: makeDate(10) },
+      { monitorId: 'm1', ok: true, latencyMs: 100, checkedAt: makeDate(11) },
       { monitorId: 'm1', ok: false, latencyMs: null, checkedAt: makeDate(0) },
       { monitorId: 'm1', ok: false, latencyMs: null, checkedAt: makeDate(1) },
       { monitorId: 'm1', ok: false, latencyMs: null, checkedAt: makeDate(2) },
@@ -88,19 +88,18 @@ describe('MonitorsService.reliabilityTrend', () => {
       { id: 'good', name: 'Good', type: 'HTTP', pinned: false, createdAt: new Date(), folder: null },
       { id: 'bad', name: 'Bad', type: 'HTTP', pinned: false, createdAt: new Date(), folder: null },
     ];
-    // good: prev "week" (5-6 days ago) bad, current "week" (today) ok -> improving
-    // bad: prev "week" (5-6 days ago) ok, current "week" (today) bad -> degrading
-    // makeDate(0) = today: always in the current calendar-week bucket regardless of day-of-week.
-    // makeDate(5-6): always at least 5 days before today; on the worst case (Monday, when the
-    // current week started today) these land in last week's bucket, ensuring two distinct buckets.
+    // good: prev "week" (8-9 days ago) bad, current "week" (today) ok -> improving
+    // bad: prev "week" (8-9 days ago) ok, current "week" (today) bad -> degrading
+    // Using dates at least 8 days old keeps the fixture in the previous calendar-week bucket
+    // regardless of which weekday the test runs on.
     const runs: MockRun[] = [
-      { monitorId: 'good', ok: false, latencyMs: null, checkedAt: makeDate(6) },
-      { monitorId: 'good', ok: false, latencyMs: null, checkedAt: makeDate(5) },
+      { monitorId: 'good', ok: false, latencyMs: null, checkedAt: makeDate(9) },
+      { monitorId: 'good', ok: false, latencyMs: null, checkedAt: makeDate(8) },
       { monitorId: 'good', ok: true, latencyMs: 100, checkedAt: makeDate(0) },
       { monitorId: 'good', ok: true, latencyMs: 100, checkedAt: makeDate(1) },
       { monitorId: 'good', ok: true, latencyMs: 100, checkedAt: makeDate(2) },
-      { monitorId: 'bad', ok: true, latencyMs: 100, checkedAt: makeDate(6) },
-      { monitorId: 'bad', ok: true, latencyMs: 100, checkedAt: makeDate(5) },
+      { monitorId: 'bad', ok: true, latencyMs: 100, checkedAt: makeDate(9) },
+      { monitorId: 'bad', ok: true, latencyMs: 100, checkedAt: makeDate(8) },
       { monitorId: 'bad', ok: false, latencyMs: null, checkedAt: makeDate(0) },
       { monitorId: 'bad', ok: false, latencyMs: null, checkedAt: makeDate(1) },
       { monitorId: 'bad', ok: false, latencyMs: null, checkedAt: makeDate(2) },

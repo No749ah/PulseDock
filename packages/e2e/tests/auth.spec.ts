@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 const E2E_EMAIL = process.env.E2E_EMAIL ?? "admin@example.com";
-const E2E_PASSWORD = process.env.E2E_PASSWORD ?? "admin123";
+const E2E_PASSWORD = process.env.E2E_PASSWORD ?? "Admin123456!";
 
 /**
  * Wait for the login form to be ready — the page fetches /setup-status first,
@@ -71,9 +71,9 @@ test.describe("Authentication flows", () => {
 
     await page.waitForLoadState("networkidle").catch(() => null);
 
-    const body = await page.locator("body").innerText();
-    // Dashboard renders monitor stats, status, or navigation
-    expect(body.toLowerCase()).toMatch(/monitor|uptime|status|dashboard/i);
+    // Wait for the dashboard data state, not only the route transition. The
+    // shell is intentionally rendered while its client-side data is loading.
+    await expect(page.locator("main")).toContainText(/monitor|uptime|status/i, { timeout: 15_000 });
   });
 
   test("unauthenticated access to /dashboard redirects to login", async ({ page }) => {

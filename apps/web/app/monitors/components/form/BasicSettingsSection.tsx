@@ -78,10 +78,11 @@ export function BasicSettingsSection({
 
       {/* Monitor Name */}
       <div>
-        <label className="block text-sm font-medium text-text-secondary mb-1">
+        <label htmlFor="monitor-name" className="block text-sm font-medium text-text-secondary mb-1">
           Monitor Name <span className="text-danger" aria-hidden="true">*</span>
         </label>
         <input
+          id="monitor-name"
           type="text"
           value={formData.name}
           onChange={(e) => {
@@ -103,8 +104,9 @@ export function BasicSettingsSection({
       {/* Type + Plugin */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div>
-          <label className="block text-sm font-medium text-text-secondary mb-1">Type</label>
+          <label htmlFor="monitor-type" className="block text-sm font-medium text-text-secondary mb-1">Type</label>
           <select
+            id="monitor-type"
             value={formData.type}
             onChange={(e) => {
               const nextType = e.target.value as typeof formData.type;
@@ -187,10 +189,11 @@ export function BasicSettingsSection({
 
       {/* Target */}
       <div>
-        <label className="block text-sm font-medium text-text-secondary mb-1">
+        <label htmlFor="monitor-target" className="block text-sm font-medium text-text-secondary mb-1">
           Target <span className="text-danger" aria-hidden="true">*</span>
         </label>
         <input
+          id="monitor-target"
           type="text"
           value={formData.target}
           onChange={(e) => {

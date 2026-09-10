@@ -43,7 +43,8 @@ jobs:
       APP_BASE_URL: http://localhost:1234
       ALLOW_PUBLIC_REGISTRATION: "true"
       DEFAULT_ADMIN_EMAIL: admin@example.com
-      DEFAULT_ADMIN_PASSWORD: admin123
+      DEFAULT_ADMIN_PASSWORD: Admin123456!
+      E2E_PASSWORD: Admin123456!
 
     steps:
       - uses: actions/checkout@v5
@@ -70,7 +71,7 @@ jobs:
           npm run build -w @pulsedock/api
           # The API build includes shared workspace sources, so TypeScript
           # emits the entrypoint at dist/apps/api/src/main.js.
-          node apps/api/dist/apps/api/src/main.js > /tmp/pulsedock-api.log 2>&1 &
+          NODE_ENV=test node apps/api/dist/apps/api/src/main.js > /tmp/pulsedock-api.log 2>&1 &
           for attempt in {1..30}; do
             curl --fail --silent http://localhost:4321/health/live >/dev/null && break
             if [ "$attempt" = 30 ]; then
@@ -100,7 +101,7 @@ jobs:
           curl --fail --silent --show-error \
             -X POST http://localhost:4321/v1/auth/setup \
             -H 'content-type: application/json' \
-            --data '{"email":"admin@example.com","password":"admin123"}'
+            --data '{"email":"admin@example.com","password":"Admin123456!"}'
 
       - name: Run E2E tests
         run: npm run test:e2e

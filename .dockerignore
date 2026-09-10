@@ -9,7 +9,9 @@ apps/web/out
 
 # Dev & test files
 *.spec.ts
-packages/e2e
+packages/e2e/**
+!packages/e2e/
+!packages/e2e/package.json
 coverage
 .nyc_output
 

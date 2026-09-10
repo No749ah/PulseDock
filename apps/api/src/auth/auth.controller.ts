@@ -208,7 +208,6 @@ export class AuthController {
     return this.authService.resendVerification(body.email);
   }
 
-  @Throttle({ default: { limit: 4, ttl: 60_000 } })
   @Get('mail-configured')
   @ApiOperation({ summary: 'Check if mail/SMTP is configured on this instance' })
   @ApiResponse({ status: 200, description: 'Returns { enabled: boolean }' })

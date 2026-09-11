@@ -26,12 +26,11 @@ RUN npm ci --ignore-scripts
 COPY prisma ./prisma/
 RUN npx prisma generate
 
-# Copy API source and build
+# The API imports registry TypeScript sources via relative workspace paths.
+# Copy them before compilation so clean image builds emit the shared modules.
+COPY packages/tool-registry/ packages/tool-registry/
 COPY apps/api/ apps/api/
 RUN cd apps/api && npm run build
-
-# Copy tool registry (runtime dependency for API)
-COPY packages/tool-registry/ packages/tool-registry/
 
 # ── Stage 2: Production Runtime ──
 FROM node:22-alpine AS runner

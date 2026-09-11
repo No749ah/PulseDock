@@ -7,6 +7,15 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ---
 
+## [Unreleased]
+
+### Fixed
+- Copy the tool-registry sources before compiling the production API image, so clean Docker builds include the imported workspace modules.
+- Enforce high/critical dependency audit failures in CI instead of masking their exit status.
+
+### Changed
+- Build the production API Docker image on pull requests and main/dev pushes to catch packaging regressions before release.
+
 ## [1.7.0] — 2026-04-04
 
 ### Added

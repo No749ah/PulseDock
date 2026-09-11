@@ -1,0 +1,3 @@
+-- AlterTable
+ALTER TABLE "Monitor" ADD COLUMN     "flapThreshold" DOUBLE PRECISION NOT NULL DEFAULT 0.5,
+ADD COLUMN     "flapWindow" INTEGER NOT NULL DEFAULT 10;

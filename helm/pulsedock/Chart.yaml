@@ -1,0 +1,24 @@
+apiVersion: v2
+name: pulsedock
+description: Open-source version intelligence & uptime monitoring platform
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+
+home: https://github.com/No749ah/PulseDock
+sources:
+  - https://github.com/No749ah/PulseDock
+
+keywords:
+  - uptime
+  - monitoring
+  - version-intelligence
+  - status-page
+  - nestjs
+  - nextjs
+  - postgresql
+  - redis
+
+maintainers:
+  - name: No749ah
+    url: https://github.com/No749ah

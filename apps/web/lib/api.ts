@@ -9,75 +9,153 @@ function inferApiBaseFromLocation() {
     return `${protocol}//${host.replace('oc-web-test.', 'oc-api-test.')}`;
   }
 
-  // Local dev setup
-  if (host.startsWith('localhost') || host.startsWith('127.0.0.1')) {
-    return 'http://localhost:4000';
+  // Dev test setup: oc-dev-test.* -> same host /api proxy
+  if (host.startsWith('oc-dev-test.')) {
+    return `${protocol}//${host}/api`;
   }
 
-  return '';
+  // Local dev setup
+  if (host.startsWith('localhost') || host.startsWith('127.0.0.1')) {
+    return 'http://localhost:4321';
+  }
+
+  // Default for any hosted web surface: use same-origin /api proxy.
+  // This avoids cross-origin drift on alternate hosts (embedded control UI,
+  // preview domains, relay hosts) where saves could hit the wrong backend.
+  return `${protocol}//${host}/api`;
 }
 
-export const API_BASE =
-  process.env.NEXT_PUBLIC_API_BASE_URL ||
-  inferApiBaseFromLocation() ||
-  'https://oc-api-test.no749ah.com';
-
-function getStored(name: string) {
-  if (typeof window === 'undefined') return '';
-  return localStorage.getItem(name) ?? '';
+/**
+ * Resolve the API base at request/use time. Next/Vite can evaluate modules
+ * once per test worker (and Next can bundle environment values at build time),
+ * so resolving this at module load makes the result stale when the host or
+ * test environment changes.
+ */
+export function getApiBase(): string {
+  return process.env.NEXT_PUBLIC_API_BASE_URL || inferApiBaseFromLocation();
 }
 
-function setStored(name: string, value: string) {
-  if (typeof window === 'undefined') return;
-  localStorage.setItem(name, value);
+// ─── CSRF ────────────────────────────────────────────────────────────────────
+
+const MUTATING_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE']);
+
+/**
+ * Read the pulsedock_csrf cookie from document.cookie.
+ * Returns undefined when running server-side or when the cookie is absent.
+ */
+function readCsrfCookie(): string | undefined {
+  if (typeof document === 'undefined') return undefined;
+  const match = document.cookie.match(/(?:^|;\s*)pulsedock_csrf=([^;]+)/);
+  return match?.[1];
 }
 
-function clearStored(name: string) {
-  if (typeof window === 'undefined') return;
-  localStorage.removeItem(name);
+/**
+ * Ensure a CSRF token is available in the pulsedock_csrf cookie.
+ * If not, fetches one from the API (which sets the cookie server-side).
+ * Returns the token string so it can be attached to headers immediately.
+ */
+async function ensureCsrfToken(): Promise<string | undefined> {
+  if (typeof document === 'undefined') return undefined; // SSR — no CSRF needed
+
+  const existing = readCsrfCookie();
+  if (existing) return existing;
+
+  try {
+    const resp = await fetch(`${getApiBase()}/v1/auth/csrf`, {
+      method: 'GET',
+      credentials: 'include',
+      cache: 'no-store',
+    });
+    if (resp.ok) {
+      const data = (await resp.json()) as { csrfToken?: string };
+      return data.csrfToken ?? readCsrfCookie();
+    }
+  } catch {
+    // Non-fatal: requests without CSRF will get a 403, which is visible to the user
+  }
+  return undefined;
 }
 
-export async function api<T>(path: string, token?: string, init?: RequestInit): Promise<T> {
-  const access = token || getStored('pulsedock_access_token');
+// ─── Main API helper ─────────────────────────────────────────────────────────
 
-  const run = async (bearer?: string) =>
-    fetch(`${API_BASE}${path}`, {
+/**
+ * Typed fetch helper.
+ *
+ * Authentication is handled exclusively via httpOnly cookies set by the API
+ * on login/refresh. All requests use `credentials: 'include'` to send those
+ * cookies automatically. The `_token` parameter is kept for call-site backward
+ * compatibility only and is intentionally ignored — never send JWTs in headers.
+ *
+ * CSRF protection: mutating requests (POST/PUT/PATCH/DELETE) automatically
+ * include the X-CSRF-Token header from the pulsedock_csrf cookie value.
+ *
+ * On 401, a cookie-based token refresh is attempted transparently.
+ */
+export async function api<T>(path: string, _token?: string, init?: RequestInit): Promise<T> {
+  const method = (init?.method ?? 'GET').toUpperCase();
+
+  // Inject CSRF token for state-mutating requests
+  let csrfHeaders: Record<string, string> = {};
+  if (MUTATING_METHODS.has(method)) {
+    const token = await ensureCsrfToken();
+    if (token) {
+      csrfHeaders = { 'x-csrf-token': token };
+    }
+  }
+
+  const run = () =>
+    fetch(`${getApiBase()}${path}`, {
       ...init,
+      credentials: 'include', // httpOnly cookies sent automatically
       headers: {
         'content-type': 'application/json',
-        ...(bearer ? { authorization: `Bearer ${bearer}` } : {}),
+        ...csrfHeaders,
         ...(init?.headers ?? {}),
       },
       cache: 'no-store',
     });
 
-  let response = await run(access);
+  let response = await run();
 
-  if (response.status === 401 && access && typeof window !== 'undefined') {
-    const refreshToken = getStored('pulsedock_refresh_token');
-    if (refreshToken) {
-      const refreshResp = await fetch(`${API_BASE}/v1/auth/refresh`, {
-        method: 'POST',
-        headers: { 'content-type': 'application/json' },
-        body: JSON.stringify({ refreshToken }),
-      });
+  if (response.status === 401 && typeof window !== 'undefined' && !path.includes('/v1/auth/refresh')) {
+    // Attempt a silent token refresh using the httpOnly refresh cookie.
+    const refreshResp = await fetch(`${getApiBase()}/v1/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include', // sends pulsedock_refresh cookie
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({}),
+    });
 
-      if (refreshResp.ok) {
-        const refreshed = (await refreshResp.json()) as {
-          accessToken: string;
-          refreshToken: string;
-          user: { id: string; email: string; role: 'admin' | 'user'; name?: string };
-        };
-        setStored('pulsedock_access_token', refreshed.accessToken);
-        setStored('pulsedock_refresh_token', refreshed.refreshToken);
+    if (refreshResp.ok) {
+      // API has rotated both cookies server-side. Retry the original request.
+      const refreshed = (await refreshResp.json()) as {
+        accessToken: string;
+        refreshToken: string;
+        user: { id: string; email: string; role: 'admin' | 'user'; name?: string };
+      };
+      // Update local user metadata (not a token — cookies were set by the server).
+      if (typeof localStorage !== 'undefined') {
         const name = refreshed.user?.name || refreshed.user?.email?.split('@')?.[0] || 'user';
-        setStored('pulsedock_user', JSON.stringify({ ...refreshed.user, name }));
-        response = await run(refreshed.accessToken);
-      } else {
-        // Invalid/expired refresh token: clear stale session so frontend can re-login cleanly
-        clearStored('pulsedock_access_token');
-        clearStored('pulsedock_refresh_token');
-        clearStored('pulsedock_user');
+        localStorage.setItem('pulsedock_user', JSON.stringify({ ...refreshed.user, name }));
+      }
+      response = await run();
+
+      // If STILL 401 after refresh, session is broken — redirect to login
+      if (response.status === 401) {
+        if (typeof localStorage !== 'undefined') localStorage.removeItem('pulsedock_user');
+        window.location.href = '/login';
+        throw new Error('Session expired');
+      }
+    } else {
+      // Refresh failed — session is fully expired.
+      // Clear local state and hard-redirect to /login.
+      // A hard redirect (location.href) avoids any React re-render loop that could
+      // cause repeated 401 calls before the component has a chance to push to /login.
+      if (typeof localStorage !== 'undefined') localStorage.removeItem('pulsedock_user');
+      if (typeof window !== 'undefined') {
+        window.location.href = '/login';
+        // Throw to prevent the calling code from continuing while navigating away
+        throw new Error('Session expired');
       }
     }
   }
@@ -88,7 +166,9 @@ export async function api<T>(path: string, token?: string, init?: RequestInit): 
 
     try {
       const parsed = JSON.parse(text);
-      message = parsed?.error?.message || parsed?.message || text;
+      const raw = parsed?.error?.message || parsed?.message || text;
+      // NestJS validation errors return an array of strings — join them
+      message = Array.isArray(raw) ? raw.join(', ') : raw;
     } catch {
       // keep raw text message
     }

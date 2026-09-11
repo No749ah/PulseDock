@@ -1,0 +1,17 @@
+{
+  "generatedAt": "2026-04-01T16:10:37.758Z",
+  "counts": {
+    "widgetTypes": 82,
+    "paletteTypes": 84,
+    "rendererCases": 83,
+    "resolverCases": 82,
+    "noConfigResolverTypes": 24,
+    "configWarningCoveredTypes": 63
+  },
+  "missingFromPalette": [],
+  "missingFromRenderer": [],
+  "missingFromResolver": [],
+  "unexpectedResolverMissing": [],
+  "noConfigMissingWarnings": [],
+  "allowedResolverMissing": []
+}

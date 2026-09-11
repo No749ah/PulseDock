@@ -1,110 +1,176 @@
-'use client';
+"use client";
 
-import { Badge, Card, Group, Progress, SimpleGrid, Table, Text } from '@mantine/core';
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { api } from '../../lib/api';
-import { getToken, getUser } from '../../components/auth';
-import { AppFrame } from '../../components/app-frame';
-import { LoadingState } from '../../components/ui/loading-state';
+import { AlertCircle } from "lucide-react";
+import { AppFrame } from "../../components/app-frame";
+import { FadeIn } from "../components/FadeIn";
+import { OnboardingChecklist } from "../components/OnboardingChecklist";
+import { ProductTour, type TourStep } from "../../components/product-tour";
+import { brand } from "../../lib/brand";
+import { useDashboard } from "./hooks/useDashboard";
+import { ActiveIncidentsBanner } from "./components/ActiveIncidentsBanner";
+import { DashboardControls } from "./components/DashboardControls";
+import { HealthTimelineSection } from "./components/HealthTimelineSection";
+import { MonitorsSection } from "./components/MonitorsSection";
+import { RecentActivitySection } from "./components/RecentActivitySection";
+import { SloSection } from "./components/SloSection";
+import { UptimeSection } from "./components/UptimeSection";
+import { VersionSection } from "./components/VersionSection";
 
-type Overview = {
-  stats: { totalMonitors: number; green: number; yellow: number; red: number; uptimePct: number };
-  latestRuns: Array<{ id: string; checkedAt: string; level: 'green'|'yellow'|'red'; ok: boolean; message: string; latencyMs: number | null }>;
-};
-
-type Health = { ok: boolean; service: string; runtime: string };
-type VersionSummary = { stats: { total: number; green: number; yellow: number; red: number } };
-
-type NavTile = { label: string; value: string; hint: string; to: string; color?: 'green'|'yellow'|'red'|'teal' };
+const DASHBOARD_TOUR_STEPS: TourStep[] = [
+  {
+    title: `Welcome to ${brand.name}! 👋`,
+    content: `${brand.name} monitors your self-hosted tools, tracks versions, and builds beautiful status pages. Let's take a quick tour to get you started.`,
+  },
+  {
+    target: "nav[aria-label='Navigation']",
+    placement: "right",
+    title: "Navigation",
+    content: "Use the left sidebar to navigate between Monitors, Alerts, Versions, Status Pages, and more. Each section has its own tools and views.",
+  },
+  {
+    target: "[data-tour='stats-row']",
+    placement: "bottom",
+    title: "Live Stats",
+    content: "These cards show real-time counts of your monitors, uptime percentage, checks run today, and version tracking status. All update live via WebSocket.",
+  },
+  {
+    target: "[data-tour='add-monitor']",
+    placement: "bottom",
+    title: "Add Your First Monitor",
+    content: "Click here to add a monitor. Choose from HTTP uptime checks, SSL certificate monitoring, TCP port checks, Heartbeat monitors, or version tracking for 5000+ self-hosted tools.",
+  },
+  {
+    target: "[data-tour='time-range']",
+    placement: "bottom",
+    title: "Time Range Selector",
+    content: "Filter your dashboard view by time period — 1h, 6h, 24h, 7d, or 30d. The live indicator shows when auto-refresh is active.",
+  },
+];
 
 export default function DashboardPage() {
-  const router = useRouter();
-  const token = useMemo(() => (typeof window !== 'undefined' ? getToken() : ''), []);
-  const [overview, setOverview] = useState<Overview | null>(null);
-  const [health, setHealth] = useState<Health | null>(null);
-  const [versions, setVersions] = useState<VersionSummary | null>(null);
-  const [loading, setLoading] = useState(true);
+  const db = useDashboard();
 
-  useEffect(() => {
-    const user = getUser();
-    if (!user || !token) router.push('/login');
-  }, [router, token]);
+  if (!db.user) return null;
 
-  async function load() {
-    setLoading(true);
-    try {
-      const [o, h, v] = await Promise.all([
-        api<Overview>('/v1/dashboard/overview', token),
-        api<Health>('/health'),
-        api<VersionSummary>('/v1/monitors/version-summary', token),
-      ]);
-      setOverview(o);
-      setHealth(h);
-      setVersions(v);
-    } finally {
-      setLoading(false);
-    }
+  if (db.loading) {
+    return (
+      <AppFrame title="Dashboard" subtitle="Loading...">
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-accent border-t-transparent" />
+        </div>
+      </AppFrame>
+    );
   }
 
-  useEffect(() => { load().catch(() => router.push('/login')); }, []);
-
-  const s = overview?.stats;
-  const tiles: NavTile[] = [
-    { label: 'Monitors', value: String(s?.totalMonitors ?? 0), hint: 'Create/manage checks', to: '/monitors', color: 'teal' },
-    { label: 'Alerts', value: String((s?.yellow ?? 0) + (s?.red ?? 0)), hint: 'Channels and delivery', to: '/alerts', color: (s?.red ?? 0) > 0 ? 'red' : (s?.yellow ?? 0) > 0 ? 'yellow' : 'green' },
-    { label: 'Versions', value: `${versions?.stats.yellow ?? 0} outdated`, hint: 'Daily release/image checks', to: '/versions', color: (versions?.stats.red ?? 0) > 0 ? 'red' : (versions?.stats.yellow ?? 0) > 0 ? 'yellow' : 'green' },
-    { label: 'Projects', value: 'Organize', hint: 'Group monitors by domain', to: '/projects', color: 'teal' },
-  ];
-
   return (
-    <AppFrame title="Dashboard" subtitle="">
-      {loading ? <LoadingState label="Loading dashboard..." /> : <>
-      <SimpleGrid cols={{ base: 1, sm: 2, lg: 5 }} mb="md">
-        <Card withBorder radius="md" style={{ cursor: 'pointer' }} onClick={() => router.push('/monitors')}>
-          <Text c="dimmed">Uptime</Text>
-          <Text fw={800} size="2rem">{s?.uptimePct ?? 0}%</Text>
-          <Progress color="teal" value={s?.uptimePct ?? 0} mt="sm" />
-        </Card>
-        <Card withBorder radius="md" style={{ cursor: 'pointer' }} onClick={() => router.push('/monitors')}><Text c="dimmed">Healthy</Text><Text fw={800} size="2rem">{s?.green ?? 0}</Text></Card>
-        <Card withBorder radius="md" style={{ cursor: 'pointer' }} onClick={() => router.push('/monitors')}><Text c="dimmed">At Risk</Text><Text fw={800} size="2rem">{(s?.yellow ?? 0) + (s?.red ?? 0)}</Text></Card>
-        <Card withBorder radius="md" style={{ cursor: 'pointer' }} onClick={() => router.push('/versions')}><Text c="dimmed">Outdated Versions</Text><Text fw={800} size="2rem">{(versions?.stats.yellow ?? 0) + (versions?.stats.red ?? 0)}</Text></Card>
-        <Card withBorder radius="md"><Text c="dimmed">API Health</Text><Text fw={800} size="2rem">{health?.ok ? 'OK' : 'DOWN'}</Text><Text size="xs" c="dimmed">{health?.runtime ?? '—'}</Text></Card>
-      </SimpleGrid>
+    <AppFrame title="Dashboard" subtitle={`Welcome back, ${db.user.name || "there"}!`} breadcrumbs={[{ label: "Dashboard" }]}>
+      <div className="space-y-8">
 
-      <SimpleGrid cols={{ base: 1, sm: 2, lg: 4 }} mb="md">
-        {tiles.map((tile) => (
-          <Card key={tile.label} withBorder radius="md" style={{ cursor: 'pointer' }} onClick={() => router.push(tile.to)}>
-            <Group justify="space-between">
-              <Text fw={700}>{tile.label}</Text>
-              <Badge color={tile.color ?? 'teal'}>{tile.value}</Badge>
-            </Group>
-            <Text size="sm" c="dimmed" mt="xs">{tile.hint}</Text>
-          </Card>
-        ))}
-      </SimpleGrid>
+        {/* Controls (heading + time range + actions + customize panel) */}
+        <DashboardControls
+          timeRange={db.timeRange}
+          onSetTimeRange={db.setTimeRange}
+          autoRefresh={db.autoRefresh}
+          onToggleAutoRefresh={() => db.setAutoRefresh(!db.autoRefresh)}
+          refreshInterval={db.refreshInterval}
+          onSetRefreshInterval={db.setRefreshInterval}
+          lastRefreshedText={db.lastRefreshedText}
+          refreshing={db.refreshing}
+          onRefreshNow={() => db.loadDashboard(true)}
+          isFullscreen={db.isFullscreen}
+          onToggleFullscreen={db.toggleFullscreen}
+          showCustomize={db.showCustomize}
+          onToggleCustomize={() => db.setShowCustomize(!db.showCustomize)}
+          sectionOrder={db.sectionOrder}
+          onMoveSectionUp={db.moveSectionUp}
+          onMoveSectionDown={db.moveSectionDown}
+          onResetSectionOrder={db.resetSectionOrder}
+        />
 
-      <Card withBorder radius="md">
-        <Group justify="space-between" mb="sm">
-          <Text fw={700}>Latest runs</Text>
-          <Badge variant="light">Click a row for monitors page</Badge>
-        </Group>
-        <Table withTableBorder withColumnBorders>
-          <Table.Thead><Table.Tr><Table.Th>Time</Table.Th><Table.Th>Level</Table.Th><Table.Th>Status</Table.Th><Table.Th>Latency</Table.Th><Table.Th>Message</Table.Th></Table.Tr></Table.Thead>
-          <Table.Tbody>
-            {overview?.latestRuns.map((r) => (
-              <Table.Tr key={r.id} style={{ cursor: 'pointer' }} onClick={() => router.push('/monitors')}>
-                <Table.Td>{new Date(r.checkedAt).toLocaleString()}</Table.Td>
-                <Table.Td><Badge color={r.level === 'green' ? 'green' : r.level === 'yellow' ? 'yellow' : 'red'}>{r.level.toUpperCase()}</Badge></Table.Td>
-                <Table.Td>{r.ok ? 'OK' : 'FAIL'}</Table.Td>
-                <Table.Td>{r.latencyMs ?? '-'}</Table.Td>
-                <Table.Td>{r.message}</Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
-      </Card>
-      </>}
+        {/* Error */}
+        {db.error && (
+          <FadeIn>
+            <div className="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/20">
+              <AlertCircle className="w-5 h-5 text-danger mt-0.5 shrink-0" />
+              <span className="text-danger text-sm">{db.error}</span>
+            </div>
+          </FadeIn>
+        )}
+
+        {/* Onboarding */}
+        <FadeIn>
+          <OnboardingChecklist
+            userId={db.user.id}
+            hasMonitors={db.monitors.length > 0}
+            hasAlertChannels={db.hasAlertChannels}
+          />
+          <ProductTour
+            storageKey={`pulsedock_tour_dashboard_${db.user.id}`}
+            autoStart={db.monitors.length === 0}
+            steps={DASHBOARD_TOUR_STEPS}
+          />
+        </FadeIn>
+
+        {/* Active incidents banner */}
+        <ActiveIncidentsBanner incidents={db.activeIncidents} />
+
+        {/* Ordered sections */}
+        {db.sectionOrder.map((sectionKey) => {
+          if (sectionKey === "uptime") {
+            if (!db.stats) return null;
+            return (
+              <FadeIn key="uptime">
+                <UptimeSection stats={db.stats} />
+              </FadeIn>
+            );
+          }
+          if (sectionKey === "versions") {
+            if (!db.stats) return null;
+            return (
+              <FadeIn key="versions">
+                <VersionSection stats={db.stats} />
+              </FadeIn>
+            );
+          }
+          if (sectionKey === "monitors") {
+            return (
+              <FadeIn key="monitors">
+                <MonitorsSection
+                  monitors={db.monitors}
+                  runs={db.runs}
+                  monitorView={db.monitorView}
+                  setMonitorView={db.setMonitorView}
+                  seedingDemo={db.seedingDemo}
+                  onSeedDemo={db.handleSeedDemo}
+                />
+              </FadeIn>
+            );
+          }
+          if (sectionKey === "slo") {
+            if (!db.sloSummary) return null;
+            return (
+              <FadeIn key="slo">
+                <SloSection sloSummary={db.sloSummary} />
+              </FadeIn>
+            );
+          }
+          if (sectionKey === "health") {
+            if (!db.healthTimeline) return null;
+            return (
+              <FadeIn key="health">
+                <HealthTimelineSection healthTimeline={db.healthTimeline} />
+              </FadeIn>
+            );
+          }
+          return null;
+        })}
+
+        {/* Recent activity — always last */}
+        <FadeIn>
+          <RecentActivitySection uptimeRuns={db.uptimeRuns} />
+        </FadeIn>
+
+      </div>
     </AppFrame>
   );
 }

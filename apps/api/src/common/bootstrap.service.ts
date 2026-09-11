@@ -1,30 +1,19 @@
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
-import { hashSync } from 'bcryptjs';
-import { PrismaService } from './prisma.service';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 
+/**
+ * Bootstrap service that runs once when the NestJS application module initialises.
+ *
+ * First-run setup (creating the initial admin account, seeding default settings,
+ * etc.) is initiated by the user via POST /v1/auth/setup rather than being run
+ * automatically here. This keeps the setup flow explicit and auditable.
+ */
 @Injectable()
 export class BootstrapService implements OnModuleInit {
-  private readonly logger = new Logger(BootstrapService.name);
-
-  constructor(private readonly prisma: PrismaService) {}
-
+  /**
+   * Called automatically by NestJS after all modules are initialised.
+   * Currently a no-op — first-run setup is user-initiated via /v1/auth/setup.
+   */
   async onModuleInit() {
-    const count = await this.prisma.user.count();
-    if (count > 0) return;
-
-    const email = (process.env.DEFAULT_ADMIN_EMAIL ?? 'admin@pulsedock.dev').toLowerCase();
-    const password = process.env.DEFAULT_ADMIN_PASSWORD ?? 'admin123';
-
-    await this.prisma.user.create({
-      data: {
-        email,
-        passwordHash: hashSync(password, 10),
-        role: 'admin',
-        isActive: true,
-        mustChangePassword: true,
-      },
-    });
-
-    this.logger.warn(`Seeded default admin user: ${email}`);
+    // First-run setup is handled via POST /v1/auth/setup
   }
 }

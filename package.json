@@ -1,11 +1,12 @@
 {
   "name": "pulsedock",
   "private": true,
-  "version": "0.1.0",
-  "description": "Open-source enterprise uptime and update monitoring platform",
+  "version": "1.7.0",
+  "description": "PulseDock - Version intelligence dashboard",
   "workspaces": [
     "apps/*",
-    "packages/*"
+    "packages/*",
+    "packages/e2e"
   ],
   "scripts": {
     "dev": "echo \"Use: npm run web | npm run api (or dev:web/dev:api)\"",
@@ -13,9 +14,93 @@
     "api": "npm run dev:api",
     "dev:web": "npm run dev -w @pulsedock/web",
     "dev:api": "npm run dev -w @pulsedock/api",
-    "build": "npm run build -w @pulsedock/web && npm run build -w @pulsedock/api",
+    "build": "bash ./scripts/build-web.sh && npm run build -w @pulsedock/api && npm run build -w @pulsedock/agent && npm run build -w @pulsedock/cli && npm run build -w @pulsedock/extension",
+    "test": "NODE_ENV=test npm run test -w @pulsedock/web && NODE_ENV=test npm run test -w @pulsedock/api && NODE_ENV=test npm run test -w @pulsedock/cli && NODE_ENV=test npm run test -w @pulsedock/agent",
+    "test:integration": "NODE_ENV=test npm run test:integration -w @pulsedock/api",
+    "start:web": "bash ./scripts/start-web.sh",
+    "start:api": "bash ./scripts/start-api.sh",
+    "stop:web": "bash ./scripts/stop-web.sh",
+    "stop:api": "bash ./scripts/stop-api.sh",
+    "restart:web": "bash ./scripts/stop-web.sh && bash ./scripts/start-web.sh",
+    "restart:api": "bash ./scripts/stop-api.sh && bash ./scripts/start-api.sh",
+    "smoke": "bash ./scripts/smoke-test.sh",
+    "smoke:prod": "bash ./scripts/smoke-test.sh https://oc-dev-test.no749ah.com https://oc-dev-test.no749ah.com/api",
+    "verify": "bash ./scripts/verify-deployment.sh",
+    "verify:prod": "bash ./scripts/verify-deployment.sh --public",
+    "audit:deploy": "bash ./scripts/audit-deploy.sh",
+    "audit:deploy:prod": "bash ./scripts/audit-deploy.sh --public",
+    "audit:deploy:strict": "bash ./scripts/audit-deploy.sh --strict-auth",
+    "audit:deploy:strict:prod": "bash ./scripts/audit-deploy.sh --public --strict-auth",
+    "audit:frontend": "bash ./scripts/audit-frontend-pages.sh",
+    "audit:frontend:prod": "bash ./scripts/audit-frontend-pages.sh --public",
+    "audit:frontend:heads": "bash ./scripts/heartbeat-curl-pages.sh",
+    "audit:frontend:heads:prod": "bash ./scripts/heartbeat-curl-pages.sh --public",
+    "heartbeat:bootstrap": "bash ./scripts/heartbeat-bootstrap.sh",
+    "heartbeat:check": "bash ./scripts/heartbeat-check.sh",
+    "heartbeat:check:prod": "bash ./scripts/heartbeat-check.sh --public",
+    "heartbeat:check:strict": "bash ./scripts/heartbeat-check.sh --strict-auth",
+    "heartbeat:check:strict:prod": "bash ./scripts/heartbeat-check.sh --public --strict-auth",
+    "heartbeat:cycle": "bash ./scripts/heartbeat-cycle.sh",
+    "heartbeat:cycle:prod": "bash ./scripts/heartbeat-cycle.sh --public",
+    "heartbeat:cycle:strict": "bash ./scripts/heartbeat-cycle.sh --strict-auth",
+    "heartbeat:cycle:strict:prod": "bash ./scripts/heartbeat-cycle.sh --public --strict-auth",
+    "heartbeat:rotate": "bash ./scripts/heartbeat-rotate-branch.sh",
+    "heartbeat:rotate:if-due": "bash ./scripts/heartbeat-rotate-if-due.sh",
+    "backlog:prune": "bash ./scripts/prune-backlog-status.sh",
+    "perf": "bash ./scripts/perf-check.sh",
+    "perf:prod": "bash ./scripts/perf-check.sh https://oc-dev-test.no749ah.com https://oc-dev-test.no749ah.com/api",
+    "quality": "bash ./scripts/code-quality.sh",
+    "ux:review": "node ./scripts/ux-review.mjs",
+    "widget:audit": "node ./scripts/widget-audit.mjs",
+    "restart": "npm run restart:api && sleep 2 && npm run restart:web",
+    "test:e2e": "npm run test -w @pulsedock/e2e",
+    "test:visual": "npx tsx scripts/visual-test.ts",
+    "test:visual:docker": "bash ./scripts/visual-test-docker.sh",
     "prisma:generate": "prisma generate",
-    "prisma:migrate": "prisma migrate dev"
+    "prisma:migrate": "prisma migrate dev",
+    "registry:lint": "npx ts-node --project packages/tool-registry/tsconfig.json packages/tool-registry/scripts/lint-registry.ts",
+    "registry:audit:variants": "npx ts-node --project packages/tool-registry/tsconfig.json packages/tool-registry/scripts/variant-audit.ts",
+    "registry:audit:verified": "npx ts-node --project packages/tool-registry/tsconfig.json packages/tool-registry/scripts/verified-runtime-audit.ts",
+    "registry:audit:verified:check": "npm run registry:audit:verified && npx ts-node --project packages/tool-registry/tsconfig.json packages/tool-registry/scripts/verified-runtime-regression.ts",
+    "registry:verify:runtime:mocks": "npx ts-node --project packages/tool-registry/tsconfig.json packages/tool-registry/scripts/verified-runtime-mock-check.ts",
+    "heartbeat:health": "bash ./scripts/heartbeat-health.sh"
   },
-  "license": "Apache-2.0"
+  "license": "MIT",
+  "dependencies": {
+    "@tabler/icons-react": "^3.41.1",
+    "@vitest/coverage-v8": "^4.1.2",
+    "framer-motion": "^12.38.0",
+    "otplib": "^13.4.0",
+    "path-to-regexp": "8.4.0",
+    "qrcode": "^1.5.4",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "socket.io": "^4.8.3",
+    "socket.io-client": "^4.8.3",
+    "vitest": "^4.1.2"
+  },
+  "devDependencies": {
+    "@nestjs/testing": "^11.1.17",
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.6",
+    "@types/qrcode": "^1.5.6",
+    "@types/supertest": "^7.2.0",
+    "supertest": "^7.2.2"
+  },
+  "overrides": {
+    "@prisma/dev": {
+      "hono": "4.12.8",
+      "@hono/node-server": "1.19.11"
+    },
+    "path-to-regexp": "8.4.0",
+    "@nestjs/swagger": {
+      "path-to-regexp": "8.4.0",
+      "lodash": "4.18.1",
+      "js-yaml": "5.2.3"
+    },
+    "multer": "2.3.0",
+    "sharp": "0.35.4",
+    "lodash": "4.18.1",
+    "js-yaml": ">=4.3.1 <5.0.0 || >=5.2.2"
+  }
 }

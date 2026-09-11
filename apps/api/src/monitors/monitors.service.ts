@@ -1,564 +1,1250 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { PrismaService } from '../common/prisma.service';
+import { Injectable } from '@nestjs/common';
 import type { MonitorType } from '../types';
-import { ChecksService } from '../checks/checks.service';
-import { AuditService } from '../common/audit.service';
+import type { PlaygroundDto, PlaygroundResult } from './playground.dto';
+import { MonitorsCrudService } from './monitors-crud.service';
+import { MonitorsAnalyticsService } from './monitors-analytics.service';
+import { MonitorsSlaService } from './monitors-sla.service';
+import { MonitorsDiagnosticsService } from './monitors-diagnostics.service';
+import { MonitorsExportService } from './monitors-export.service';
+import { MonitorsComparisonService } from './monitors-comparison.service';
+
+export { simulateAlertRules } from './monitors-crud.service';
+export type { SimulateRun, SimulateConfig, SimulateAlertsResult } from './monitors-crud.service';
+export { pearsonCorrelation } from './monitors-comparison.service';
+export { linearRegression } from './monitors-analytics.service';
+export type { SuggestedMonitor, OpenApiSuggestion } from './monitors-export.service';
+import type { SuggestedMonitor, OpenApiSuggestion } from './monitors-export.service';
 
 @Injectable()
 export class MonitorsService {
   constructor(
-    private readonly prisma: PrismaService,
-    private readonly checksService: ChecksService,
-    private readonly audit: AuditService,
+    private readonly crud: MonitorsCrudService,
+    private readonly analytics: MonitorsAnalyticsService,
+    private readonly sla: MonitorsSlaService,
+    private readonly diagnostics: MonitorsDiagnosticsService,
+    private readonly exportSvc: MonitorsExportService,
+    private readonly comparison: MonitorsComparisonService,
   ) {}
 
-  private sanitizeConfig(config: Record<string, unknown> | null | undefined) {
-    const c = { ...(config ?? {}) } as Record<string, unknown>;
-
-    const hasRepoToken = typeof c.token === 'string' && String(c.token).trim().length > 0;
-    const hasAppToken = typeof c.appToken === 'string' && String(c.appToken).trim().length > 0;
-    const hasOpenvpnPassword = typeof c.openvpnPassword === 'string' && String(c.openvpnPassword).trim().length > 0;
-
-    if ('token' in c) delete c.token;
-    if ('appToken' in c) delete c.appToken;
-    if ('openvpnPassword' in c) delete c.openvpnPassword;
-
-    c.hasRepoToken = hasRepoToken;
-    c.hasAppToken = hasAppToken;
-    c.hasOpenvpnPassword = hasOpenvpnPassword;
-
-    return c;
+    listPlugins() {
+    return this.crud.listPlugins();
   }
 
-  async list(userId: string) {
-    const monitors = await this.prisma.monitor.findMany({
-      where: { userId },
-      orderBy: { createdAt: 'desc' },
-      include: { monitorAlerts: true },
-    });
-
-    return monitors.map((m) => ({
-      id: m.id,
-      userId: m.userId,
-      name: m.name,
-      type: m.type,
-      target: m.target,
-      intervalSec: m.intervalSec,
-      timeoutMs: m.timeoutMs,
-      config: this.sanitizeConfig((m.configJson as Record<string, unknown> | null) ?? {}),
-      alertChannelIds: m.monitorAlerts.map((ma) => ma.alertChannelId),
-      folderId: m.folderId,
-      enabled: m.enabled,
-      createdAt: m.createdAt.toISOString(),
-    }));
+    async list(userId: string, tagFilter?: string) {
+    return this.crud.list(userId, tagFilter);
   }
 
-  async create(userId: string, body: {
+    async getOne(userId: string, monitorId: string) {
+    return this.crud.getOne(userId, monitorId);
+  }
+
+    async create(userId: string, body: {
+    name: string;
+    description?: string;
+    runbookUrl?: string;
+    target: string;
+    type: MonitorType;
+    intervalSec?: number;
+    timeoutMs?: number;
+    confirmations?: number;
+    retryCount?: number;
+    config?: Record<string, unknown>;
+    alertChannelIds?: string[];
+    folderId?: string | null;
+    tags?: string[];
+    enabled?: boolean;
+    slaTarget?: number;
+    slaPeriodDays?: number;
+    autoIncident?: boolean;
+    autoIncidentSeverity?: string;
+    flapDetectionEnabled?: boolean;
+    flapWindow?: number;
+    flapThreshold?: number;
+    latencyAlertMs?: number | null;
+    latencyBudgetMs?: number | null;
+    anomalyDetection?: boolean;
+    anomalyMultiplier?: number;
+    cronExpression?: string | null;
+    scheduleEnabled?: boolean;
+    scheduleDays?: string;
+    scheduleStartHour?: number;
+    scheduleEndHour?: number;
+    sliLatencyTarget?: number;
+    sliLatencyWindow?: number;
+    trackedHeaders?: string | null;
+    rtoMinutes?: number | null;
+    statusWebhookSecret?: string | null;
+    statusWebhookUrl?: string | null;
+    throttleMs?: number;
+    maxChecksPerHour?: number;
+    adaptiveIntervalEnabled?: boolean;
+    adaptiveIntervalDownSec?: number | null;
+    adaptiveIntervalDegradedSec?: number | null;
+    geoRegions?: string[];
+    metricPath?: string | null;
+    metricName?: string | null;
+    metricUnit?: string | null;
+    metricAlertMin?: number | null;
+    metricAlertMax?: number | null;
+    headerAssertions?: Array<{ header: string; op: string; value?: string }> | null;
+    graphqlQuery?: string | null;
+    graphqlVariables?: string | null;
+    graphqlDataPath?: string | null;
+    graphqlExpectedValue?: string | null;
+    downtimeCostPerHour?: number | null;
+    priority?: number;
+  }) {
+    return this.crud.create(userId, body);
+  }
+
+    async update(userId: string, monitorId: string, body: {
+    name?: string;
+    description?: string | null;
+    runbookUrl?: string | null;
+    target?: string;
+    type?: MonitorType;
+    intervalSec?: number;
+    timeoutMs?: number;
+    confirmations?: number;
+    retryCount?: number;
+    config?: Record<string, unknown>;
+    alertChannelIds?: string[];
+    folderId?: string | null;
+    enabled?: boolean;
+    tags?: string[];
+    slaTarget?: number | null;
+    slaPeriodDays?: number | null;
+    autoIncident?: boolean;
+    autoIncidentSeverity?: string;
+    flapDetectionEnabled?: boolean;
+    flapWindow?: number;
+    flapThreshold?: number;
+    latencyAlertMs?: number | null;
+    latencyBudgetMs?: number | null;
+    anomalyDetection?: boolean;
+    anomalyMultiplier?: number;
+    cronExpression?: string | null;
+    scheduleEnabled?: boolean;
+    scheduleDays?: string;
+    scheduleStartHour?: number;
+    scheduleEndHour?: number;
+    sliLatencyTarget?: number | null;
+    sliLatencyWindow?: number;
+    trackedHeaders?: string | null;
+    rtoMinutes?: number | null;
+    statusWebhookSecret?: string | null;
+    statusWebhookUrl?: string | null;
+    throttleMs?: number | null;
+    maxChecksPerHour?: number | null;
+    adaptiveIntervalEnabled?: boolean;
+    adaptiveIntervalDownSec?: number | null;
+    adaptiveIntervalDegradedSec?: number | null;
+    geoRegions?: string[];
+    metricPath?: string | null;
+    metricName?: string | null;
+    metricUnit?: string | null;
+    metricAlertMin?: number | null;
+    metricAlertMax?: number | null;
+    headerAssertions?: Array<{ header: string; op: string; value?: string }> | null;
+    graphqlQuery?: string | null;
+    graphqlVariables?: string | null;
+    graphqlDataPath?: string | null;
+    graphqlExpectedValue?: string | null;
+    downtimeCostPerHour?: number | null;
+    priority?: number;
+  }) {
+    return this.crud.update(userId, monitorId, body);
+  }
+
+    async getConfigHistory(userId: string, monitorId: string, limit = 50) {
+    return this.crud.getConfigHistory(userId, monitorId, limit);
+  }
+
+    async remove(userId: string, monitorId: string) {
+    return this.crud.remove(userId, monitorId);
+  }
+
+    async clone(userId: string, monitorId: string) {
+    return this.crud.clone(userId, monitorId);
+  }
+
+    async bulkAction(userId: string, ids: string[], action: 'enable' | 'disable' | 'delete' | 'run' | 'add-tag' | 'remove-tag' | 'update-interval' | 'update-timeout' | 'update-confirmations' | 'pause', tagId?: string, value?: number) {
+    return this.crud.bulkAction(userId, ids, action, tagId, value);
+  }
+
+    async bulkEdit(userId: string, body: {
+    ids: string[];
+    intervalSec?: number;
+    timeoutMs?: number;
+    confirmations?: number;
+    retryCount?: number;
+    flapDetectionEnabled?: boolean;
+    latencyAlertMs?: number | null;
+    slaTarget?: number | null;
+    enabled?: boolean;
+    folderId?: string | null;
+    alertChannelIds?: string[];
+    priority?: number;
+  }): Promise<{ ok: boolean; affected: number; errors: Array<{ id: string; error: string }> }> {
+    return this.crud.bulkEdit(userId, body);
+  }
+
+    async listMonitorAlerts(userId: string, monitorId: string) {
+    return this.crud.listMonitorAlerts(userId, monitorId);
+  }
+
+    async addMonitorAlert(userId: string, monitorId: string, channelId: string, notifyOn?: string, repeatIntervalMin?: number) {
+    return this.crud.addMonitorAlert(userId, monitorId, channelId, notifyOn, repeatIntervalMin);
+  }
+
+    async updateMonitorAlertNotifyOn(userId: string, monitorId: string, channelId: string, notifyOn: string) {
+    return this.crud.updateMonitorAlertNotifyOn(userId, monitorId, channelId, notifyOn);
+  }
+
+    async updateMonitorAlertRepeatInterval(userId: string, monitorId: string, channelId: string, intervalMin: number | null) {
+    return this.crud.updateMonitorAlertRepeatInterval(userId, monitorId, channelId, intervalMin);
+  }
+
+    async updateMonitorAlertEscalationPolicy(userId: string, monitorId: string, channelId: string, policyId: string | null) {
+    return this.crud.updateMonitorAlertEscalationPolicy(userId, monitorId, channelId, policyId);
+  }
+
+    async removeMonitorAlert(userId: string, monitorId: string, channelId: string) {
+    return this.crud.removeMonitorAlert(userId, monitorId, channelId);
+  }
+
+    async snooze(userId: string, monitorId: string, hours: number) {
+    return this.crud.snooze(userId, monitorId, hours);
+  }
+
+    async runNow(userId: string, monitorId: string) {
+    return this.crud.runNow(userId, monitorId);
+  }
+
+    async getRecentRuns(userId: string, limit = 10, since?: Date) {
+    return this.crud.getRecentRuns(userId, limit, since);
+  }
+
+    async liveFeed(
+    userId: string,
+    opts?: { limit?: number; since?: string; level?: string; type?: string },
+  ) {
+    return this.crud.liveFeed(userId, opts);
+  }
+
+    async runs(userId: string) {
+    return this.crud.runs(userId);
+  }
+
+    async monitorRuns(
+    userId: string,
+    monitorId: string,
+    opts?: { limit?: string; before?: string; status?: string },
+  ) {
+    return this.crud.monitorRuns(userId, monitorId, opts);
+  }
+
+    async exportMonitorRuns(userId: string, monitorId: string): Promise<{ csv: string; filename: string; monitorName: string }> {
+    return this.crud.exportMonitorRuns(userId, monitorId);
+  }
+
+    async getLatencyBudgetReport(
+    userId: string,
+    monitorId: string,
+  ): Promise<{
+    monitorId: string;
+    monitorName: string;
+    latencyBudgetMs: number | null;
+    periodStart: string;
+    periodEnd: string;
+    totalChecks: number;
+    checksAboveBudget: number;
+    budgetUsedPct: number;
+    avgLatencyMs: number | null;
+    p95LatencyMs: number | null;
+    status: 'no-budget' | 'healthy' | 'warning' | 'exceeded';
+  }> {
+    return this.crud.getLatencyBudgetReport(userId, monitorId);
+  }
+
+    async exportMonitorRunsEnhanced(
+    userId: string,
+    monitorId: string,
+    opts: {
+      format: 'csv' | 'json';
+      days: number;
+      includeTimings: boolean;
+      includeAssertions: boolean;
+    },
+  ): Promise<{ data: string; filename: string; totalCount: number }> {
+    return this.crud.exportMonitorRunsEnhanced(userId, monitorId, opts);
+  }
+
+    async monitorUptime(userId: string, monitorId: string, period: '1d' | '7d' | '30d' | '90d' = '30d') {
+    return this.crud.monitorUptime(userId, monitorId, period);
+  }
+
+    async monitorChart(userId: string, monitorId: string, period: '1d' | '7d' | '30d' | '90d' = '7d') {
+    return this.crud.monitorChart(userId, monitorId, period);
+  }
+
+    async testVersionConnection(input: { provider: 'github' | 'gitlab' | 'forgejo' | 'gitea' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'nuget' | 'rubygems' | 'gem' | 'go' | 'golang' | 'gomod' | 'maven' | 'helm'; target: string; token?: string; host?: string }) {
+    return this.crud.testVersionConnection(input);
+  }
+
+    async discoverCurrentVersion(input: { provider: 'github' | 'gitlab' | 'forgejo' | 'gitea' | 'docker' | 'apt' | 'npm' | 'pypi' | 'cargo' | 'nuget' | 'rubygems' | 'gem' | 'go' | 'golang' | 'gomod' | 'maven' | 'helm'; target: string; token?: string; host?: string; appUrl?: string; appToken?: string; appVersionEndpoint?: string; appAuthType?: 'none' | 'token' | 'openvpn'; openvpnUsername?: string; openvpnPassword?: string; endpointFallbacks?: string[]; jsonPath?: string; jsonPathExtractors?: string[] }) {
+    return this.crud.discoverCurrentVersion(input);
+  }
+
+    async versionSummary(userId: string) {
+    return this.crud.versionSummary(userId);
+  }
+
+    async versionDriftReport(userId: string) {
+    return this.crud.versionDriftReport(userId);
+  }
+
+    async listDependencies(userId: string, monitorId: string) {
+    return this.crud.listDependencies(userId, monitorId);
+  }
+
+    async addDependency(userId: string, monitorId: string, dependsOnId: string) {
+    return this.crud.addDependency(userId, monitorId, dependsOnId);
+  }
+
+    async removeDependency(userId: string, monitorId: string, dependsOnId: string) {
+    return this.crud.removeDependency(userId, monitorId, dependsOnId);
+  }
+
+    async hasDependencyDown(monitorId: string): Promise<boolean> {
+    return this.crud.hasDependencyDown(monitorId);
+  }
+
+    async listEvents(userId: string, monitorId: string) {
+    return this.crud.listEvents(userId, monitorId);
+  }
+
+    async createEvent(userId: string, monitorId: string, message: string, eventType = 'note') {
+    return this.crud.createEvent(userId, monitorId, message, eventType);
+  }
+
+    async deleteEvent(userId: string, monitorId: string, eventId: string) {
+    return this.crud.deleteEvent(userId, monitorId, eventId);
+  }
+
+    async togglePin(userId: string, monitorId: string): Promise<{ pinned: boolean }> {
+    return this.crud.togglePin(userId, monitorId);
+  }
+
+    async bulkCreateFromUrls(
+    userId: string,
+    body: {
+      urls: string[];
+      folderId?: string;
+      alertChannelIds?: string[];
+      intervalSec?: number;
+    },
+  ): Promise<{ created: number; skipped: number; errors: Array<{ url: string; error: string }> }> {
+    return this.crud.bulkCreateFromUrls(userId, body);
+  }
+
+    async getResponseDiff(
+    userId: string,
+    monitorId: string,
+    runId: string,
+    baseRunId?: string,
+  ): Promise<{
+    failedBody: string | null;
+    baseBody: string | null;
+    runId: string;
+    baseRunId: string | null;
+  }> {
+    return this.crud.getResponseDiff(userId, monitorId, runId, baseRunId);
+  }
+
+    async simulateAlerts(
+    userId: string,
+    monitorId: string,
+    config: {
+      confirmations?: number;
+      flapDetection?: boolean;
+      flapWindow?: number;
+      flapThreshold?: number;
+      scheduleStartHour?: number;
+      scheduleEndHour?: number;
+    },
+  ) {
+    return this.crud.simulateAlerts(userId, monitorId, config);
+  }
+
+    async runPlayground(dto: PlaygroundDto, userId: string): Promise<PlaygroundResult> {
+    return this.crud.runPlayground(dto, userId);
+  }
+
+    async fleetHealthReport(userId: string): Promise<{
+    generatedAt: string;
+    fleetScore: number;
+    fleetGrade: string;
+    summary: {
+      total: number;
+      enabled: number;
+      up: number;
+      degraded: number;
+      down: number;
+      noData: number;
+    };
+    reliabilityTiers: {
+      tier: string;
+      label: string;
+      count: number;
+      color: string;
+      monitors: Array<{ id: string; name: string; uptimePct: number; score: number; grade: string }>;
+    }[];
+    atRisk: Array<{
+      id: string;
+      name: string;
+      reason: string;
+      severity: 'critical' | 'high' | 'medium';
+      uptimePct: number;
+      score: number;
+    }>;
+    incidentVelocity: {
+      last7d: number;
+      last30d: number;
+      trend: 'improving' | 'stable' | 'worsening';
+      weeklyBreakdown: Array<{ week: string; count: number }>;
+    };
+    typeDistribution: Array<{ type: string; count: number; avgUptime: number }>;
+    coverageGaps: {
+      noAlertChannel: number;
+      noSlaTarget: number;
+      noDescription: number;
+      totalGapScore: number;
+    };
+    topPerformers: Array<{ id: string; name: string; uptimePct: number; grade: string }>;
+    worstPerformers: Array<{ id: string; name: string; uptimePct: number; grade: string }>;
+  }> {
+    return this.analytics.fleetHealthReport(userId);
+  }
+
+    async monitorTrends(userId: string): Promise<{
+    monitors: Array<{
+      id: string;
+      name: string;
+      type: string;
+      enabled: boolean;
+      folder: string | null;
+      currentUptimePct: number | null;
+      previousUptimePct: number | null;
+      uptimeDelta: number | null;
+      uptimeTrend: 'improving' | 'degrading' | 'stable' | 'new';
+      currentAvgLatencyMs: number | null;
+      previousAvgLatencyMs: number | null;
+      latencyDeltaPct: number | null;
+      latencyTrend: 'improving' | 'degrading' | 'stable' | 'new';
+      currentChecks: number;
+      previousChecks: number;
+    }>;
+    generatedAt: string;
+  }> {
+    return this.analytics.monitorTrends(userId);
+  }
+
+    async monitorCorrelation(userId: string, days: number = 7): Promise<{
+    monitors: Array<{ id: string; name: string; type: string }>;
+    pairs: Array<{
+      aId: string;
+      bId: string;
+      similarity: number;
+      sharedWindows: number;
+      aWindows: number;
+      bWindows: number;
+    }>;
+    groups: Array<{
+      monitorIds: string[];
+      avgSimilarity: number;
+      label: string;
+    }>;
+  }> {
+    return this.analytics.monitorCorrelation(userId, days);
+  }
+
+    async anomalyReport(userId: string, hours: 24 | 48 | 168 = 24): Promise<{
+    generatedAt: string;
+    periodHours: number;
+    totalMonitors: number;
+    anomaliesFound: number;
+    anomalies: Array<{
+      monitorId: string;
+      monitorName: string;
+      monitorType: string;
+      severity: 'critical' | 'high' | 'medium' | 'low';
+      anomalyTypes: string[];
+      details: Array<{
+        type: string;
+        description: string;
+        currentValue: number | null;
+        previousValue: number | null;
+        changePct: number | null;
+      }>;
+      currentPeriod: {
+        uptimePct: number | null;
+        avgLatencyMs: number | null;
+        failureCount: number;
+        totalChecks: number;
+      };
+      previousPeriod: {
+        uptimePct: number | null;
+        avgLatencyMs: number | null;
+        failureCount: number;
+        totalChecks: number;
+      };
+    }>;
+  }> {
+    return this.analytics.anomalyReport(userId, hours);
+  }
+
+    async failurePrediction(userId: string): Promise<{
+    predictions: Array<{
+      monitorId: string;
+      monitorName: string;
+      monitorType: string;
+      currentUptimePct: number;
+      currentAvgLatencyMs: number | null;
+      riskScore: number;
+      prediction: 'stable' | 'watch' | 'at_risk' | 'likely_failure';
+      estimatedHoursToFailure: number | null;
+      trend: {
+        uptimeSlopePctPerDay: number;
+        latencySlopeMsPerDay: number | null;
+      };
+      lastCheckOk: boolean | null;
+      checkCount: number;
+    }>;
+    summary: {
+      total: number;
+      stable: number;
+      watch: number;
+      atRisk: number;
+      likelyFailure: number;
+      avgFleetRisk: number;
+    };
+  }> {
+    return this.analytics.failurePrediction(userId);
+  }
+
+    async uptimeHeatmap(userId: string, days: number): Promise<{
+    monitors: Array<{
+      id: string;
+      name: string;
+      type: string;
+      folder: string | null;
+      days: Array<{ date: string; uptimePct: number | null; total: number; failed: number }>;
+    }>;
+    dates: string[];
+  }> {
+    return this.analytics.uptimeHeatmap(userId, days);
+  }
+
+    async latencyHeatmap(userId: string, days: number): Promise<{
+    monitors: Array<{
+      id: string;
+      name: string;
+      type: string;
+      folder: string | null;
+      days: Array<{
+        date: string;
+        avgLatencyMs: number | null;
+        p95LatencyMs: number | null;
+        samples: number;
+        grade: 'A' | 'B' | 'C' | 'D' | 'F' | null;
+      }>;
+    }>;
+    dates: string[];
+    summary: {
+      avgFleetLatency: number | null;
+      bestDay: string | null;
+      worstDay: string | null;
+    };
+  }> {
+    return this.analytics.latencyHeatmap(userId, days);
+  }
+
+    async reliabilityTrend(userId: string, weeks: number): Promise<{
+    monitors: Array<{
+      id: string;
+      name: string;
+      type: string;
+      folder: string | null;
+      currentScore: number | null;
+      trend: 'improving' | 'degrading' | 'stable' | 'new';
+      deltaPct: number | null;
+      weeks: Array<{
+        weekStart: string;
+        uptimePct: number | null;
+        avgLatencyMs: number | null;
+        checksTotal: number;
+        checksFailed: number;
+        incidents: number;
+        score: number | null;
+      }>;
+    }>;
+    weekStarts: string[];
+    summary: {
+      improving: number;
+      degrading: number;
+      stable: number;
+      avgCurrentScore: number | null;
+    };
+  }> {
+    return this.analytics.reliabilityTrend(userId, weeks);
+  }
+
+    async timingBreakdown(userId: string, days: number): Promise<{
+    period: { days: number };
+    fleet: {
+      avgDnsMs: number | null;
+      avgTcpMs: number | null;
+      avgTlsMs: number | null;
+      avgTtfbMs: number | null;
+      avgDownloadMs: number | null;
+      totalSamples: number;
+      bottleneck: 'dns' | 'tcp' | 'tls' | 'ttfb' | 'download' | null;
+    };
+    monitors: Array<{
+      id: string;
+      name: string;
+      type: string;
+      samples: number;
+      avgDnsMs: number | null;
+      avgTcpMs: number | null;
+      avgTlsMs: number | null;
+      avgTtfbMs: number | null;
+      avgDownloadMs: number | null;
+      avgTotalMs: number | null;
+      bottleneck: 'dns' | 'tcp' | 'tls' | 'ttfb' | 'download' | null;
+      bottleneckPct: number | null;
+    }>;
+  }> {
+    return this.analytics.timingBreakdown(userId, days);
+  }
+
+    async failurePatterns(userId: string, monitorId: string, periodDays: number = 30): Promise<{
+    totalFailures: number;
+    uniquePatterns: number;
+    patterns: Array<{
+      pattern: string;
+      count: number;
+      percentage: number;
+      firstSeen: Date;
+      lastSeen: Date;
+      exampleMessage: string;
+      weeklyTrend: number[]; // 7 buckets, oldest→newest
+    }>;
+  }> {
+    return this.analytics.failurePatterns(userId, monitorId, periodDays);
+  }
+
+    async geoStats(
+    userId: string,
+    monitorId: string,
+    periodDays = 7,
+  ): Promise<{
+    regions: Array<{
+      region: string;
+      totalRuns: number;
+      okRuns: number;
+      uptimePct: number;
+      avgLatencyMs: number | null;
+      p95LatencyMs: number | null;
+    }>;
+    hasGeoData: boolean;
+  }> {
+    return this.analytics.geoStats(userId, monitorId, periodDays);
+  }
+
+    async latencyHistory(userId: string, monitorId: string, days: number = 30): Promise<{
+    days: Array<{
+      date: string; // YYYY-MM-DD UTC
+      p50: number | null;
+      p95: number | null;
+      p99: number | null;
+      avgMs: number | null;
+      uptimePct: number | null;
+      totalChecks: number;
+    }>;
+  }> {
+    return this.analytics.latencyHistory(userId, monitorId, days);
+  }
+
+    async getTagAnalytics(
+    userId: string,
+    days: number,
+  ): Promise<{
+    periodDays: number;
+    tags: Array<{
+      tag: string;
+      monitorCount: number;
+      avgUptimePct: number;
+      worstUptimePct: number;
+      totalIncidents: number;
+      avgLatencyMs: number | null;
+      monitorsDown: number;
+      health: 'healthy' | 'degraded' | 'critical';
+    }>;
+  }> {
+    return this.analytics.getTagAnalytics(userId, days);
+  }
+
+    async getAssertionStats(
+    userId: string,
+    monitorId: string,
+    days: number,
+  ): Promise<{
+    periodDays: number;
+    totalChecks: number;
+    assertionChecks: number;
+    totalAssertionFailures: number;
+    byType: {
+      bodyContains: { failures: number; pct: number };
+      jsonPath: { failures: number; pct: number };
+      headerAssertions: { failures: number; pct: number; topHeaders: string[] };
+    };
+    recentFailures: Array<{
+      checkedAt: string;
+      type: string;
+      message: string;
+      latencyMs: number | null;
+    }>;
+  }> {
+    return this.analytics.getAssertionStats(userId, monitorId, days);
+  }
+
+    async downtimeCostReport(userId: string): Promise<{
+    totalEstimatedCost: number;
+    totalDowntimeMinutes: number;
+    monitorCount: number;
+    monitors: Array<{
+      id: string;
+      name: string;
+      downtimeCostPerHour: number;
+      downtimeMinutes: number;
+      estimatedCost: number;
+      incidentCount: number;
+      worstIncidentCost: number;
+    }>;
+    currency: 'USD';
+    periodDays: 30;
+  }> {
+    return this.analytics.downtimeCostReport(userId);
+  }
+
+    async downtimeCostHistory(monitorId: string, userId: string, periodDays = 30): Promise<{
+    days: Array<{
+      date: string;
+      downtimeMinutes: number;
+      estimatedCost: number;
+      checks: number;
+      failedChecks: number;
+    }>;
+  }> {
+    return this.analytics.downtimeCostHistory(monitorId, userId, periodDays);
+  }
+
+    async statusTimeline(userId: string, hours: number): Promise<{
+    monitors: Array<{
+      id: string;
+      name: string;
+      type: string;
+      folder: string | null;
+      segments: Array<{ start: string; end: string; level: 'green' | 'yellow' | 'red' }>;
+      currentLevel: string;
+      uptimePct: number;
+    }>;
+    from: string;
+    to: string;
+    totalHours: number;
+  }> {
+    return this.analytics.statusTimeline(userId, hours);
+  }
+
+    async dependencyGraph(userId: string): Promise<{
+    nodes: Array<{
+      id: string;
+      name: string;
+      type: string;
+      enabled: boolean;
+      folderId: string | null;
+      folderName: string | null;
+      status: 'up' | 'down' | 'degraded' | 'paused' | 'no-data';
+      latencyMs: number | null;
+      uptimePct7d: number | null;
+      isMuted: boolean;
+      inDegree: number;  // how many monitors depend on this one
+      outDegree: number; // how many dependencies this monitor has
+    }>;
+    edges: Array<{
+      source: string;  // monitorId (the dependent)
+      target: string;  // dependsOnId (the dependency)
+    }>;
+    summary: {
+      totalMonitors: number;
+      totalEdges: number;
+      isolatedNodes: number; // monitors with no dependencies and no dependents
+      monitorsByStatus: { up: number; down: number; degraded: number; paused: number; noData: number };
+    };
+    generatedAt: string;
+  }> {
+    return this.analytics.dependencyGraph(userId);
+  }
+
+    async latencyBenchmark(userId: string): Promise<{
+    monitors: Array<{
+      monitorId: string;
+      monitorName: string;
+      monitorType: string;
+      target: string;
+      current: {
+        p50: number | null;
+        p75: number | null;
+        p95: number | null;
+        p99: number | null;
+        avg: number | null;
+        min: number | null;
+        max: number | null;
+        samples: number;
+      };
+      previous: {
+        p50: number | null;
+        p95: number | null;
+        avg: number | null;
+        samples: number;
+      };
+      trend: 'improving' | 'stable' | 'degrading' | 'new';
+      trendPct: number | null;
+      latencyAlertMs: number | null;
+      budgetMs: number | null;
+      p95ExceedsBudget: boolean;
+      p95ExceedsAlert: boolean;
+      grade: 'A' | 'B' | 'C' | 'D' | 'F' | null;
+    }>;
+    summary: {
+      totalMonitors: number;
+      monitorsWithData: number;
+      fleetP50: number | null;
+      fleetP95: number | null;
+      gradeDistribution: { A: number; B: number; C: number; D: number; F: number };
+      exceedingBudget: number;
+      exceedingAlert: number;
+      improvingCount: number;
+      degradingCount: number;
+    };
+  }> {
+    return this.analytics.latencyBenchmark(userId);
+  }
+
+    async metricHistory(userId: string, monitorId: string, opts: { limit?: number; periodDays?: number } = {}): Promise<{
+    metricName: string | null;
+    metricUnit: string | null;
+    metricPath: string | null;
+    metricAlertMin: number | null;
+    metricAlertMax: number | null;
+    points: Array<{ checkedAt: string; value: number; level: string }>;
+    stats: { min: number | null; max: number | null; avg: number | null; latest: number | null; count: number };
+  }> {
+    return this.analytics.metricHistory(userId, monitorId, opts);
+  }
+
+    async slaDashboard(userId: string) {
+    return this.sla.slaDashboard(userId);
+  }
+
+    async slaComplianceReport(userId: string, months: number) {
+    return this.sla.slaComplianceReport(userId, months);
+  }
+
+    async slaByTag(userId: string): Promise<Array<{
+    tagId: string | null;
+    tagName: string;
+    tagColor: string | null;
+    monitorCount: number;
+    withSlaTarget: number;
+    uptimePct: number | null;
+    compliantCount: number;
+    atRiskCount: number;
+    breachedCount: number;
+    noDataCount: number;
+    monitors: Array<{
+      id: string;
+      name: string;
+      type: string;
+      slaTarget: number | null;
+      uptimePct: number | null;
+      compliant: boolean | null;
+    }>;
+  }>> {
+    return this.sla.slaByTag(userId);
+  }
+
+    async slaBudgetForecast(userId: string, monitorId: string) {
+    return this.sla.slaBudgetForecast(userId, monitorId);
+  }
+
+    async getErrorBudget(
+    monitorId: string,
+    userId: string,
+    opts: { slaTarget: number; period: string },
+  ) {
+    return this.sla.getErrorBudget(monitorId, userId, opts);
+  }
+
+    async getSloReport(userId: string, monitorId: string) {
+    return this.sla.getSloReport(userId, monitorId);
+  }
+
+    async getSloSummary(userId: string) {
+    return this.sla.getSloSummary(userId);
+  }
+
+    async uptimeCertificate(userId: string, monitorId: string, months: number): Promise<string> {
+    return this.sla.uptimeCertificate(userId, monitorId, months);
+  }
+
+    async generateUptimeCertificate(
+    userId: string,
+    monitorId: string,
+    options: { periodDays: number; title?: string },
+  ): Promise<{
+    certificateId: string;
+    monitorId: string;
+    monitorName: string;
+    monitorTarget: string;
+    monitorType: string;
+    issuedAt: string;
+    periodDays: number;
+    periodStart: string;
+    periodEnd: string;
+    uptimePct: number;
+    avgLatencyMs: number | null;
+    p95LatencyMs: number | null;
+    totalChecks: number;
+    successChecks: number;
+    failedChecks: number;
+    totalDowntimeMinutes: number;
+    longestOutageMinutes: number;
+    incidents: number;
+    slaTarget: number | null;
+    slaCompliant: boolean | null;
+    title: string;
+  }> {
+    return this.sla.generateUptimeCertificate(userId, monitorId, options);
+  }
+
+    async getHealthScore(
+    userId: string,
+    monitorId: string,
+  ): Promise<{
+    score: number;
+    grade: string;
+    breakdown: {
+      uptime: number;
+      latency: number;
+      sla: number;
+      streak: number;
+    };
+  }> {
+    return this.diagnostics.getHealthScore(userId, monitorId);
+  }
+
+    async getHealthSummary(userId: string): Promise<{
+    scores: Array<{ monitorId: string; name: string; score: number; grade: string }>;
+    overall: { avg: number; a: number; b: number; c: number; d: number; f: number };
+  }> {
+    return this.diagnostics.getHealthSummary(userId);
+  }
+
+    async healthScore(
+    userId: string,
+    monitorId: string,
+  ): Promise<{
+    score: number | null;
+    breakdown: { uptime: number; latency: number; incidents: number; flapping: number; total: number } | null;
+  }> {
+    return this.diagnostics.healthScore(userId, monitorId);
+  }
+
+    async allHealthScores(userId: string): Promise<{ monitorId: string; score: number | null }[]> {
+    return this.diagnostics.allHealthScores(userId);
+  }
+
+    async healthScoreLeaderboard(userId: string): Promise<{
+    items: Array<{
+      monitorId: string;
+      monitorName: string;
+      monitorType: string;
+      score: number | null;
+      grade: 'A' | 'B' | 'C' | 'D' | 'F' | null;
+      uptimePct24h: number | null;
+      totalChecks24h: number;
+      activeIncidents: number;
+      isFlapping: boolean;
+      slaTarget: number | null;
+      slaCompliant: boolean | null;
+      hints: string[];
+    }>;
+    summary: {
+      totalMonitors: number;
+      noDataCount: number;
+      gradeDistribution: Record<'A' | 'B' | 'C' | 'D' | 'F', number>;
+      avgScore: number | null;
+    };
+  }> {
+    return this.diagnostics.healthScoreLeaderboard(userId);
+  }
+
+    async checkSchedule(userId: string): Promise<{
+    generatedAt: string;
+    summary: {
+      totalMonitors: number;
+      enabledMonitors: number;
+      fleetChecksPerHour: number;
+      fleetChecksPerDay: number;
+      peakHour: number;
+      peakHourLoad: number;
+      quietHour: number;
+      quietHourLoad: number;
+      avgChecksPerHour: number;
+    };
+    hourlyLoad: Array<{ hour: number; label: string; estimatedChecks: number }>;
+    monitors: Array<{
+      id: string;
+      name: string;
+      type: string;
+      enabled: boolean;
+      intervalSec: number;
+      cronExpression: string | null;
+      checksPerHour: number;
+      lastCheckedAt: string | null;
+      nextCheckEstimateSec: number | null;
+    }>;
+  }> {
+    return this.diagnostics.checkSchedule(userId);
+  }
+
+    async checkRate(userId: string, monitorId: string): Promise<{
+    intervalSec: number;
+    throttleMs: number | null;
+    maxChecksPerHour: number | null;
+    checksLastHour: number;
+    effectiveChecksPerHour: number;
+    isThrottled: boolean;
+  }> {
+    return this.diagnostics.checkRate(userId, monitorId);
+  }
+
+    async monitorCoverage(userId: string): Promise<{
+    coverageScore: number;
+    totalMonitors: number;
+    monitorsWithAlerts: number;
+    monitorsWithSla: number;
+    monitorsWithDescription: number;
+    monitorsWithRunbook: number;
+    monitorsWithTags: number;
+    monitorsEnabled: number;
+    gaps: Array<{
+      id: string;
+      name: string;
+      type: string;
+      missingAlerts: boolean;
+      missingSla: boolean;
+      missingDescription: boolean;
+      missingRunbook: boolean;
+      missingTags: boolean;
+      coverageScore: number;
+    }>;
+    generatedAt: string;
+  }> {
+    return this.diagnostics.monitorCoverage(userId);
+  }
+
+    async intervalOptimizer(userId: string): Promise<{
+    monitors: Array<{
+      id: string;
+      name: string;
+      type: string;
+      currentIntervalSec: number | null;
+      cronExpression: string | null;
+      incidents90d: number;
+      avgDetectionMinutes: number | null;
+      checksPerDay: number;
+      recommendation: 'increase' | 'decrease' | 'optimal' | 'new';
+      suggestedIntervalSec: number | null;
+      reason: string;
+    }>;
+    summary: {
+      optimal: number;
+      tooFrequent: number;
+      tooInfrequent: number;
+      totalMonitors: number;
+    };
+  }> {
+    return this.diagnostics.intervalOptimizer(userId);
+  }
+
+    async getSslSummary(userId: string): Promise<{
+    total: number;
+    expired: number;
+    critical: number;
+    warning: number;
+    healthy: number;
+    certs: Array<{
+      monitorId: string;
+      name: string;
+      target: string;
+      type: string;
+      enabled: boolean;
+      folderId: string | null;
+      folderName: string | null;
+      status: string;
+      daysRemaining: number | null;
+      expiresAt: string | null;
+      lastCheckedAt: string | null;
+      lastMessage: string;
+      level: string;
+    }>;
+  }> {
+    return this.diagnostics.getSslSummary(userId);
+  }
+
+    async getSecurityHeadersSummary(userId: string): Promise<{
+    total: number;
+    gradeA: number;
+    gradeB: number;
+    gradeC: number;
+    gradeD: number;
+    gradeF: number;
+    noData: number;
+    avgScore: number | null;
+    headerCoverage: Array<{ name: string; presentCount: number; totalCount: number; coveragePct: number; severity: string }>;
+    monitors: Array<{
+      monitorId: string;
+      name: string;
+      target: string;
+      folderId: string | null;
+      folderName: string | null;
+      enabled: boolean;
+      grade: string | null;
+      score: number | null;
+      checkedAt: string | null;
+      headers: Array<{ name: string; present: boolean; severity: string }>;
+    }>;
+  }> {
+    return this.diagnostics.getSecurityHeadersSummary(userId);
+  }
+
+    async ctLogHistory(userId: string, monitorId: string): Promise<{
+    entries: Array<{
+      checkedAt: Date;
+      newCertCount: number;
+      domains: string[];
+      message: string;
+      level: string;
+    }>;
+  }> {
+    return this.diagnostics.ctLogHistory(userId, monitorId);
+  }
+
+    async redirectChainStats(userId: string, monitorId: string): Promise<{
+    hasRedirects: boolean;
+    avgRedirects: number;
+    maxRedirects: number;
+    commonChains: Array<{ chain: string[]; count: number }>;
+  }> {
+    return this.diagnostics.redirectChainStats(userId, monitorId);
+  }
+
+    async exportMonitors(userId: string, opts?: { format?: 'json' | 'yaml'; ids?: string[]; includeAlertChannels?: boolean }) {
+    return this.exportSvc.exportMonitors(userId, opts);
+  }
+
+    async importMonitors(userId: string, items: Array<{
     name: string;
     target: string;
     type: MonitorType;
     intervalSec?: number;
     timeoutMs?: number;
+    confirmations?: number;
     config?: Record<string, unknown>;
-    alertChannelIds?: string[];
-    folderId?: string | null;
-  }) {
-    const created = await this.prisma.monitor.create({
-      data: {
-        userId,
-        name: body.name,
-        target: body.target,
-        type: body.type,
-        intervalSec: body.intervalSec ?? 60,
-        timeoutMs: body.timeoutMs ?? 5000,
-        configJson: (body.config ?? {}) as any,
-        folderId: body.folderId ?? null,
-        monitorAlerts: {
-          create: (body.alertChannelIds ?? []).map((alertChannelId) => ({ alertChannelId })),
-        },
-      },
-    });
-
-    await this.audit.log('monitor.create', userId, userId, { monitorId: created.id, type: created.type, target: created.target });
-
-    return {
-      id: created.id,
-      userId: created.userId,
-      name: created.name,
-      type: created.type,
-      target: created.target,
-      intervalSec: created.intervalSec,
-      timeoutMs: created.timeoutMs,
-      config: this.sanitizeConfig((created.configJson as Record<string, unknown> | null) ?? {}),
-      alertChannelIds: body.alertChannelIds ?? [],
-      folderId: created.folderId,
-      enabled: created.enabled,
-      createdAt: created.createdAt.toISOString(),
-    };
-  }
-
-  async update(userId: string, monitorId: string, body: {
-    name?: string;
-    target?: string;
-    type?: MonitorType;
-    intervalSec?: number;
-    timeoutMs?: number;
-    config?: Record<string, unknown>;
-    alertChannelIds?: string[];
-    folderId?: string | null;
     enabled?: boolean;
-  }) {
-    const current = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
-    if (!current) throw new NotFoundException('monitor not found');
-
-    const currentConfig = (current.configJson as Record<string, unknown> | null) ?? {};
-    const mergedConfig = body.config ? { ...currentConfig, ...body.config } : currentConfig;
-
-    await this.prisma.monitor.update({
-      where: { id: monitorId },
-      data: {
-        name: body.name ?? current.name,
-        target: body.target ?? current.target,
-        type: body.type ?? current.type,
-        intervalSec: body.intervalSec ?? current.intervalSec,
-        timeoutMs: body.timeoutMs ?? current.timeoutMs,
-        configJson: mergedConfig as any,
-        folderId: body.folderId === undefined ? current.folderId : body.folderId,
-        enabled: body.enabled ?? current.enabled,
-      },
-    });
-
-    if (body.alertChannelIds) {
-      await this.prisma.monitorAlert.deleteMany({ where: { monitorId } });
-      if (body.alertChannelIds.length > 0) {
-        await this.prisma.monitorAlert.createMany({
-          data: body.alertChannelIds.map((alertChannelId) => ({ monitorId, alertChannelId })),
-        });
-      }
-    }
-
-    await this.audit.log('monitor.update', userId, userId, { monitorId });
-    return this.list(userId).then((items) => items.find((m) => m.id === monitorId));
+  }>) {
+    return this.exportSvc.importMonitors(userId, items);
   }
 
-  async remove(userId: string, monitorId: string) {
-    const current = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
-    if (!current) throw new NotFoundException('monitor not found');
-    await this.prisma.monitor.delete({ where: { id: monitorId } });
-    await this.audit.log('monitor.delete', userId, userId, { monitorId });
-    return { ok: true };
+    async exportMonitorsConfig(userId: string, opts: { format: 'json' | 'yaml'; ids?: string[]; includeAlertChannels: boolean }) {
+    return this.exportSvc.exportMonitorsConfig(userId, opts);
   }
 
-  async runNow(userId: string, monitorId: string) {
-    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
-    if (!monitor) throw new NotFoundException('monitor not found');
-    await this.audit.log('monitor.run_now', userId, userId, { monitorId });
-    return this.checksService.runMonitor({
-      id: monitor.id,
-      userId: monitor.userId,
-      name: monitor.name,
-      type: monitor.type,
-      target: monitor.target,
-      intervalSec: monitor.intervalSec,
-      timeoutMs: monitor.timeoutMs,
-      config: (monitor.configJson as Record<string, unknown> | null) ?? {},
-      alertChannelIds: [],
-      folderId: monitor.folderId,
-      enabled: monitor.enabled,
-      createdAt: monitor.createdAt.toISOString(),
-    });
+    async importMonitorsConfig(userId: string, opts: { format: 'json' | 'yaml'; content: string; dryRun?: boolean; overwriteExisting?: boolean }) {
+    return this.exportSvc.importMonitorsConfig(userId, opts);
   }
 
-  async runs(userId: string) {
-    const runs = await this.prisma.monitorRun.findMany({ where: { userId }, orderBy: { checkedAt: 'desc' }, take: 200 });
-    return runs.map((r) => ({
-      id: r.id,
-      userId: r.userId,
-      monitorId: r.monitorId,
-      checkedAt: r.checkedAt.toISOString(),
-      ok: r.ok,
-      statusCode: r.status,
-      latencyMs: r.latencyMs,
-      message: r.message,
-      level: r.level as 'green' | 'yellow' | 'red',
-    }));
+    async importExternal(
+    userId: string,
+    source: 'uptime-robot' | 'better-uptime' | 'uptime-kuma' | 'csv',
+    payload: unknown,
+  ) {
+    return this.exportSvc.importExternal(userId, source, payload);
   }
 
-  async monitorRuns(userId: string, monitorId: string) {
-    const monitor = await this.prisma.monitor.findFirst({ where: { id: monitorId, userId } });
-    if (!monitor) throw new NotFoundException('monitor not found');
-
-    const runs = await this.prisma.monitorRun.findMany({
-      where: { userId, monitorId },
-      orderBy: { checkedAt: 'desc' },
-      take: 200,
-    });
-
-    return runs.map((r) => ({
-      id: r.id,
-      monitorId: r.monitorId,
-      checkedAt: r.checkedAt.toISOString(),
-      ok: r.ok,
-      statusCode: r.status,
-      latencyMs: r.latencyMs,
-      message: r.message,
-      level: r.level as 'green' | 'yellow' | 'red',
-    }));
+    importFromCompose(compose: string): SuggestedMonitor[] {
+    return this.exportSvc.importFromCompose(compose);
   }
 
-  private parseGithubRepo(input: string) {
-    const cleaned = input.replace(/^https?:\/\/github.com\//i, '').replace(/\.git$/, '');
-    const [owner, repo] = cleaned.split('/');
-    if (!owner || !repo) return null;
-    return { owner, repo };
+    async previewFromOpenApi(opts: {
+    specJson?: string;
+    url?: string;
+    baseUrl: string;
+    maxPaths?: number;
+  }): Promise<{ suggestions: OpenApiSuggestion[] }> {
+    return this.exportSvc.previewFromOpenApi(opts);
   }
 
-  private parseGitlabTarget(target: string, host?: string) {
-    const fallbackHost = (host ?? 'gitlab.com').replace(/\/$/, '');
-    if (target.startsWith('gitlab:')) {
-      const projectPath = target.slice('gitlab:'.length).trim();
-      if (!projectPath) return null;
-      return { host: fallbackHost, projectPath };
-    }
-    const m = target.match(/^https?:\/\/([^/]+)\/(.+)$/i);
-    if (m) return { host: m[1], projectPath: m[2].replace(/\.git$/, '').replace(/\/$/, '') };
-
-    // Allow plain group/project input when provider=gitlab
-    if (target.includes('/')) {
-      return { host: fallbackHost, projectPath: target.replace(/\.git$/, '').replace(/^\/+|\/+$/g, '') };
-    }
-
-    return null;
+    async importFromOpenApi(
+    userId: string,
+    opts: {
+      specJson?: string;
+      url?: string;
+      baseUrl: string;
+      selectedPaths: string[];
+      intervalSec?: number;
+      folderId?: string;
+      alertChannelIds?: string[];
+    },
+  ): Promise<{ created: number; monitors: unknown[] }> {
+    return this.exportSvc.importFromOpenApi(userId, opts);
   }
 
-  private pickPreferredTag(tags: Array<{ name?: string }>) {
-    const nonNightly = tags.find((t) => t.name && !t.name.toLowerCase().includes('nightly'));
-    return nonNightly?.name ?? tags[0]?.name ?? null;
+    async compareMonitors(userId: string, monitorIds: string[], days: number) {
+    return this.comparison.compareMonitors(userId, monitorIds, days);
   }
 
-  private isSensibleVersionValue(value: string): boolean {
-    const v = String(value).trim();
-    if (!v) return false;
-    if (v.length > 64) return false;
-
-    // Accept semantic-ish versions like 1.2.3, v2.33.3, 2.33.3-linux-amd64
-    if (/^v?\d+(?:\.\d+){1,3}(?:[-+][\w.-]+)?$/i.test(v)) return true;
-
-    // Accept loose numeric version tokens embedded in strings (e.g. "version=2.33.3")
-    if (/v?\d+\.\d+\.\d+(?:[-+][\w.-]+)?/i.test(v)) return true;
-
-    return false;
+    async getLatencyDistribution(
+    userId: string,
+    monitorId: string,
+    period: '24h' | '7d' | '30d' = '7d',
+  ) {
+    return this.comparison.getLatencyDistribution(userId, monitorId, period);
   }
 
-  private extractVersionFromText(text: string): string | null {
-    const source = String(text ?? '');
-    if (!source) return null;
-
-    const tokenRe = /v?\d+\.\d+\.\d+(?:\.\d+)?(?:[-+][\w.-]+)?/gi;
-    const candidates: Array<{ value: string; score: number }> = [];
-
-    let m: RegExpExecArray | null;
-    while ((m = tokenRe.exec(source)) !== null) {
-      const value = m[0];
-      const idx = m.index;
-      const before = source.slice(Math.max(0, idx - 60), idx).toLowerCase();
-      const after = source.slice(idx + value.length, idx + value.length + 60).toLowerCase();
-      const ctx = `${before} ${after}`;
-
-      // Always ignore anything near "latest" markers
-      if (ctx.includes('latest')) continue;
-
-      let score = 0;
-      if (ctx.includes('versionstring')) score += 7;
-      if (ctx.includes('serverversion')) score += 6;
-      if (ctx.includes('databaseversion')) score += 3;
-      if (ctx.includes('version')) score += 3;
-      if (ctx.includes('build')) score += 1;
-
-      if (this.isSensibleVersionValue(value)) score += 2;
-
-      candidates.push({ value, score });
-    }
-
-    if (candidates.length === 0) return null;
-
-    candidates.sort((a, b) => {
-      if (b.score !== a.score) return b.score - a.score;
-      return b.value.length - a.value.length;
-    });
-
-    return candidates[0]?.value ?? null;
+    async getPeriodComparison(userId: string, monitorId: string, period: '24h' | '7d' | '30d' = '7d') {
+    return this.comparison.getPeriodComparison(userId, monitorId, period);
   }
 
-  private extractVersionFromPayload(payload: unknown): string | null {
-    if (!payload) return null;
-    if (typeof payload === 'string') {
-      return this.extractVersionFromText(payload);
-    }
-    if (Array.isArray(payload)) {
-      for (const item of payload) {
-        const v = this.extractVersionFromPayload(item);
-        if (v) return v;
-      }
-      return null;
-    }
-    if (typeof payload === 'object') {
-      const obj = payload as Record<string, unknown>;
-      const directKeySet = new Set([
-        'version',
-        'appversion',
-        'app_version',
-        'release',
-        'tag',
-        'buildversion',
-        'serverversion',
-        'databaseversion',
-        'imagetag',
-      ]);
-
-      for (const [key, value] of Object.entries(obj)) {
-        const normalized = key.replace(/[^a-z0-9_]/gi, '').toLowerCase();
-
-        // Never use "latest" fields for deployed/current version detection.
-        if (normalized.includes('latest')) continue;
-
-        if (directKeySet.has(normalized) && typeof value === 'string' && this.isSensibleVersionValue(value)) {
-          const m = value.match(/v?\d+\.\d+\.\d+(?:[-+][\w.-]+)?/i);
-          return m ? m[0] : value;
-        }
-
-        // Fallback: accept any key that looks version-like but is not "latest*"
-        if (normalized.includes('version') && typeof value === 'string' && this.isSensibleVersionValue(value)) {
-          const m = value.match(/v?\d+\.\d+\.\d+(?:[-+][\w.-]+)?/i);
-          return m ? m[0] : value;
-        }
-      }
-
-      const nested = ['data', 'build', 'info', 'meta', 'runtime', 'dependencies'];
-      for (const key of nested) {
-        const v = this.extractVersionFromPayload(obj[key]);
-        if (v) return v;
-      }
-    }
-    return null;
-  }
-
-  private async detectDeployedVersion(input: { appUrl?: string; appToken?: string; appVersionEndpoint?: string; appAuthType?: 'none' | 'token' | 'openvpn'; openvpnUsername?: string; openvpnPassword?: string }) {
-    if (!input.appUrl) {
-      return {
-        currentVersion: null as string | null,
-        tried: [] as string[],
-        detectedFrom: null as string | null,
-        authFailed: false,
-        authMode: null as string | null,
-      };
-    }
-
-    const base = input.appUrl.replace(/\/$/, '');
-    const custom = String(input.appVersionEndpoint ?? '').trim();
-    const defaultCandidates = [
-      '/version',
-      '/api/version',
-      '/api/v1/version',
-      '/api/system/version',
-      '/api/v1/health',
-      '/api/v1/info',
-      '/health',
-      '/api/health',
-      '/status',
-      '/actuator/info',
-      '/actuator/health',
-    ];
-    const candidates = custom ? [custom] : defaultCandidates;
-
-    const token = String(input.appToken ?? '').trim();
-    const authType = (input.appAuthType ?? 'token') as 'none' | 'token' | 'openvpn';
-    const ovpnUser = String(input.openvpnUsername ?? '').trim();
-    const ovpnPass = String(input.openvpnPassword ?? '').trim();
-    const basic = ovpnUser || ovpnPass ? Buffer.from(`${ovpnUser}:${ovpnPass}`).toString('base64') : '';
-
-    const authModes: Array<{ label: string; apply: (h: Record<string, string>) => void }> =
-      authType === 'none'
-        ? [{ label: 'no-auth', apply: () => {} }]
-        : authType === 'openvpn'
-          ? [
-              { label: 'openvpn-basic', apply: (h) => { if (basic) h.authorization = `Basic ${basic}`; } },
-              { label: 'openvpn-headers', apply: (h) => { if (ovpnUser) h['x-openvpn-username'] = ovpnUser; if (ovpnPass) h['x-openvpn-password'] = ovpnPass; } },
-            ]
-          : [
-              { label: 'authorization-bearer', apply: (h) => { if (token) h.authorization = token.toLowerCase().startsWith('bearer ') ? token : `Bearer ${token}`; } },
-              { label: 'authorization-raw', apply: (h) => { if (token) h.authorization = token; } },
-              { label: 'x-api-key', apply: (h) => { if (token) h['x-api-key'] = token; } },
-              { label: 'x-access-token', apply: (h) => { if (token) h['x-access-token'] = token; } },
-              { label: 'token', apply: (h) => { if (token) h.token = token; } },
-            ];
-
-    const tried: string[] = [];
-    let authFailed = false;
-
-    for (const path of candidates) {
-      const url = path.startsWith('http') ? path : `${base}${path.startsWith('/') ? path : `/${path}`}`;
-
-      for (const mode of authModes) {
-        const headers: Record<string, string> = { 'User-Agent': 'PulseDock' };
-        mode.apply(headers);
-
-        tried.push(`${url} [${mode.label}]`);
-
-        try {
-          const resp = await fetch(url, { headers });
-          if (!resp.ok) {
-            if (resp.status === 401 || resp.status === 403) authFailed = true;
-            continue;
-          }
-
-          const contentType = resp.headers.get('content-type') ?? '';
-          const body = contentType.includes('application/json') ? await resp.json() : await resp.text();
-          const version = this.extractVersionFromPayload(body);
-
-          if (version) {
-            return {
-              currentVersion: version,
-              tried,
-              detectedFrom: url,
-              authFailed: false,
-              authMode: mode.label,
-            };
-          }
-        } catch {
-          continue;
-        }
-      }
-    }
-
-    return { currentVersion: null as string | null, tried, detectedFrom: null as string | null, authFailed, authMode: null as string | null };
-  }
-
-  async testVersionConnection(input: { provider: 'github' | 'gitlab' | 'docker' | 'apt'; target: string; token?: string; host?: string }) {
-    if (input.provider === 'github') {
-      const repo = this.parseGithubRepo(input.target);
-      if (!repo) return { ok: false, message: 'Invalid GitHub target. Use owner/repo or GitHub URL.' };
-      const headers: Record<string, string> = { 'User-Agent': 'PulseDock' };
-      if (input.token) headers.authorization = `Bearer ${input.token}`;
-
-      const releaseResp = await fetch(`https://api.github.com/repos/${repo.owner}/${repo.repo}/releases/latest`, { headers });
-      if (releaseResp.ok) {
-        const data = await releaseResp.json() as { tag_name?: string };
-        return { ok: true, message: 'GitHub release endpoint reachable', latestVersion: data.tag_name ?? null, source: 'releases/latest' };
-      }
-
-      if (releaseResp.status === 404) {
-        const tagsResp = await fetch(`https://api.github.com/repos/${repo.owner}/${repo.repo}/tags?per_page=1`, { headers });
-        if (!tagsResp.ok) return { ok: false, message: `GitHub API ${tagsResp.status} (no releases and tags lookup failed)` };
-        const tags = await tagsResp.json() as Array<{ name?: string }>;
-        const picked = this.pickPreferredTag(tags);
-        return { ok: true, message: 'No GitHub releases found; using latest non-nightly tag fallback', latestVersion: picked, source: 'tags' };
-      }
-
-      return { ok: false, message: `GitHub API ${releaseResp.status}`, unauthorized: releaseResp.status === 401 || releaseResp.status === 403 };
-    }
-
-    if (input.provider === 'gitlab') {
-      const parsed = this.parseGitlabTarget(input.target, input.host);
-      if (!parsed) return { ok: false, message: 'Invalid GitLab target. Use gitlab:group/project or GitLab URL.' };
-      const headers: Record<string, string> = { 'User-Agent': 'PulseDock' };
-      if (input.token) headers['PRIVATE-TOKEN'] = input.token;
-      const encodedPath = encodeURIComponent(parsed.projectPath);
-      const resp = await fetch(`https://${parsed.host}/api/v4/projects/${encodedPath}/releases/permalink/latest`, { headers });
-      if (!resp.ok) return { ok: false, message: `GitLab API ${resp.status}`, unauthorized: resp.status === 401 || resp.status === 403 };
-      const data = await resp.json() as { tag_name?: string };
-      return { ok: true, message: 'GitLab connection successful', latestVersion: data.tag_name ?? null };
-    }
-
-    if (input.provider === 'apt') {
-      const pkg = input.target.trim().toLowerCase();
-      if (!pkg) return { ok: false, message: 'Invalid APT package name.' };
-
-      const resp = await fetch(`https://sources.debian.org/api/src/${encodeURIComponent(pkg)}/`, {
-        headers: { 'User-Agent': 'PulseDock' },
-      });
-      if (!resp.ok) return { ok: false, message: `Debian Sources API ${resp.status}` };
-
-      const data = await resp.json() as { versions?: Array<{ version?: string; suites?: string[] }> };
-      const versions = (data.versions ?? []).map((v) => v.version).filter((v): v is string => Boolean(v));
-      const stable = versions.find((v) => !/(alpha|beta|rc|nightly|dev|pre)/i.test(v));
-      return { ok: true, message: 'APT package lookup successful', latestVersion: stable ?? versions[0] ?? null };
-    }
-
-    const image = input.target.includes('/') ? input.target : `library/${input.target}`;
-    const resp = await fetch(`https://hub.docker.com/v2/repositories/${image}/tags?page_size=1&page=1&ordering=last_updated`);
-    if (!resp.ok) return { ok: false, message: `Docker API ${resp.status}` };
-    const data = await resp.json() as { results?: Array<{ name: string }> };
-    return { ok: true, message: 'Docker Hub connection successful', latestVersion: data.results?.[0]?.name ?? null };
-  }
-
-  async discoverCurrentVersion(input: { provider: 'github' | 'gitlab' | 'docker' | 'apt'; target: string; token?: string; host?: string; appUrl?: string; appToken?: string; appVersionEndpoint?: string; appAuthType?: 'none' | 'token' | 'openvpn'; openvpnUsername?: string; openvpnPassword?: string }) {
-    const hasAppUrl = Boolean(input.appUrl && input.appUrl.trim());
-    const deployed = await this.detectDeployedVersion({ appUrl: input.appUrl, appToken: input.appToken, appVersionEndpoint: input.appVersionEndpoint });
-    if (deployed.currentVersion) {
-      return {
-        currentVersion: deployed.currentVersion,
-        strategy: 'deployed-endpoint',
-        tried: deployed.tried,
-        detectedFrom: deployed.detectedFrom,
-        authMode: deployed.authMode,
-      };
-    }
-
-    if (hasAppUrl) {
-      return {
-        currentVersion: null,
-        strategy: 'manual',
-        message: deployed.authFailed
-          ? 'Application endpoint requires valid auth token (401/403). Check token or auth header format.'
-          : 'No application version endpoint returned a usable version. Add app token/custom endpoint or enter current version manually.',
-        tried: deployed.tried,
-      };
-    }
-
-    const probes = await this.testVersionConnection(input);
-    if (probes.ok) return { currentVersion: probes.latestVersion ?? null, strategy: 'latest-release-probe', tried: deployed.tried };
-    return {
-      currentVersion: null,
-      strategy: 'manual',
-      suggestions: input.provider === 'docker'
-        ? ['latest', 'stable', 'main', 'master']
-        : ['v1.0.0', 'v0.1.0', 'main'],
-      message: 'Auto-discovery failed. Please provide current version manually or a custom app version endpoint.',
-      tried: deployed.tried,
-    };
-  }
-
-  async versionSummary(userId: string) {
-    const monitors = await this.prisma.monitor.findMany({
-      where: { userId, type: { in: ['GIT_RELEASE', 'DOCKER_IMAGE'] } },
-      orderBy: { createdAt: 'desc' },
-    });
-
-    const rows = await Promise.all(monitors.map(async (m) => {
-      const latest = await this.prisma.monitorRun.findFirst({ where: { monitorId: m.id }, orderBy: { checkedAt: 'desc' } });
-      const config = (m.configJson as Record<string, unknown> | null) ?? {};
-      return {
-        id: m.id,
-        name: m.name,
-        type: m.type,
-        target: m.target,
-        currentVersion: String(config.currentVersion ?? config.currentTag ?? '').replace(/^v(?=\d)/i, ''),
-        latestMessage: latest?.message ?? 'No run yet',
-        level: (latest?.level as 'green' | 'yellow' | 'red' | undefined) ?? 'yellow',
-        checkedAt: latest?.checkedAt?.toISOString() ?? null,
-        intervalSec: m.intervalSec,
-      };
-    }));
-
-    return {
-      stats: {
-        total: rows.length,
-        green: rows.filter((r) => r.level === 'green').length,
-        yellow: rows.filter((r) => r.level === 'yellow').length,
-        red: rows.filter((r) => r.level === 'red').length,
-      },
-      items: rows,
-    };
+    async getStatusTransitions(
+    userId: string,
+    monitorId: string,
+    period: '24h' | '7d' | '30d' = '7d',
+  ) {
+    return this.comparison.getStatusTransitions(userId, monitorId, period);
   }
 }

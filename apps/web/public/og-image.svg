@@ -1,0 +1,63 @@
+<svg width="1200" height="630" viewBox="0 0 1200 630" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect width="1200" height="630" fill="#050a0e"/>
+  <!-- Gradient overlay -->
+  <defs>
+    <linearGradient id="bg-grad" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#0f2f25" stop-opacity="0.6"/>
+      <stop offset="100%" stop-color="#050a0e" stop-opacity="0"/>
+    </linearGradient>
+    <linearGradient id="text-grad" x1="100" y1="220" x2="600" y2="280" gradientUnits="userSpaceOnUse">
+      <stop offset="0%" stop-color="#5EE2B0"/>
+      <stop offset="100%" stop-color="#94F0CC"/>
+    </linearGradient>
+  </defs>
+  <rect width="1200" height="630" fill="url(#bg-grad)"/>
+
+  <!-- Grid lines (subtle) -->
+  <line x1="0" y1="315" x2="1200" y2="315" stroke="#1a2a25" stroke-width="1"/>
+  <line x1="600" y1="0" x2="600" y2="630" stroke="#1a2a25" stroke-width="1"/>
+
+  <!-- Logo mark -->
+  <rect x="100" y="180" width="80" height="80" rx="20" fill="#0f2f25"/>
+  <path d="M115 196H143C155 196 165 206 165 218C165 230 155 240 143 240H115V196Z" fill="#5EE2B0"/>
+  <circle cx="142" cy="218" r="9" fill="#0f2f25"/>
+  <rect x="108" y="202" width="12" height="36" rx="6" fill="#94F0CC"/>
+
+  <!-- Title -->
+  <text x="100" y="310" font-family="DejaVu Sans" font-size="64" font-weight="800" fill="url(#text-grad)">PulseDock</text>
+
+  <!-- Tagline -->
+  <text x="100" y="360" font-family="DejaVu Sans" font-size="28" font-weight="400" fill="#6b7f7a">Version Intelligence &amp; Uptime Monitoring</text>
+
+  <!-- Pills -->
+  <rect x="100" y="400" width="130" height="36" rx="18" fill="#0f2f25" stroke="#1f5a46" stroke-width="1"/>
+  <text x="165" y="423" text-anchor="middle" font-family="DejaVu Sans" font-size="14" font-weight="600" fill="#5EE2B0">Open Source</text>
+
+  <rect x="248" y="400" width="130" height="36" rx="18" fill="#0f2f25" stroke="#1f5a46" stroke-width="1"/>
+  <text x="313" y="423" text-anchor="middle" font-family="DejaVu Sans" font-size="14" font-weight="600" fill="#5EE2B0">Self-Hosted</text>
+
+  <rect x="396" y="400" width="160" height="36" rx="18" fill="#0f2f25" stroke="#1f5a46" stroke-width="1"/>
+  <text x="476" y="423" text-anchor="middle" font-family="DejaVu Sans" font-size="14" font-weight="600" fill="#5EE2B0">For Developers</text>
+
+  <!-- Right side decorative card -->
+  <rect x="720" y="150" width="380" height="280" rx="16" fill="#0d1e1a" stroke="#1f5a46" stroke-width="1"/>
+  <!-- Card header -->
+  <rect x="720" y="150" width="380" height="48" rx="16" fill="#0f2f25"/>
+  <rect x="720" y="174" width="380" height="24" fill="#0f2f25"/>
+  <circle cx="752" cy="174" r="7" fill="#ef4444"/>
+  <circle cx="774" cy="174" r="7" fill="#f59e0b"/>
+  <circle cx="796" cy="174" r="7" fill="#22c55e"/>
+  <!-- Card rows -->
+  <rect x="748" y="228" width="120" height="12" rx="4" fill="#1f5a46"/>
+  <rect x="748" y="256" width="80" height="12" rx="4" fill="#1f4a3a"/>
+  <rect x="748" y="284" width="140" height="12" rx="4" fill="#1f5a46"/>
+  <rect x="748" y="312" width="60" height="12" rx="4" fill="#1f4a3a"/>
+  <rect x="748" y="340" width="110" height="12" rx="4" fill="#1f5a46"/>
+  <!-- Status dots -->
+  <circle cx="1070" cy="234" r="5" fill="#5EE2B0"/>
+  <circle cx="1070" cy="262" r="5" fill="#ef4444"/>
+  <circle cx="1070" cy="290" r="5" fill="#5EE2B0"/>
+  <circle cx="1070" cy="318" r="5" fill="#5EE2B0"/>
+  <circle cx="1070" cy="346" r="5" fill="#f59e0b"/>
+</svg>

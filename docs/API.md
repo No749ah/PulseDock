@@ -1,363 +1,595 @@
-# PulseDock API — Complete Endpoint Reference
+# API Documentation
 
-Base URL: `http://localhost:4000`
-
-Swagger:
-- UI: `http://localhost:4000/docs`
-- JSON: `http://localhost:4000/docs-json`
-
-Auth: Bearer JWT (`Authorization: Bearer <accessToken>`) for protected routes.
+Complete reference for PulseDock API endpoints, authentication, and error handling.
 
 ---
 
-## 0) Health
+## Base URL
 
-### `GET /health`
-**Response**
-```json
-{ "ok": true, "service": "pulsedock-api", "runtime": "nestjs" }
-```
-
-### `GET /metrics`
-Returns runtime counters (JSON): requests/errors/auth login failures/alert send status.
-
-**Manual calls**
-```bash
-curl http://localhost:4000/health
-curl http://localhost:4000/metrics
-```
+- **Development:** `http://localhost:4321`
+- **Production:** `https://oc-dev-test.no749ah.com/api` (proxied via Next.js)
+- **API Version:** v1 (prefix: `/v1/...`)
 
 ---
 
-## 1) Auth
+## Authentication
 
-### `POST /v1/auth/register`
-> Public registration is disabled by default (`ALLOW_PUBLIC_REGISTRATION=false`).
+### Login (Get Tokens)
 
-**Body**
-```json
-{ "email": "user@example.com", "password": "strong-password" }
-```
+**Endpoint:** `POST /v1/auth/login`
 
-### `POST /v1/auth/login`
-**Body**
-```json
-{ "email": "admin@pulsedock.dev", "password": "admin123" }
-```
-
-**Response**
+**Request:**
 ```json
 {
-  "accessToken": "<jwt>",
-  "refreshToken": "<jwt>",
-  "user": { "id": "...", "email": "admin@pulsedock.dev", "role": "admin" }
+  "email": "admin@pulsedock.dev",
+  "password": "admin123"
 }
 ```
 
-### `POST /v1/auth/refresh`
-**Body**
-```json
-{ "refreshToken": "<jwt>" }
-```
-
-### `POST /v1/auth/invite-info`
-Resolve invite metadata by token (server-authoritative email/role).
-
-**Body**
-```json
-{ "token": "<inviteToken>" }
-```
-
-### `POST /v1/auth/accept-invite`
-**Body**
-```json
-{ "token": "<inviteToken>", "password": "new-password" }
-```
-
-### `POST /v1/auth/request-password-reset`
-**Body**
-```json
-{ "email": "user@example.com" }
-```
-
-### `POST /v1/auth/reset-password`
-**Body**
-```json
-{ "token": "<reset-token>", "newPassword": "new-strong-password" }
-```
-
-### `GET /v1/auth/me` (protected)
-Returns current auth user.
-
-### `PATCH /v1/auth/profile` (protected)
-**Body**
-```json
-{ "email": "new.email@example.com" }
-```
-
-### `POST /v1/auth/change-password` (protected)
-**Body**
-```json
-{ "currentPassword": "old", "newPassword": "new" }
-```
-
-### `GET /v1/auth/sessions` (protected)
-Lists latest sessions for current user.
-
-### `POST /v1/auth/sessions/revoke` (protected)
-**Body**
-```json
-{ "sessionId": "<session-id>" }
-```
-
-### `POST /v1/auth/sessions/revoke-all` (protected)
-Revokes all active sessions of current user.
-
-**Manual call flow**
-```bash
-# login
-TOKEN=$(curl -s http://localhost:4000/v1/auth/login \
-  -H 'content-type: application/json' \
-  -d '{"email":"admin@pulsedock.dev","password":"admin123"}' | jq -r .accessToken)
-
-# me
-curl -s http://localhost:4000/v1/auth/me -H "authorization: Bearer $TOKEN"
-```
-
----
-
-## 2) Dashboard
-
-### `GET /v1/dashboard/overview` (protected)
-**Response**
+**Response:**
 ```json
 {
-  "stats": {
-    "totalMonitors": 3,
-    "green": 2,
-    "yellow": 1,
-    "red": 0,
-    "uptimePct": 66.67
-  },
-  "latestRuns": [
-    {
-      "id": "...",
-      "userId": "...",
-      "monitorId": "...",
-      "checkedAt": "2026-02-17T13:00:00.000Z",
-      "ok": true,
-      "statusCode": 200,
-      "latencyMs": 83,
-      "message": "OK",
-      "level": "green"
-    }
-  ]
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIs...",
+  "user": {
+    "id": "cuid123",
+    "email": "admin@pulsedock.dev",
+    "role": "admin",
+    "name": "Admin User"
+  }
+}
+```
+
+### Token Usage
+
+Include the access token in all authenticated requests:
+
+```bash
+curl http://localhost:4321/v1/auth/me \
+  -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIs..."
+```
+
+### Refresh Token
+
+**Endpoint:** `POST /v1/auth/refresh`
+
+**Request:**
+```json
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiIs..."
+}
+```
+
+**Response:**
+```json
+{
+  "accessToken": "eyJhbGciOiJIUzI1NiIs...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIs...",
+  "user": { ... }
+}
+```
+
+### Logout (Revoke Session)
+
+**Endpoint:** `POST /v1/auth/logout`
+
+**Header:**
+```
+Authorization: Bearer <accessToken>
+```
+
+**Response:**
+```json
+{
+  "ok": true
 }
 ```
 
 ---
 
-## 3) Monitors
+## Endpoint Overview
 
-Monitor types:
-- `HTTP`
-- `GIT_RELEASE`
-- `DOCKER_IMAGE`
+PulseDock has **143 endpoints** across 19 controllers. All authenticated endpoints require a Bearer token or API key. Full interactive docs are available at `http://localhost:4321/docs` (Swagger UI).
 
-### `GET /v1/monitors` (protected)
+| Group | Prefix | Methods | Auth |
+|-------|--------|---------|------|
+| Health | `GET /health` | 1 | None |
+| Auth | `POST /v1/auth/...` | 14 | Mixed |
+| Monitors | `GET/POST/PATCH/DELETE /v1/monitors` | 22 | Required |
+| Checks | `GET /v1/checks` | 3 | Required |
+| Alerts | `GET/POST/PATCH/DELETE /v1/alerts` | 7 | Required |
+| Incidents | `GET/POST/PATCH/DELETE /v1/incidents` | 6 | Required |
+| Maintenance | `GET/POST/PATCH/DELETE /v1/maintenance` | 6 | Required |
+| Status Pages | `GET/POST/PATCH/DELETE /v1/status-pages` | 12 | Mixed |
+| Public Status | `GET/POST /v1/public/status/...` | 5 | None |
+| Tags | `GET/POST/PATCH/DELETE /v1/tags` | 4 | Required |
+| Folders | `GET/POST/PATCH/DELETE /v1/folders` | 4 | Required |
+| API Keys | `GET/POST/DELETE /v1/api-keys` | 4 | Required |
+| Team | `GET/POST/PATCH/DELETE /v1/team` | 8 | Mixed |
+| Notifications | `GET/PATCH /v1/notifications` | 2 | Required |
+| Settings | `GET/PATCH /v1/settings` | 3 | Required |
+| Reports | `GET /v1/reports` | 2 | Required |
+| Tool Registry | `GET /v1/tool-registry` | 1 | Required |
+| Agent | `POST/GET /v1/agent` | 2 | Required |
+| Admin | `GET/POST/PATCH/DELETE /v1/admin` | 12 | Admin role |
+| v2 | `GET /v2/...` | 5 | Required |
 
-### `GET /v1/monitors/version-summary` (protected)
-Returns version-focused monitor view (`GIT_RELEASE` + `DOCKER_IMAGE`) with latest check status.
+---
 
-### `GET /v1/monitors/:id/runs` (protected)
-Returns run history for the selected monitor (latest entries).
+## Endpoints
 
-### `POST /v1/monitors` (protected)
-**Body**
+### Health Check
+
+**Endpoint:** `GET /health`
+
+**Authentication:** None
+
+**Response:**
 ```json
 {
-  "name": "Main Website",
-  "target": "https://example.com",
+  "ok": true,
+  "service": "pulsedock-api",
+  "version": "1.0.2",
+  "runtime": "nestjs",
+  "uptimeMs": 123456,
+  "checks": {
+    "database": { "status": "ok", "latencyMs": 2 },
+    "redis": { "status": "ok" },
+    "scheduler": { "queueDepth": 0, "lastCycleMs": 12 }
+  }
+}
+```
+
+### Get Current User
+
+**Endpoint:** `GET /v1/auth/me`
+
+**Authentication:** Required (Bearer token)
+
+**Response:**
+```json
+{
+  "id": "cuid123",
+  "email": "admin@pulsedock.dev",
+  "role": "admin",
+  "createdAt": "2026-03-12T13:25:19.143Z"
+}
+```
+
+### List Monitors
+
+**Endpoint:** `GET /v1/monitors`
+
+**Authentication:** Required
+
+**Query Parameters:**
+- `limit` (optional, default=100): Max results
+- `offset` (optional, default=0): Pagination offset
+- `folderId` (optional): Filter by folder
+
+**Response:**
+```json
+[
+  {
+    "id": "mon123",
+    "userId": "user123",
+    "name": "API Health Check",
+    "type": "HTTP",
+    "target": "https://api.example.com/health",
+    "intervalSec": 60,
+    "timeoutMs": 5000,
+    "enabled": true,
+    "createdAt": "2026-03-12T13:25:19.143Z"
+  }
+]
+```
+
+### Create Monitor
+
+**Endpoint:** `POST /v1/monitors`
+
+**Authentication:** Required
+
+**Request:**
+```json
+{
+  "name": "API Health Check",
   "type": "HTTP",
+  "target": "https://api.example.com/health",
   "intervalSec": 60,
   "timeoutMs": 5000,
-  "config": { "warnAfterHours": 336, "critAfterHours": 720 },
-  "alertChannelIds": [],
-  "folderId": null
+  "enabled": true
 }
 ```
 
-### `PATCH /v1/monitors/:id` (protected)
-Update monitor settings.
-
-### `DELETE /v1/monitors/:id` (protected)
-Delete monitor.
-
-### `POST /v1/monitors/run` (protected)
-**Body**
-```json
-{ "monitorId": "<id>" }
-```
-
-**Manual calls**
-```bash
-# create monitor
-curl -s http://localhost:4000/v1/monitors \
-  -H "authorization: Bearer $TOKEN" \
-  -H 'content-type: application/json' \
-  -d '{"name":"Main Website","target":"https://example.com","type":"HTTP","intervalSec":60}'
-
-# run monitor
-curl -s http://localhost:4000/v1/monitors/run \
-  -H "authorization: Bearer $TOKEN" \
-  -H 'content-type: application/json' \
-  -d '{"monitorId":"<id>"}'
-```
-
----
-
-## 4) Alert Channels
-
-Types:
-- `discord`, `webhook`, `slack`, `telegram`, `email`
-
-### `GET /v1/alert-channels` (protected)
-
-### `POST /v1/alert-channels` (protected)
-**Body example (discord)**
+**Response:**
 ```json
 {
-  "name": "Ops Discord",
-  "type": "discord",
-  "config": { "webhookUrl": "https://discord.com/api/webhooks/..." }
+  "id": "mon123",
+  "userId": "user123",
+  "name": "API Health Check",
+  "type": "HTTP",
+  "target": "https://api.example.com/health",
+  "intervalSec": 60,
+  "timeoutMs": 5000,
+  "enabled": true,
+  "createdAt": "2026-03-12T13:25:19.143Z"
 }
 ```
 
-### `PATCH /v1/alert-channels/:id` (protected)
-Update channel settings.
+### Update Monitor
 
-### `DELETE /v1/alert-channels/:id` (protected)
-Delete channel.
+**Endpoint:** `PATCH /v1/monitors/:id`
 
-### `POST /v1/alert-channels/test` (protected)
-**Body**
-```json
-{ "channelId": "<id>" }
-```
+**Authentication:** Required
 
----
-
-## 5) Folders
-
-### `GET /v1/folders` (protected)
-### `POST /v1/folders` (protected)
-**Body**
-```json
-{ "name": "Production" }
-```
-### `PATCH /v1/folders/:id` (protected)
-Update folder.
-
-### `DELETE /v1/folders/:id` (protected)
-Delete folder.
-
----
-
-## 6) Admin Users
-
-### `GET /v1/admin/users` (admin)
-### `PATCH /v1/admin/users/role` (admin)
-**Body**
-```json
-{ "userId": "<id>", "role": "user" }
-```
-
-### `PATCH /v1/admin/users/status` (admin)
-**Body**
-```json
-{ "userId": "<id>", "isActive": false }
-```
-
-### `PATCH /v1/admin/users/update` (admin)
-Update editable user fields.
-
-**Body**
-```json
-{ "userId": "<id>", "email": "updated@example.com", "role": "admin", "isActive": true }
-```
-
-### `GET /v1/admin/audit-logs` (admin)
-Returns latest security/business audit records.
-
-### `GET /v1/admin/password-resets` (admin)
-Returns active (non-expired, non-consumed) password reset links for admin fallback workflows.
-
-### `DELETE /v1/admin/password-resets/:id` (admin)
-Revokes a password reset link immediately.
-
----
-
-## 7) Admin Invites
-
-### `GET /v1/admin/invites` (admin)
-Returns current invite tokens.
-
-### `POST /v1/admin/invites` (admin)
-**Body**
-```json
-{ "email": "new.user@company.com", "role": "user", "expiresInHours": 48 }
-```
-
-### `DELETE /v1/admin/invites/:id` (admin)
-Revoke/delete an invite token.
-
-**Response**
+**Request:**
 ```json
 {
-  "id": "...",
-  "email": "new.user@company.com",
-  "role": "user",
-  "inviteUrl": "http://localhost:3000/login?invite=...",
-  "expiresAt": "2026-02-19T13:00:00.000Z"
+  "name": "Updated Name",
+  "enabled": false
 }
 ```
 
----
+**Response:**
+```json
+{ ... updated monitor ... }
+```
 
-## 8) Public Status
+### Delete Monitor
 
-### `GET /v1/public/overview/:userId`
-Public endpoint for shareable status page.
+**Endpoint:** `DELETE /v1/monitors/:id`
 
-**Manual call**
-```bash
-curl http://localhost:4000/v1/public/overview/<userId>
+**Authentication:** Required
+
+**Response:**
+```json
+{
+  "ok": true
+}
+```
+
+### Get Monitor Runs (History)
+
+**Endpoint:** `GET /v1/monitors/:id/runs`
+
+**Authentication:** Required
+
+**Query Parameters:**
+- `limit` (optional, default=100): Max results
+
+**Response:**
+```json
+[
+  {
+    "id": "run123",
+    "monitorId": "mon123",
+    "ok": true,
+    "status": 200,
+    "latencyMs": 145,
+    "message": "OK",
+    "checkedAt": "2026-03-12T13:25:19.143Z"
+  }
+]
 ```
 
 ---
 
-## Security/operations notes
+### Incidents
 
-- Global rate limiting enabled via Nest Throttler.
-- Auth endpoints have stricter limits.
-- Disabled users are blocked at auth-guard level.
-- First seeded admin has `mustChangePassword=true` until password update.
-- Audit logs capture key admin/auth/monitor actions.
-- Password reset tokens are one-time and expire automatically.
-- Password policy enforced: min 12 + upper/lower/number/special.
-- Login brute-force protection: temporary lock after repeated failures.
-- Invite/reset emails are sent via SMTP when configured.
-- API errors now return a consistent envelope with `requestId` and `error.code`.
+**Base:** `GET|POST|PATCH|DELETE /v1/incidents`
 
-## Frontend coverage matrix
+**Authentication:** Required
 
-- `/login` → login, invite acceptance
-- `/dashboard` → health, auth/me, auth/sessions list/revoke/revoke-all, overview, monitors list/create/run, channels list, folders list, profile update, password change
-- `/alerts` → channels list/create/update/delete/test
-- `/folders` → folders list/create/update/delete
-- `/monitors` → monitors list/update/delete/run
-- `/versions` → version-centric monitor tracking (current vs latest, run now)
-- `/admin` → users list/update/role/status + invites list/create + audit log
-- `/status/[userId]` → public overview
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/incidents` | List all incidents (active first, then resolved) |
+| `POST` | `/v1/incidents` | Create incident (`title`, optional `severity`, `monitorIds`) |
+| `GET` | `/v1/incidents/:id` | Get incident detail with timeline |
+| `PATCH` | `/v1/incidents/:id` | Update title/status/severity/monitorIds |
+| `POST` | `/v1/incidents/:id/updates` | Post status update (`body`, `status`) |
+| `DELETE` | `/v1/incidents/:id` | Delete incident |
 
-All API endpoints now have either direct page interaction or session-internal interaction (refresh flow).
+**Severity values:** `LOW`, `MEDIUM`, `HIGH`, `CRITICAL`
+
+**Status values:** `INVESTIGATING`, `IDENTIFIED`, `MONITORING`, `RESOLVED`
+
+```bash
+# Create incident
+curl -X POST http://localhost:4321/v1/incidents \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"title": "API degraded", "severity": "HIGH", "monitorIds": ["mon123"]}'
+
+# Post update
+curl -X POST http://localhost:4321/v1/incidents/inc123/updates \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"body": "Root cause identified — DB connection pool exhausted", "status": "IDENTIFIED"}'
+```
+
+---
+
+### Maintenance Windows
+
+**Base:** `GET|POST|PATCH|DELETE /v1/maintenance`
+
+**Authentication:** Required
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/maintenance` | List all windows (ordered by startsAt) |
+| `GET` | `/v1/maintenance/active` | List currently active windows |
+| `GET` | `/v1/maintenance/:id` | Get single window |
+| `POST` | `/v1/maintenance` | Create window (`name`, `startsAt`, `endsAt`, optional `monitorIds`) |
+| `PATCH` | `/v1/maintenance/:id` | Update window (monitorIds replaces all linked monitors) |
+| `DELETE` | `/v1/maintenance/:id` | Delete window |
+
+During active windows, alerts for linked monitors are **suppressed**.
+
+```bash
+# Schedule maintenance for next weekend
+curl -X POST http://localhost:4321/v1/maintenance \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "Database migration",
+    "startsAt": "2026-03-22T02:00:00Z",
+    "endsAt": "2026-03-22T04:00:00Z",
+    "monitorIds": ["mon123", "mon456"]
+  }'
+```
+
+---
+
+### Status Pages
+
+**Base:** `GET|POST|PATCH|DELETE /v1/status-pages`
+
+**Authentication:** Required (management); None (public view)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/v1/status-pages` | ✅ | List my pages |
+| `POST` | `/v1/status-pages` | ✅ | Create page |
+| `GET` | `/v1/status-pages/:id` | ✅ | Get page + layout |
+| `PATCH` | `/v1/status-pages/:id` | ✅ | Update page |
+| `POST` | `/v1/status-pages/:id/publish` | ✅ | Toggle publish |
+| `DELETE` | `/v1/status-pages/:id` | ✅ | Delete page |
+| `GET` | `/v1/status-pages/:id/history` | ✅ | Version history |
+| `POST` | `/v1/status-pages/:id/history/:hid/restore` | ✅ | Restore snapshot |
+| `GET` | `/v1/status-pages/slug-check` | ✅ | Check slug availability |
+| `GET` | `/v1/public/status/:slug` | ❌ | Public page data |
+| `POST` | `/v1/public/status/:slug/subscribe` | ❌ | Subscribe to updates |
+| `GET` | `/v1/public/status/:slug/widget/:widgetId` | ❌ | Widget live data |
+| `GET` | `/v1/public/status/:slug/feed.xml` | ❌ | RSS feed |
+| `GET` | `/v1/public/status/:slug/json` | ❌ | JSON status summary |
+
+---
+
+### API Keys
+
+**Base:** `GET|POST|DELETE /v1/api-keys`
+
+**Authentication:** Required
+
+| Method | Path | Description |
+|--------|------|-------------|
+| `GET` | `/v1/api-keys` | List keys (hash never exposed) |
+| `POST` | `/v1/api-keys` | Create key — plaintext returned **once only** |
+| `POST` | `/v1/api-keys/:id/rotate` | Rotate key — new plaintext returned once |
+| `DELETE` | `/v1/api-keys/:id` | Revoke key |
+
+**Scopes:** `read`, `write`, `admin`
+
+```bash
+# Create an API key
+curl -X POST http://localhost:4321/v1/api-keys \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "CI/CD pipeline", "scope": "write"}'
+
+# Use API key instead of Bearer token
+curl http://localhost:4321/v1/monitors \
+  -H "X-API-Key: pd_live_abc123..."
+```
+
+---
+
+### Team
+
+**Base:** `GET|POST|PATCH|DELETE /v1/team`
+
+**Authentication:** Mixed
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| `GET` | `/v1/team/invite/:token` | ❌ | Preview invite (for accept page) |
+| `POST` | `/v1/team/invite/:token/accept` | ✅ | Accept invite |
+| `GET` | `/v1/team/members` | ✅ | List members |
+| `GET` | `/v1/team/invites` | ✅ | List pending invites |
+| `POST` | `/v1/team/invite` | ✅ | Invite member (`email`, `role`) |
+| `PATCH` | `/v1/team/members/:id` | ✅ | Update member role |
+| `DELETE` | `/v1/team/members/:id` | ✅ | Remove member |
+| `DELETE` | `/v1/team/invites/:id` | ✅ | Cancel invite |
+
+**Roles:** `VIEWER`, `EDITOR`, `ADMIN`
+
+---
+
+## Error Responses
+
+### Standard Error Format
+
+All errors return this format:
+
+```json
+{
+  "ok": false,
+  "error": {
+    "code": "ERROR_CODE",
+    "message": "Human-readable message",
+    "status": 400
+  },
+  "requestId": "130829c4-8a1a-40af-8b9a-729e69a4c0cd",
+  "timestamp": "2026-03-12T13:25:19.143Z",
+  "path": "/v1/monitors",
+  "method": "GET"
+}
+```
+
+### Common Status Codes
+
+| Code | Meaning | Common Cause |
+|------|---------|--------------|
+| **200** | Success | Request completed |
+| **201** | Created | Resource created |
+| **400** | Bad Request | Invalid input (validation error) |
+| **401** | Unauthorized | Missing/invalid token |
+| **403** | Forbidden | Insufficient permissions |
+| **404** | Not Found | Resource doesn't exist |
+| **409** | Conflict | Duplicate/constraint violation |
+| **429** | Too Many Requests | Rate limit exceeded (120 req/min) |
+| **500** | Server Error | Internal error (check logs) |
+
+---
+
+## Rate Limiting
+
+- **Limit:** 120 requests per minute per IP
+- **Header:** `X-RateLimit-Remaining`
+- **Response on exceed:** 429 Too Many Requests
+
+```bash
+curl http://localhost:4321/v1/monitors \
+  -H "Authorization: Bearer ..." \
+  -i
+
+# Headers show:
+# HTTP/1.1 200 OK
+# X-RateLimit-Remaining: 119
+```
+
+---
+
+## Request ID Tracking
+
+Every response includes a `requestId` for debugging:
+
+```bash
+curl http://localhost:4321/v1/monitors \
+  -H "Authorization: Bearer ..." \
+  -H "X-Request-ID: my-custom-id"
+
+# If you set X-Request-ID, it's used.
+# Otherwise, a UUID is generated.
+# Include this ID in bug reports.
+```
+
+---
+
+## CORS
+
+**Allowed Origins:** `*` (configurable)
+
+**Allowed Methods:** GET, POST, PATCH, DELETE, OPTIONS
+
+**Allowed Headers:** Content-Type, Authorization, X-Request-ID
+
+---
+
+## Examples
+
+### Complete Login Flow
+
+```bash
+# 1. Login
+TOKEN=$(curl -s http://localhost:4321/v1/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@pulsedock.dev","password":"admin123"}' \
+  | jq -r .accessToken)
+
+# 2. Create monitor
+curl -X POST http://localhost:4321/v1/monitors \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "name": "GitHub API",
+    "type": "HTTP",
+    "target": "https://api.github.com/status",
+    "intervalSec": 300
+  }' | jq .
+
+# 3. List monitors
+curl http://localhost:4321/v1/monitors \
+  -H "Authorization: Bearer $TOKEN" | jq .
+
+# 4. Logout (revoke session)
+curl -X POST http://localhost:4321/v1/auth/logout \
+  -H "Authorization: Bearer $TOKEN" | jq .
+```
+
+---
+
+## Testing with curl
+
+### Helper Script
+
+```bash
+#!/bin/bash
+
+API="http://localhost:4321"
+EMAIL="admin@pulsedock.dev"
+PASSWORD="admin123"
+
+# Login
+echo "Logging in..."
+RESPONSE=$(curl -s "$API/v1/auth/login" \
+  -H "Content-Type: application/json" \
+  -d "{\"email\":\"$EMAIL\",\"password\":\"$PASSWORD\"}")
+
+TOKEN=$(echo "$RESPONSE" | jq -r .accessToken)
+echo "Token: $TOKEN"
+
+# Get user
+echo "Getting current user..."
+curl -s "$API/v1/auth/me" \
+  -H "Authorization: Bearer $TOKEN" | jq .
+
+# List monitors
+echo "Listing monitors..."
+curl -s "$API/v1/monitors" \
+  -H "Authorization: Bearer $TOKEN" | jq .
+```
+
+Save as `test-api.sh`, run with `bash test-api.sh`.
+
+---
+
+## Swagger Docs
+
+Interactive API docs available at:
+
+```
+http://localhost:4321/docs
+```
+
+Use Swagger UI to:
+- Explore all endpoints
+- Test requests directly
+- See response schemas
+- Authorize with Bearer token
+
+---
+
+## References
+
+- [REST API Best Practices](https://restfulapi.net/)
+- [HTTP Status Codes](https://httpwg.org/specs/rfc9110.html#status.codes)
+- [JWT Tokens](https://jwt.io/)
+
+---
+
+See also:
+- [ARCHITECTURE.md](./ARCHITECTURE.md) — System design
+- [GETTING-STARTED.md](./GETTING-STARTED.md) — Setup guide

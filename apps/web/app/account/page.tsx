@@ -1,160 +1,230 @@
-'use client';
+"use client";
 
-import { Alert, Button, Card, Group, Modal, PasswordInput, Stack, Text, TextInput } from '@mantine/core';
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { AppFrame } from '../../components/app-frame';
-import { api } from '../../lib/api';
-import { clearSession, getToken, getUser } from '../../components/auth';
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { AlertCircle } from "lucide-react";
+import { api } from "../../lib/api";
+import { getUser } from "../../components/auth";
+import { AppFrame } from "../../components/app-frame";
+import { useToast } from "../../components/ui/toast";
 
-type Me = { id: string; email: string; role: 'admin' | 'user'; mustChangePassword?: boolean };
-type Session = { id: string; userAgent: string | null; ipAddress: string | null; revokedAt: string | null; createdAt: string };
+import { GrafanaIntegrationCard } from "./components/GrafanaIntegrationCard";
+import { SystemInfoCard } from "./components/SystemInfoCard";
+import { DataRetentionCard } from "./components/DataRetentionCard";
+import { BackupRestoreCard } from "./components/BackupRestoreCard";
+import { ProfileCard } from "./components/ProfileCard";
+import { ChangePasswordCard } from "./components/ChangePasswordCard";
+import { TwoFactorCard } from "./components/TwoFactorCard";
+import { ApiKeysCard } from "./components/ApiKeysCard";
+import { ActivityLogCard } from "./components/ActivityLogCard";
+import { SessionsCard } from "./components/SessionsCard";
+import { NotificationPrefsCard } from "./components/NotificationPrefsCard";
+import { DigestQueueCard } from "./components/DigestQueueCard";
+import { ScheduledReportsCard } from "./components/ScheduledReportsCard";
+import { TeamMembersCard } from "./components/TeamMembersCard";
+
+import type {
+  Me,
+  Session,
+  ApiKey,
+  AuditLogEntry,
+  NotificationPreference,
+  ScheduledReport,
+  TeamMember,
+  PendingInvite,
+} from "./components/shared";
 
 export default function AccountPage() {
   const router = useRouter();
-  const token = useMemo(() => (typeof window !== 'undefined' ? getToken() : ''), []);
+  const { success: toastSuccess, error: toastError } = useToast();
+  const [user, setUser] = useState<ReturnType<typeof getUser> | null>(null);
   const [me, setMe] = useState<Me | null>(null);
   const [sessions, setSessions] = useState<Session[]>([]);
+  const [apiKeys, setApiKeys] = useState<ApiKey[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
 
-  const [profileEmail, setProfileEmail] = useState(() => (typeof window !== 'undefined' ? getUser()?.email ?? '' : ''));
-  const [currentPassword, setCurrentPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
+  // Profile initial values
+  const [initialEmail, setInitialEmail] = useState("");
+  const [initialDisplayName, setInitialDisplayName] = useState("");
+  const [initialTimezone, setInitialTimezone] = useState("UTC");
 
-  const [firstLoginEmail, setFirstLoginEmail] = useState('');
-  const [firstLoginNewPassword, setFirstLoginNewPassword] = useState('');
-  const [firstLoginSaving, setFirstLoginSaving] = useState(false);
-  const [firstLoginError, setFirstLoginError] = useState('');
-  const [passwordError, setPasswordError] = useState('');
-
-  useEffect(() => {
-    const user = getUser();
-    if (!user || !token) router.push('/login');
-  }, [router, token]);
-
-  async function load() {
-    const [profile, sess] = await Promise.all([
-      api<Me>('/v1/auth/me', token),
-      api<Session[]>('/v1/auth/sessions', token),
-    ]);
-    setMe(profile);
-    setSessions(sess);
-    setProfileEmail(profile.email);
-  }
-
-  useEffect(() => { load().catch(() => router.push('/login')); }, []);
+  // Lazy-loaded data
+  const [auditLog, setAuditLog] = useState<AuditLogEntry[]>([]);
+  const [notifPrefs, setNotifPrefs] = useState<NotificationPreference | null>(null);
+  const [scheduledReport, setScheduledReport] = useState<ScheduledReport | null>(null);
+  const [reportLoaded, setReportLoaded] = useState(false);
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([]);
+  const [pendingInvites, setPendingInvites] = useState<PendingInvite[]>([]);
+  const [teamLoading, setTeamLoading] = useState(false);
 
   useEffect(() => {
-    if (me?.mustChangePassword) setFirstLoginEmail(me.email);
-  }, [me]);
-
-  async function saveProfile() {
-    const updated = await api<{ id: string; email: string; role: 'admin' | 'user' }>('/v1/auth/profile', token, {
-      method: 'PATCH',
-      body: JSON.stringify({ email: profileEmail }),
-    });
-    localStorage.setItem('pulsedock_user', JSON.stringify({ ...updated, name: updated.email.split('@')[0] || 'user' }));
-    localStorage.setItem('pulsedock_remembered_user', updated.email.toLowerCase());
-    await load();
-  }
-
-  async function savePassword() {
-    setPasswordError('');
-    try {
-      await api('/v1/auth/change-password', token, {
-        method: 'POST',
-        body: JSON.stringify({ currentPassword, newPassword }),
-      });
-      setCurrentPassword('');
-      setNewPassword('');
-      clearSession();
-      router.push('/login');
-    } catch (e: any) {
-      setPasswordError(String(e?.message ?? 'Password update failed'));
+    const currentUser = getUser();
+    setUser(currentUser);
+    if (!currentUser) {
+      router.push("/login");
+      return;
     }
-  }
 
-  async function revokeSession(sessionId: string) {
-    await api('/v1/auth/sessions/revoke', token, {
-      method: 'POST',
-      body: JSON.stringify({ sessionId }),
-    });
-    await load();
-  }
+    const userId = currentUser.id;
 
-  async function revokeAllSessions() {
-    await api('/v1/auth/sessions/revoke-all', token, { method: 'POST' });
-    await load();
-  }
+    async function load() {
+      try {
+        setLoading(true);
 
-  async function completeFirstLoginProfile() {
-    setFirstLoginSaving(true);
-    setFirstLoginError('');
-    try {
-      const updated = await api<{ id: string; email: string; role: 'admin' | 'user' }>('/v1/auth/profile', token, {
-        method: 'PATCH',
-        body: JSON.stringify({ email: firstLoginEmail }),
-      });
-      localStorage.setItem('pulsedock_user', JSON.stringify({ ...updated, name: updated.email.split('@')[0] || 'user' }));
-      localStorage.setItem('pulsedock_remembered_user', updated.email.toLowerCase());
-      await api('/v1/auth/change-password', token, {
-        method: 'POST',
-        body: JSON.stringify({ newPassword: firstLoginNewPassword }),
-      });
-      clearSession();
-      router.push('/login');
-    } catch (e: any) {
-      setFirstLoginError(String(e?.message ?? 'Could not complete first login setup'));
-    } finally {
-      setFirstLoginSaving(false);
+        const [profile, sess, keys] = await Promise.all([
+          api<Me>("/v1/auth/me", userId),
+          api<Session[]>("/v1/auth/sessions", userId),
+          api<ApiKey[]>("/v1/api-keys", userId),
+        ]);
+        setMe(profile);
+        setSessions(sess);
+        setApiKeys(keys);
+        setInitialEmail(profile.email);
+        const dn = profile.displayName ?? "";
+        setInitialDisplayName(dn);
+        setInitialTimezone(profile.timezone ?? "UTC");
+
+        // Lazy loads
+        api<AuditLogEntry[]>("/v1/auth/audit-log", userId).then(setAuditLog).catch(() => {});
+        api<NotificationPreference>("/v1/notification-preferences", userId).then(setNotifPrefs).catch(() => {});
+        api<ScheduledReport | null>("/v1/reports", userId).then((r) => {
+          setScheduledReport(r);
+          setReportLoaded(true);
+        }).catch(() => { setReportLoaded(true); });
+        setTeamLoading(true);
+        Promise.all([
+          api<TeamMember[]>("/v1/team/members", userId),
+          api<PendingInvite[]>("/v1/team/invites", userId),
+        ]).then(([members, invites]) => {
+          setTeamMembers(members);
+          setPendingInvites(invites);
+        }).catch(() => {}).finally(() => setTeamLoading(false));
+      } catch (e) {
+        setLoadError(e instanceof Error ? e.message : "Failed to load account");
+        router.push("/login");
+      } finally {
+        setLoading(false);
+      }
     }
-  }
+
+    load();
+  }, [router]);
+
+  if (!user) return null;
+  if (loading)
+    return (
+      <AppFrame title="Account" breadcrumbs={[{ label: "Account" }]}>
+        <div className="flex items-center justify-center min-h-[400px]">
+          <div className="animate-spin rounded-full h-12 w-12 border-2 border-accent border-t-transparent" />
+        </div>
+      </AppFrame>
+    );
 
   return (
-    <AppFrame title="Account" subtitle="Profile, password, tokens and active sessions.">
-      <Modal opened={Boolean(me?.mustChangePassword)} onClose={() => {}} closeOnClickOutside={false} closeOnEscape={false} withCloseButton={false} title="First login security setup" centered>
-        <form onSubmit={(e) => { e.preventDefault(); void completeFirstLoginProfile(); }}>
-          <Text size="sm" c="dimmed" mb="sm">You must update your account email and password before continuing.</Text>
-          <TextInput label="New account email" value={firstLoginEmail} onChange={(e) => setFirstLoginEmail(e.currentTarget.value)} />
-          <PasswordInput mt="sm" label="New password" value={firstLoginNewPassword} onChange={(e) => setFirstLoginNewPassword(e.currentTarget.value)} />
-          {firstLoginError ? <Alert mt="sm" color="red">{firstLoginError}</Alert> : null}
-          <Button type="submit" mt="md" fullWidth color="teal" loading={firstLoginSaving}>Save and continue</Button>
-        </form>
-      </Modal>
+    <AppFrame title="Account" subtitle="Manage your profile and security" breadcrumbs={[{ label: "Account" }]}>
+      <div className="space-y-6">
+        {loadError && (
+          <div className="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/20">
+            <AlertCircle className="w-5 h-5 text-danger mt-0.5 shrink-0" />
+            <span className="text-danger text-sm">{loadError}</span>
+          </div>
+        )}
 
-      <Stack>
-        <Card withBorder>
-          <form onSubmit={(e) => { e.preventDefault(); void saveProfile(); }}>
-            <Text fw={700}>Profile</Text>
-            <Text size="sm" c="dimmed">{me?.email ?? '—'} ({me?.role ?? '—'})</Text>
-            <TextInput mt="sm" label="Email" value={profileEmail} onChange={(e) => setProfileEmail(e.currentTarget.value)} />
-            <Button type="submit" mt="sm" color="teal" variant="light">Save email</Button>
-          </form>
-        </Card>
+        {/* Two-column layout */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+          <div className="space-y-6">
+            <ProfileCard
+              me={me!}
+              userId={user.id}
+              initialEmail={initialEmail}
+              initialDisplayName={initialDisplayName}
+              initialTimezone={initialTimezone}
+              onEmailChange={(email) => { if (me) setMe({ ...me, email }); }}
+              toastSuccess={toastSuccess}
+              toastError={toastError}
+            />
 
-        <Card withBorder>
-          <form onSubmit={(e) => { e.preventDefault(); void savePassword(); }}>
-            <Text fw={700}>Password</Text>
-            <PasswordInput mt="sm" label="Current password" value={currentPassword} onChange={(e) => setCurrentPassword(e.currentTarget.value)} />
-            <PasswordInput mt="sm" label="New password" value={newPassword} onChange={(e) => setNewPassword(e.currentTarget.value)} />
-            {passwordError ? <Alert mt="sm" color="red">{passwordError}</Alert> : null}
-            <Button type="submit" mt="sm" color="teal">Update password</Button>
-          </form>
-        </Card>
+            <ChangePasswordCard
+              userId={user.id}
+              toastSuccess={toastSuccess}
+              toastError={toastError}
+            />
 
-        <Card withBorder>
-          <Group justify="space-between">
-            <Text fw={700}>Sessions / Tokens</Text>
-            <Button size="xs" variant="light" color="red" onClick={revokeAllSessions}>Revoke all sessions</Button>
-          </Group>
-          {sessions.filter((s) => !s.revokedAt).map((s) => (
-            <Card key={s.id} mt="sm" withBorder>
-              <Text size="xs" c="dimmed">{new Date(s.createdAt).toLocaleString()} · {s.ipAddress ?? 'unknown ip'}</Text>
-              <Text size="xs" c="dimmed">{s.userAgent ?? 'unknown agent'}</Text>
-              <Button mt="xs" size="xs" variant="light" color="red" disabled={Boolean(s.revokedAt)} onClick={() => revokeSession(s.id)}>{s.revokedAt ? 'Revoked' : 'Revoke'}</Button>
-            </Card>
-          ))}
-        </Card>
-      </Stack>
+            <TwoFactorCard
+              me={me!}
+              userId={user.id}
+              onMeUpdate={setMe}
+              toastSuccess={toastSuccess}
+              toastError={toastError}
+            />
+
+            <ApiKeysCard
+              apiKeys={apiKeys}
+              userId={user.id}
+              onApiKeysChange={setApiKeys}
+              toastSuccess={toastSuccess}
+              toastError={toastError}
+            />
+
+            <GrafanaIntegrationCard />
+          </div>
+
+          <div className="space-y-6">
+            <ActivityLogCard
+              auditLog={auditLog}
+              userId={user.id}
+              toastSuccess={toastSuccess}
+              toastError={toastError}
+            />
+
+            <SessionsCard
+              sessions={sessions}
+              userId={user.id}
+              onSessionsChange={setSessions}
+              toastSuccess={toastSuccess}
+              toastError={toastError}
+            />
+
+            <NotificationPrefsCard
+              notifPrefs={notifPrefs}
+              userId={user.id}
+              onPrefsChange={setNotifPrefs}
+              toastError={toastError}
+            />
+
+            {notifPrefs && notifPrefs.frequency !== "instant" && (
+              <DigestQueueCard
+                userId={user.id}
+                frequency={notifPrefs.frequency}
+              />
+            )}
+
+            <ScheduledReportsCard
+              scheduledReport={scheduledReport}
+              reportLoaded={reportLoaded}
+              userId={user.id}
+              toastSuccess={toastSuccess}
+              toastError={toastError}
+            />
+
+            <TeamMembersCard
+              teamMembers={teamMembers}
+              pendingInvites={pendingInvites}
+              teamLoading={teamLoading}
+              userId={user.id}
+              onTeamMembersChange={setTeamMembers}
+              onPendingInvitesChange={setPendingInvites}
+              toastSuccess={toastSuccess}
+              toastError={toastError}
+            />
+
+            <SystemInfoCard userId={user?.id} />
+            <DataRetentionCard onSave={() => toastSuccess("Data retention settings saved")} />
+            <BackupRestoreCard />
+          </div>
+        </div>
+      </div>
     </AppFrame>
   );
 }

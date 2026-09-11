@@ -26,8 +26,9 @@ export function validateEnv() {
     log.warn('JWT_REFRESH_SECRET missing, using development fallback');
   }
 
-  const accessSecret = process.env.JWT_ACCESS_SECRET ?? '';
-  const refreshSecret = process.env.JWT_REFRESH_SECRET ?? '';
+  // These are guaranteed set by the blocks above (either provided or set to dev fallback)
+  const accessSecret = process.env.JWT_ACCESS_SECRET as string;
+  const refreshSecret = process.env.JWT_REFRESH_SECRET as string;
 
   if (prodLike && (accessSecret.length < 24 || refreshSecret.length < 24)) {
     throw new Error('JWT secrets must be at least 24 characters in production/staging');

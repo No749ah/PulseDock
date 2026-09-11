@@ -1,0 +1,59 @@
+# docker-compose.override.yml — local development overrides
+#
+# This file is automatically merged by Docker Compose when you run `docker compose up`.
+# Use it to override settings for your local environment WITHOUT editing the base files.
+# Do NOT commit secrets or local paths to version control.
+#
+# Usage:
+#   cp docker-compose.override.yml.example docker-compose.override.yml
+#   # Edit as needed, then:
+#   docker compose up
+#
+# Common overrides:
+
+services:
+  # ── API overrides ────────────────────────────────────────────────────────
+  api:
+    environment:
+      # Override the log level for noisy local dev
+      LOG_LEVEL: debug
+      # Point to your local mailer (e.g. MailHog/Mailpit) instead of real SMTP
+      # MAILER_HOST: localhost
+      # MAILER_PORT: 1025
+      # MAILER_SECURE: "false"
+      # MAILER_FROM: dev@localhost
+      # Disable email verification requirement in dev
+      # REQUIRE_EMAIL_VERIFICATION: "false"
+    # Expose extra ports for debugging
+    # ports:
+    #   - "9229:9229"  # Node.js inspector
+
+  # ── Web overrides ────────────────────────────────────────────────────────
+  web:
+    environment:
+      # Override API base URL if your API runs on a different port
+      # NEXT_PUBLIC_API_BASE_URL: http://localhost:4321
+      NEXT_TELEMETRY_DISABLED: "1"
+
+  # ── PostgreSQL overrides ─────────────────────────────────────────────────
+  postgres:
+    # Expose Postgres on a non-standard local port to avoid conflicts
+    # ports:
+    #   - "5433:5432"
+    # Use a local directory instead of a named volume (easier to inspect)
+    # volumes:
+    #   - ./data/postgres:/var/lib/postgresql/data
+
+  # ── Redis overrides ──────────────────────────────────────────────────────
+  redis:
+    # ports:
+    #   - "6380:6379"
+    command: redis-server --loglevel warning
+
+  # ── Mailpit (local mail catcher) — uncomment to enable ──────────────────
+  # mailpit:
+  #   image: axllent/mailpit:latest
+  #   ports:
+  #     - "8025:8025"   # Web UI
+  #     - "1025:1025"   # SMTP
+  #   restart: unless-stopped

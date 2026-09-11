@@ -1,9 +1,12 @@
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+  binaryTargets   = ["native", "debian-openssl-3.0.x", "debian-openssl-1.1.x"]
 }
 
 datasource db {
   provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
 
 enum Role {
@@ -15,17 +18,37 @@ enum MonitorType {
   HTTP
   GIT_RELEASE
   DOCKER_IMAGE
+  TCP
+  SSL_CERT
+  HEARTBEAT
+  DNS
+  PING
+  SMTP
+  BROWSER
+  WHOIS
+  FTP
+  IMAP
+  POP3
+  CT_LOG
+  GRAPHQL
+  TRANSACTION
 }
 
 model User {
   id                 String         @id @default(cuid())
   email              String         @unique
-  passwordHash       String
+  passwordHash       String?
   role               Role           @default(user)
   isActive           Boolean        @default(true)
   mustChangePassword Boolean        @default(false)
+  emailVerified      Boolean        @default(false)
   failedLoginCount   Int            @default(0)
   lockedUntil        DateTime?
+  totpSecret         String?
+  totpEnabled        Boolean        @default(false)
+  totpRecoveryCodes  String?
+  displayName        String?
+  timezone           String?        @default("UTC")
   createdAt          DateTime       @default(now())
   updatedAt          DateTime       @updatedAt
 
@@ -37,6 +60,37 @@ model User {
   sentInvites     InviteToken[]    @relation("invitedBy")
   actorAuditLogs  AuditLog[]       @relation("audit_actor")
   targetAuditLogs AuditLog[]       @relation("audit_target")
+  apiKeys                 ApiKey[]
+  statusPages             PublicStatusPage[]
+  tags                    Tag[]
+  notificationPreference  NotificationPreference?
+  notificationQueue       NotificationQueueItem[]
+  maintenanceWindows      MaintenanceWindow[]
+  incidents               Incident[]
+  scheduledReport         ScheduledReport?
+  settings                UserSettings?
+  monitorRunRollups       MonitorRunRollup[]
+  ownedTeamMembers        TeamMember[]       @relation("workspace_owner")
+  teamMemberships         TeamMember[]       @relation("workspace_member")
+  sentTeamInvites         TeamInvite[]       @relation("sent_invites")
+  templateFeedback        ToolTemplateFeedback[]
+
+  oauthAccounts           OAuthAccount[]
+  activeOrgId             String?
+  orgMemberships          OrgMember[]
+  userPlan                UserPlan?
+  monitorEvents           MonitorEvent[]
+  acknowledgements        AlertAcknowledgement[]
+  alertRoutingRules       AlertRoutingRule[]
+  escalationPolicies      EscalationPolicy[]
+  alertGroups             AlertGroup[]
+  annotations             MonitorAnnotation[]
+  monitorConfigChanges    MonitorConfigChange[]
+  serviceGroups           MonitorServiceGroup[]
+  deployToken             String?              @unique
+  deployEvents            DeploymentEvent[]
+  playbooks               IncidentPlaybook[]
+  monitorDependencies     MonitorDependency[]
 }
 
 model Session {
@@ -56,11 +110,18 @@ model Session {
 model Folder {
   id        String   @id @default(cuid())
   userId    String
+  parentId  String?
   name      String
+  position  Int      @default(0)
   createdAt DateTime @default(now())
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  parent   Folder?   @relation("FolderTree", fields: [parentId], references: [id], onDelete: Cascade)
+  children Folder[]  @relation("FolderTree")
   monitors Monitor[]
+
+  @@index([userId])
+  @@index([parentId])
 }
 
 model Monitor {
@@ -68,57 +129,318 @@ model Monitor {
   userId        String
   folderId      String?
   name          String
+  description   String?     // Optional free-text notes/description for this monitor
+  runbookUrl    String?     // Optional link to incident runbook for this monitor
   type          MonitorType
   target        String
   intervalSec   Int         @default(60)
+  cronExpression String?    // Optional cron expression (5-field). When set, overrides intervalSec for scheduling.
   timeoutMs     Int         @default(5000)
-  enabled       Boolean     @default(true)
-  configJson    Json?
-  createdAt     DateTime    @default(now())
+  confirmations       Int         @default(1)
+  retryCount          Int         @default(0)  // number of automatic retries on failure before recording as failed (0-3)
+  enabled             Boolean     @default(true)
+  isFlapping          Boolean     @default(false)
+  flapDetectionEnabled Boolean    @default(true)
+  flapWindow          Int       @default(10)
+  flapThreshold       Float     @default(0.5)
+  flapAlertedAt       DateTime?
+  configJson          Json?
+  slaTarget           Float?
+  slaPeriodDays       Int?        @default(30)
+  slaBreachAlertedAt  DateTime?
+  slaBurnRateAlertedAt DateTime?  // last time a burn-rate alert fired
+  autoIncident        Boolean     @default(false) // auto-create/resolve incidents on status change
+  autoIncidentSeverity String     @default("MEDIUM") // severity: CRITICAL, HIGH, MEDIUM, LOW
+  activeAutoIncidentId String?    // ID of the currently open auto-created incident (null = none)
+  mutedUntil          DateTime?   // if set and in future, all alerts suppressed
+  pausedUntil         DateTime?   // if set and in future, checks are skipped (temporary pause)
+  latencyAlertMs      Int?        // if set, alert when latency exceeds this threshold (ms) even on success
+  latencyBudgetMs     Int?        // P95 latency budget in ms (monthly). Tracks budget consumption percentage.
+  anomalyDetection    Boolean     @default(false) // enable dynamic latency anomaly detection
+  anomalyMultiplier   Float       @default(2.0)   // alert when latency > multiplier × P95 baseline
+  sliLatencyTarget    Int?        // target p95 latency in ms (e.g., 500 = p95 must be < 500ms)
+  sliLatencyWindow    Int         @default(7)  // rolling window in days for latency SLI
+  // Business-hours schedule: only run checks during configured window
+  scheduleEnabled     Boolean     @default(false)
+  scheduleDays        String      @default("1,2,3,4,5") // comma-sep day-of-week: 0=Sun..6=Sat
+  scheduleStartHour   Int         @default(8)      // UTC hour (0-23) to start checking
+  scheduleEndHour     Int         @default(18)     // UTC hour (0-23) to stop checking
+  rtoMinutes          Int?                         // Recovery Time Objective in minutes (null = no target)
+  shareToken          String?     @unique          // public share token for status.json endpoint (no auth required)
+  pinned              Boolean     @default(false)  // pinned monitors appear at the top of the list
+  statusWebhookUrl    String?                      // optional per-monitor webhook URL called on every status change
+  statusWebhookSecret String?                      // optional HMAC-SHA256 secret for X-PulseDock-Signature header
+  // Response Header Tracking: alert when tracked header values change
+  trackedHeaders      String?     // comma-separated header names to track (e.g. "x-frame-options,content-security-policy")
+  headerBaseline      Json?       // snapshot of tracked header values at baseline time {header: value|null, capturedAt: ISO}
+  headerBaselineSetAt DateTime?   // when the header baseline was captured
+  // Rate Limiting / Throttling
+  throttleMs          Int?        // min ms between consecutive checks (null = no throttle)
+  maxChecksPerHour    Int?        // hard cap on checks/hour (null = no cap, max 360)
+  adaptiveIntervalEnabled Boolean @default(false) // when true, use faster interval on degraded/down
+  adaptiveIntervalDownSec Int?    // interval when monitor is red (e.g. 15s); null = intervalSec / 4
+  adaptiveIntervalDegradedSec Int? // interval when monitor is yellow (e.g. 30s); null = intervalSec / 2
+  geoRegions          String[]    @default([])  // configured regions to round-robin through (e.g. ["us-east-1", "eu-west-1"])
+  // Custom Metric Capture (HTTP/BROWSER monitors only)
+  metricPath          String?     // JSONPath to extract from response body (e.g. "$.queue.depth")
+  metricName          String?     // Human-readable label for the captured metric (e.g. "Queue Depth")
+  metricUnit          String?     // Optional unit label (e.g. "items", "ms", "%")
+  metricAlertMin      Float?      // Alert yellow when captured value < this (null = no min alert)
+  metricAlertMax      Float?      // Alert yellow when captured value > this (null = no max alert)
+  // Header Assertions: assert response headers exist/equal/contain on every HTTP check
+  headerAssertions    Json?       // Array of { header: string, op: 'exists'|'equals'|'contains'|'not-exists', value?: string }
+  // GraphQL monitor fields
+  graphqlQuery        String?     // GraphQL query/mutation to send (e.g. "{ __typename }" for introspection health)
+  graphqlVariables    String?     // JSON string of variables to pass with the query
+  graphqlDataPath     String?     // JSONPath to expected field in response data (e.g. "$.data.__typename")
+  graphqlExpectedValue String?    // Expected string value at graphqlDataPath (null = just check field exists)
+  // Business Impact / Downtime Cost Tracking
+  downtimeCostPerHour Float?      // Estimated business cost per hour of downtime (USD). Used to compute financial impact.
+  createdAt           DateTime    @default(now())
 
   user          User          @relation(fields: [userId], references: [id], onDelete: Cascade)
   folder        Folder?       @relation(fields: [folderId], references: [id], onDelete: SetNull)
   runs          MonitorRun[]
+  rollups       MonitorRunRollup[]
   monitorAlerts MonitorAlert[]
+  monitorTags   MonitorTag[]
+  maintenanceWindows MaintenanceWindowMonitor[]
+  incidentMonitors   IncidentMonitor[]
+  // Dependency graph: this monitor depends on other monitors
+  dependencies  MonitorDependency[] @relation("DependencyMonitor")
+  // Monitors that depend on this monitor
+  dependents    MonitorDependency[] @relation("DependencyDependsOn")
+  events        MonitorEvent[]
+  acknowledgements AlertAcknowledgement[]
+  annotations   MonitorAnnotation[]
+  configChanges MonitorConfigChange[]
+  /// Monitor priority / criticality: 0=unset, 1=P1 (critical), 2=P2 (high), 3=P3 (medium), 4=P4 (low)
+  priority      Int     @default(0)
+  playbookId    String?
+  playbook      IncidentPlaybook? @relation("MonitorPlaybook", fields: [playbookId], references: [id], onDelete: SetNull)
+
+  @@index([userId])
+  @@index([enabled])
+  @@index([userId, enabled])
 }
 
-model MonitorRun {
+model AlertAcknowledgement {
+  id             String    @id @default(cuid())
+  monitorId      String
+  userId         String
+  note           String?
+  acknowledgedAt DateTime  @default(now())
+  clearedAt      DateTime? // null = still active
+  createdAt      DateTime  @default(now())
+
+  monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([monitorId])
+  @@index([userId])
+  @@index([monitorId, clearedAt])
+}
+
+/// Monitor dependency: when the "dependency" monitor is down, suppress alerts on the "dependent" monitor
+model MonitorDependency {
+  id           String   @id @default(cuid())
+  userId       String
+  /// The monitor that is suppressed when the dependency is down
+  monitorId    String
+  /// The monitor that must be UP for the dependent monitor to alert normally
+  dependsOnId  String
+  createdAt    DateTime @default(now())
+
+  user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monitor    Monitor @relation("DependencyMonitor", fields: [monitorId], references: [id], onDelete: Cascade)
+  dependsOn  Monitor @relation("DependencyDependsOn", fields: [dependsOnId], references: [id], onDelete: Cascade)
+
+  @@unique([monitorId, dependsOnId])
+  @@index([userId])
+  @@index([monitorId])
+  @@index([dependsOnId])
+}
+
+model Tag {
+  id        String   @id @default(cuid())
+  userId    String
+  name      String
+  color     String   @default("#6366f1")
+  createdAt DateTime @default(now())
+
+  user        User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monitorTags MonitorTag[]
+
+  @@unique([userId, name])
+  @@index([userId])
+}
+
+model MonitorTag {
+  monitorId String
+  tagId     String
+
+  monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  tag     Tag     @relation(fields: [tagId], references: [id], onDelete: Cascade)
+
+  @@id([monitorId, tagId])
+}
+
+/// Field-level diff recorded every time a monitor config is updated.
+/// Enables a full audit trail of configuration changes per monitor.
+model MonitorConfigChange {
   id        String   @id @default(cuid())
   monitorId String
   userId    String
-  level     String
-  ok        Boolean
-  status    Int
-  latencyMs Int?
+  /// JSON array of { field, from, to } objects — only changed fields included
+  changes   Json     @default("[]")
+  /// Human-readable summary e.g. "intervalSec: 60 → 120, target: http://old... → http://new..."
+  summary   String
+  createdAt DateTime @default(now())
+
+  monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([monitorId, createdAt])
+  @@index([userId])
+}
+
+/// Timestamped annotations / events on a monitor timeline (deploys, notes, incidents, etc.)
+model MonitorEvent {
+  id        String   @id @default(cuid())
+  monitorId String
+  userId    String
+  /// Short label shown on the timeline (e.g. "Deployed v2.3")
   message   String
-  checkedAt DateTime @default(now())
+  /// Free-form event type tag for color-coding (deploy, note, incident, maintenance, config)
+  eventType String   @default("note")
+  createdAt DateTime @default(now())
+
+  monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([monitorId, createdAt])
+  @@index([userId])
+}
+
+model MonitorRun {
+  id           String   @id @default(cuid())
+  monitorId    String
+  userId       String
+  level        String
+  ok           Boolean
+  status       Int
+  latencyMs    Int?
+  message      String
+  responseBody String?  // First 500 chars of response body on failure, for debug
+  timingsJson  Json?    // HTTP timing breakdown: { dnsMs, tcpMs, tlsMs, ttfbMs, downloadMs }
+  securityAuditJson Json? // Security headers audit: { grade, score, headers[] } — only on HTTP monitors with checkSecurityHeaders=true
+  responseSizeBytes Int?  // UTF-8 byte length of the response body; populated for HTTP/BROWSER monitors
+  redirectChain String[] // HTTP redirect chain: URLs followed before reaching final response
+  geoRegion    String?  // simulated geo region tag (e.g. "us-east-1", "eu-west-1", "ap-southeast-1")
+  capturedMetricValue Float?   // numeric value extracted from response body via monitor.metricPath
+  headerAssertionsFailed Json?  // Array of header assertion failures: [{ header, op, expected?, actual?, message }]
+  checkedAt    DateTime @default(now())
 
   monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
   user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([monitorId, checkedAt])
+  @@index([monitorId, checkedAt, level]) // covering index for uptime% calculation queries
+  @@index([monitorId, ok]) // for uptime calculation queries that filter by ok status
+  @@index([userId, checkedAt])
+  @@index([userId, checkedAt, level]) // covering index for activity feed queries filtered by level
+  @@index([checkedAt])
 }
 
 model AlertChannel {
-  id         String   @id @default(cuid())
-  userId     String
-  name       String
-  type       String
-  configJson Json
-  createdAt  DateTime @default(now())
+  id               String   @id @default(cuid())
+  userId           String
+  name             String
+  type             String
+  configJson       Json
+  createdAt        DateTime @default(now())
+  alertGrouping    Boolean  @default(false)  // enable alert grouping for this channel
+  groupWindowSec   Int      @default(300)    // window in seconds to group related alerts (default 5min)
+  groupByFolder    Boolean  @default(true)   // group alerts from same folder
+  groupByTag       Boolean  @default(false)  // group alerts from same tag
+  /// Custom message template with {{token}} substitution. null = use default message.
+  messageTemplate  String?  @db.Text
+  /// JSON schedule config. null = always active. Format: { enabled: boolean, timezone: string, days: number[], startHour: number, endHour: number }
+  /// days: 0=Sun, 1=Mon, ..., 6=Sat. hours are 0–23 in the given timezone.
+  scheduleJson     Json?
+  batchWindowSec   Int?  // if set, batch DOWN/DEGRADED alerts for this many seconds before delivering (max 300)
 
-  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user          User               @relation(fields: [userId], references: [id], onDelete: Cascade)
   monitorAlerts MonitorAlert[]
+  deliveryLogs  AlertDeliveryLog[]
+  alertGroups   AlertGroup[]
+
+  @@index([userId])
 }
 
 model MonitorAlert {
   monitorId      String
   alertChannelId String
+  /// When to fire: ON_CHANGE | ALWAYS | FIRST_ONLY | DAILY_DIGEST | REPEAT_EVERY_N | VERSION_ANY | VERSION_MAJOR
+  notifyOn       String    @default("ON_CHANGE")
+  lastNotifiedAt DateTime?
+  /// Repeat interval in minutes when notifyOn = REPEAT_EVERY_N (1–1440). null = use default 30min.
+  repeatIntervalMin Int?
+  /// Optional escalation policy for this monitor↔channel link
+  escalationPolicyId String?
+  /// Timestamp when the first escalation step fired for the current outage
+  escalatedAt        DateTime?
+  /// Which escalation step index (0-based) was last triggered; 0 = none yet
+  escalationStep     Int       @default(0)
 
-  monitor      Monitor      @relation(fields: [monitorId], references: [id], onDelete: Cascade)
-  alertChannel AlertChannel @relation(fields: [alertChannelId], references: [id], onDelete: Cascade)
+  monitor          Monitor           @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  alertChannel     AlertChannel      @relation(fields: [alertChannelId], references: [id], onDelete: Cascade)
+  escalationPolicy EscalationPolicy? @relation(fields: [escalationPolicyId], references: [id], onDelete: SetNull)
 
   @@id([monitorId, alertChannelId])
+}
+
+model EscalationPolicy {
+  id     String @id @default(cuid())
+  userId String
+  name   String
+  /// JSON array: [{delayMinutes: number, channelId: string}]
+  steps  Json   @default("[]")
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monitorAlerts MonitorAlert[]
+
+  @@index([userId])
+}
+
+model AlertRoutingRule {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  enabled     Boolean  @default(true)
+  priority    Int      @default(0)
+
+  // Match conditions (all specified conditions must match — AND logic)
+  matchTags        String[]
+  matchTypes       String[]
+  matchFolderIds   String[]
+  matchLevels      String[]
+  matchMonitorIds  String[]
+
+  // Action
+  channelIds       String[]
+  overrideNotifyOn String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model InviteToken {
@@ -151,6 +473,8 @@ model AuditLog {
   @@index([action, createdAt])
   @@index([actorUserId])
   @@index([targetUserId])
+  @@index([actorUserId, createdAt])
+  @@index([targetUserId, createdAt])
 }
 
 model PasswordResetToken {
@@ -163,4 +487,575 @@ model PasswordResetToken {
 
   @@index([email])
   @@index([token])
+}
+
+model EmailVerificationToken {
+  id         String    @id @default(cuid())
+  token      String    @unique
+  email      String
+  expiresAt  DateTime
+  consumedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([email])
+  @@index([token])
+}
+
+model PublicStatusPage {
+  id                  String   @id @default(cuid())
+  userId              String
+  slug                String   @unique
+  title               String
+  description         String?
+  isPublished         Boolean  @default(false)
+  passwordHash        String?
+  layout              Json     @default("{\"widgets\":[]}")
+  notifyWebhookUrl    String?  // POST to this URL when overall status changes
+  slackWebhookUrl     String?  // Slack incoming webhook URL for status change notifications
+  discordWebhookUrl   String?  // Discord webhook URL for status change notifications
+  lastNotifiedStatus  String?  // last status we notified about (operational/degraded/outage)
+  customCss           String?  // Optional custom CSS injected into the public status page <head>
+  viewCount           Int      @default(0)
+  lastViewedAt        DateTime?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  user        User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  history     StatusPageHistory[]
+  subscribers StatusPageSubscriber[]
+
+  @@index([userId])
+  @@index([slug])
+  @@index([isPublished])
+}
+
+model StatusPageHistory {
+  id           String   @id @default(cuid())
+  statusPageId String
+  layout       Json
+  savedAt      DateTime @default(now())
+  label        String?
+
+  statusPage PublicStatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
+
+  @@index([statusPageId])
+  @@index([savedAt])
+}
+
+enum ApiKeyScope {
+  READ
+  WRITE
+  ADMIN
+}
+
+model ApiKey {
+  id         String       @id @default(cuid())
+  userId     String
+  name       String
+  keyHash    String       @unique
+  prefix     String
+  scope      ApiKeyScope  @default(WRITE)
+  usageCount Int          @default(0)
+  lastUsedAt DateTime?
+  expiresAt  DateTime?
+  createdAt  DateTime     @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model NotificationPreference {
+  id                String   @id @default(cuid())
+  userId            String   @unique
+  notifyOnDown      Boolean  @default(true)
+  notifyOnRecovery  Boolean  @default(true)
+  notifyOnDegraded  Boolean  @default(true)
+  quietHoursEnabled Boolean  @default(false)
+  quietHoursStart   Int      @default(22)
+  quietHoursEnd     Int      @default(8)
+  frequency         String   @default("instant")
+  alertStormProtection  Boolean  @default(false)  // suppress alerts when more than threshold fires in 10min
+  alertStormThreshold   Int      @default(10)     // max alerts per 10 minutes before storm mode
+  alertStormNotifiedAt  DateTime?                 // last time storm detection notification was sent
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model MaintenanceWindow {
+  id                  String    @id @default(cuid())
+  userId              String
+  name                String
+  description         String?
+  startsAt            DateTime
+  endsAt              DateTime
+  /// Recurrence pattern: NONE (one-shot), DAILY, WEEKLY, MONTHLY
+  recurrence          String    @default("NONE")
+  /// Comma-separated day-of-week numbers for WEEKLY recurrence (0=Sun … 6=Sat)
+  recurrenceDays      String?
+  /// Duration in minutes used to compute the end time of each recurrence occurrence
+  durationMinutes     Int?
+  /// Optional date after which no new recurrence occurrences are generated
+  recurrenceEndsAt    DateTime?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  user     User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monitors MaintenanceWindowMonitor[]
+
+  @@index([userId])
+  @@index([startsAt, endsAt])
+}
+
+model MaintenanceWindowMonitor {
+  windowId  String
+  monitorId String
+
+  window  MaintenanceWindow @relation(fields: [windowId], references: [id], onDelete: Cascade)
+  monitor Monitor           @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+
+  @@id([windowId, monitorId])
+}
+
+enum IncidentStatus {
+  INVESTIGATING
+  IDENTIFIED
+  MONITORING
+  RESOLVED
+}
+
+enum IncidentSeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+model Incident {
+  id               String           @id @default(cuid())
+  userId           String
+  title            String
+  description      String?
+  status           IncidentStatus   @default(INVESTIGATING)
+  severity         IncidentSeverity @default(MEDIUM)
+  resolvedAt       DateTime?
+  autoCreated      Boolean          @default(false) // true when auto-created by monitor check
+  rootCause        String?          // Post-mortem: root cause analysis
+  postmortemNotes  String?          // Post-mortem: lessons learned / action items
+  playbookSteps    Json?
+  playbookId       String?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  user     User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  updates  IncidentUpdate[]
+  monitors IncidentMonitor[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([userId, status])
+  @@index([userId, createdAt])
+}
+
+model IncidentUpdate {
+  id         String         @id @default(cuid())
+  incidentId String
+  body       String
+  status     IncidentStatus
+  createdAt  DateTime       @default(now())
+
+  incident Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+
+  @@index([incidentId])
+}
+
+model IncidentMonitor {
+  incidentId String
+  monitorId  String
+
+  incident Incident @relation(fields: [incidentId], references: [id], onDelete: Cascade)
+  monitor  Monitor  @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+
+  @@id([incidentId, monitorId])
+}
+
+model StatusPageSubscriber {
+  id               String           @id @default(cuid())
+  statusPageId     String
+  email            String
+  unsubscribeToken String           @default(cuid()) @unique
+  createdAt        DateTime         @default(now())
+
+  statusPage PublicStatusPage @relation(fields: [statusPageId], references: [id], onDelete: Cascade)
+
+  @@unique([statusPageId, email])
+  @@index([statusPageId])
+}
+
+model ScheduledReport {
+  id         String    @id @default(cuid())
+  userId     String    @unique
+  enabled    Boolean   @default(true)
+  frequency  String    @default("weekly")
+  dayOfWeek  Int       @default(1)
+  hourUtc    Int       @default(8)
+  lastSentAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model AlertDeliveryLog {
+  id             String   @id @default(cuid())
+  alertChannelId String
+  monitorId      String?
+  monitorName    String?
+  status         String   // "success" | "failed"
+  trigger        String?  // "monitor_failure" | "monitor_recovery" | "test" | "grouped_alert"
+  errorMessage   String?
+  durationMs     Int?
+  createdAt      DateTime @default(now())
+  isGrouped      Boolean  @default(false)
+  groupedCount   Int      @default(0)
+
+  alertChannel AlertChannel @relation(fields: [alertChannelId], references: [id], onDelete: Cascade)
+
+  @@index([alertChannelId])
+  @@index([alertChannelId, createdAt])
+}
+
+model AlertGroup {
+  id           String    @id @default(cuid())
+  userId       String
+  channelId    String
+  groupKey     String    // e.g. "folder:folderId" or "tag:tagId" or "none"
+  monitorIds   String    // JSON array of monitor IDs in this group
+  firstAlertAt DateTime  @default(now())
+  lastAlertAt  DateTime  @default(now())
+  sentAt       DateTime? // when the grouped alert was sent, null = pending
+  level        String    @default("red")
+
+  user    User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel AlertChannel @relation(fields: [channelId], references: [id], onDelete: Cascade)
+
+  @@index([userId, channelId, groupKey])
+  @@index([userId, sentAt])
+}
+
+model UserSettings {
+  id               String   @id @default(cuid())
+  userId           String   @unique
+  retentionDays    Int      @default(90)
+  rollupEnabled    Boolean  @default(true)
+  workspaceName    String?
+  workspaceSlug    String?
+  workspaceLogo    String?
+  workspaceWebsite String?
+  updatedAt        DateTime @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+// ── Team RBAC ─────────────────────────────────────────────────────────────────
+
+enum TeamRole {
+  OWNER
+  ADMIN
+  EDITOR
+  VIEWER
+}
+
+model TeamMember {
+  id        String   @id @default(cuid())
+  ownerId   String
+  userId    String
+  role      TeamRole @default(VIEWER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  owner User @relation("workspace_owner", fields: [ownerId], references: [id], onDelete: Cascade)
+  user  User @relation("workspace_member", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([ownerId, userId])
+  @@index([ownerId])
+  @@index([userId])
+}
+
+model TeamInvite {
+  id         String    @id @default(cuid())
+  ownerId    String
+  email      String
+  role       TeamRole  @default(VIEWER)
+  token      String    @unique @default(cuid())
+  expiresAt  DateTime
+  acceptedAt DateTime?
+  createdAt  DateTime  @default(now())
+
+  owner User @relation("sent_invites", fields: [ownerId], references: [id], onDelete: Cascade)
+
+  @@index([ownerId])
+  @@index([email])
+}
+
+/// Aggregated monitor run data for long-term storage efficiency.
+/// Raw runs older than retentionDays are rolled up into hourly or daily buckets
+/// before deletion, preserving trend data without the full per-check storage cost.
+model MonitorRunRollup {
+  id          String   @id @default(cuid())
+  monitorId   String
+  userId      String
+  /// Granularity of the rollup bucket: "hourly" or "daily"
+  granularity String
+  /// UTC bucket start time (truncated to hour or day)
+  bucketAt    DateTime
+  /// Total checks in this bucket
+  totalChecks Int
+  /// Number of passing checks
+  okChecks    Int
+  /// Average latency in ms across all checks with latency data
+  avgLatencyMs Int?
+  /// P95 latency estimate (95th percentile)
+  p95LatencyMs Int?
+  /// Max latency in the bucket
+  maxLatencyMs Int?
+  /// Min latency in the bucket
+  minLatencyMs Int?
+  createdAt   DateTime @default(now())
+
+  monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([monitorId, granularity, bucketAt])
+  @@index([userId, granularity, bucketAt])
+  @@index([monitorId, granularity, bucketAt])
+}
+
+/// User-submitted report that a tool registry template is incorrect or broken.
+model ToolTemplateFeedback {
+  id         String   @id @default(cuid())
+  userId     String
+  toolId     String
+  endpoint   String?
+  statusCode Int?
+  error      String?
+  note       String?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([toolId])
+  @@index([userId])
+}
+
+model OAuthAccount {
+  id         String   @id @default(cuid())
+  userId     String
+  provider   String
+  providerId String
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerId])
+  @@index([userId])
+}
+
+/// Organization model for multi-workspace/multi-team support.
+/// Users can belong to multiple organizations and switch between them.
+model Organization {
+  id        String   @id @default(cuid())
+  name      String
+  slug      String   @unique
+  logoUrl   String?
+  website   String?
+  plan      String   @default("free")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  members OrgMember[]
+  invites OrgInvite[]
+
+  @@index([slug])
+}
+
+enum OrgRole {
+  OWNER
+  ADMIN
+  MEMBER
+  VIEWER
+}
+
+/// Membership linking users to organizations with a role.
+model OrgMember {
+  id             String       @id @default(cuid())
+  userId         String
+  organizationId String
+  role           OrgRole      @default(MEMBER)
+  joinedAt       DateTime     @default(now())
+
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, organizationId])
+  @@index([userId])
+  @@index([organizationId])
+}
+
+/// Pending organization invite by email.
+model OrgInvite {
+  id             String   @id @default(cuid())
+  email          String
+  organizationId String
+  role           OrgRole  @default(MEMBER)
+  token          String   @unique @default(cuid())
+  expiresAt      DateTime
+  createdAt      DateTime @default(now())
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId])
+  @@index([email])
+}
+
+
+/// Pricing/license plan definition. Used for both SaaS billing and self-hosted license tiers.
+/// A limit of -1 means unlimited.
+model Plan {
+  id                String   @id @default(cuid())
+  name              String   @unique
+  maxMonitors       Int      @default(-1)
+  maxChecksPerDay   Int      @default(-1)
+  maxTeamMembers    Int      @default(-1)
+  maxStatusPages    Int      @default(-1)
+  maxAlertChannels  Int      @default(-1)
+  isCustom          Boolean  @default(false)
+  createdAt         DateTime @default(now())
+
+  userPlans         UserPlan[]
+}
+
+/// Links a user to a billing/license plan. One plan per user.
+model UserPlan {
+  id                      String    @id @default(cuid())
+  userId                  String    @unique
+  planId                  String
+  validUntil              DateTime?
+  overrideMaxMonitors     Int?
+  overrideMaxChecksPerDay Int?
+  createdAt               DateTime  @default(now())
+  updatedAt               DateTime  @updatedAt
+
+  user                    User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  plan                    Plan      @relation(fields: [planId], references: [id])
+
+  @@index([userId])
+  @@index([planId])
+}
+
+/// User-defined annotation / event marker on a monitor's timeline
+/// Useful for marking deployments, config changes, incidents, etc.
+model MonitorAnnotation {
+  id           String   @id @default(cuid())
+  monitorId    String
+  userId       String
+  text         String   // e.g. "Deployed v2.1", "Config rollback"
+  color        String   @default("blue")   // blue | green | yellow | red | purple
+  annotatedAt  DateTime // the point-in-time the annotation refers to
+  createdAt    DateTime @default(now())
+
+  monitor Monitor @relation(fields: [monitorId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([monitorId])
+  @@index([monitorId, annotatedAt])
+  @@index([userId])
+}
+
+model MonitorServiceGroup {
+  id          String   @id @default(cuid())
+  userId      String
+  name        String
+  description String?
+  monitorIds  String[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+enum DeploymentStatus {
+  STARTED
+  SUCCESS
+  FAILED
+  ROLLBACK
+}
+
+model DeploymentEvent {
+  id             String           @id @default(cuid())
+  userId         String
+  service        String
+  environment    String           @default("production")
+  version        String?
+  status         DeploymentStatus @default(STARTED)
+  deployedBy     String?
+  commitSha      String?
+  commitMessage  String?
+  branch         String?
+  sourceUrl      String?
+  notes          String?
+  durationMs     Int?
+  monitorIds     String[]         @default([])
+  suppressAlerts Boolean          @default(false)
+  suppressUntil  DateTime?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, service])
+}
+
+/// Queued notification for digest delivery (hourly_digest / daily_digest frequency)
+model NotificationQueueItem {
+  id          String   @id @default(cuid())
+  userId      String
+  eventType   String   // 'down' | 'recovery' | 'degraded' | 'flapping'
+  monitorId   String?
+  monitorName String?
+  message     String
+  sentAt      DateTime? // null = not yet sent (pending)
+  createdAt   DateTime  @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, sentAt])
+  @@index([createdAt])
+}
+
+model IncidentPlaybook {
+  id            String   @id @default(cuid())
+  userId        String
+  name          String
+  description   String?
+  steps         Json
+  forSeverities String[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  monitors Monitor[] @relation("MonitorPlaybook")
+
+  @@index([userId])
 }

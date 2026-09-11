@@ -1,0 +1,204 @@
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Req,
+  HttpCode,
+  HttpStatus,
+  Headers,
+} from '@nestjs/common';
+import { ApiTags, ApiBearerAuth, ApiOperation, ApiResponse, ApiQuery } from '@nestjs/swagger';
+import { AuthGuard } from '../common/auth.guard';
+import { DeploymentsService } from './deployments.service';
+import { MonitorsService } from '../monitors/monitors.service';
+import { CreateDeploymentDto, UpdateDeploymentDto } from './deployments.dto';
+
+@ApiTags('deployments')
+@Controller('v1/deployments')
+export class DeploymentsController {
+  constructor(
+    private readonly svc: DeploymentsService,
+    private readonly monitorsService: MonitorsService,
+  ) {}
+
+  @Post()
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Create deployment event' })
+  create(@Req() req: { user: { id: string } }, @Body() dto: CreateDeploymentDto) {
+    return this.svc.create(req.user.id, dto);
+  }
+
+  @Get()
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List deployment events' })
+  @ApiQuery({ name: 'service', required: false })
+  @ApiQuery({ name: 'environment', required: false })
+  @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({ name: 'days', required: false, type: Number })
+  list(
+    @Req() req: { user: { id: string } },
+    @Query('service') service?: string,
+    @Query('environment') environment?: string,
+    @Query('status') status?: string,
+    @Query('days') days?: string,
+  ) {
+    return this.svc.list(req.user.id, {
+      service,
+      environment,
+      status,
+      days: days ? parseInt(days, 10) : 30,
+    });
+  }
+
+  // NOTE: Static routes (summary, by-monitor, token/generate) MUST be declared
+  // before parameterized routes (:id) to prevent NestJS route shadowing.
+
+  @Post('token/generate')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Generate a deploy token for CI/CD webhooks' })
+  generateToken(@Req() req: { user: { id: string } }) {
+    return this.svc.generateDeployToken(req.user.id);
+  }
+
+  @Get('summary')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Deployment activity summary (totals, success rate, top services)' })
+  @ApiQuery({ name: 'days', required: false, type: Number })
+  getSummary(
+    @Req() req: { user: { id: string } },
+    @Query('days') days?: string,
+  ) {
+    return this.svc.getSummary(req.user.id, days ? parseInt(days, 10) : 30);
+  }
+
+  @Get('by-monitor/:monitorId')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'List deployment events that include a specific monitor' })
+  @ApiQuery({ name: 'days', required: false, type: Number })
+  listByMonitor(
+    @Req() req: { user: { id: string } },
+    @Param('monitorId') monitorId: string,
+    @Query('days') days?: string,
+  ) {
+    return this.svc.listByMonitor(req.user.id, monitorId, days ? parseInt(days, 10) : 30);
+  }
+
+  @Get(':id')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get a deployment event' })
+  findOne(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.svc.findOne(req.user.id, id);
+  }
+
+  @Patch(':id')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Update a deployment event' })
+  update(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Body() dto: UpdateDeploymentDto,
+  ) {
+    return this.svc.update(req.user.id, id, dto);
+  }
+
+  @Delete(':id')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Delete a deployment event' })
+  remove(@Req() req: { user: { id: string } }, @Param('id') id: string) {
+    return this.svc.remove(req.user.id, id);
+  }
+
+  @Get(':id/monitor-impact/:monitorId')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Get latency impact of a deployment on a specific monitor (±30 min window)' })
+  @ApiResponse({ status: 200, description: 'Before/after latency comparison' })
+  getMonitorImpact(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+    @Param('monitorId') monitorId: string,
+  ) {
+    return this.svc.getMonitorImpact(req.user.id, monitorId, id);
+  }
+
+  @Post(':id/verify')
+  @UseGuards(AuthGuard)
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Run immediate health checks on all monitors linked to this deployment' })
+  @ApiResponse({ status: 200, description: 'Per-monitor check results' })
+  async verifyDeployment(
+    @Req() req: { user: { id: string } },
+    @Param('id') id: string,
+  ) {
+    const event = await this.svc.findOne(req.user.id, id);
+    const monitorIds: string[] = event.monitorIds ?? [];
+    if (monitorIds.length === 0) {
+      return { results: [], message: 'No monitors linked to this deployment' };
+    }
+    // Run checks concurrently (up to 10 monitors)
+    const results = await Promise.allSettled(
+      monitorIds.slice(0, 10).map(async (mid) => {
+        const run = await this.monitorsService.runNow(req.user.id, mid);
+        return { monitorId: mid, run };
+      }),
+    );
+    return {
+      deploymentId: id,
+      verifiedAt: new Date().toISOString(),
+      results: results.map((r, i) => {
+        if (r.status === 'fulfilled') {
+          const run = r.value.run as { ok?: boolean; level?: string; latencyMs?: number; message?: string; statusCode?: number } | null;
+          return {
+            monitorId: monitorIds[i],
+            ok: run?.ok ?? false,
+            level: run?.level ?? 'unknown',
+            latencyMs: run?.latencyMs ?? null,
+            message: run?.message ?? null,
+            statusCode: run?.statusCode ?? null,
+          };
+        }
+        return {
+          monitorId: monitorIds[i],
+          ok: false,
+          level: 'error',
+          latencyMs: null,
+          message: r.reason instanceof Error ? r.reason.message : 'Check failed',
+          statusCode: null,
+        };
+      }),
+    };
+  }
+}
+
+@ApiTags('public')
+@Controller('v1/public/deployments')
+export class PublicDeploymentsController {
+  constructor(private readonly svc: DeploymentsService) {}
+
+  @Post('receive')
+  @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Receive a deployment event from CI/CD (token-authenticated)' })
+  @ApiResponse({ status: 201, description: 'Deployment event created' })
+  @ApiResponse({ status: 401, description: 'Invalid deploy token' })
+  receive(
+    @Headers('x-deploy-token') deployToken: string,
+    @Body() dto: CreateDeploymentDto,
+  ) {
+    return this.svc.receiveWebhook(deployToken, dto);
+  }
+}

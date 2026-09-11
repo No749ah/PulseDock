@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+# Full heartbeat local validation pipeline (health + deploy + frontend audits).
+# Usage:
+#   ./scripts/heartbeat-check.sh
+#   ./scripts/heartbeat-check.sh --public
+#   ./scripts/heartbeat-check.sh --strict-auth
+#   ./scripts/heartbeat-check.sh --public --strict-auth
+
+set -euo pipefail
+
+CHECK_PUBLIC=false
+STRICT_AUTH=false
+
+for arg in "$@"; do
+  case "$arg" in
+    --public)
+      CHECK_PUBLIC=true
+      ;;
+    --strict-auth)
+      STRICT_AUTH=true
+      ;;
+    *)
+      echo "Unknown argument: $arg" >&2
+      echo "Usage: $0 [--public] [--strict-auth]" >&2
+      exit 1
+      ;;
+  esac
+done
+
+GREEN='\033[0;32m'; CYAN='\033[0;36m'; BOLD='\033[1m'; RESET='\033[0m'
+
+ensure_required_commands() {
+  local missing=()
+  local required=(git npm date)
+
+  for cmd in "${required[@]}"; do
+    if ! command -v "${cmd}" >/dev/null 2>&1; then
+      missing+=("${cmd}")
+    fi
+  done
+
+  if [[ "${#missing[@]}" -gt 0 ]]; then
+    echo "Missing required command(s): ${missing[*]}. Install dependencies before running heartbeat checks." >&2
+    exit 1
+  fi
+}
+
+run_step() {
+  local label="$1"
+  shift
+  echo -e "\n${BOLD}${CYAN}==> ${label}${RESET}"
+  "$@"
+  echo -e "${GREEN}✓ ${label}${RESET}"
+}
+
+ensure_safe_branch() {
+  if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    echo "Not inside a git repository. Run this script from the PulseDock repo root." >&2
+    exit 1
+  fi
+
+  local branch
+  branch=$(git branch --show-current)
+
+  if [[ -z "$branch" ]]; then
+    echo "Detached HEAD is not allowed for heartbeat checks. Switch to a heartbeat/* branch first." >&2
+    exit 1
+  fi
+
+  if [[ "$branch" == "main" || "$branch" == "dev" ]]; then
+    echo "Heartbeat checks must run from a heartbeat/* branch, not '$branch'." >&2
+    exit 1
+  fi
+
+  if [[ "$branch" != heartbeat/* ]]; then
+    echo "Heartbeat checks must run from a heartbeat/* branch. Current: '$branch'." >&2
+    exit 1
+  fi
+}
+
+echo -e "${BOLD}PulseDock Heartbeat Check $(date -u '+%Y-%m-%d %H:%M UTC')${RESET}"
+
+run_step "Dependency check" ensure_required_commands
+run_step "Branch safety check" ensure_safe_branch
+run_step "Environment bootstrap" npm run heartbeat:bootstrap
+run_step "Health check (git pull + build/test/audit tails)" npm run heartbeat:health
+
+if $CHECK_PUBLIC && $STRICT_AUTH; then
+  run_step "Post-deploy audit (local + public, strict auth)" npm run audit:deploy:strict:prod
+elif $CHECK_PUBLIC; then
+  run_step "Post-deploy audit (local + public)" npm run audit:deploy:prod
+elif $STRICT_AUTH; then
+  run_step "Post-deploy audit (local, strict auth)" npm run audit:deploy:strict
+else
+  run_step "Post-deploy audit (local)" npm run audit:deploy
+fi
+
+if $CHECK_PUBLIC; then
+  run_step "Frontend route audit (local + public)" npm run audit:frontend:prod
+  run_step "Frontend HEAD curl audit (local + public)" npm run audit:frontend:heads:prod
+else
+  run_step "Frontend route audit (local)" npm run audit:frontend
+  run_step "Frontend HEAD curl audit (local)" npm run audit:frontend:heads
+fi
+
+run_step "Backlog status-summary prune" npm run backlog:prune
+
+echo -e "\n${GREEN}${BOLD}Heartbeat check complete.${RESET}"

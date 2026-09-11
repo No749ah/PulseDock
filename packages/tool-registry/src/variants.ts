@@ -1,0 +1,16873 @@
+/**
+ * Tool Variant Definitions
+ *
+ * Platform/edition variants for tools that have multiple deployment types
+ * (OSS/EE, CE/EE, Docker/Kubernetes/Cloud, etc.).
+ *
+ * Variants override or supplement the base registry entry fields when a
+ * user selects a specific platform in the setup UI. This enables accurate
+ * version endpoint auto-configuration per deployment type.
+ *
+ * Format: Map<toolId, ToolVariant[]>
+ *
+ * Evidence policy: each variant must reference its endpoint docs via evidenceUrl.
+ */
+
+import type { ToolVariant } from './types';
+
+export const TOOL_VARIANTS: Record<string, ToolVariant[]> = {
+
+  'gitlab-ce': [
+    {
+      id: 'ce',
+      label: 'Community Edition (CE / Self-Hosted)',
+      description: 'GitLab CE running on your own server. Requires admin API token to fetch version.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://gitlab.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v4/version',
+        jsonPath: '$.version',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'gitlab-releases',
+        target: 'gitlab-org/gitlab-foss',
+        host: 'gitlab.com',
+      },
+      evidenceUrl: 'https://docs.gitlab.com/ee/api/version.html',
+    },
+    {
+      id: 'ee',
+      label: 'Enterprise Edition (EE / Self-Hosted)',
+      description: 'GitLab EE on your own server. Same version API as CE.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://gitlab.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v4/version',
+        jsonPath: '$.version',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'gitlabhq/gitlabhq',
+      },
+      evidenceUrl: 'https://docs.gitlab.com/ee/api/version.html',
+    },
+    {
+      id: 'cloud',
+      label: 'GitLab.com (Cloud)',
+      description: 'GitLab SaaS — tracks upstream release version via GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      latestSource: {
+        type: 'github-releases',
+        target: 'gitlabhq/gitlabhq',
+      },
+      versionSource: {
+        type: 'github-releases',
+        target: 'gitlabhq/gitlabhq',
+      },
+      evidenceUrl: 'https://gitlab.com/gitlab-org/gitlab/-/releases',
+    },
+  ],
+
+  'grafana': [
+    {
+      id: 'oss',
+      label: 'Grafana OSS (Self-Hosted)',
+      description: 'Open-source Grafana running locally or on a server. Version available unauthenticated.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://grafana.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health', '/api/v1/health'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'grafana/grafana',
+      },
+      evidenceUrl: 'https://grafana.com/docs/grafana/latest/developers/http_api/other/#health-api',
+    },
+    {
+      id: 'enterprise',
+      label: 'Grafana Enterprise (Self-Hosted)',
+      description: 'Grafana Enterprise — same API endpoints, may require auth.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://grafana.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'grafana/grafana',
+      },
+      evidenceUrl: 'https://grafana.com/docs/grafana/latest/developers/http_api/other/#health-api',
+    },
+    {
+      id: 'cloud',
+      label: 'Grafana Cloud',
+      description: 'Grafana Cloud — tracks latest OSS release; no instance URL needed.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: {
+        type: 'github-releases',
+        target: 'grafana/grafana',
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'grafana/grafana',
+      },
+      evidenceUrl: 'https://github.com/grafana/grafana/releases',
+    },
+  ],
+
+  'prometheus': [
+    {
+      id: 'standalone',
+      label: 'Prometheus (Standalone)',
+      description: 'Standard Prometheus server. Version available unauthenticated at /api/v1/status/buildinfo.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://prometheus.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/status/buildinfo',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/status/buildinfo', '/status'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'prometheus/prometheus',
+      },
+      evidenceUrl: 'https://prometheus.io/docs/prometheus/latest/querying/api/#build-information',
+    },
+    {
+      id: 'kubernetes',
+      label: 'Prometheus (Kubernetes / kube-prometheus-stack)',
+      description: 'Prometheus deployed via kube-prometheus-stack Helm chart. Typically behind ingress with auth.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://prometheus.k8s.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/status/buildinfo',
+        jsonPath: '$.data.version',
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/status/buildinfo'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'prometheus/prometheus',
+      },
+      evidenceUrl: 'https://prometheus.io/docs/prometheus/latest/querying/api/#build-information',
+      tags: ['kubernetes', 'helm', 'kube-prometheus'],
+    },
+  ],
+
+  'portainer': [
+    {
+      id: 'ce',
+      label: 'Portainer CE (Community Edition)',
+      description: 'Free, open-source. Version at /api/system/version (no auth required on newer builds).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://portainer.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/system/version',
+        jsonPath: '$.ServerVersion',
+        jsonPathExtractors: ['ServerVersion', 'server'],
+        authRequired: false,
+        endpointFallbacks: ['/api/system/version', '/api/status'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'portainer/portainer',
+      },
+      evidenceUrl: 'https://docs.portainer.io/api/docs#tag/System/operation/SystemVersion',
+    },
+    {
+      id: 'be',
+      label: 'Portainer Business Edition (BE/EE)',
+      description: 'Commercial version — same API endpoints, may require auth token.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://portainer.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/system/version',
+        jsonPath: '$.ServerVersion',
+        authRequired: true,
+        endpointFallbacks: ['/api/system/version', '/api/status'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'portainer/portainer',
+      },
+      evidenceUrl: 'https://docs.portainer.io/api/docs#tag/System/operation/SystemVersion',
+    },
+  ],
+
+  'keycloak': [
+    {
+      id: 'quarkus',
+      label: 'Keycloak (Quarkus / v17+)',
+      description: 'Modern Keycloak (v17+) — /admin/serverinfo requires admin token.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://keycloak.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/admin/serverinfo',
+        jsonPath: '$.systemInfo.version',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'keycloak/keycloak',
+      },
+      evidenceUrl: 'https://www.keycloak.org/docs-api/latest/rest-api/#_serverinforepresentation',
+    },
+    {
+      id: 'wildfly',
+      label: 'Keycloak (Wildfly / v16 and earlier)',
+      description: 'Legacy Keycloak on Wildfly. Uses /auth prefix.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://keycloak.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/auth/admin/serverinfo',
+        jsonPath: '$.systemInfo.version',
+        authRequired: true,
+        endpointFallbacks: ['/auth/admin/serverinfo', '/admin/serverinfo'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'keycloak/keycloak',
+      },
+      evidenceUrl: 'https://www.keycloak.org/docs-api/latest/rest-api/#_serverinforepresentation',
+    },
+  ],
+
+  'authentik': [
+    {
+      id: 'docker-compose',
+      label: 'Authentik (Docker Compose)',
+      description: 'Standard Docker Compose deployment. Requires API token.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://authentik.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/-/api/v3/admin/version/',
+        jsonPath: '$.version_current',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'goauthentik/authentik',
+      },
+      evidenceUrl: 'https://docs.goauthentik.io/developer-docs/api/reference/admin-version-retrieve/',
+    },
+    {
+      id: 'kubernetes',
+      label: 'Authentik (Kubernetes / Helm)',
+      description: 'Helm chart deployment — same API, typically behind ingress.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://authentik.k8s.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/-/api/v3/admin/version/',
+        jsonPath: '$.version_current',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'goauthentik/authentik',
+      },
+      evidenceUrl: 'https://docs.goauthentik.io/developer-docs/api/reference/admin-version-retrieve/',
+      tags: ['kubernetes', 'helm'],
+    },
+  ],
+
+  'vault': [
+    {
+      id: 'oss',
+      label: 'HashiCorp Vault OSS',
+      description: 'Open-source Vault. /v1/sys/health returns version unauthenticated.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://vault.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/sys/health',
+        jsonPath: '$.version',
+        authRequired: false,
+        endpointFallbacks: ['/v1/sys/health', '/v1/sys/seal-status'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'hashicorp/vault',
+      },
+      evidenceUrl: 'https://developer.hashicorp.com/vault/api-docs/system/health',
+    },
+    {
+      id: 'enterprise',
+      label: 'HashiCorp Vault Enterprise',
+      description: 'Vault Enterprise — same health endpoint, returns "+ent" version suffix.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://vault.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/sys/health',
+        jsonPath: '$.version',
+        authRequired: false,
+        endpointFallbacks: ['/v1/sys/health'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'hashicorp/vault',
+      },
+      evidenceUrl: 'https://developer.hashicorp.com/vault/api-docs/system/health',
+    },
+    {
+      id: 'kubernetes',
+      label: 'HashiCorp Vault (Kubernetes / Helm)',
+      description: 'Vault deployed via Helm. May be behind ingress/auth proxy.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://vault.k8s.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/sys/health',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'hashicorp/vault',
+      },
+      evidenceUrl: 'https://developer.hashicorp.com/vault/api-docs/system/health',
+      tags: ['kubernetes', 'helm'],
+    },
+  ],
+
+  'gitea': [
+    {
+      id: 'standalone',
+      label: 'Gitea (Standalone)',
+      description: 'Single-server Gitea deployment. Version endpoint is public.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://gitea.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/version'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'go-gitea/gitea',
+      },
+      evidenceUrl: 'https://gitea.com/api/swagger#tag/miscellaneous/operation/getVersion',
+    },
+    {
+      id: 'docker',
+      label: 'Gitea (Docker)',
+      description: 'Running via Docker or Docker Compose. Same API as standalone.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://gitea.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'docker-hub',
+        target: 'gitea/gitea',
+      },
+      evidenceUrl: 'https://gitea.com/api/swagger#tag/miscellaneous/operation/getVersion',
+      tags: ['docker'],
+    },
+  ],
+
+  'argocd': [
+    {
+      id: 'standalone',
+      label: 'ArgoCD (Kubernetes)',
+      description: 'Standard ArgoCD deployment on Kubernetes. Version at /api/version (no auth).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://argocd.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.Version',
+        jsonPathExtractors: ['Version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version', '/api/v1/version'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'argoproj/argo-cd',
+      },
+      evidenceUrl: 'https://argo-cd.readthedocs.io/en/stable/developer-guide/api-docs/',
+    },
+    {
+      id: 'core',
+      label: 'ArgoCD Core (no UI)',
+      description: 'ArgoCD Core mode — API server may be disabled; track via GitHub releases only.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: {
+        type: 'github-releases',
+        target: 'argoproj/argo-cd',
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'argoproj/argo-cd',
+      },
+      evidenceUrl: 'https://github.com/argoproj/argo-cd/releases',
+    },
+  ],
+
+  'nextcloud': [
+    {
+      id: 'docker',
+      label: 'Nextcloud (Docker / Apache)',
+      description: 'Standard Docker deployment. Status endpoint available unauthenticated.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://nextcloud.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/status.php',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version', 'versionstring'],
+        authRequired: false,
+        endpointFallbacks: ['/status.php', '/ocs/v2.php/apps/serverinfo/api/v1/info'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'nextcloud/server',
+      },
+      evidenceUrl: 'https://docs.nextcloud.com/server/latest/developer_manual/client_apis/OCS/ocs-status-api.html',
+    },
+    {
+      id: 'snap',
+      label: 'Nextcloud (Snap)',
+      description: 'Nextcloud Snap package — same HTTP API, different install path.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://nextcloud.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/status.php',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'nextcloud/server',
+      },
+      evidenceUrl: 'https://docs.nextcloud.com/server/latest/developer_manual/client_apis/OCS/ocs-status-api.html',
+    },
+  ],
+
+  'mattermost': [
+    {
+      id: 'self-hosted',
+      label: 'Mattermost (Self-Hosted / Team Edition)',
+      description: 'Free self-hosted. /api/v4/system/ping returns version.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://mattermost.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v4/system/ping',
+        jsonPath: '$.server_version',
+        authRequired: false,
+        endpointFallbacks: ['/api/v4/system/ping', '/api/v4/config/client'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'mattermost/mattermost',
+      },
+      evidenceUrl: 'https://api.mattermost.com/#tag/system/operation/GetPing',
+    },
+    {
+      id: 'enterprise',
+      label: 'Mattermost Enterprise Edition (E0/E10/E20)',
+      description: 'Enterprise Mattermost — same API, may require token for full access.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://mattermost.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v4/system/ping',
+        jsonPath: '$.server_version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'mattermost/mattermost',
+      },
+      evidenceUrl: 'https://api.mattermost.com/#tag/system/operation/GetPing',
+    },
+  ],
+
+  'jellyfin': [
+    {
+      id: 'docker',
+      label: 'Jellyfin (Docker)',
+      description: 'Docker deployment. System info endpoint available without auth.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://jellyfin.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/System/Info/Public',
+        jsonPath: '$.Version',
+        jsonPathExtractors: ['Version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/System/Info/Public', '/health'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'jellyfin/jellyfin',
+      },
+      evidenceUrl: 'https://api.jellyfin.org/#tag/System/operation/GetPublicSystemInfo',
+    },
+    {
+      id: 'linuxserver',
+      label: 'Jellyfin (LinuxServer.io image)',
+      description: 'LinuxServer.io Docker image — same API, may include extra mods.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://jellyfin.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/System/Info/Public',
+        jsonPath: '$.Version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'docker-hub',
+        target: 'linuxserver/jellyfin',
+      },
+      evidenceUrl: 'https://api.jellyfin.org/#tag/System/operation/GetPublicSystemInfo',
+      tags: ['linuxserver', 'docker'],
+    },
+  ],
+
+  'minio': [
+    {
+      id: 'standalone',
+      label: 'MinIO (Standalone / Single Node)',
+      description: 'Single-node MinIO. Version at /minio/health/live and via mc admin info.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://minio.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/minio/health/cluster',
+        jsonPath: '$.WriteQuorum',
+        authRequired: false,
+        endpointFallbacks: ['/minio/health/live', '/minio/health/cluster'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'minio/minio',
+      },
+      evidenceUrl: 'https://min.io/docs/minio/linux/reference/minio-server/minio-server.html#health-check',
+    },
+    {
+      id: 'distributed',
+      label: 'MinIO (Distributed / Multi-Node)',
+      description: 'Multi-node MinIO cluster. Same API endpoints.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://minio.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/minio/health/cluster',
+        jsonPath: '$.WriteQuorum',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'minio/minio',
+      },
+      evidenceUrl: 'https://min.io/docs/minio/linux/reference/minio-server/minio-server.html#health-check',
+      tags: ['distributed', 'cluster'],
+    },
+    {
+      id: 'kubernetes',
+      label: 'MinIO (Kubernetes Operator)',
+      description: 'MinIO Operator on Kubernetes. Uses Operator Console for management.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://minio-console.k8s.example.com',
+      versionSource: {
+        type: 'github-releases',
+        target: 'minio/minio',
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'minio/minio',
+      },
+      evidenceUrl: 'https://github.com/minio/minio/releases',
+      tags: ['kubernetes', 'operator'],
+    },
+  ],
+
+  'n8n': [
+    {
+      id: 'docker',
+      label: 'n8n (Docker / Self-Hosted)',
+      description: 'Self-hosted n8n via Docker. Version at /healthz.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://n8n.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/healthz',
+        jsonPath: '$.runningMode',
+        authRequired: false,
+        endpointFallbacks: ['/healthz', '/api/v1/info'],
+      },
+      latestSource: {
+        type: 'npm-registry',
+        target: 'n8n',
+      },
+      evidenceUrl: 'https://docs.n8n.io/api/',
+      tags: ['docker'],
+    },
+    {
+      id: 'npm',
+      label: 'n8n (npm / Node.js)',
+      description: 'n8n installed globally via npm.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://n8n.example.com',
+      versionSource: {
+        type: 'npm-registry',
+        target: 'n8n',
+      },
+      latestSource: {
+        type: 'npm-registry',
+        target: 'n8n',
+      },
+      evidenceUrl: 'https://www.npmjs.com/package/n8n',
+    },
+    {
+      id: 'cloud',
+      label: 'n8n Cloud',
+      description: 'n8n managed cloud — tracks latest npm release.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: {
+        type: 'npm-registry',
+        target: 'n8n',
+      },
+      latestSource: {
+        type: 'npm-registry',
+        target: 'n8n',
+      },
+      evidenceUrl: 'https://www.npmjs.com/package/n8n',
+    },
+  ],
+
+  'home-assistant': [
+    {
+      id: 'haos',
+      label: 'Home Assistant OS (HAOS)',
+      description: 'Full Home Assistant OS. Version at /api/config (requires long-lived token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://homeassistant.local:8123',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/config',
+        jsonPath: '$.version',
+        authRequired: true,
+        endpointFallbacks: ['/api/config', '/api/'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'home-assistant/core',
+      },
+      evidenceUrl: 'https://developers.home-assistant.io/docs/api/rest/',
+    },
+    {
+      id: 'container',
+      label: 'Home Assistant Container (Docker)',
+      description: 'Docker container mode. Same API, no Supervisor.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://homeassistant.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/config',
+        jsonPath: '$.version',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'home-assistant/core',
+      },
+      evidenceUrl: 'https://developers.home-assistant.io/docs/api/rest/',
+      tags: ['docker'],
+    },
+    {
+      id: 'supervised',
+      label: 'Home Assistant Supervised',
+      description: 'Supervised install with Supervisor on generic Linux.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://homeassistant.example.com:8123',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/config',
+        jsonPath: '$.version',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'home-assistant/core',
+      },
+      evidenceUrl: 'https://developers.home-assistant.io/docs/api/rest/',
+    },
+  ],
+
+  'wordpress': [
+    {
+      id: 'docker',
+      label: 'WordPress (Docker / Self-Hosted)',
+      description: 'Self-hosted WordPress via Docker or LAMP stack. No auth needed for WP REST API.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://wordpress.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/wp-json',
+        jsonPath: '$.namespaces.0',
+        authRequired: false,
+        endpointFallbacks: ['/wp-json', '/?rest_route=/'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'WordPress/WordPress',
+      },
+      evidenceUrl: 'https://developer.wordpress.org/rest-api/',
+    },
+    {
+      id: 'multisite',
+      label: 'WordPress Multisite',
+      description: 'WordPress Multisite network. Same REST API per site.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://wordpress.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/wp-json',
+        jsonPath: '$.namespaces.0',
+        authRequired: false,
+        endpointFallbacks: ['/wp-json'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'WordPress/WordPress',
+      },
+      evidenceUrl: 'https://developer.wordpress.org/rest-api/',
+      tags: ['multisite'],
+    },
+    {
+      id: 'cloud',
+      label: 'WP Engine / WordPress.com (Cloud)',
+      description: 'Managed WordPress hosting — tracks upstream release via GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: {
+        type: 'github-releases',
+        target: 'WordPress/WordPress',
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'WordPress/WordPress',
+      },
+      evidenceUrl: 'https://github.com/WordPress/WordPress/releases',
+    },
+  ],
+
+  'traefik': [
+    {
+      id: 'docker',
+      label: 'Traefik (Docker / Standalone)',
+      description: 'Traefik running as a Docker container. Version API available unauthenticated.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://traefik.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.Version',
+        jsonPathExtractors: ['Version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version', '/api/overview'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'traefik/traefik',
+      },
+      evidenceUrl: 'https://doc.traefik.io/traefik/operations/api/#version',
+    },
+    {
+      id: 'kubernetes',
+      label: 'Traefik (Kubernetes Ingress)',
+      description: 'Traefik deployed as Kubernetes ingress controller. API may require auth depending on exposure.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://traefik.k8s.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.Version',
+        authRequired: false,
+        endpointFallbacks: ['/api/version', '/api/overview'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'traefik/traefik',
+      },
+      evidenceUrl: 'https://doc.traefik.io/traefik/operations/api/#version',
+      tags: ['kubernetes', 'ingress'],
+    },
+  ],
+
+  'forgejo': [
+    {
+      id: 'standalone',
+      label: 'Forgejo (Standalone)',
+      description: 'Self-hosted Forgejo instance. Version endpoint is public (same API as Gitea).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://forgejo.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/version'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'forgejo/forgejo',
+      },
+      evidenceUrl: 'https://codeberg.org/forgejo/forgejo',
+    },
+    {
+      id: 'docker',
+      label: 'Forgejo (Docker)',
+      description: 'Forgejo running via Docker or Docker Compose. Same API as standalone.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://forgejo.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'forgejo/forgejo',
+      },
+      evidenceUrl: 'https://codeberg.org/forgejo/forgejo',
+      tags: ['docker'],
+    },
+  ],
+
+  'sonarqube': [
+    {
+      id: 'community',
+      label: 'SonarQube Community Edition (CE)',
+      description: 'Free CE edition. /api/server/version returns plain text version string.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://sonarqube.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/server/version',
+        jsonPath: '',
+        authRequired: false,
+        endpointFallbacks: ['/api/server/version', '/api/system/status'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'SonarSource/sonarqube',
+      },
+      evidenceUrl: 'https://docs.sonarsource.com/sonarqube/latest/extension-guide/web-api/',
+    },
+    {
+      id: 'developer',
+      label: 'SonarQube Developer Edition (DE)',
+      description: 'Paid Developer Edition — same API endpoint, may require auth token.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://sonarqube.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/server/version',
+        jsonPath: '',
+        authRequired: false,
+        endpointFallbacks: ['/api/server/version'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'SonarSource/sonarqube',
+      },
+      evidenceUrl: 'https://docs.sonarsource.com/sonarqube/latest/extension-guide/web-api/',
+    },
+    {
+      id: 'enterprise',
+      label: 'SonarQube Enterprise Edition (EE) / DCE',
+      description: 'Enterprise or Data Center Edition — same version API, auth typically required.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://sonarqube.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/server/version',
+        jsonPath: '',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'SonarSource/sonarqube',
+      },
+      evidenceUrl: 'https://docs.sonarsource.com/sonarqube/latest/extension-guide/web-api/',
+    },
+    {
+      id: 'cloud',
+      label: 'SonarQube Cloud (SonarCloud)',
+      description: 'Managed cloud offering — tracks upstream release via GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: {
+        type: 'github-releases',
+        target: 'SonarSource/sonarqube',
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'SonarSource/sonarqube',
+      },
+      evidenceUrl: 'https://github.com/SonarSource/sonarqube/releases',
+    },
+  ],
+
+  'uptime-kuma': [
+    {
+      id: 'docker',
+      label: 'Uptime Kuma (Docker)',
+      description: 'Docker deployment. No public unauthenticated version endpoint — tracks via GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://uptime.example.com',
+      versionSource: {
+        type: 'github-releases',
+        target: 'louislam/uptime-kuma',
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'louislam/uptime-kuma',
+      },
+      evidenceUrl: 'https://github.com/louislam/uptime-kuma/releases',
+      tags: ['docker'],
+    },
+    {
+      id: 'npm',
+      label: 'Uptime Kuma (npm / Node.js)',
+      description: 'Installed via npm. Tracks upstream release via GitHub.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://uptime.example.com',
+      versionSource: {
+        type: 'github-releases',
+        target: 'louislam/uptime-kuma',
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'louislam/uptime-kuma',
+      },
+      evidenceUrl: 'https://github.com/louislam/uptime-kuma/releases',
+    },
+  ],
+
+  'immich': [
+    {
+      id: 'docker',
+      label: 'Immich (Docker Compose)',
+      description: 'Standard Docker Compose deployment. Version at /api/server/about (no auth).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://immich.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/server/about',
+        jsonPath: '$.version',
+        authRequired: false,
+        endpointFallbacks: ['/api/server/about', '/api/server-info/about'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'immich-app/immich',
+      },
+      evidenceUrl: 'https://immich.app/docs/api/',
+      tags: ['docker'],
+    },
+    {
+      id: 'kubernetes',
+      label: 'Immich (Kubernetes / Helm)',
+      description: 'Helm chart deployment on Kubernetes. Same API endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://immich.k8s.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/server/about',
+        jsonPath: '$.version',
+        authRequired: false,
+        endpointFallbacks: ['/api/server/about', '/api/server-info/about'],
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'immich-app/immich',
+      },
+      evidenceUrl: 'https://immich.app/docs/api/',
+      tags: ['kubernetes', 'helm'],
+    },
+  ],
+
+  'ghost': [
+    {
+      id: 'self-hosted',
+      label: 'Ghost (Self-Hosted)',
+      description: 'Self-hosted Ghost via Ghost CLI or Docker. Tracks release via GitHub.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://ghost.example.com',
+      versionSource: {
+        type: 'github-releases',
+        target: 'TryGhost/Ghost',
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'TryGhost/Ghost',
+      },
+      evidenceUrl: 'https://ghost.org/docs/api/',
+      tags: ['docker'],
+    },
+    {
+      id: 'ghost-pro',
+      label: 'Ghost Pro (Cloud)',
+      description: 'Managed Ghost Pro hosting — tracks upstream release via GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: {
+        type: 'github-releases',
+        target: 'TryGhost/Ghost',
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'TryGhost/Ghost',
+      },
+      evidenceUrl: 'https://github.com/TryGhost/Ghost/releases',
+    },
+  ],
+
+  'plausible': [
+    {
+      id: 'self-hosted',
+      label: 'Plausible (Self-Hosted)',
+      description: 'Self-hosted Plausible Analytics. No public version endpoint — tracks upstream release via GitHub.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://plausible.example.com',
+      versionSource: {
+        type: 'github-releases',
+        target: 'plausible/analytics',
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'plausible/analytics',
+      },
+      evidenceUrl: 'https://github.com/plausible/analytics/releases',
+    },
+    {
+      id: 'cloud',
+      label: 'Plausible Cloud',
+      description: 'Managed Plausible Cloud — tracks upstream release via GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: {
+        type: 'github-releases',
+        target: 'plausible/analytics',
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'plausible/analytics',
+      },
+      evidenceUrl: 'https://github.com/plausible/analytics/releases',
+    },
+  ],
+
+  'jenkins': [
+    {
+      id: 'war',
+      label: 'Standalone WAR / Bare-metal',
+      description: 'Jenkins running as a standalone WAR or system service on a server.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://jenkins.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/json?tree=version',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'jenkinsci/jenkins',
+      },
+      evidenceUrl: 'https://www.jenkins.io/doc/book/using/remote-access-api/',
+    },
+    {
+      id: 'docker',
+      label: 'Docker Container',
+      description: 'Jenkins running in a Docker container (official jenkins/jenkins image).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://jenkins.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/json?tree=version',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'docker-hub',
+        target: 'jenkins/jenkins',
+      },
+      evidenceUrl: 'https://hub.docker.com/r/jenkins/jenkins',
+    },
+  ],
+
+  'elasticsearch': [
+    {
+      id: 'self-hosted',
+      label: 'Self-Hosted (Bare-metal / VM)',
+      description: 'Elasticsearch running on your own server.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://elasticsearch.example.com:9200',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/',
+        jsonPath: '$.version.number',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'elastic/elasticsearch',
+      },
+      evidenceUrl: 'https://www.elastic.co/guide/en/elasticsearch/reference/current/rest-api.html',
+    },
+    {
+      id: 'docker',
+      label: 'Docker / Docker Compose',
+      description: 'Elasticsearch running in a Docker container.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://localhost:9200',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/',
+        jsonPath: '$.version.number',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'docker-hub',
+        target: 'elastic/elasticsearch',
+      },
+      evidenceUrl: 'https://hub.docker.com/r/elastic/elasticsearch',
+    },
+  ],
+
+  'vaultwarden': [
+    {
+      id: 'docker',
+      label: 'Docker (vaultwarden/server)',
+      description: 'Vaultwarden (Bitwarden-compatible server) running via Docker.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://vault.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/alive',
+        jsonPath: undefined,
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'dani-garcia/vaultwarden',
+      },
+      evidenceUrl: 'https://github.com/dani-garcia/vaultwarden/wiki',
+    },
+    {
+      id: 'docker-compose',
+      label: 'Docker Compose',
+      description: 'Vaultwarden deployed via Docker Compose with optional reverse proxy.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://vault.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/alive',
+        jsonPath: undefined,
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'dani-garcia/vaultwarden',
+      },
+      evidenceUrl: 'https://github.com/dani-garcia/vaultwarden/wiki/Using-Docker-Compose',
+    },
+  ],
+
+  'nginx-proxy-manager': [
+    {
+      id: 'docker',
+      label: 'Docker (official image)',
+      description: 'Nginx Proxy Manager running via Docker Compose.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://npm.example.com:81',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/',
+        jsonPath: undefined,
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'NginxProxyManager/nginx-proxy-manager',
+      },
+      evidenceUrl: 'https://nginxproxymanager.com/setup/',
+    },
+  ],
+
+  'pihole': [
+    {
+      id: 'docker',
+      label: 'Docker (pihole/pihole)',
+      description: 'Pi-hole running in a Docker container.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://pihole.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/admin/api.php?versions',
+        jsonPath: '$.core_current',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'docker-hub',
+        target: 'pihole/pihole',
+      },
+      evidenceUrl: 'https://docs.pi-hole.net/api/',
+    },
+    {
+      id: 'native',
+      label: 'Native (Raspberry Pi / Linux)',
+      description: 'Pi-hole installed natively on Raspberry Pi or Linux.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://pi.hole',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/admin/api.php?versions',
+        jsonPath: '$.core_current',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'pi-hole/pi-hole',
+      },
+      evidenceUrl: 'https://docs.pi-hole.net/api/',
+    },
+  ],
+
+  'adguard-home': [
+    {
+      id: 'docker',
+      label: 'Docker (adguard/adguardhome)',
+      description: 'AdGuard Home running in a Docker container.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://adguard.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/control/status',
+        jsonPath: '$.version',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'AdguardTeam/AdGuardHome',
+      },
+      evidenceUrl: 'https://adguard-dns.io/kb/adguard-home/api/',
+    },
+    {
+      id: 'native',
+      label: 'Native Binary',
+      description: 'AdGuard Home installed as a native binary on Linux/macOS.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://192.168.1.1:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/control/status',
+        jsonPath: '$.version',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'AdguardTeam/AdGuardHome',
+      },
+      evidenceUrl: 'https://github.com/AdguardTeam/AdGuardHome/wiki/Getting-Started',
+    },
+  ],
+
+  'syncthing': [
+    {
+      id: 'docker',
+      label: 'Docker (syncthing/syncthing)',
+      description: 'Syncthing running in a Docker container.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://syncthing.example.com:8384',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/rest/system/version',
+        jsonPath: '$.version',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'syncthing/syncthing',
+      },
+      evidenceUrl: 'https://docs.syncthing.net/dev/rest.html',
+    },
+    {
+      id: 'native',
+      label: 'Native Binary',
+      description: 'Syncthing installed natively on Linux, macOS, or Windows.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://localhost:8384',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/rest/system/version',
+        jsonPath: '$.version',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'syncthing/syncthing',
+      },
+      evidenceUrl: 'https://docs.syncthing.net/dev/rest.html#system-endpoints',
+    },
+  ],
+
+  'meilisearch': [
+    {
+      id: 'docker',
+      label: 'Docker (getmeili/meilisearch)',
+      description: 'Meilisearch running in a Docker container.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://meilisearch.example.com:7700',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.pkgVersion',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'meilisearch/meilisearch',
+      },
+      evidenceUrl: 'https://www.meilisearch.com/docs/reference/api/version',
+    },
+    {
+      id: 'cloud',
+      label: 'Meilisearch Cloud',
+      description: 'Meilisearch hosted on Meilisearch Cloud (cloud.meilisearch.com).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://your-project.meilisearch.io',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.pkgVersion',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'meilisearch/meilisearch',
+      },
+      evidenceUrl: 'https://www.meilisearch.com/docs/reference/api/version',
+    },
+  ],
+
+  'influxdb': [
+    {
+      id: 'v2-docker',
+      label: 'InfluxDB v2 — Docker',
+      description: 'InfluxDB v2 (Flux query language) running in Docker.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://influxdb.example.com:8086',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/health',
+        jsonPath: undefined,
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'docker-hub',
+        target: 'influxdb',
+      },
+      evidenceUrl: 'https://docs.influxdata.com/influxdb/v2/api/',
+    },
+    {
+      id: 'v1-docker',
+      label: 'InfluxDB v1 — Docker',
+      description: 'InfluxDB v1.x (InfluxQL query language) running in Docker.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://influxdb.example.com:8086',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/ping',
+        jsonPath: undefined,
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'docker-hub',
+        target: 'influxdb',
+      },
+      evidenceUrl: 'https://docs.influxdata.com/influxdb/v1/tools/api/',
+    },
+  ],
+
+  'plex': [
+    {
+      id: 'docker',
+      label: 'Docker (plexinc/pms-docker)',
+      description: 'Plex Media Server running in a Docker container.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://plex.example.com:32400',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/identity',
+        jsonPath: '$.MediaContainer.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'json-path',
+        urlTemplate: 'https://plex.tv/api/downloads/5.json',
+        jsonPath: '$.computer.Linux.version',
+        authRequired: false,
+      },
+      evidenceUrl: 'https://www.plexopedia.com/plex-media-server/api/server/identity/',
+    },
+    {
+      id: 'native',
+      label: 'Native Install (Linux/Windows/macOS)',
+      description: 'Plex Media Server installed natively on the host OS.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://localhost:32400',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/identity',
+        jsonPath: '$.MediaContainer.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'json-path',
+        urlTemplate: 'https://plex.tv/api/downloads/5.json',
+        jsonPath: '$.computer.Linux.version',
+        authRequired: false,
+      },
+      evidenceUrl: 'https://www.plexopedia.com/plex-media-server/api/server/identity/',
+    },
+  ],
+
+  'netdata': [
+    {
+      id: 'docker',
+      label: 'Docker (netdata/netdata)',
+      description: 'Netdata real-time monitoring running in Docker.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://netdata.example.com:19999',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/info',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'netdata/netdata',
+      },
+      evidenceUrl: 'https://learn.netdata.cloud/docs/agent/web/api',
+    },
+    {
+      id: 'native',
+      label: 'Native (systemd service)',
+      description: 'Netdata installed natively as a system service.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://localhost:19999',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/info',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'netdata/netdata',
+      },
+      evidenceUrl: 'https://learn.netdata.cloud/docs/agent/web/api',
+    },
+  ],
+
+  'gogs': [
+    {
+      id: 'docker',
+      label: 'Docker (gogs/gogs)',
+      description: 'Gogs self-hosted Git service running in Docker.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://gogs.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'gogs/gogs',
+      },
+      evidenceUrl: 'https://github.com/gogs/go-gogs-client/wiki/Administration-Miscellaneous',
+    },
+    {
+      id: 'native',
+      label: 'Native Binary',
+      description: 'Gogs running as a native binary on Linux.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://gogs.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'gogs/gogs',
+      },
+      evidenceUrl: 'https://gogs.io/docs/installation',
+    },
+  ],
+
+  'rancher': [
+    {
+      id: 'docker',
+      label: 'Docker (rancher/rancher)',
+      description: 'Rancher multi-cluster Kubernetes management platform running in Docker.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://rancher.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v3/settings/server-version',
+        jsonPath: '$.value',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'rancher/rancher',
+      },
+      evidenceUrl: 'https://ranchermanager.docs.rancher.com/reference-guides/cluster-configuration/rancher-server-configuration/rke1-cluster-configuration',
+    },
+    {
+      id: 'rke2',
+      label: 'RKE2 / Kubernetes Cluster',
+      description: 'Rancher deployed on RKE2 or a managed Kubernetes cluster.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://rancher.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v3/settings/server-version',
+        jsonPath: '$.value',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'rancher/rancher',
+      },
+      evidenceUrl: 'https://ranchermanager.docs.rancher.com/getting-started/installation-and-upgrade/install-upgrade-on-a-kubernetes-cluster',
+    },
+  ],
+
+  'woodpecker-ci': [
+    {
+      id: 'docker',
+      label: 'Docker Compose (server + agent)',
+      description: 'Woodpecker CI server + agent running via Docker Compose.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://woodpecker.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.source',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'woodpecker-ci/woodpecker',
+      },
+      evidenceUrl: 'https://woodpecker-ci.org/docs/next/api-usage',
+    },
+  ],
+
+  'docker-engine': [
+    {
+      id: 'docker',
+      label: 'Docker Engine (Docker socket / local API)',
+      description: 'Docker Engine running locally — version via Docker API. Requires Docker socket or TCP API to be exposed.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://localhost:2375',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.Version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'moby/moby',
+      },
+      evidenceUrl: 'https://docs.docker.com/engine/api/v1.43/#tag/System/operation/SystemVersion',
+    },
+  ],
+
+  'authelia': [
+    {
+      id: 'docker',
+      label: 'Docker',
+      description: 'Authelia running via Docker. No native version endpoint — tracks upstream GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://auth.example.com',
+      versionSource: {
+        type: 'github-releases',
+        target: 'authelia/authelia',
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'authelia/authelia',
+      },
+      evidenceUrl: 'https://github.com/authelia/authelia/releases',
+    },
+    {
+      id: 'bare-metal',
+      label: 'Bare-metal / Binary',
+      description: 'Authelia installed as a binary. No native version endpoint — tracks upstream GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://auth.example.com',
+      versionSource: {
+        type: 'github-releases',
+        target: 'authelia/authelia',
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'authelia/authelia',
+      },
+      evidenceUrl: 'https://github.com/authelia/authelia/releases',
+    },
+  ],
+
+  'rabbitmq': [
+    {
+      id: 'docker',
+      label: 'Docker',
+      description: 'RabbitMQ in Docker. Version via management API.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://rabbitmq.example.com:15672',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/overview',
+        jsonPath: '$.rabbitmq_version',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'rabbitmq/rabbitmq-server',
+      },
+      evidenceUrl: 'https://rawcdn.githack.com/rabbitmq/rabbitmq-management/v3.12.0/priv/www/api/index.html',
+    },
+    {
+      id: 'bare-metal',
+      label: 'Bare-metal / Debian / RPM',
+      description: 'RabbitMQ installed natively. Management plugin must be enabled for version API.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://localhost:15672',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/overview',
+        jsonPath: '$.rabbitmq_version',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'rabbitmq/rabbitmq-server',
+      },
+      evidenceUrl: 'https://rawcdn.githack.com/rabbitmq/rabbitmq-management/v3.12.0/priv/www/api/index.html',
+    },
+  ],
+
+  'nats': [
+    {
+      id: 'docker',
+      label: 'Docker',
+      description: 'NATS running via Docker. Version via monitoring endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://nats.example.com:8222',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/varz',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'nats-io/nats-server',
+      },
+      evidenceUrl: 'https://docs.nats.io/running-a-nats-service/nats_admin/monitoring#general-information',
+    },
+    {
+      id: 'bare-metal',
+      label: 'Bare-metal / Binary',
+      description: 'NATS Server binary. Monitoring port 8222 must be enabled.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://localhost:8222',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/varz',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'nats-io/nats-server',
+      },
+      evidenceUrl: 'https://docs.nats.io/running-a-nats-service/nats_admin/monitoring#general-information',
+    },
+  ],
+
+  'node-red': [
+    {
+      id: 'docker',
+      label: 'Docker',
+      description: 'Node-RED in Docker. Version via admin API.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://node-red.example.com:1880',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/red/settings',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'npm-registry',
+        target: 'node-red',
+      },
+      evidenceUrl: 'https://nodered.org/docs/api/admin/methods/get/settings/',
+    },
+    {
+      id: 'npm',
+      label: 'npm / bare-metal',
+      description: 'Node-RED installed via npm or as a system service.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://localhost:1880',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/red/settings',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'npm-registry',
+        target: 'node-red',
+      },
+      evidenceUrl: 'https://nodered.org/docs/api/admin/methods/get/settings/',
+    },
+  ],
+
+  'matrix-synapse': [
+    {
+      id: 'docker',
+      label: 'Docker',
+      description: 'Matrix Synapse in Docker. Version via federation endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://matrix.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/_matrix/federation/v1/version',
+        jsonPath: '$.server.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'element-hq/synapse',
+      },
+      evidenceUrl: 'https://spec.matrix.org/v1.8/server-server-api/#get_matrixfederationv1version',
+    },
+    {
+      id: 'bare-metal',
+      label: 'Bare-metal / pip',
+      description: 'Synapse installed via pip or Debian packages.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://matrix.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/_matrix/federation/v1/version',
+        jsonPath: '$.server.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'element-hq/synapse',
+      },
+      evidenceUrl: 'https://spec.matrix.org/v1.8/server-server-api/#get_matrixfederationv1version',
+    },
+  ],
+
+  'rocketchat': [
+    {
+      id: 'docker',
+      label: 'Docker',
+      description: 'Rocket.Chat in Docker. Version via REST API info endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://chat.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/info',
+        jsonPath: '$.info.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'RocketChat/Rocket.Chat',
+      },
+      evidenceUrl: 'https://developer.rocket.chat/apidoc/rest-api/endpoints/server-endpoint/rest-info',
+    },
+    {
+      id: 'bare-metal',
+      label: 'Bare-metal / snap',
+      description: 'Rocket.Chat installed via snap or Node.js.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://chat.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/info',
+        jsonPath: '$.info.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'RocketChat/Rocket.Chat',
+      },
+      evidenceUrl: 'https://developer.rocket.chat/apidoc/rest-api/endpoints/server-endpoint/rest-info',
+    },
+  ],
+
+  'discourse': [
+    {
+      id: 'docker',
+      label: 'Docker (official install)',
+      description: 'Discourse via official Docker launcher. Version from admin API.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://forum.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/admin/version_check.json',
+        jsonPath: '$.installed_version',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'discourse/discourse',
+      },
+      evidenceUrl: 'https://docs.discourse.org/#tag/Admin/operation/adminVersionCheck',
+    },
+  ],
+
+  'zulip': [
+    {
+      id: 'docker',
+      label: 'Docker',
+      description: 'Zulip in Docker. Version via server settings API.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://zulip.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/server_settings',
+        jsonPath: '$.zulip_version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'zulip/zulip',
+      },
+      evidenceUrl: 'https://zulip.com/api/get-server-settings',
+    },
+    {
+      id: 'bare-metal',
+      label: 'Bare-metal / Ubuntu',
+      description: 'Zulip installed on Ubuntu via official installer.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://zulip.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/server_settings',
+        jsonPath: '$.zulip_version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'zulip/zulip',
+      },
+      evidenceUrl: 'https://zulip.com/api/get-server-settings',
+    },
+  ],
+
+  'pocketbase': [
+    {
+      id: 'binary',
+      label: 'Binary (Linux/Mac)',
+      description: 'PocketBase running as a self-contained binary. Version via API info endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://pb.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.code',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'pocketbase/pocketbase',
+      },
+      evidenceUrl: 'https://pocketbase.io/docs/api-health/',
+    },
+    {
+      id: 'docker',
+      label: 'Docker',
+      description: 'PocketBase in Docker container. Version via health endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://pb.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.code',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'pocketbase/pocketbase',
+      },
+      evidenceUrl: 'https://pocketbase.io/docs/api-health/',
+    },
+  ],
+
+  'frigate': [
+    {
+      id: 'docker',
+      label: 'Docker',
+      description: 'Frigate NVR via Docker. Version via API endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://frigate.local:5000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'blakeblackshear/frigate',
+      },
+      evidenceUrl: 'https://docs.frigate.video/integrations/api/#get-apiver',
+    },
+  ],
+
+  'appwrite': [
+    {
+      id: 'docker',
+      label: 'Docker (self-hosted)',
+      description: 'Appwrite self-hosted via Docker. Version via health endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://appwrite.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/health/version',
+        jsonPath: '$.version',
+        authRequired: false,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'appwrite/appwrite',
+      },
+      evidenceUrl: 'https://appwrite.io/docs/references/1.4.x/server-rest/health#getVersion',
+    },
+  ],
+
+  'truenas-scale': [
+    {
+      id: 'bare-metal',
+      label: 'TrueNAS SCALE (bare-metal)',
+      description: 'TrueNAS SCALE system. Version via REST API.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://truenas.local',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2.0/system/version',
+        jsonPath: '$',
+        authRequired: true,
+      },
+      latestSource: {
+        type: 'github-releases',
+        target: 'truenas/scale-build',
+      },
+      evidenceUrl: 'https://www.truenas.com/docs/scale/api/',
+    },
+  ],
+
+  'kubernetes': [
+    {
+      id: 'self-hosted',
+      label: 'Self-Hosted Cluster',
+      description: 'Kubernetes cluster version via /version endpoint. Requires bearer token (service account or kubeconfig).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://kubernetes.example.com:6443',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.gitVersion',
+        jsonPathExtractors: ['gitVersion'],
+        authRequired: true,
+        endpointFallbacks: ['/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'kubernetes/kubernetes' },
+      evidenceUrl: 'https://kubernetes.io/docs/reference/kubernetes-api/cluster-resources/cluster-version/',
+    },
+  ],
+
+  'k3s': [
+    {
+      id: 'self-hosted',
+      label: 'k3s Cluster',
+      description: 'k3s lightweight Kubernetes. Exposes the standard /version API endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://k3s.example.com:6443',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.gitVersion',
+        jsonPathExtractors: ['gitVersion'],
+        authRequired: true,
+        endpointFallbacks: ['/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'k3s-io/k3s' },
+      evidenceUrl: 'https://docs.k3s.io/api-server-flags',
+    },
+  ],
+
+  'victoriametrics': [
+    {
+      id: 'self-hosted',
+      label: 'VictoriaMetrics (Self-Hosted)',
+      description: 'Single-node VictoriaMetrics. Build info exposed on the /metrics endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://victoriametrics.example.com:8428',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/status/buildinfo',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['version', 'data.version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/status/buildinfo'],
+      },
+      latestSource: { type: 'github-releases', target: 'VictoriaMetrics/VictoriaMetrics' },
+      evidenceUrl: 'https://docs.victoriametrics.com/#build-info',
+    },
+  ],
+
+  'pi-hole': [
+    {
+      id: 'self-hosted',
+      label: 'Pi-hole (Self-Hosted)',
+      description: 'Pi-hole DNS sinkhole. Version available via the unauthenticated /admin/api.php?version endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://pihole.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/admin/api.php?version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/admin/api.php?version', '/api/info/versions'],
+      },
+      latestSource: { type: 'github-releases', target: 'pi-hole/pi-hole' },
+      evidenceUrl: 'https://discourse.pi-hole.net/t/pi-hole-api/1863',
+    },
+  ],
+
+  'couchdb': [
+    {
+      id: 'self-hosted',
+      label: 'Apache CouchDB (Self-Hosted)',
+      description: 'CouchDB exposes its version on the root / endpoint without authentication.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://couchdb.example.com:5984',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/', '/_utils/'],
+      },
+      latestSource: { type: 'github-releases', target: 'apache/couchdb' },
+      evidenceUrl: 'https://docs.couchdb.org/en/stable/api/server/common.html#get--',
+    },
+  ],
+
+  'neo4j': [
+    {
+      id: 'community',
+      label: 'Neo4j Community (Self-Hosted)',
+      description: 'Neo4j Community Edition. Version via /db/data/ REST endpoint (requires auth in newer versions).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://neo4j.example.com:7474',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/db/data/',
+        jsonPath: '$.neo4j_version',
+        jsonPathExtractors: ['neo4j_version'],
+        authRequired: false,
+        endpointFallbacks: ['/db/data/', '/'],
+      },
+      latestSource: { type: 'github-releases', target: 'neo4j/neo4j' },
+      evidenceUrl: 'https://neo4j.com/docs/rest-docs/current/#rest-api-discovery',
+    },
+    {
+      id: 'enterprise',
+      label: 'Neo4j Enterprise (Self-Hosted)',
+      description: 'Neo4j Enterprise Edition. Same REST API, same version endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://neo4j.example.com:7474',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/db/data/',
+        jsonPath: '$.neo4j_version',
+        jsonPathExtractors: ['neo4j_version'],
+        authRequired: false,
+        endpointFallbacks: ['/db/data/'],
+      },
+      latestSource: { type: 'github-releases', target: 'neo4j/neo4j' },
+      evidenceUrl: 'https://neo4j.com/docs/rest-docs/current/#rest-api-discovery',
+    },
+  ],
+
+  'arangodb': [
+    {
+      id: 'self-hosted',
+      label: 'ArangoDB (Self-Hosted)',
+      description: 'ArangoDB version via /_api/version. Authentication required.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://arangodb.example.com:8529',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/_api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/_api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'arangodb/arangodb' },
+      evidenceUrl: 'https://docs.arangodb.com/stable/develop/http-api/general-request-handling/',
+    },
+  ],
+
+  'questdb': [
+    {
+      id: 'self-hosted',
+      label: 'QuestDB (Self-Hosted)',
+      description: 'QuestDB time-series database. Exposes build info via /status.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://questdb.example.com:9000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'questdb/questdb' },
+      evidenceUrl: 'https://questdb.io/docs/reference/api/rest/',
+    },
+  ],
+
+  'couchbase': [
+    {
+      id: 'self-hosted',
+      label: 'Couchbase Server (Self-Hosted)',
+      description: 'Couchbase Server version via /pools REST API. Requires admin credentials.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://couchbase.example.com:8091',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/pools',
+        jsonPath: '$.implementationVersion',
+        jsonPathExtractors: ['implementationVersion'],
+        authRequired: true,
+        endpointFallbacks: ['/pools', '/settings/web'],
+      },
+      latestSource: { type: 'github-releases', target: 'couchbase/couchbase-server-community' },
+      evidenceUrl: 'https://docs.couchbase.com/server/current/rest-api/rest-cluster-get.html',
+    },
+  ],
+
+  'kibana': [
+    {
+      id: 'oss',
+      label: 'Kibana OSS (Self-Hosted)',
+      description: 'Kibana open-source. Version available via /api/status (no auth required by default).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://kibana.example.com:5601',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/status',
+        jsonPath: '$.version.number',
+        jsonPathExtractors: ['version.number', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'elastic/kibana' },
+      evidenceUrl: 'https://www.elastic.co/guide/en/kibana/current/api.html',
+    },
+    {
+      id: 'enterprise',
+      label: 'Kibana Enterprise (Self-Hosted)',
+      description: 'Kibana with X-Pack / Elastic Stack security enabled. Same /api/status endpoint, may require auth.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://kibana.example.com:5601',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/status',
+        jsonPath: '$.version.number',
+        jsonPathExtractors: ['version.number'],
+        authRequired: true,
+        endpointFallbacks: ['/api/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'elastic/kibana' },
+      evidenceUrl: 'https://www.elastic.co/guide/en/kibana/current/api.html',
+    },
+  ],
+
+  'logstash': [
+    {
+      id: 'self-hosted',
+      label: 'Logstash (Self-Hosted)',
+      description: 'Logstash node info including version via /_node API.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://logstash.example.com:9600',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/_node',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/_node', '/'],
+      },
+      latestSource: { type: 'github-releases', target: 'elastic/logstash' },
+      evidenceUrl: 'https://www.elastic.co/guide/en/logstash/current/node-info-api.html',
+    },
+  ],
+
+  'opensearch-dashboards': [
+    {
+      id: 'self-hosted',
+      label: 'OpenSearch Dashboards (Self-Hosted)',
+      description: 'OpenSearch Dashboards (Kibana fork). Version via /api/status.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://opensearch-dashboards.example.com:5601',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/status',
+        jsonPath: '$.version.number',
+        jsonPathExtractors: ['version.number', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'opensearch-project/OpenSearch-Dashboards' },
+      evidenceUrl: 'https://opensearch.org/docs/latest/dashboards/',
+    },
+  ],
+
+  'consul': [
+    {
+      id: 'self-hosted',
+      label: 'HashiCorp Consul (Self-Hosted)',
+      description: 'Consul service mesh / service discovery. Version via /v1/agent/self endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://consul.example.com:8500',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/agent/self',
+        jsonPath: '$.Config.Version',
+        jsonPathExtractors: ['Config.Version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/v1/agent/self', '/v1/status/leader'],
+      },
+      latestSource: { type: 'github-releases', target: 'hashicorp/consul' },
+      evidenceUrl: 'https://developer.hashicorp.com/consul/api-docs/agent#read-configuration',
+    },
+  ],
+
+  'technitium-dns': [
+    {
+      id: 'self-hosted',
+      label: 'Technitium DNS Server (Self-Hosted)',
+      description: 'Technitium DNS Server. Version available via /api/user/login or /api/user/profile (requires API token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://technitium.example.com:5380',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/dashboard/stats/get?token={{apiKey}}&type=LastHour',
+        jsonPath: '$.response.serverVersion',
+        jsonPathExtractors: ['response.serverVersion', 'serverVersion'],
+        authRequired: true,
+        endpointFallbacks: ['/api/dashboard/stats/get'],
+      },
+      latestSource: { type: 'github-releases', target: 'TechnitiumSoftware/DnsServer' },
+      evidenceUrl: 'https://github.com/TechnitiumSoftware/DnsServer/blob/master/APIDOCS.md',
+    },
+  ],
+
+  'gotify': [
+    {
+      id: 'self-hosted',
+      label: 'Gotify (Self-Hosted)',
+      description: 'Gotify self-hosted push notification server. Version via /version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://gotify.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'gotify/server' },
+      evidenceUrl: 'https://gotify.net/api-docs#/version/getVersion',
+    },
+  ],
+
+  'sonarr': [
+    {
+      id: 'self-hosted',
+      label: 'Sonarr (Self-Hosted)',
+      description: 'Sonarr TV series manager. Version via /api/v3/system/status (requires X-Api-Key header).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://sonarr.example.com:8989',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v3/system/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v3/system/status', '/api/system/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'Sonarr/Sonarr' },
+      evidenceUrl: 'https://sonarr.tv/docs/api/#/SystemStatus/get_api_v3_system_status',
+    },
+  ],
+
+  'radarr': [
+    {
+      id: 'self-hosted',
+      label: 'Radarr (Self-Hosted)',
+      description: 'Radarr movie manager. Version via /api/v3/system/status (requires X-Api-Key header).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://radarr.example.com:7878',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v3/system/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v3/system/status', '/api/system/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'Radarr/Radarr' },
+      evidenceUrl: 'https://radarr.video/docs/api/#/SystemStatus/get_api_v3_system_status',
+    },
+  ],
+
+  'lidarr': [
+    {
+      id: 'self-hosted',
+      label: 'Lidarr (Self-Hosted)',
+      description: 'Lidarr music manager. Version via /api/v1/system/status (requires X-Api-Key header).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://lidarr.example.com:8686',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/system/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/system/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'Lidarr/Lidarr' },
+      evidenceUrl: 'https://lidarr.audio/docs/api/#/SystemStatus/get_api_v1_system_status',
+    },
+  ],
+
+  'prowlarr': [
+    {
+      id: 'self-hosted',
+      label: 'Prowlarr (Self-Hosted)',
+      description: 'Prowlarr indexer manager. Version via /api/v1/system/status (requires X-Api-Key header).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://prowlarr.example.com:9696',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/system/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/system/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'Prowlarr/Prowlarr' },
+      evidenceUrl: 'https://prowlarr.com/docs/api/#/SystemStatus/get_api_v1_system_status',
+    },
+  ],
+
+  'overseerr': [
+    {
+      id: 'self-hosted',
+      label: 'Overseerr (Self-Hosted)',
+      description: 'Overseerr media request manager. Version via /api/v1/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://overseerr.example.com:5055',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'sct/overseerr' },
+      evidenceUrl: 'https://api-docs.overseerr.dev/#tag/public/operation/get-status',
+    },
+  ],
+
+  'emqx': [
+    {
+      id: 'self-hosted',
+      label: 'EMQX (Self-Hosted)',
+      description: 'EMQX MQTT broker. Version via /api/v5/broker (requires Basic auth with api_key:api_secret).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://emqx.example.com:18083',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v5/broker',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v5/broker', '/api/v4/brokers'],
+      },
+      latestSource: { type: 'github-releases', target: 'emqx/emqx' },
+      evidenceUrl: 'https://www.emqx.io/docs/en/latest/admin/api.html',
+    },
+  ],
+
+  'nifi': [
+    {
+      id: 'self-hosted',
+      label: 'Apache NiFi (Self-Hosted)',
+      description: 'Apache NiFi data flow platform. Version via /nifi-api/system-diagnostics (auth required).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://nifi.example.com:8443',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/nifi-api/flow/about',
+        jsonPath: '$.about.version',
+        jsonPathExtractors: ['about.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/nifi-api/flow/about', '/nifi-api/system-diagnostics'],
+      },
+      latestSource: { type: 'github-releases', target: 'apache/nifi' },
+      evidenceUrl: 'https://nifi.apache.org/docs/nifi-docs/rest-api/index.html',
+    },
+  ],
+
+  'mailcow': [
+    {
+      id: 'self-hosted',
+      label: 'Mailcow (Self-Hosted)',
+      description: 'Mailcow dockerized mail server. Version via /api/v1/get/status/containers (requires API key header).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://mail.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/get/status/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/get/status/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'mailcow/mailcow-dockerized' },
+      evidenceUrl: 'https://docs.mailcow.email/manual-guides/mailcow-api/',
+    },
+  ],
+
+  'mailpit': [
+    {
+      id: 'self-hosted',
+      label: 'Mailpit (Self-Hosted)',
+      description: 'Mailpit email testing tool. Version via /api/v1/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://mailpit.example.com:8025',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/info',
+        jsonPath: '$.Version',
+        jsonPathExtractors: ['Version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'axllent/mailpit' },
+      evidenceUrl: 'https://mailpit.axllent.org/docs/api-v1/',
+    },
+  ],
+
+  'openhab': [
+    {
+      id: 'self-hosted',
+      label: 'openHAB (Self-Hosted)',
+      description: 'openHAB home automation platform. Version via /rest/systeminfo (no auth required by default).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://openhab.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/rest/systeminfo',
+        jsonPath: '$.systemInfo.version',
+        jsonPathExtractors: ['systemInfo.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/rest/systeminfo'],
+      },
+      latestSource: { type: 'github-releases', target: 'openhab/openhab-distro' },
+      evidenceUrl: 'https://www.openhab.org/docs/configuration/restdocs.html',
+    },
+  ],
+
+  'domoticz': [
+    {
+      id: 'self-hosted',
+      label: 'Domoticz (Self-Hosted)',
+      description: 'Domoticz home automation. Version via /json.htm?type=command&param=getversion (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://domoticz.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/json.htm?type=command&param=getversion',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/json.htm?type=command&param=getversion'],
+      },
+      latestSource: { type: 'github-releases', target: 'domoticz/domoticz' },
+      evidenceUrl: 'https://www.domoticz.com/wiki/Domoticz_API/JSON_URL%27s',
+    },
+  ],
+
+  'esphome': [
+    {
+      id: 'self-hosted',
+      label: 'ESPHome (Self-Hosted)',
+      description: 'ESPHome dashboard for ESP microcontrollers. Version via /version endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://esphome.example.com:6052',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'esphome/esphome' },
+      evidenceUrl: 'https://esphome.io/guides/api',
+    },
+  ],
+
+  'zwavejs2mqtt': [
+    {
+      id: 'self-hosted',
+      label: 'Z-Wave JS UI (Self-Hosted)',
+      description: 'Z-Wave JS UI (zwavejs2mqtt). Version via /health endpoint (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://zwavejs.example.com:8091',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health', '/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'zwave-js/zwave-js-ui' },
+      evidenceUrl: 'https://zwave-js.github.io/zwave-js-ui/guide/api.html',
+    },
+  ],
+
+  'firefly-iii': [
+    {
+      id: 'self-hosted',
+      label: 'Firefly III (Self-Hosted)',
+      description: 'Firefly III personal finance manager. Version via /api/v1/about (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://firefly.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/about',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/about'],
+      },
+      latestSource: { type: 'github-releases', target: 'firefly-iii/firefly-iii' },
+      evidenceUrl: 'https://api-docs.firefly-iii.org/#/about/getAbout',
+    },
+  ],
+
+  'actual-budget': [
+    {
+      id: 'self-hosted',
+      label: 'Actual Budget (Self-Hosted)',
+      description: 'Actual Budget personal finance app. Version via /api/account (no auth required for version check).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://actual.example.com:5006',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/account',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/account'],
+      },
+      latestSource: { type: 'github-releases', target: 'actualbudget/actual' },
+      evidenceUrl: 'https://actualbudget.org/docs/api/',
+    },
+  ],
+
+  'miniflux': [
+    {
+      id: 'self-hosted',
+      label: 'Miniflux (Self-Hosted)',
+      description: 'Miniflux RSS reader. Version via /version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://miniflux.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/version', '/api/me'],
+      },
+      latestSource: { type: 'github-releases', target: 'miniflux/v2' },
+      evidenceUrl: 'https://miniflux.app/docs/api.html',
+    },
+  ],
+
+  'memos': [
+    {
+      id: 'self-hosted',
+      label: 'Memos (Self-Hosted)',
+      description: 'Memos lightweight note-taking app. Version via /api/v1/workspace/profile (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://memos.example.com:5230',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/workspace/profile',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/workspace/profile', '/api/v1/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'usememos/memos' },
+      evidenceUrl: 'https://www.usememos.com/docs/api',
+    },
+  ],
+
+  'openproject': [
+    {
+      id: 'self-hosted',
+      label: 'OpenProject (Self-Hosted)',
+      description: 'OpenProject project management. Version via /api/v3 root endpoint (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://openproject.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v3',
+        jsonPath: '$.coreVersion',
+        jsonPathExtractors: ['coreVersion', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v3'],
+      },
+      latestSource: { type: 'github-releases', target: 'opf/openproject' },
+      evidenceUrl: 'https://www.openproject.org/docs/api/introduction/',
+    },
+  ],
+
+  'vikunja': [
+    {
+      id: 'self-hosted',
+      label: 'Vikunja (Self-Hosted)',
+      description: 'Vikunja task manager. Version via /api/v1/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://vikunja.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'go-vikunja/vikunja' },
+      evidenceUrl: 'https://vikunja.io/docs/api-usage',
+    },
+  ],
+
+  'focalboard': [
+    {
+      id: 'self-hosted',
+      label: 'Focalboard (Self-Hosted)',
+      description: 'Focalboard project management (Mattermost Boards). Version via /api/v2/clientConfig (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://focalboard.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/clientConfig',
+        jsonPath: '$.serverVersion',
+        jsonPathExtractors: ['serverVersion', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v2/clientConfig'],
+      },
+      latestSource: { type: 'github-releases', target: 'mattermost/focalboard' },
+      evidenceUrl: 'https://www.focalboard.com/contribute/getting-started/personal-server-setup/',
+    },
+  ],
+
+  'pgadmin': [
+    {
+      id: 'self-hosted',
+      label: 'pgAdmin 4 (Self-Hosted)',
+      description: 'pgAdmin 4 PostgreSQL administration tool. Version via /misc/ping (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://pgadmin.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/misc/ping',
+        jsonPath: '$.pgadmin_version',
+        jsonPathExtractors: ['pgadmin_version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/misc/ping', '/'],
+      },
+      latestSource: { type: 'github-releases', target: 'pgadmin-org/pgadmin4' },
+      evidenceUrl: 'https://www.pgadmin.org/docs/pgadmin4/latest/api.html',
+    },
+  ],
+
+  'cloudbeaver': [
+    {
+      id: 'self-hosted',
+      label: 'CloudBeaver (Self-Hosted)',
+      description: 'CloudBeaver web-based database manager. Version via /api/gql (GraphQL, requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://cloudbeaver.example.com:8978',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/product/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/product/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'dbeaver/cloudbeaver' },
+      evidenceUrl: 'https://github.com/dbeaver/cloudbeaver',
+    },
+  ],
+
+  'netbox': [
+    {
+      id: 'self-hosted',
+      label: 'NetBox (Self-Hosted)',
+      description: 'NetBox IPAM/DCIM tool. Version via /api/ root endpoint (no auth required, may require token for some setups).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://netbox.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/',
+        jsonPath: '$.netbox-version',
+        jsonPathExtractors: ['netbox-version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/', '/api/status/'],
+      },
+      latestSource: { type: 'github-releases', target: 'netbox-community/netbox' },
+      evidenceUrl: 'https://docs.netbox.dev/en/stable/rest-api/overview/',
+    },
+  ],
+
+  'opnsense': [
+    {
+      id: 'self-hosted',
+      label: 'OPNsense (Self-Hosted)',
+      description: 'OPNsense firewall/router. Version via /api/core/firmware/info (requires API key:secret Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://opnsense.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/core/firmware/running',
+        jsonPath: '$.product_version',
+        jsonPathExtractors: ['product_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/core/firmware/running', '/api/core/firmware/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'opnsense/core' },
+      evidenceUrl: 'https://docs.opnsense.org/development/api/core/firmware.html',
+    },
+  ],
+
+  'speedtest-tracker': [
+    {
+      id: 'self-hosted',
+      label: 'Speedtest Tracker (Self-Hosted)',
+      description: 'Speedtest Tracker self-hosted internet speed monitoring. Version via /api/healthcheck (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://speedtest-tracker.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/healthcheck',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/healthcheck', '/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'alexjustesen/speedtest-tracker' },
+      evidenceUrl: 'https://docs.speedtest-tracker.dev/',
+    },
+  ],
+
+  'coolify': [
+    {
+      id: 'self-hosted',
+      label: 'Coolify (Self-Hosted)',
+      description: 'Coolify open-source PaaS. Version via /api/v1/version (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://coolify.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'coollabsio/coolify' },
+      evidenceUrl: 'https://coolify.io/docs/api-reference/get-version',
+    },
+  ],
+
+  'caprover': [
+    {
+      id: 'self-hosted',
+      label: 'CapRover (Self-Hosted)',
+      description: 'CapRover self-hosted PaaS. Version via /api/v2/user/system (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://captain.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/user/system',
+        jsonPath: '$.data.captainVersion',
+        jsonPathExtractors: ['data.captainVersion', 'captainVersion'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v2/user/system'],
+      },
+      latestSource: { type: 'github-releases', target: 'caprover/caprover' },
+      evidenceUrl: 'https://caprover.com/docs/api.html',
+    },
+  ],
+
+  'cockpit': [
+    {
+      id: 'self-hosted',
+      label: 'Cockpit (Self-Hosted)',
+      description: 'Cockpit Linux web-based server management. Version via /api/login (no dedicated version endpoint; check GitHub releases).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://cockpit.example.com:9090',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/login',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/login', '/'],
+      },
+      latestSource: { type: 'github-releases', target: 'cockpit-project/cockpit' },
+      evidenceUrl: 'https://cockpit-project.org/guide/latest/api-base1.html',
+    },
+  ],
+
+  'glances': [
+    {
+      id: 'self-hosted',
+      label: 'Glances (Self-Hosted)',
+      description: 'Glances system monitoring tool. Version via /api/3/all (no auth required by default).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://glances.example.com:61208',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/3/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/3/info', '/api/2/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'nicolargo/glances' },
+      evidenceUrl: 'https://glances.readthedocs.io/en/latest/api.html',
+    },
+  ],
+
+  'kanidm': [
+    {
+      id: 'self-hosted',
+      label: 'Kanidm (Self-Hosted)',
+      description: 'Kanidm identity management system. Version via /status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://kanidm.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/debug/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/v1/debug/version', '/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'kanidm/kanidm' },
+      evidenceUrl: 'https://kanidm.github.io/kanidm/master/apis.html',
+    },
+  ],
+
+  'paperless-ngx': [
+    {
+      id: 'self-hosted',
+      label: 'Paperless-ngx (Self-Hosted)',
+      description: 'Paperless-ngx document management. Version via /api/ root (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://paperless.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/', '/api/v1/'],
+      },
+      latestSource: { type: 'github-releases', target: 'paperless-ngx/paperless-ngx' },
+      evidenceUrl: 'https://docs.paperless-ngx.com/api/',
+    },
+  ],
+
+  'mealie': [
+    {
+      id: 'self-hosted',
+      label: 'Mealie (Self-Hosted)',
+      description: 'Mealie recipe manager. Version via /api/app/about (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://mealie.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/app/about',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/app/about'],
+      },
+      latestSource: { type: 'github-releases', target: 'mealie-recipes/mealie' },
+      evidenceUrl: 'https://nightly.mealie.io/api/docs#/App%20Routes/get_app_info_api_app_about_get',
+    },
+  ],
+
+  'grocy': [
+    {
+      id: 'self-hosted',
+      label: 'Grocy (Self-Hosted)',
+      description: 'Grocy household management. Version via /api/system/info (requires GROCY-API-KEY header).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://grocy.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/system/info',
+        jsonPath: '$.grocy_version',
+        jsonPathExtractors: ['grocy_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/system/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'grocy/grocy' },
+      evidenceUrl: 'https://demo.grocy.info/api/#/System/get_system_info',
+    },
+  ],
+
+  'tandoor': [
+    {
+      id: 'self-hosted',
+      label: 'Tandoor Recipes (Self-Hosted)',
+      description: 'Tandoor recipe manager. Version via /api/ root (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://tandoor.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/', '/api/v1/'],
+      },
+      latestSource: { type: 'github-releases', target: 'TandoorRecipes/recipes' },
+      evidenceUrl: 'https://docs.tandoor.dev/system/api/',
+    },
+  ],
+
+  'owncloud': [
+    {
+      id: 'self-hosted',
+      label: 'ownCloud (Self-Hosted)',
+      description: 'ownCloud file sharing platform. Version via /status.php (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://owncloud.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/status.php',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/status.php', '/ocs/v2.php/apps/serverinfo/api/v1/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'owncloud/core' },
+      evidenceUrl: 'https://doc.owncloud.com/server/next/developer_manual/core/apis/ocs-api.html',
+    },
+  ],
+
+  'jellyseerr': [
+    {
+      id: 'self-hosted',
+      label: 'Jellyseerr (Self-Hosted)',
+      description: 'Jellyseerr media request manager (Jellyfin fork of Overseerr). Version via /api/v1/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://jellyseerr.example.com:5055',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'Fallenbagel/jellyseerr' },
+      evidenceUrl: 'https://github.com/Fallenbagel/jellyseerr',
+    },
+  ],
+
+  'readarr': [
+    {
+      id: 'self-hosted',
+      label: 'Readarr (Self-Hosted)',
+      description: 'Readarr ebook manager. Version via /api/v1/system/status (requires X-Api-Key header).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://readarr.example.com:8787',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/system/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/system/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'Readarr/Readarr' },
+      evidenceUrl: 'https://readarr.com/docs/api/#/SystemStatus/get_api_v1_system_status',
+    },
+  ],
+
+  'mastodon': [
+    {
+      id: 'self-hosted',
+      label: 'Mastodon (Self-Hosted)',
+      description: 'Mastodon federated social network. Version via /api/v1/instance (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://mastodon.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/instance',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/instance', '/api/v2/instance'],
+      },
+      latestSource: { type: 'github-releases', target: 'mastodon/mastodon' },
+      evidenceUrl: 'https://docs.joinmastodon.org/methods/instance/',
+    },
+  ],
+
+  'misskey': [
+    {
+      id: 'self-hosted',
+      label: 'Misskey (Self-Hosted)',
+      description: 'Misskey federated social network. Version via /api/meta (POST, no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://misskey.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/meta',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/meta'],
+      },
+      latestSource: { type: 'github-releases', target: 'misskey-dev/misskey' },
+      evidenceUrl: 'https://misskey-hub.net/docs/api/',
+    },
+  ],
+
+  'peertube': [
+    {
+      id: 'self-hosted',
+      label: 'PeerTube (Self-Hosted)',
+      description: 'PeerTube federated video platform. Version via /api/v1/config (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://peertube.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/config',
+        jsonPath: '$.serverVersion',
+        jsonPathExtractors: ['serverVersion', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/config'],
+      },
+      latestSource: { type: 'github-releases', target: 'Chocobozzz/PeerTube' },
+      evidenceUrl: 'https://docs.joinpeertube.org/api-rest-reference.html#tag/Config/operation/getConfig',
+    },
+  ],
+
+  'lemmy': [
+    {
+      id: 'self-hosted',
+      label: 'Lemmy (Self-Hosted)',
+      description: 'Lemmy federated link aggregator. Version via /api/v3/site (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://lemmy.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v3/site',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v3/site'],
+      },
+      latestSource: { type: 'github-releases', target: 'LemmyNet/lemmy' },
+      evidenceUrl: 'https://join-lemmy.org/api/interfaces/GetSiteResponse.html',
+    },
+  ],
+
+  'jupyterhub': [
+    {
+      id: 'self-hosted',
+      label: 'JupyterHub (Self-Hosted)',
+      description: 'JupyterHub multi-user notebook server. Version via /hub/api/ root (requires token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://jupyterhub.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/hub/api/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/hub/api/', '/hub/api'],
+      },
+      latestSource: { type: 'github-releases', target: 'jupyterhub/jupyterhub' },
+      evidenceUrl: 'https://jupyterhub.readthedocs.io/en/stable/reference/rest-api.html',
+    },
+  ],
+
+  'influxdb2': [
+    {
+      id: 'self-hosted',
+      label: 'InfluxDB 2.x (Self-Hosted)',
+      description: 'InfluxDB 2.x time-series database. Version via /health endpoint (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://influxdb.example.com:8086',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/health', '/ping'],
+      },
+      latestSource: { type: 'github-releases', target: 'influxdata/influxdb' },
+      evidenceUrl: 'https://docs.influxdata.com/influxdb/v2/api/#operation/GetHealth',
+    },
+  ],
+
+  'yacht': [
+    {
+      id: 'self-hosted',
+      label: 'Yacht (Self-Hosted)',
+      description: 'Yacht container management UI. Version via /api/version (requires auth token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://yacht.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'SelfhostedPro/Yacht' },
+      evidenceUrl: 'https://yacht.sh/docs/Introduction',
+    },
+  ],
+
+  'dockge': [
+    {
+      id: 'self-hosted',
+      label: 'Dockge (Self-Hosted)',
+      description: 'Dockge Docker Compose manager. Version via /api/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://dockge.example.com:5001',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'louislam/dockge' },
+      evidenceUrl: 'https://github.com/louislam/dockge',
+    },
+  ],
+
+  'plone': [
+    {
+      id: 'self-hosted',
+      label: 'Plone (Self-Hosted)',
+      description: 'Plone CMS. Version via /@site REST API endpoint (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://plone.example.com:8080/Plone',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/@site',
+        jsonPath: '$.plone_version',
+        jsonPathExtractors: ['plone_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/@site'],
+      },
+      latestSource: { type: 'github-releases', target: 'plone/plone' },
+      evidenceUrl: 'https://6.docs.plone.org/volto/development/rest-api/intro.html',
+    },
+  ],
+
+  'gitbucket': [
+    {
+      id: 'self-hosted',
+      label: 'GitBucket (Self-Hosted)',
+      description: 'GitBucket self-hosted Git platform. Version via /api/v3/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://gitbucket.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v3/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v3/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'gitbucket/gitbucket' },
+      evidenceUrl: 'https://github.com/gitbucket/gitbucket/wiki/API-WebHook',
+    },
+  ],
+
+  'mikrotik-routeros': [
+    {
+      id: 'self-hosted',
+      label: 'MikroTik RouterOS (Self-Hosted)',
+      description: 'MikroTik RouterOS. Version via REST API /rest/system/resource (requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://routeros.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/rest/system/resource',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/rest/system/resource'],
+      },
+      latestSource: { type: 'github-releases', target: 'mikrotik/routeros' },
+      evidenceUrl: 'https://help.mikrotik.com/docs/display/ROS/REST+API',
+    },
+  ],
+
+  'teleport': [
+    {
+      id: 'self-hosted',
+      label: 'Teleport (Self-Hosted)',
+      description: 'Teleport infrastructure access platform. Version via /v1/webapi/ping (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://teleport.example.com:3080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/webapi/ping',
+        jsonPath: '$.server_version',
+        jsonPathExtractors: ['server_version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/v1/webapi/ping'],
+      },
+      latestSource: { type: 'github-releases', target: 'gravitational/teleport' },
+      evidenceUrl: 'https://goteleport.com/docs/api/introduction/',
+    },
+  ],
+
+  'nginx-unit': [
+    {
+      id: 'self-hosted',
+      label: 'NGINX Unit (Self-Hosted)',
+      description: 'NGINX Unit application server. Version via /config (no auth required by default).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://unit.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/', '/'],
+      },
+      latestSource: { type: 'github-releases', target: 'nginx/unit' },
+      evidenceUrl: 'https://unit.nginx.org/controlapi/',
+    },
+  ],
+
+  'listmonk': [
+    {
+      id: 'self-hosted',
+      label: 'listmonk (Self-Hosted)',
+      description: 'listmonk mailing list manager. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://listmonk.example.com:9000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'knadh/listmonk' },
+      evidenceUrl: 'https://listmonk.app/docs/developer-setup/',
+    },
+  ],
+
+  'ory-hydra': [
+    {
+      id: 'self-hosted',
+      label: 'Ory Hydra (Self-Hosted)',
+      description: 'Ory Hydra OAuth 2.0 / OpenID Connect server. Version via /health/alive (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://hydra.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/version', '/health/alive'],
+      },
+      latestSource: { type: 'github-releases', target: 'ory/hydra' },
+      evidenceUrl: 'https://www.ory.sh/docs/hydra/reference/api',
+    },
+  ],
+
+  'ory-kratos': [
+    {
+      id: 'self-hosted',
+      label: 'Ory Kratos (Self-Hosted)',
+      description: 'Ory Kratos identity server. Version via /health/alive or /version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://kratos.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/version', '/health/alive'],
+      },
+      latestSource: { type: 'github-releases', target: 'ory/kratos' },
+      evidenceUrl: 'https://www.ory.sh/docs/kratos/reference/api',
+    },
+  ],
+
+  'proxmox-backup': [
+    {
+      id: 'self-hosted',
+      label: 'Proxmox Backup Server (Self-Hosted)',
+      description: 'Proxmox Backup Server. Version via /api2/json/version (requires Proxmox-specific auth token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://pbs.example.com:8007',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api2/json/version',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api2/json/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'proxmox/proxmox-backup' },
+      evidenceUrl: 'https://pbs.proxmox.com/docs/api-viewer/index.html',
+    },
+  ],
+
+  'grafana-tempo': [
+    {
+      id: 'self-hosted',
+      label: 'Grafana Tempo (Self-Hosted)',
+      description: 'Grafana Tempo distributed tracing backend. Version via /status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://tempo.example.com:3200',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/status', '/ready'],
+      },
+      latestSource: { type: 'github-releases', target: 'grafana/tempo' },
+      evidenceUrl: 'https://grafana.com/docs/tempo/latest/api_docs/',
+    },
+  ],
+
+  'powerdns': [
+    {
+      id: 'authoritative',
+      label: 'PowerDNS Authoritative (Self-Hosted)',
+      description: 'PowerDNS Authoritative Server. Version via /api/v1/servers/localhost (requires X-API-Key header).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://powerdns.example.com:8081',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/servers/localhost',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/servers/localhost'],
+      },
+      latestSource: { type: 'github-releases', target: 'PowerDNS/pdns' },
+      evidenceUrl: 'https://doc.powerdns.com/authoritative/http-api/',
+    },
+    {
+      id: 'recursor',
+      label: 'PowerDNS Recursor (Self-Hosted)',
+      description: 'PowerDNS Recursor. Same API structure, different process.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://powerdns-recursor.example.com:8082',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/servers/localhost',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/servers/localhost'],
+      },
+      latestSource: { type: 'github-releases', target: 'PowerDNS/pdns' },
+      evidenceUrl: 'https://doc.powerdns.com/recursor/http-api/',
+    },
+  ],
+
+  'apache-airflow': [
+    {
+      id: 'self-hosted',
+      label: 'Apache Airflow (Self-Hosted)',
+      description: 'Apache Airflow workflow orchestration. Version via /api/v1/version (requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://airflow.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'apache/airflow' },
+      evidenceUrl: 'https://airflow.apache.org/docs/apache-airflow/stable/stable-rest-api-ref.html#operation/get_version',
+    },
+  ],
+
+  'shlink': [
+    {
+      id: 'self-hosted',
+      label: 'Shlink (Self-Hosted)',
+      description: 'Shlink URL shortener. Version via /rest/v3/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://shlink.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/rest/v3/health',
+        jsonPath: '$.releaseInfo.current',
+        jsonPathExtractors: ['releaseInfo.current', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/rest/v3/health', '/rest/v2/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'shlinkio/shlink' },
+      evidenceUrl: 'https://api-spec.shlink.io/#/monitoring/health',
+    },
+  ],
+
+  'yourls': [
+    {
+      id: 'self-hosted',
+      label: 'YOURLS (Self-Hosted)',
+      description: 'YOURLS URL shortener. Version via /yourls-api.php (requires signature).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://yourls.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/yourls-api.php?action=version&signature={{apiKey}}&format=json',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/yourls-api.php'],
+      },
+      latestSource: { type: 'github-releases', target: 'YOURLS/YOURLS' },
+      evidenceUrl: 'https://yourls.org/api/',
+    },
+  ],
+
+  'kutt': [
+    {
+      id: 'self-hosted',
+      label: 'Kutt (Self-Hosted)',
+      description: 'Kutt modern URL shortener. Version via /api/v2/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://kutt.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v2/health', '/api/v2/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'thedevs-network/kutt' },
+      evidenceUrl: 'https://docs.kutt.it/',
+    },
+  ],
+
+  'privatebin': [
+    {
+      id: 'self-hosted',
+      label: 'PrivateBin (Self-Hosted)',
+      description: 'PrivateBin pastebin. Version via /?status=check JSON response (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://privatebin.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/?status=check',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/?status=check'],
+      },
+      latestSource: { type: 'github-releases', target: 'PrivateBin/PrivateBin' },
+      evidenceUrl: 'https://github.com/PrivateBin/PrivateBin/wiki/API',
+    },
+  ],
+
+  'microbin': [
+    {
+      id: 'self-hosted',
+      label: 'MicroBin (Self-Hosted)',
+      description: 'MicroBin tiny pastebin. No dedicated version endpoint — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://microbin.example.com:8080',
+      versionSource: {
+        type: 'github-releases',
+        target: 'szabodanika/microbin',
+      },
+      latestSource: { type: 'github-releases', target: 'szabodanika/microbin' },
+      evidenceUrl: 'https://github.com/szabodanika/microbin/releases',
+    },
+  ],
+
+  'opengist': [
+    {
+      id: 'self-hosted',
+      label: 'Opengist (Self-Hosted)',
+      description: 'Opengist self-hosted Gist clone. Version via /api/v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://opengist.example.com:6157',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'nicholasgasior/opengist' },
+      evidenceUrl: 'https://github.com/nicholasgasior/opengist',
+    },
+  ],
+
+  'typebot': [
+    {
+      id: 'self-hosted',
+      label: 'Typebot (Self-Hosted)',
+      description: 'Typebot conversational form builder. Version via /api/v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://typebot.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'baptisteArno/typebot.io' },
+      evidenceUrl: 'https://docs.typebot.io/self-hosting/get-started',
+    },
+  ],
+
+  'formbricks': [
+    {
+      id: 'self-hosted',
+      label: 'Formbricks (Self-Hosted)',
+      description: 'Formbricks open-source survey platform. Version via /api/v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://formbricks.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'formbricks/formbricks' },
+      evidenceUrl: 'https://formbricks.com/docs/self-hosting/deployment',
+    },
+  ],
+
+  'limesurvey': [
+    {
+      id: 'self-hosted',
+      label: 'LimeSurvey (Self-Hosted)',
+      description: 'LimeSurvey open-source survey platform. Version via RemoteControl API (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://limesurvey.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/index.php/admin/remotecontrol',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/index.php/admin/remotecontrol'],
+      },
+      latestSource: { type: 'github-releases', target: 'LimeSurvey/LimeSurvey' },
+      evidenceUrl: 'https://manual.limesurvey.org/RemoteControl_2_API',
+    },
+  ],
+
+  'cal-com': [
+    {
+      id: 'self-hosted',
+      label: 'Cal.com (Self-Hosted)',
+      description: 'Cal.com open-source scheduling. Version via /api/v1/health (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://cal.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'calcom/cal.com' },
+      evidenceUrl: 'https://cal.com/docs/enterprise-features/api',
+    },
+  ],
+
+  'rallly': [
+    {
+      id: 'self-hosted',
+      label: 'Rallly (Self-Hosted)',
+      description: 'Rallly scheduling and voting tool. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://rallly.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'lukevella/rallly' },
+      evidenceUrl: 'https://github.com/lukevella/rallly',
+    },
+  ],
+
+  'monica-crm': [
+    {
+      id: 'self-hosted',
+      label: 'Monica CRM (Self-Hosted)',
+      description: 'Monica personal CRM. Version via /api/statistics (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://monica.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.data.api_version',
+        jsonPathExtractors: ['data.api_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/version', '/api/statistics'],
+      },
+      latestSource: { type: 'github-releases', target: 'monicahq/monica' },
+      evidenceUrl: 'https://www.monicahq.com/api',
+    },
+  ],
+
+  'twenty-crm': [
+    {
+      id: 'self-hosted',
+      label: 'Twenty CRM (Self-Hosted)',
+      description: 'Twenty modern open-source CRM. Version via /api/v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://twenty.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/health', '/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'twentyhq/twenty' },
+      evidenceUrl: 'https://twenty.com/developers',
+    },
+  ],
+
+  'corteza': [
+    {
+      id: 'self-hosted',
+      label: 'Corteza (Self-Hosted)',
+      description: 'Corteza low-code platform. Version via /api/system/auth/ (requires auth token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://corteza.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'cortezaproject/corteza' },
+      evidenceUrl: 'https://docs.cortezaproject.org/corteza-docs/api/',
+    },
+  ],
+
+  'kanboard': [
+    {
+      id: 'self-hosted',
+      label: 'Kanboard (Self-Hosted)',
+      description: 'Kanboard project management. Version via JSON-RPC API (requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://kanboard.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/jsonrpc.php',
+        jsonPath: '$.result.version',
+        jsonPathExtractors: ['result.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/jsonrpc.php'],
+      },
+      latestSource: { type: 'github-releases', target: 'kanboard/kanboard' },
+      evidenceUrl: 'https://docs.kanboard.org/v1/api/',
+    },
+  ],
+
+  'invoiceninja': [
+    {
+      id: 'self-hosted',
+      label: 'Invoice Ninja (Self-Hosted)',
+      description: 'Invoice Ninja invoicing platform. Version via /api/v1/version (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://invoiceninja.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'invoiceninja/invoiceninja' },
+      evidenceUrl: 'https://app.swaggerhub.com/apis/invoiceninja/invoiceninja',
+    },
+  ],
+
+  'pterodactyl': [
+    {
+      id: 'self-hosted',
+      label: 'Pterodactyl Panel (Self-Hosted)',
+      description: 'Pterodactyl game server management panel. Version via /api/client (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://pterodactyl.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/client',
+        jsonPath: '$.meta.pterodactyl_version',
+        jsonPathExtractors: ['meta.pterodactyl_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/client'],
+      },
+      latestSource: { type: 'github-releases', target: 'pterodactyl/panel' },
+      evidenceUrl: 'https://dashflo.net/docs/api/pterodactyl/v1/',
+    },
+  ],
+
+  'crafty-controller': [
+    {
+      id: 'self-hosted',
+      label: 'Crafty Controller (Self-Hosted)',
+      description: 'Crafty Controller Minecraft server manager. Version via /api/v2/api_version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://crafty.example.com:8443',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/api_version',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v2/api_version'],
+      },
+      latestSource: { type: 'github-releases', target: 'arcadio/crafty' },
+      evidenceUrl: 'https://docs.craftycontrol.com/pages/developer/api/api-v2/',
+    },
+  ],
+
+  'xcp-ng': [
+    {
+      id: 'self-hosted',
+      label: 'XCP-ng (Self-Hosted)',
+      description: 'XCP-ng open-source hypervisor. Version via XAPI RPC or XO connection (auth required).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://xcp-ng.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/hosts',
+        jsonPath: '$.software_version.product_version',
+        jsonPathExtractors: ['software_version.product_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/hosts'],
+      },
+      latestSource: { type: 'github-releases', target: 'xcp-ng/xcp-ng' },
+      evidenceUrl: 'https://xcp-ng.org/docs/',
+    },
+  ],
+
+  'harvester': [
+    {
+      id: 'self-hosted',
+      label: 'Harvester (Self-Hosted)',
+      description: 'Rancher Harvester HCI. Version via /apis/harvesterhci.io/v1beta1/supportbundlekeys (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://harvester.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.Version',
+        jsonPathExtractors: ['Version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'harvester/harvester' },
+      evidenceUrl: 'https://docs.harvesterhci.io/v1.3/api',
+    },
+  ],
+
+  'truenas': [
+    {
+      id: 'core',
+      label: 'TrueNAS CORE (Self-Hosted)',
+      description: 'TrueNAS CORE (FreeBSD-based). Version via /api/v2.0/system/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://truenas.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2.0/system/version',
+        jsonPath: '$',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v2.0/system/version', '/api/v2.0/system/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'truenas/freenas' },
+      evidenceUrl: 'https://www.truenas.com/docs/core/api/',
+    },
+    {
+      id: 'scale',
+      label: 'TrueNAS SCALE (Self-Hosted)',
+      description: 'TrueNAS SCALE (Linux-based). Same /api/v2.0/system/version endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://truenas-scale.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2.0/system/version',
+        jsonPath: '$',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v2.0/system/version', '/api/v2.0/system/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'truenas/scale-build' },
+      evidenceUrl: 'https://www.truenas.com/docs/scale/api/',
+    },
+  ],
+
+  'weblate': [
+    {
+      id: 'self-hosted',
+      label: 'Weblate (Self-Hosted)',
+      description: 'Weblate translation platform. Version via /api/ root (requires Token auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://weblate.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/'],
+      },
+      latestSource: { type: 'github-releases', target: 'WeblateOrg/weblate' },
+      evidenceUrl: 'https://docs.weblate.org/en/latest/api.html#get--api-',
+    },
+  ],
+
+  'tolgee': [
+    {
+      id: 'self-hosted',
+      label: 'Tolgee (Self-Hosted)',
+      description: 'Tolgee localization platform. Version via /v2/public/server-configuration (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://tolgee.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v2/public/server-configuration',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/v2/public/server-configuration'],
+      },
+      latestSource: { type: 'github-releases', target: 'tolgee/tolgee-platform' },
+      evidenceUrl: 'https://tolgee.io/platform/self_hosting/running_with_docker',
+    },
+  ],
+
+  'unleash': [
+    {
+      id: 'self-hosted',
+      label: 'Unleash (Self-Hosted)',
+      description: 'Unleash feature flag platform. Version via /api/config (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://unleash.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/config',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/config', '/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'Unleash/unleash' },
+      evidenceUrl: 'https://docs.getunleash.io/reference/api/unleash',
+    },
+  ],
+
+  'flagsmith': [
+    {
+      id: 'self-hosted',
+      label: 'Flagsmith (Self-Hosted)',
+      description: 'Flagsmith feature flag platform. Version via /api/v1/health/ (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://flagsmith.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/health/'],
+      },
+      latestSource: { type: 'github-releases', target: 'Flagsmith/flagsmith' },
+      evidenceUrl: 'https://docs.flagsmith.com/deployment/hosting/docker',
+    },
+  ],
+
+  'growthbook': [
+    {
+      id: 'self-hosted',
+      label: 'GrowthBook (Self-Hosted)',
+      description: 'GrowthBook A/B testing and feature flags. Version via /api/v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://growthbook.example.com:3100',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'growthbook/growthbook' },
+      evidenceUrl: 'https://docs.growthbook.io/self-host',
+    },
+  ],
+
+  'flipt': [
+    {
+      id: 'self-hosted',
+      label: 'Flipt (Self-Hosted)',
+      description: 'Flipt feature flag platform. Version via /api/v1/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://flipt.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/version', '/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'flipt-io/flipt' },
+      evidenceUrl: 'https://docs.flipt.io/reference/api',
+    },
+  ],
+
+  'openmrs': [
+    {
+      id: 'self-hosted',
+      label: 'OpenMRS (Self-Hosted)',
+      description: 'OpenMRS medical records system. Version via /ws/rest/v1/session (requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://openmrs.example.com/openmrs',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/ws/rest/v1/systemsetting/build.number',
+        jsonPath: '$.value',
+        jsonPathExtractors: ['value', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/ws/rest/v1/systemsetting/build.number', '/ws/rest/v1/'],
+      },
+      latestSource: { type: 'github-releases', target: 'openmrs/openmrs-core' },
+      evidenceUrl: 'https://rest.openmrs.org/',
+    },
+  ],
+
+  'orthanc': [
+    {
+      id: 'self-hosted',
+      label: 'Orthanc (Self-Hosted)',
+      description: 'Orthanc DICOM server. Version via /system (no auth required by default).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://orthanc.example.com:8042',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/system',
+        jsonPath: '$.Version',
+        jsonPathExtractors: ['Version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/system'],
+      },
+      latestSource: { type: 'github-releases', target: 'jodogne/OrthancContributed' },
+      evidenceUrl: 'https://book.orthanc-server.com/users/rest.html',
+    },
+  ],
+
+  'uptimekuma': [
+    {
+      id: 'self-hosted',
+      label: 'Uptime Kuma (Self-Hosted)',
+      description: 'Uptime Kuma monitoring tool. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://uptimekuma.example.com:3001',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'louislam/uptime-kuma' },
+      evidenceUrl: 'https://github.com/louislam/uptime-kuma/wiki/API-Keys',
+    },
+  ],
+
+  'statping-ng': [
+    {
+      id: 'self-hosted',
+      label: 'Statping-ng (Self-Hosted)',
+      description: 'Statping-ng status page and monitoring tool. Version via /api/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://statping.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'statping-ng/statping-ng' },
+      evidenceUrl: 'https://statping-ng.github.io/api.html',
+    },
+  ],
+
+  'gatus': [
+    {
+      id: 'self-hosted',
+      label: 'Gatus (Self-Hosted)',
+      description: 'Gatus automated health dashboard. Version via /api/v1/config (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://gatus.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/config',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/config', '/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'TwiN/gatus' },
+      evidenceUrl: 'https://gatus.io/',
+    },
+  ],
+
+  'healthchecks': [
+    {
+      id: 'self-hosted',
+      label: 'Healthchecks (Self-Hosted)',
+      description: 'Healthchecks.io cron monitoring. Version via /api/v3/checks/ (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://healthchecks.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v3/status/',
+        jsonPath: '$.server_version',
+        jsonPathExtractors: ['server_version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v3/status/', '/api/v2/status/'],
+      },
+      latestSource: { type: 'github-releases', target: 'healthchecks/healthchecks' },
+      evidenceUrl: 'https://healthchecks.io/docs/api/',
+    },
+  ],
+
+  'stump': [
+    {
+      id: 'self-hosted',
+      label: 'Stump (Self-Hosted)',
+      description: 'Stump comic/manga/ebook server. Version via /api/v1 (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://stump.example.com:10801',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1', '/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'stumpapp/stump' },
+      evidenceUrl: 'https://www.stumpapp.dev/api',
+    },
+  ],
+
+  'psono': [
+    {
+      id: 'self-hosted',
+      label: 'Psono (Self-Hosted)',
+      description: 'Psono password manager server. Version via /info/ (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://psono.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/info/',
+        jsonPath: '$.info.version',
+        jsonPathExtractors: ['info.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/info/', '/api/info/'],
+      },
+      latestSource: { type: 'github-releases', target: 'psono/psono-server' },
+      evidenceUrl: 'https://doc.psono.com/admin/api/rest-api-documentation.html',
+    },
+  ],
+
+  'teampass': [
+    {
+      id: 'self-hosted',
+      label: 'TeamPass (Self-Hosted)',
+      description: 'TeamPass collaborative password manager. Version via /api/index.php/info (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://teampass.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/index.php/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/index.php/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'nilsteampassnet/TeamPass' },
+      evidenceUrl: 'https://teampass.readthedocs.io/en/latest/api/',
+    },
+  ],
+
+  'guacamole': [
+    {
+      id: 'self-hosted',
+      label: 'Apache Guacamole (Self-Hosted)',
+      description: 'Apache Guacamole clientless remote desktop. Version via /api/patches (requires auth token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://guacamole.example.com/guacamole',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/patches',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/patches', '/api/'],
+      },
+      latestSource: { type: 'github-releases', target: 'apache/guacamole-client' },
+      evidenceUrl: 'https://guacamole.apache.org/doc/gug/rest-api.html',
+    },
+  ],
+
+  'rustdesk': [
+    {
+      id: 'self-hosted',
+      label: 'RustDesk Server (Self-Hosted)',
+      description: 'RustDesk self-hosted remote desktop server. No dedicated HTTP version endpoint — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://rustdesk.example.com:21114',
+      versionSource: {
+        type: 'github-releases',
+        target: 'rustdesk/rustdesk-server',
+      },
+      latestSource: { type: 'github-releases', target: 'rustdesk/rustdesk-server' },
+      evidenceUrl: 'https://rustdesk.com/docs/en/self-host/',
+    },
+  ],
+
+  'meshcentral': [
+    {
+      id: 'self-hosted',
+      label: 'MeshCentral (Self-Hosted)',
+      description: 'MeshCentral remote device management. Version via /api/v1/meshes (requires session token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://meshcentral.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'Ylianst/MeshCentral' },
+      evidenceUrl: 'https://ylianst.github.io/MeshCentral/meshcentral/',
+    },
+  ],
+
+  'mainsail': [
+    {
+      id: 'self-hosted',
+      label: 'Mainsail (Self-Hosted)',
+      description: 'Mainsail Klipper 3D printer web interface. Version via /api/v1/server/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://mainsail.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/server/info',
+        jsonPath: '$.result.software_version',
+        jsonPathExtractors: ['result.software_version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/server/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'mainsail-crew/mainsail' },
+      evidenceUrl: 'https://moonraker.readthedocs.io/en/latest/web_api/',
+    },
+  ],
+
+  'radicale': [
+    {
+      id: 'self-hosted',
+      label: 'Radicale (Self-Hosted)',
+      description: 'Radicale CalDAV/CardDAV server. Version via /.well-known/caldav (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://radicale.example.com',
+      versionSource: {
+        type: 'github-releases',
+        target: 'Kozea/Radicale',
+      },
+      latestSource: { type: 'github-releases', target: 'Kozea/Radicale' },
+      evidenceUrl: 'https://radicale.org/v3.html',
+    },
+  ],
+
+  'baikal': [
+    {
+      id: 'self-hosted',
+      label: 'Baïkal (Self-Hosted)',
+      description: 'Baïkal CardDAV/CalDAV server. No dedicated HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://baikal.example.com',
+      versionSource: {
+        type: 'github-releases',
+        target: 'sabre-io/Baikal',
+      },
+      latestSource: { type: 'github-releases', target: 'sabre-io/Baikal' },
+      evidenceUrl: 'https://sabre.io/baikal/',
+    },
+  ],
+
+  'geoserver': [
+    {
+      id: 'self-hosted',
+      label: 'GeoServer (Self-Hosted)',
+      description: 'GeoServer geospatial data server. Version via /web/wicket/bookmarkable/org.geoserver.web.AboutGeoServerPage (or REST API).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://geoserver.example.com:8080/geoserver',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/rest/about/version.json',
+        jsonPath: '$.about.resource[0].Version',
+        jsonPathExtractors: ['about.resource.0.Version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/rest/about/version.json'],
+      },
+      latestSource: { type: 'github-releases', target: 'geoserver/geoserver' },
+      evidenceUrl: 'https://docs.geoserver.org/stable/en/user/rest/api/about.html',
+    },
+  ],
+
+  'nominatim': [
+    {
+      id: 'self-hosted',
+      label: 'Nominatim (Self-Hosted)',
+      description: 'Nominatim OpenStreetMap geocoding service. Version via /status.php (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://nominatim.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/status.php?format=json',
+        jsonPath: '$.software_version',
+        jsonPathExtractors: ['software_version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/status.php?format=json', '/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'osm-search/Nominatim' },
+      evidenceUrl: 'https://nominatim.org/release-docs/latest/api/Status/',
+    },
+  ],
+
+  'varnish': [
+    {
+      id: 'self-hosted',
+      label: 'Varnish Cache (Self-Hosted)',
+      description: 'Varnish HTTP accelerator. Version via varnishadm or varnishstat CLI — no HTTP version endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://varnish.example.com:6081',
+      versionSource: {
+        type: 'github-releases',
+        target: 'varnishcache/varnish-cache',
+      },
+      latestSource: { type: 'github-releases', target: 'varnishcache/varnish-cache' },
+      evidenceUrl: 'https://varnish-cache.org/docs/',
+    },
+  ],
+
+  'squid': [
+    {
+      id: 'self-hosted',
+      label: 'Squid Proxy (Self-Hosted)',
+      description: 'Squid caching proxy. Version via cachemgr.cgi or squidclient — no HTTP version API.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://squid.example.com:3128',
+      versionSource: {
+        type: 'github-releases',
+        target: 'squid-cache/squid',
+      },
+      latestSource: { type: 'github-releases', target: 'squid-cache/squid' },
+      evidenceUrl: 'https://wiki.squid-cache.org/Features/CacheManager',
+    },
+  ],
+
+  'selenium-grid': [
+    {
+      id: 'self-hosted',
+      label: 'Selenium Grid (Self-Hosted)',
+      description: 'Selenium Grid test automation. Version via /status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://selenium-grid.example.com:4444',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/status',
+        jsonPath: '$.value.ready',
+        jsonPathExtractors: ['value.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/status', '/grid/api/hub'],
+      },
+      latestSource: { type: 'github-releases', target: 'SeleniumHQ/selenium' },
+      evidenceUrl: 'https://www.selenium.dev/documentation/grid/getting_started/',
+    },
+  ],
+
+  'allure': [
+    {
+      id: 'self-hosted',
+      label: 'Allure TestOps (Self-Hosted)',
+      description: 'Allure TestOps test management. Version via /api/rs/about (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://allure.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/rs/about',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/rs/about'],
+      },
+      latestSource: { type: 'github-releases', target: 'allure-framework/allure2' },
+      evidenceUrl: 'https://docs.qameta.io/allure-testops/',
+    },
+  ],
+
+  'apprise': [
+    {
+      id: 'self-hosted',
+      label: 'Apprise API (Self-Hosted)',
+      description: 'Apprise notification API server. Version via /status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://apprise.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'caronc/apprise-api' },
+      evidenceUrl: 'https://github.com/caronc/apprise-api',
+    },
+  ],
+
+  'bookwyrm': [
+    {
+      id: 'self-hosted',
+      label: 'BookWyrm (Self-Hosted)',
+      description: 'BookWyrm federated reading tracker. Version via /api/v1/instance (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://bookwyrm.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/instance',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/instance'],
+      },
+      latestSource: { type: 'github-releases', target: 'bookwyrm-social/bookwyrm' },
+      evidenceUrl: 'https://docs.joinbookwyrm.com/',
+    },
+  ],
+
+  'pleroma': [
+    {
+      id: 'self-hosted',
+      label: 'Pleroma (Self-Hosted)',
+      description: 'Pleroma federated social network. Version via /api/v1/instance (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://pleroma.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/instance',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/instance'],
+      },
+      latestSource: { type: 'github-releases', target: 'elixir-horizon/pleroma' },
+      evidenceUrl: 'https://docs-develop.pleroma.social/backend/API/pleroma_api/',
+    },
+  ],
+
+  'funkwhale': [
+    {
+      id: 'self-hosted',
+      label: 'Funkwhale (Self-Hosted)',
+      description: 'Funkwhale federated music platform. Version via /api/v2/instance/ (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://funkwhale.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/instance/',
+        jsonPath: '$.funkwhale_version',
+        jsonPathExtractors: ['funkwhale_version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v2/instance/', '/api/v1/instance/'],
+      },
+      latestSource: { type: 'github-releases', target: 'funkwhale/funkwhale' },
+      evidenceUrl: 'https://docs.funkwhale.audio/api/',
+    },
+  ],
+
+  'mediamtx': [
+    {
+      id: 'self-hosted',
+      label: 'MediaMTX (Self-Hosted)',
+      description: 'MediaMTX (formerly rtsp-simple-server) media server. Version via /v3/general (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://mediamtx.example.com:9997',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v3/general',
+        jsonPath: '$.serverVersion',
+        jsonPathExtractors: ['serverVersion', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/v3/general', '/v2/config/global/get'],
+      },
+      latestSource: { type: 'github-releases', target: 'bluenviron/mediamtx' },
+      evidenceUrl: 'https://github.com/bluenviron/mediamtx/blob/main/apidocs/openapi.yaml',
+    },
+  ],
+
+  'ttyd': [
+    {
+      id: 'self-hosted',
+      label: 'ttyd (Self-Hosted)',
+      description: 'ttyd web-based terminal. No version HTTP endpoint — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://ttyd.example.com:7681',
+      versionSource: {
+        type: 'github-releases',
+        target: 'tsl0922/ttyd',
+      },
+      latestSource: { type: 'github-releases', target: 'tsl0922/ttyd' },
+      evidenceUrl: 'https://github.com/tsl0922/ttyd',
+    },
+  ],
+
+  'wetty': [
+    {
+      id: 'self-hosted',
+      label: 'WeTTY (Self-Hosted)',
+      description: 'WeTTY web-based terminal. No version HTTP endpoint — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://wetty.example.com:3000',
+      versionSource: {
+        type: 'github-releases',
+        target: 'butlerx/wetty',
+      },
+      latestSource: { type: 'github-releases', target: 'butlerx/wetty' },
+      evidenceUrl: 'https://github.com/butlerx/wetty',
+    },
+  ],
+
+  'dashy': [
+    {
+      id: 'self-hosted',
+      label: 'Dashy (Self-Hosted)',
+      description: 'Dashy self-hosted dashboard. Version via /api/v1/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://dashy.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/status',
+        jsonPath: '$.serverVersion',
+        jsonPathExtractors: ['serverVersion', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'Lissy93/dashy' },
+      evidenceUrl: 'https://dashy.to/docs/api',
+    },
+  ],
+
+  'qbittorrent': [
+    {
+      id: 'self-hosted',
+      label: 'qBittorrent (Self-Hosted)',
+      description: 'qBittorrent torrent client with Web UI. Version via /api/v2/app/version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://qbittorrent.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/app/version',
+        jsonPath: '$',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v2/app/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'qbittorrent/qBittorrent' },
+      evidenceUrl: 'https://github.com/qbittorrent/qBittorrent/wiki/WebUI-API-(qBittorrent-4.1)',
+    },
+  ],
+
+  'transmission': [
+    {
+      id: 'self-hosted',
+      label: 'Transmission (Self-Hosted)',
+      description: 'Transmission torrent client. Version via RPC /transmission/rpc (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://transmission.example.com:9091',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/transmission/rpc',
+        jsonPath: '$.arguments.version',
+        jsonPathExtractors: ['arguments.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/transmission/rpc'],
+      },
+      latestSource: { type: 'github-releases', target: 'transmission/transmission' },
+      evidenceUrl: 'https://github.com/transmission/transmission/blob/main/docs/rpc-spec.md',
+    },
+  ],
+
+  'deluge': [
+    {
+      id: 'self-hosted',
+      label: 'Deluge (Self-Hosted)',
+      description: 'Deluge torrent client with Web UI. Version via /json (JSON-RPC, requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://deluge.example.com:8112',
+      versionSource: {
+        type: 'github-releases',
+        target: 'deluge-torrent/deluge',
+      },
+      latestSource: { type: 'github-releases', target: 'deluge-torrent/deluge' },
+      evidenceUrl: 'https://deluge.readthedocs.io/en/latest/reference/api.html',
+    },
+  ],
+
+  'sabnzbd': [
+    {
+      id: 'self-hosted',
+      label: 'SABnzbd (Self-Hosted)',
+      description: 'SABnzbd Usenet downloader. Version via /api?mode=version (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://sabnzbd.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api?mode=version&apikey={{apiKey}}&output=json',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api?mode=version'],
+      },
+      latestSource: { type: 'github-releases', target: 'sabnzbd/sabnzbd' },
+      evidenceUrl: 'https://sabnzbd.org/wiki/advanced/api',
+    },
+  ],
+
+  'nzbget': [
+    {
+      id: 'self-hosted',
+      label: 'NZBGet (Self-Hosted)',
+      description: 'NZBGet Usenet downloader. Version via /jsonrpc (JSON-RPC, requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://nzbget.example.com:6789',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/jsonrpc/version',
+        jsonPath: '$.result',
+        jsonPathExtractors: ['result', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/jsonrpc/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'nzbgetcom/nzbget' },
+      evidenceUrl: 'https://nzbget.net/api/',
+    },
+  ],
+
+  'text-generation-webui': [
+    {
+      id: 'self-hosted',
+      label: 'Text Generation WebUI (Self-Hosted)',
+      description: 'oobabooga text-generation-webui for running LLMs. Version via /api/v1/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://textgen.example.com:5000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/info', '/api/v1/model'],
+      },
+      latestSource: { type: 'github-releases', target: 'oobabooga/text-generation-webui' },
+      evidenceUrl: 'https://github.com/oobabooga/text-generation-webui/wiki/12-%E2%80%90-OpenAI-API',
+    },
+  ],
+
+  'stable-diffusion-webui': [
+    {
+      id: 'self-hosted',
+      label: 'Stable Diffusion WebUI (Self-Hosted)',
+      description: 'AUTOMATIC1111 Stable Diffusion WebUI. Version via /internal/sysinfo (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://sdwebui.example.com:7860',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/internal/sysinfo',
+        jsonPath: '$.Version',
+        jsonPathExtractors: ['Version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/internal/sysinfo', '/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'AUTOMATIC1111/stable-diffusion-webui' },
+      evidenceUrl: 'https://github.com/AUTOMATIC1111/stable-diffusion-webui/wiki/API',
+    },
+  ],
+
+  'langflow': [
+    {
+      id: 'self-hosted',
+      label: 'Langflow (Self-Hosted)',
+      description: 'Langflow LLM flow builder. Version via /api/v1/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://langflow.example.com:7860',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/version', '/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'langflow-ai/langflow' },
+      evidenceUrl: 'https://docs.langflow.org/configuration-api-keys',
+    },
+  ],
+
+  'tabbyml': [
+    {
+      id: 'self-hosted',
+      label: 'Tabby (Self-Hosted)',
+      description: 'Tabby self-hosted AI coding assistant. Version via /v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://tabby.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'TabbyML/tabby' },
+      evidenceUrl: 'https://tabby.tabbyml.com/api/',
+    },
+  ],
+
+  'chromadb': [
+    {
+      id: 'self-hosted',
+      label: 'ChromaDB (Self-Hosted)',
+      description: 'Chroma AI-native vector database. Version via /api/v2/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://chromadb.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/version',
+        jsonPath: '$',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v2/version', '/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'chroma-core/chroma' },
+      evidenceUrl: 'https://docs.trychroma.com/reference/py-client',
+    },
+  ],
+
+  'apache-nifi': [
+    {
+      id: 'self-hosted',
+      label: 'Apache NiFi (Self-Hosted)',
+      description: 'Apache NiFi data flow automation. Version via /nifi-api/flow/about (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://nifi.example.com:8443',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/nifi-api/flow/about',
+        jsonPath: '$.about.version',
+        jsonPathExtractors: ['about.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/nifi-api/flow/about'],
+      },
+      latestSource: { type: 'github-releases', target: 'apache/nifi' },
+      evidenceUrl: 'https://nifi.apache.org/docs/nifi-docs/rest-api/',
+    },
+  ],
+
+  'debezium': [
+    {
+      id: 'self-hosted',
+      label: 'Debezium (Self-Hosted)',
+      description: 'Debezium CDC platform (via Kafka Connect). Version via / (requires Kafka Connect REST).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://debezium.example.com:8083',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/', '/connectors'],
+      },
+      latestSource: { type: 'github-releases', target: 'debezium/debezium' },
+      evidenceUrl: 'https://debezium.io/documentation/reference/stable/operations/rest-api.html',
+    },
+  ],
+
+  'ksqldb': [
+    {
+      id: 'self-hosted',
+      label: 'ksqlDB (Self-Hosted)',
+      description: 'ksqlDB streaming SQL engine. Version via /info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://ksqldb.example.com:8088',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/info',
+        jsonPath: '$.KsqlServerInfo.version',
+        jsonPathExtractors: ['KsqlServerInfo.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'confluentinc/ksql' },
+      evidenceUrl: 'https://docs.ksqldb.io/en/latest/developer-guide/ksqldb-rest-api/',
+    },
+  ],
+
+  'linstor': [
+    {
+      id: 'self-hosted',
+      label: 'LINSTOR (Self-Hosted)',
+      description: 'LINSTOR distributed block storage. Version via /v1/controller/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://linstor.example.com:3370',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/controller/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/v1/controller/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'LINBIT/linstor-server' },
+      evidenceUrl: 'https://app.swaggerhub.com/apis/Linstor/Linstor',
+    },
+  ],
+
+  'grav': [
+    {
+      id: 'self-hosted',
+      label: 'Grav CMS (Self-Hosted)',
+      description: 'Grav flat-file CMS. Version via /api/versions (requires API plugin + auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://grav.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/versions',
+        jsonPath: '$.grav',
+        jsonPathExtractors: ['grav', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/versions'],
+      },
+      latestSource: { type: 'github-releases', target: 'getgrav/grav' },
+      evidenceUrl: 'https://learn.getgrav.org/17/advanced/grav-api',
+    },
+  ],
+
+  'pimcore': [
+    {
+      id: 'self-hosted',
+      label: 'Pimcore (Self-Hosted)',
+      description: 'Pimcore data and experience management. Version via /admin/misc/json-translations-system (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://pimcore.example.com',
+      versionSource: {
+        type: 'github-releases',
+        target: 'pimcore/pimcore',
+      },
+      latestSource: { type: 'github-releases', target: 'pimcore/pimcore' },
+      evidenceUrl: 'https://pimcore.com/docs/platform/Pimcore/Development_Tools_and_Details/REST_API/',
+    },
+  ],
+
+  'keystone-js': [
+    {
+      id: 'self-hosted',
+      label: 'KeystoneJS (Self-Hosted)',
+      description: 'KeystoneJS headless CMS. Version via /api/graphql introspection or package.json — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://keystone.example.com:3000',
+      versionSource: {
+        type: 'github-releases',
+        target: 'keystonejs/keystone',
+      },
+      latestSource: { type: 'github-releases', target: 'keystonejs/keystone' },
+      evidenceUrl: 'https://keystonejs.com/docs/apis',
+    },
+  ],
+
+  'polr': [
+    {
+      id: 'self-hosted',
+      label: 'Polr (Self-Hosted)',
+      description: 'Polr URL shortener. Version via /api/v2/data/shorten (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://polr.example.com',
+      versionSource: {
+        type: 'github-releases',
+        target: 'cydrobolt/polr',
+      },
+      latestSource: { type: 'github-releases', target: 'cydrobolt/polr' },
+      evidenceUrl: 'https://docs.polrproject.org/en/latest/user-guide/api/',
+    },
+  ],
+
+  'dub-co': [
+    {
+      id: 'self-hosted',
+      label: 'Dub (Self-Hosted)',
+      description: 'Dub open-source link management. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://dub.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'dubinc/dub' },
+      evidenceUrl: 'https://dub.co/docs/api-reference/introduction',
+    },
+  ],
+
+  'opnform': [
+    {
+      id: 'self-hosted',
+      label: 'OpnForm (Self-Hosted)',
+      description: 'OpnForm open-source form builder. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://opnform.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'JhumanJ/OpnForm' },
+      evidenceUrl: 'https://opnform.com/docs',
+    },
+  ],
+
+  'heyform': [
+    {
+      id: 'self-hosted',
+      label: 'HeyForm (Self-Hosted)',
+      description: 'HeyForm open-source form builder. Version via /api/v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://heyform.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'heyform/heyform' },
+      evidenceUrl: 'https://github.com/heyform/heyform',
+    },
+  ],
+
+  'plantuml-server': [
+    {
+      id: 'self-hosted',
+      label: 'PlantUML Server (Self-Hosted)',
+      description: 'PlantUML diagram server. Version via /version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://plantuml.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version', '/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'plantuml/plantuml-server' },
+      evidenceUrl: 'https://plantuml.com/server',
+    },
+  ],
+
+  'shellinabox': [
+    {
+      id: 'self-hosted',
+      label: 'Shell In A Box (Self-Hosted)',
+      description: 'Shell In A Box web-based terminal. No HTTP version endpoint — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://shellinabox.example.com:4200',
+      versionSource: {
+        type: 'github-releases',
+        target: 'shellinabox/shellinabox',
+      },
+      latestSource: { type: 'github-releases', target: 'shellinabox/shellinabox' },
+      evidenceUrl: 'https://github.com/shellinabox/shellinabox',
+    },
+  ],
+
+  'pufferpanel': [
+    {
+      id: 'self-hosted',
+      label: 'PufferPanel (Self-Hosted)',
+      description: 'PufferPanel game server management panel. Version via /api/config (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://pufferpanel.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/config',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/config'],
+      },
+      latestSource: { type: 'github-releases', target: 'PufferPanel/PufferPanel' },
+      evidenceUrl: 'https://docs.pufferpanel.com/en/latest/api.html',
+    },
+  ],
+
+  'pelican-panel': [
+    {
+      id: 'self-hosted',
+      label: 'Pelican Panel (Self-Hosted)',
+      description: 'Pelican Panel (Pterodactyl fork) game server management. Version via /api/client (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://pelican.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/client',
+        jsonPath: '$.meta.pterodactyl_version',
+        jsonPathExtractors: ['meta.pterodactyl_version', 'meta.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/client'],
+      },
+      latestSource: { type: 'github-releases', target: 'pelican-dev/panel' },
+      evidenceUrl: 'https://pelican.dev/docs',
+    },
+  ],
+
+  'padloc': [
+    {
+      id: 'self-hosted',
+      label: 'Padloc (Self-Hosted)',
+      description: 'Padloc password manager. Version via /health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://padloc.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'padloc/padloc' },
+      evidenceUrl: 'https://padloc.app/docs/selfhosting',
+    },
+  ],
+
+  'novnc': [
+    {
+      id: 'self-hosted',
+      label: 'noVNC (Self-Hosted)',
+      description: 'noVNC web-based VNC client. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://novnc.example.com:6080',
+      versionSource: {
+        type: 'github-releases',
+        target: 'novnc/noVNC',
+      },
+      latestSource: { type: 'github-releases', target: 'novnc/noVNC' },
+      evidenceUrl: 'https://github.com/novnc/noVNC',
+    },
+  ],
+
+  'easy-appointments': [
+    {
+      id: 'self-hosted',
+      label: 'Easy!Appointments (Self-Hosted)',
+      description: 'Easy!Appointments open-source scheduling. Version via /api/v1/ (requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://easyappointments.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/'],
+      },
+      latestSource: { type: 'github-releases', target: 'alextselegidis/easyappointments' },
+      evidenceUrl: 'https://easyappointments.org/docs.html#rest-api',
+    },
+  ],
+
+  'crater-invoicing': [
+    {
+      id: 'self-hosted',
+      label: 'Crater Invoicing (Self-Hosted)',
+      description: 'Crater open-source invoicing. Version via /api/v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://crater.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'crater-invoice/crater' },
+      evidenceUrl: 'https://crater.finance/docs',
+    },
+  ],
+
+  'axelor': [
+    {
+      id: 'self-hosted',
+      label: 'Axelor (Self-Hosted)',
+      description: 'Axelor open-source ERP/CRM. Version via /ws/app/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://axelor.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/ws/app/info',
+        jsonPath: '$.application.version',
+        jsonPathExtractors: ['application.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/ws/app/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'axelor/axelor-open-suite' },
+      evidenceUrl: 'https://docs.axelor.com/adk/latest/api/',
+    },
+  ],
+
+  'gladys-assistant': [
+    {
+      id: 'self-hosted',
+      label: 'Gladys Assistant (Self-Hosted)',
+      description: 'Gladys Assistant open-source home automation. Version via /api/v1/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://gladys.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'GladysAssistant/Gladys' },
+      evidenceUrl: 'https://gladysassistant.com/docs/api/',
+    },
+  ],
+
+  'cubejs': [
+    {
+      id: 'self-hosted',
+      label: 'Cube.js (Self-Hosted)',
+      description: 'Cube semantic layer for analytics APIs. Version via /readyz (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://cubejs.example.com:4000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/readyz',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/readyz', '/livez'],
+      },
+      latestSource: { type: 'github-releases', target: 'cube-js/cube.js' },
+      evidenceUrl: 'https://cube.dev/docs/http-api/rest',
+    },
+  ],
+
+  'goaccess': [
+    {
+      id: 'self-hosted',
+      label: 'GoAccess (Self-Hosted)',
+      description: 'GoAccess real-time web log analyzer. Version via its WebSocket stream — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://goaccess.example.com:7890',
+      versionSource: { type: 'github-releases', target: 'allinurl/goaccess' },
+      latestSource: { type: 'github-releases', target: 'allinurl/goaccess' },
+      evidenceUrl: 'https://goaccess.io/man',
+    },
+  ],
+
+  'kestra': [
+    {
+      id: 'self-hosted',
+      label: 'Kestra (Self-Hosted)',
+      description: 'Kestra workflow orchestration. Version via /api/v1/serverInfos (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://kestra.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/serverInfos',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/serverInfos'],
+      },
+      latestSource: { type: 'github-releases', target: 'kestra-io/kestra' },
+      evidenceUrl: 'https://kestra.io/docs/api-reference',
+    },
+  ],
+
+  'huginn': [
+    {
+      id: 'self-hosted',
+      label: 'Huginn (Self-Hosted)',
+      description: 'Huginn automation agent platform. No public HTTP version endpoint — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://huginn.example.com:3000',
+      versionSource: { type: 'github-releases', target: 'huginn/huginn' },
+      latestSource: { type: 'github-releases', target: 'huginn/huginn' },
+      evidenceUrl: 'https://github.com/huginn/huginn',
+    },
+  ],
+
+  'akkoma': [
+    {
+      id: 'self-hosted',
+      label: 'Akkoma (Self-Hosted)',
+      description: 'Akkoma federated social platform (Pleroma fork). Version via /api/v1/instance (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://akkoma.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/instance',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/instance'],
+      },
+      latestSource: { type: 'github-releases', target: 'AkkomaGang/akkoma' },
+      evidenceUrl: 'https://docs.akkoma.dev/stable/development/API/',
+    },
+  ],
+
+  'kbin': [
+    {
+      id: 'self-hosted',
+      label: 'kbin (Self-Hosted)',
+      description: 'kbin federated link aggregator. Version via /api/v2/instance (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://kbin.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/instance',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v2/instance'],
+      },
+      latestSource: { type: 'github-releases', target: 'mbajur/kbin' },
+      evidenceUrl: 'https://kbin.social/api/doc',
+    },
+  ],
+
+  'flarum': [
+    {
+      id: 'self-hosted',
+      label: 'Flarum (Self-Hosted)',
+      description: 'Flarum community forum. Version via /api (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://flarum.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api',
+        jsonPath: '$.data.attributes.coreVersion',
+        jsonPathExtractors: ['data.attributes.coreVersion', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api'],
+      },
+      latestSource: { type: 'github-releases', target: 'flarum/framework' },
+      evidenceUrl: 'https://docs.flarum.org/rest-api/',
+    },
+  ],
+
+  'nodebb': [
+    {
+      id: 'self-hosted',
+      label: 'NodeBB (Self-Hosted)',
+      description: 'NodeBB community forum. Version via /api/config (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://nodebb.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/config',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/config'],
+      },
+      latestSource: { type: 'github-releases', target: 'NodeBB/NodeBB' },
+      evidenceUrl: 'https://docs.nodebb.org/api/',
+    },
+  ],
+
+  'vanilla-forums': [
+    {
+      id: 'self-hosted',
+      label: 'Vanilla Forums (Self-Hosted)',
+      description: 'Vanilla Forums open-source community. Version via /api/v2/discussions (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://vanilla.example.com',
+      versionSource: { type: 'github-releases', target: 'vanilla/vanilla' },
+      latestSource: { type: 'github-releases', target: 'vanilla/vanilla' },
+      evidenceUrl: 'https://success.vanillaforums.com/kb/articles/189-api-v2',
+    },
+  ],
+
+  'cronicle': [
+    {
+      id: 'self-hosted',
+      label: 'Cronicle (Self-Hosted)',
+      description: 'Cronicle task scheduler and runner. Version via /api/app/get_version (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://cronicle.example.com:3012',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/app/get_version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/app/get_version'],
+      },
+      latestSource: { type: 'github-releases', target: 'jhuckaby/Cronicle' },
+      evidenceUrl: 'https://github.com/jhuckaby/Cronicle/blob/master/docs/API.md',
+    },
+  ],
+
+  'shopware': [
+    {
+      id: 'self-hosted',
+      label: 'Shopware (Self-Hosted)',
+      description: 'Shopware e-commerce platform. Version via /api/info (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://shopware.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/info', '/api/v2/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'shopware/shopware' },
+      evidenceUrl: 'https://shopware.stoplight.io/docs/admin-api/',
+    },
+  ],
+
+  'prestashop': [
+    {
+      id: 'self-hosted',
+      label: 'PrestaShop (Self-Hosted)',
+      description: 'PrestaShop e-commerce platform. Version via /api (requires Basic auth with API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://prestashop.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/?schema=details&output_format=JSON',
+        jsonPath: '$.prestashop.prestashop.version',
+        jsonPathExtractors: ['prestashop.prestashop.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/?schema=details&output_format=JSON'],
+      },
+      latestSource: { type: 'github-releases', target: 'PrestaShop/PrestaShop' },
+      evidenceUrl: 'https://devdocs.prestashop-project.org/8/webservice/',
+    },
+  ],
+
+  'medusa': [
+    {
+      id: 'self-hosted',
+      label: 'Medusa (Self-Hosted)',
+      description: 'Medusa open-source e-commerce. Version via /health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://medusa.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/health', '/store/products'],
+      },
+      latestSource: { type: 'github-releases', target: 'medusajs/medusa' },
+      evidenceUrl: 'https://docs.medusajs.com/api/store',
+    },
+  ],
+
+  'saleor': [
+    {
+      id: 'self-hosted',
+      label: 'Saleor (Self-Hosted)',
+      description: 'Saleor headless e-commerce. Version via /api/ GraphQL introspection (no auth required for public fields).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://saleor.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/',
+        jsonPath: '$.data.shop.version',
+        jsonPathExtractors: ['data.shop.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/'],
+      },
+      latestSource: { type: 'github-releases', target: 'saleor/saleor' },
+      evidenceUrl: 'https://docs.saleor.io/api-reference/',
+    },
+  ],
+
+  'bytebase': [
+    {
+      id: 'self-hosted',
+      label: 'Bytebase (Self-Hosted)',
+      description: 'Bytebase database schema change management. Version via /v1/actuator/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://bytebase.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/actuator/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/v1/actuator/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'bytebase/bytebase' },
+      evidenceUrl: 'https://www.bytebase.com/docs/api/overview/',
+    },
+  ],
+
+  'pghero': [
+    {
+      id: 'self-hosted',
+      label: 'PgHero (Self-Hosted)',
+      description: 'PgHero PostgreSQL performance dashboard. No dedicated version HTTP endpoint — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://pghero.example.com',
+      versionSource: { type: 'github-releases', target: 'ankane/pghero' },
+      latestSource: { type: 'github-releases', target: 'ankane/pghero' },
+      evidenceUrl: 'https://github.com/ankane/pghero',
+    },
+  ],
+
+  'healthchecks-io': [
+    {
+      id: 'self-hosted',
+      label: 'Healthchecks.io (Self-Hosted)',
+      description: 'Healthchecks.io cron monitoring (self-hosted edition). Version via /api/v3/status/ (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://healthchecks.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v3/status/',
+        jsonPath: '$.server_version',
+        jsonPathExtractors: ['server_version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v3/status/', '/api/v2/status/'],
+      },
+      latestSource: { type: 'github-releases', target: 'healthchecks/healthchecks' },
+      evidenceUrl: 'https://healthchecks.io/docs/api/',
+    },
+  ],
+
+  'dependency-track': [
+    {
+      id: 'self-hosted',
+      label: 'Dependency-Track (Self-Hosted)',
+      description: 'OWASP Dependency-Track SBOM/SCA platform. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://dependency-track.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'DependencyTrack/dependency-track' },
+      evidenceUrl: 'https://docs.dependencytrack.org/integrations/rest-api/',
+    },
+  ],
+
+  'defectdojo': [
+    {
+      id: 'self-hosted',
+      label: 'DefectDojo (Self-Hosted)',
+      description: 'DefectDojo vulnerability management. Version via /api/v2/system_settings/ (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://defectdojo.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/system_settings/',
+        jsonPath: '$.results[0].system_message',
+        jsonPathExtractors: ['results.0.system_message', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v2/system_settings/'],
+      },
+      latestSource: { type: 'github-releases', target: 'DefectDojo/django-DefectDojo' },
+      evidenceUrl: 'https://defectdojo.github.io/django-DefectDojo/integrations/api-v2-docs/',
+    },
+  ],
+
+  'headlamp': [
+    {
+      id: 'self-hosted',
+      label: 'Headlamp (Self-Hosted)',
+      description: 'Headlamp Kubernetes dashboard. Version via /api/v1 (proxied from Kubernetes API, requires token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://headlamp.example.com:4466',
+      versionSource: { type: 'github-releases', target: 'headlamp-k8s/headlamp' },
+      latestSource: { type: 'github-releases', target: 'headlamp-k8s/headlamp' },
+      evidenceUrl: 'https://headlamp.dev/docs/',
+    },
+  ],
+
+  'skooner': [
+    {
+      id: 'self-hosted',
+      label: 'Skooner (Self-Hosted)',
+      description: 'Skooner (formerly k8dash) Kubernetes dashboard. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://skooner.example.com',
+      versionSource: { type: 'github-releases', target: 'skooner-k8s/skooner' },
+      latestSource: { type: 'github-releases', target: 'skooner-k8s/skooner' },
+      evidenceUrl: 'https://github.com/skooner-k8s/skooner',
+    },
+  ],
+
+  'souin': [
+    {
+      id: 'self-hosted',
+      label: 'Souin (Self-Hosted)',
+      description: 'Souin HTTP cache plugin. Version via /souin-api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://souin.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/souin-api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/souin-api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'darkweak/souin' },
+      evidenceUrl: 'https://docs.souin.io/',
+    },
+  ],
+
+  'thumbor': [
+    {
+      id: 'self-hosted',
+      label: 'Thumbor (Self-Hosted)',
+      description: 'Thumbor image processing service. Version via /healthcheck (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://thumbor.example.com:8888',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/healthcheck',
+        jsonPath: '$.thumbor.version',
+        jsonPathExtractors: ['thumbor.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/healthcheck'],
+      },
+      latestSource: { type: 'github-releases', target: 'thumbor/thumbor' },
+      evidenceUrl: 'https://thumbor.readthedocs.io/en/latest/admin.html',
+    },
+  ],
+
+  'tdengine': [
+    {
+      id: 'self-hosted',
+      label: 'TDengine (Self-Hosted)',
+      description: 'TDengine time-series database. Version via /rest/sql (requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://tdengine.example.com:6041',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/rest/sql',
+        jsonPath: '$.data[0][0]',
+        jsonPathExtractors: ['data.0.0', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/rest/sql'],
+      },
+      latestSource: { type: 'github-releases', target: 'taosdata/TDengine' },
+      evidenceUrl: 'https://docs.tdengine.com/reference/rest-api/',
+    },
+  ],
+
+  'lobe-chat': [
+    {
+      id: 'self-hosted',
+      label: 'LobeChat (Self-Hosted)',
+      description: 'LobeChat AI chat client. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://lobechat.example.com:3210',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'lobehub/lobe-chat' },
+      evidenceUrl: 'https://lobechat.com/docs/self-hosting/server-database',
+    },
+  ],
+
+  'librechat': [
+    {
+      id: 'self-hosted',
+      label: 'LibreChat (Self-Hosted)',
+      description: 'LibreChat multi-model AI chat. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://librechat.example.com:3080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'danny-avila/LibreChat' },
+      evidenceUrl: 'https://www.librechat.ai/docs/configuration/librechat_yaml',
+    },
+  ],
+
+  'label-studio': [
+    {
+      id: 'self-hosted',
+      label: 'Label Studio (Self-Hosted)',
+      description: 'Label Studio data labeling platform. Version via /api/version (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://labelstudio.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.edition',
+        jsonPathExtractors: ['edition', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/version', '/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'HumanSignal/label-studio' },
+      evidenceUrl: 'https://labelstud.io/guide/api_overview.html',
+    },
+  ],
+
+  'pterodactyl-wings': [
+    {
+      id: 'self-hosted',
+      label: 'Pterodactyl Wings (Self-Hosted)',
+      description: 'Pterodactyl Wings game server daemon. Version via /api/system (requires daemon token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://wings.example.com:443',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/system',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/system'],
+      },
+      latestSource: { type: 'github-releases', target: 'pterodactyl/wings' },
+      evidenceUrl: 'https://pterodactyl.io/wings/1.0/configuration.html',
+    },
+  ],
+
+  'amp': [
+    {
+      id: 'self-hosted',
+      label: 'AMP (Self-Hosted)',
+      description: 'AMP application management panel. Version via /api/Core/GetModuleInfo (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://amp.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/Core/GetModuleInfo',
+        jsonPath: '$.result.Version',
+        jsonPathExtractors: ['result.Version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/Core/GetModuleInfo'],
+      },
+      latestSource: { type: 'github-releases', target: 'CubeCoders/AMP' },
+      evidenceUrl: 'https://github.com/CubeCoders/AMP/wiki/API',
+    },
+  ],
+
+  'fathom': [
+    {
+      id: 'self-hosted',
+      label: 'Fathom Analytics (Self-Hosted)',
+      description: 'Fathom Lite privacy-focused analytics. No dedicated HTTP version endpoint — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://fathom.example.com:8080',
+      versionSource: { type: 'github-releases', target: 'usefathom/fathom' },
+      latestSource: { type: 'github-releases', target: 'usefathom/fathom' },
+      evidenceUrl: 'https://github.com/usefathom/fathom',
+    },
+  ],
+
+  'filebrowser': [
+    {
+      id: 'self-hosted',
+      label: 'FileBrowser (Self-Hosted)',
+      description: 'FileBrowser web-based file manager. Version via /api/command (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://filebrowser.example.com:80',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/settings',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/settings', '/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'filebrowser/filebrowser' },
+      evidenceUrl: 'https://filebrowser.org/api/overview',
+    },
+  ],
+
+  'changedetection': [
+    {
+      id: 'self-hosted',
+      label: 'changedetection.io (Self-Hosted)',
+      description: 'changedetection.io web page change monitor. Version via /api/v1 (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://changedetection.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1'],
+      },
+      latestSource: { type: 'github-releases', target: 'dgtlmoon/changedetection.io' },
+      evidenceUrl: 'https://github.com/dgtlmoon/changedetection.io/wiki/API-V1',
+    },
+  ],
+
+  'firezone': [
+    {
+      id: 'self-hosted',
+      label: 'Firezone (Self-Hosted)',
+      description: 'Firezone WireGuard-based VPN. Version via /api/v0/configuration (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://firezone.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v0/configuration',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v0/configuration'],
+      },
+      latestSource: { type: 'github-releases', target: 'firezone/firezone' },
+      evidenceUrl: 'https://www.firezone.dev/docs/reference/rest-api/',
+    },
+  ],
+
+  'xwiki': [
+    {
+      id: 'self-hosted',
+      label: 'XWiki (Self-Hosted)',
+      description: 'XWiki enterprise wiki platform. Version via /xwiki/rest (requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://xwiki.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/xwiki/rest/wikis/xwiki',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/xwiki/rest/wikis/xwiki', '/xwiki/rest'],
+      },
+      latestSource: { type: 'github-releases', target: 'xwiki/xwiki-platform' },
+      evidenceUrl: 'https://www.xwiki.org/xwiki/bin/view/Documentation/UserGuide/Features/XWikiRESTfulAPI/',
+    },
+  ],
+
+  'dokuwiki': [
+    {
+      id: 'self-hosted',
+      label: 'DokuWiki (Self-Hosted)',
+      description: 'DokuWiki flat-file wiki. Version via /lib/exe/ajax.php?call=sizeinfo (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://dokuwiki.example.com',
+      versionSource: { type: 'github-releases', target: 'dokuwiki/dokuwiki' },
+      latestSource: { type: 'github-releases', target: 'dokuwiki/dokuwiki' },
+      evidenceUrl: 'https://www.dokuwiki.org/devel:xmlrpc',
+    },
+  ],
+
+  'answer': [
+    {
+      id: 'self-hosted',
+      label: 'Answer (Self-Hosted)',
+      description: 'Answer open-source Q&A community. Version via /api/v1/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://answer.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'apache/incubator-answer' },
+      evidenceUrl: 'https://answer.apache.org/docs/API',
+    },
+  ],
+
+  'affine': [
+    {
+      id: 'self-hosted',
+      label: 'AFFiNE (Self-Hosted)',
+      description: 'AFFiNE collaborative workspace. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://affine.example.com:3010',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'toeverything/AFFiNE' },
+      evidenceUrl: 'https://docs.affine.pro/self-host-affine',
+    },
+  ],
+
+  'onedev': [
+    {
+      id: 'self-hosted',
+      label: 'OneDev (Self-Hosted)',
+      description: 'OneDev self-hosted Git server and CI. Version via /~api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://onedev.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/~api/installation-version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/~api/installation-version'],
+      },
+      latestSource: { type: 'github-releases', target: 'theonedev/onedev' },
+      evidenceUrl: 'https://docs.onedev.io/api-reference',
+    },
+  ],
+
+  'semaphore-ui': [
+    {
+      id: 'self-hosted',
+      label: 'Semaphore UI (Self-Hosted)',
+      description: 'Semaphore UI open-source Ansible/Terraform runner. Version via /api/v1/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://semaphore.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'semaphoreui/semaphore' },
+      evidenceUrl: 'https://docs.semaphoreui.com/api-reference/',
+    },
+  ],
+
+  'devtron': [
+    {
+      id: 'self-hosted',
+      label: 'Devtron (Self-Hosted)',
+      description: 'Devtron Kubernetes CI/CD tool. Version via /api/v1/server/info (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://devtron.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/server/info',
+        jsonPath: '$.result.currentVersion',
+        jsonPathExtractors: ['result.currentVersion', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/server/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'devtron-labs/devtron' },
+      evidenceUrl: 'https://docs.devtron.ai/reference/api',
+    },
+  ],
+
+  'homepage-dashboard': [
+    {
+      id: 'self-hosted',
+      label: 'Homepage Dashboard (Self-Hosted)',
+      description: 'Homepage highly customizable application dashboard. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://homepage.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'gethomepage/homepage' },
+      evidenceUrl: 'https://gethomepage.dev/latest/configs/service-widgets/',
+    },
+  ],
+
+  'organizr': [
+    {
+      id: 'self-hosted',
+      label: 'Organizr (Self-Hosted)',
+      description: 'Organizr HTPC/homelab services organizer. Version via /api/?v=&apikey={{apiKey}}&action=getVersion (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://organizr.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/?v=&apikey={{apiKey}}&action=getVersion',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/?v=&action=getVersion'],
+      },
+      latestSource: { type: 'github-releases', target: 'causefx/Organizr' },
+      evidenceUrl: 'https://docs.organizr.app/books/api',
+    },
+  ],
+
+  'archivebox': [
+    {
+      id: 'self-hosted',
+      label: 'ArchiveBox (Self-Hosted)',
+      description: 'ArchiveBox self-hosted web archiving. Version via /api/v1/docs (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://archivebox.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'ArchiveBox/ArchiveBox' },
+      evidenceUrl: 'https://docs.archivebox.io/en/latest/apidocs/',
+    },
+  ],
+
+  'shiori': [
+    {
+      id: 'self-hosted',
+      label: 'Shiori (Self-Hosted)',
+      description: 'Shiori simple bookmarks manager. Version via /api/v1/system/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://shiori.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/system/info',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/system/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'go-shiori/shiori' },
+      evidenceUrl: 'https://github.com/go-shiori/shiori/blob/master/docs/API.md',
+    },
+  ],
+
+  'readeck': [
+    {
+      id: 'self-hosted',
+      label: 'Readeck (Self-Hosted)',
+      description: 'Readeck bookmarks and read-later app. Version via /api/bookmarks (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://readeck.example.com:8000',
+      versionSource: { type: 'github-releases', target: 'readeck/readeck' },
+      latestSource: { type: 'github-releases', target: 'readeck/readeck' },
+      evidenceUrl: 'https://readeck.org/en/',
+    },
+  ],
+
+  'stash': [
+    {
+      id: 'self-hosted',
+      label: 'Stash (Self-Hosted)',
+      description: 'Stash self-hosted media organizer. Version via /api/version (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://stash.example.com:9999',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'stashapp/stash' },
+      evidenceUrl: 'https://docs.stashapp.cc/in-app-manual/configuration/api/',
+    },
+  ],
+
+  'gotosocial': [
+    {
+      id: 'self-hosted',
+      label: 'GoToSocial (Self-Hosted)',
+      description: 'GoToSocial lightweight ActivityPub server. Version via /api/v1/instance (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://gotosocial.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/instance',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/instance'],
+      },
+      latestSource: { type: 'github-releases', target: 'superseriousbusiness/gotosocial' },
+      evidenceUrl: 'https://docs.gotosocial.org/en/latest/api/swagger/',
+    },
+  ],
+
+  'signal-cli-rest-api': [
+    {
+      id: 'self-hosted',
+      label: 'Signal CLI REST API (Self-Hosted)',
+      description: 'Signal CLI REST API wrapper. Version via /v1/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://signal-cli-rest-api.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/v1/version', '/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'bbernhard/signal-cli-rest-api' },
+      evidenceUrl: 'https://bbernhard.github.io/signal-cli-rest-api/',
+    },
+  ],
+
+  'cosmos-server': [
+    {
+      id: 'self-hosted',
+      label: 'Cosmos Server (Self-Hosted)',
+      description: 'Cosmos Server self-hosted cloud OS. Version via /cosmos/api/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://cosmos.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/cosmos/api/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/cosmos/api/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'azukaar/Cosmos-Server' },
+      evidenceUrl: 'https://cosmos-cloud.io/doc/1%20Getting%20Started',
+    },
+  ],
+
+  'goauthentik': [
+    {
+      id: 'self-hosted',
+      label: 'Authentik (Self-Hosted)',
+      description: 'Authentik identity provider. Version via /api/v3/core/version/ (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://authentik.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v3/core/version/',
+        jsonPath: '$.version_current',
+        jsonPathExtractors: ['version_current', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v3/core/version/', '/api/v3/root/config/'],
+      },
+      latestSource: { type: 'github-releases', target: 'goauthentik/authentik' },
+      evidenceUrl: 'https://docs.goauthentik.io/developer-docs/api/',
+    },
+  ],
+
+  'apache-guacamole': [
+    {
+      id: 'self-hosted',
+      label: 'Apache Guacamole (Self-Hosted)',
+      description: 'Apache Guacamole remote desktop gateway. Version via /api/patches (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://guacamole.example.com/guacamole',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/patches',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/patches'],
+      },
+      latestSource: { type: 'github-releases', target: 'apache/guacamole-client' },
+      evidenceUrl: 'https://guacamole.apache.org/doc/gug/rest-api.html',
+    },
+  ],
+
+  'flood': [
+    {
+      id: 'self-hosted',
+      label: 'Flood (Self-Hosted)',
+      description: 'Flood modern torrent client web UI. Version via /api/auth/verify (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://flood.example.com:3000',
+      versionSource: { type: 'github-releases', target: 'jesec/flood' },
+      latestSource: { type: 'github-releases', target: 'jesec/flood' },
+      evidenceUrl: 'https://github.com/jesec/flood',
+    },
+  ],
+
+  'pyload': [
+    {
+      id: 'self-hosted',
+      label: 'pyLoad (Self-Hosted)',
+      description: 'pyLoad download manager. Version via /api/get_server_version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://pyload.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/get_server_version',
+        jsonPath: '$',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/get_server_version'],
+      },
+      latestSource: { type: 'github-releases', target: 'pyload/pyload' },
+      evidenceUrl: 'https://pyload.net/api/',
+    },
+  ],
+
+  'jdownloader': [
+    {
+      id: 'self-hosted',
+      label: 'JDownloader 2 (Self-Hosted)',
+      description: 'JDownloader 2 via MyJDownloader API. No local HTTP version endpoint — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://jdownloader.example.com:3129',
+      versionSource: { type: 'github-releases', target: 'AppWork-GmbH/jdownloader' },
+      latestSource: { type: 'github-releases', target: 'AppWork-GmbH/jdownloader' },
+      evidenceUrl: 'https://my.jdownloader.org/developers/',
+    },
+  ],
+
+  'zincsearch': [
+    {
+      id: 'self-hosted',
+      label: 'ZincSearch (Self-Hosted)',
+      description: 'ZincSearch full-text search engine. Version via /api/zinc/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://zincsearch.example.com:4080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/zinc/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/zinc/version', '/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'zincsearch/zincsearch' },
+      evidenceUrl: 'https://zincsearch-docs.zinc.dev/api/',
+    },
+  ],
+
+  'searxng': [
+    {
+      id: 'self-hosted',
+      label: 'SearXNG (Self-Hosted)',
+      description: 'SearXNG privacy-preserving metasearch engine. Version via / HTML page — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://searxng.example.com:8080',
+      versionSource: { type: 'github-releases', target: 'searxng/searxng' },
+      latestSource: { type: 'github-releases', target: 'searxng/searxng' },
+      evidenceUrl: 'https://docs.searxng.org/',
+    },
+  ],
+
+  'fluidd': [
+    {
+      id: 'self-hosted',
+      label: 'Fluidd (Self-Hosted)',
+      description: 'Fluidd Klipper 3D printer web interface. Version via /api/v1/server/info (Moonraker API, no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://fluidd.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/server/info',
+        jsonPath: '$.result.software_version',
+        jsonPathExtractors: ['result.software_version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/server/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'fluidd-core/fluidd' },
+      evidenceUrl: 'https://moonraker.readthedocs.io/en/latest/web_api/',
+    },
+  ],
+
+  'eramba': [
+    {
+      id: 'self-hosted',
+      label: 'Eramba (Self-Hosted)',
+      description: 'Eramba GRC platform. Version via /settings/version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://eramba.example.com',
+      versionSource: { type: 'github-releases', target: 'eramba/eramba' },
+      latestSource: { type: 'github-releases', target: 'eramba/eramba' },
+      evidenceUrl: 'https://www.eramba.org/documentation',
+    },
+  ],
+
+  'appsmith': [
+    {
+      id: 'self-hosted',
+      label: 'Appsmith (Self-Hosted)',
+      description: 'Appsmith low-code app builder. Version via /api/v1/admin/version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://appsmith.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/admin/version',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/admin/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'appsmithorg/appsmith' },
+      evidenceUrl: 'https://docs.appsmith.com/reference/api',
+    },
+  ],
+
+  'tooljet': [
+    {
+      id: 'self-hosted',
+      label: 'ToolJet (Self-Hosted)',
+      description: 'ToolJet open-source low-code builder. Version via /api/v1/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://tooljet.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/version',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v2/version', '/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'ToolJet/ToolJet' },
+      evidenceUrl: 'https://docs.tooljet.com/docs/tooljet-concepts/what-is-tooljet',
+    },
+  ],
+
+  'budibase': [
+    {
+      id: 'self-hosted',
+      label: 'Budibase (Self-Hosted)',
+      description: 'Budibase open-source low-code platform. Version via /api/global/installation (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://budibase.example.com:10000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/global/installation',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/global/installation'],
+      },
+      latestSource: { type: 'github-releases', target: 'Budibase/budibase' },
+      evidenceUrl: 'https://docs.budibase.com/docs/public-api',
+    },
+  ],
+
+  'harbor': [
+    {
+      id: 'self-hosted',
+      label: 'Harbor (Self-Hosted)',
+      description: 'Harbor container registry. Version via /api/v2.0/systeminfo (requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://harbor.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2.0/systeminfo',
+        jsonPath: '$.harbor_version',
+        jsonPathExtractors: ['harbor_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v2.0/systeminfo'],
+      },
+      latestSource: { type: 'github-releases', target: 'goharbor/harbor' },
+      evidenceUrl: 'https://harbor.io/docs/latest/build-customize-contribute/developer-guide-overview/',
+    },
+  ],
+
+  'zot': [
+    {
+      id: 'self-hosted',
+      label: 'Zot Registry (Self-Hosted)',
+      description: 'Zot OCI-native container registry. Version via /v2/ (no auth required for version header).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://zot.example.com:5000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v2/_oci/ext/discover',
+        jsonPath: '$.extensions[0].name',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/v2/_oci/ext/discover', '/v2/'],
+      },
+      latestSource: { type: 'github-releases', target: 'project-zot/zot' },
+      evidenceUrl: 'https://zotregistry.dev/v2.0.0/user-guides/user-guide-datapath/',
+    },
+  ],
+
+  'openbalena': [
+    {
+      id: 'self-hosted',
+      label: 'openBalena (Self-Hosted)',
+      description: 'openBalena IoT device fleet management. Version via /ping (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://api.openbalena.example.com',
+      versionSource: { type: 'github-releases', target: 'balena-io/open-balena' },
+      latestSource: { type: 'github-releases', target: 'balena-io/open-balena' },
+      evidenceUrl: 'https://open.balena.io/docs/',
+    },
+  ],
+
+  'thingsboard': [
+    {
+      id: 'community',
+      label: 'ThingsBoard Community (Self-Hosted)',
+      description: 'ThingsBoard IoT platform CE. Version via /api/system/info (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://thingsboard.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/system/info',
+        jsonPath: '$.serverVersion',
+        jsonPathExtractors: ['serverVersion', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/system/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'thingsboard/thingsboard' },
+      evidenceUrl: 'https://thingsboard.io/docs/reference/rest-api/',
+    },
+  ],
+
+  'mainflux': [
+    {
+      id: 'self-hosted',
+      label: 'Magistrala / Mainflux (Self-Hosted)',
+      description: 'Magistrala (formerly Mainflux) IoT platform. Version via /health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://mainflux.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'absmach/magistrala' },
+      evidenceUrl: 'https://docs.magistrala.abstractmachines.fr/api/',
+    },
+  ],
+
+  'chirpstack': [
+    {
+      id: 'self-hosted',
+      label: 'ChirpStack (Self-Hosted)',
+      description: 'ChirpStack LoRaWAN Network Server. Version via /api/version (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://chirpstack.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'chirpstack/chirpstack' },
+      evidenceUrl: 'https://www.chirpstack.io/docs/chirpstack/api/api.html',
+    },
+  ],
+
+  'beszel': [
+    {
+      id: 'self-hosted',
+      label: 'Beszel (Self-Hosted)',
+      description: 'Beszel lightweight server monitoring. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://beszel.example.com:8090',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'henrygd/beszel' },
+      evidenceUrl: 'https://beszel.dev/',
+    },
+  ],
+
+  'dozzle': [
+    {
+      id: 'self-hosted',
+      label: 'Dozzle (Self-Hosted)',
+      description: 'Dozzle Docker log viewer. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://dozzle.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'amir20/dozzle' },
+      evidenceUrl: 'https://dozzle.dev/guide/getting-started',
+    },
+  ],
+
+  'private-gpt': [
+    {
+      id: 'self-hosted',
+      label: 'PrivateGPT (Self-Hosted)',
+      description: 'PrivateGPT local AI chat. Version via /v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://privategpt.example.com:8001',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/v1/health', '/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'zylon-ai/private-gpt' },
+      evidenceUrl: 'https://docs.privategpt.dev/',
+    },
+  ],
+
+  'text-generation-inference': [
+    {
+      id: 'self-hosted',
+      label: 'TGI — Text Generation Inference (Self-Hosted)',
+      description: 'HuggingFace TGI LLM serving. Version via /info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://tgi.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/info', '/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'huggingface/text-generation-inference' },
+      evidenceUrl: 'https://huggingface.github.io/text-generation-inference/',
+    },
+  ],
+
+  'automatic1111-forge': [
+    {
+      id: 'self-hosted',
+      label: 'SD WebUI Forge (Self-Hosted)',
+      description: 'SD WebUI Forge (AUTOMATIC1111 fork). Version via /internal/sysinfo (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://forge.example.com:7860',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/internal/sysinfo',
+        jsonPath: '$.Version',
+        jsonPathExtractors: ['Version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/internal/sysinfo', '/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'lllyasviel/stable-diffusion-webui-forge' },
+      evidenceUrl: 'https://github.com/lllyasviel/stable-diffusion-webui-forge',
+    },
+  ],
+
+  'invokeai': [
+    {
+      id: 'self-hosted',
+      label: 'InvokeAI (Self-Hosted)',
+      description: 'InvokeAI Stable Diffusion toolkit. Version via /api/v1/app/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://invokeai.example.com:9090',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/app/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/app/version', '/api/v1/app/app_deps'],
+      },
+      latestSource: { type: 'github-releases', target: 'invoke-ai/InvokeAI' },
+      evidenceUrl: 'https://invoke-ai.github.io/InvokeAI/contributing/LOCAL_DEVELOPMENT/',
+    },
+  ],
+
+  'collabora-online': [
+    {
+      id: 'self-hosted',
+      label: 'Collabora Online (Self-Hosted)',
+      description: 'Collabora Online office suite. Version via /hosting/capabilities (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://collabora.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/hosting/capabilities',
+        jsonPath: '$.productVersion',
+        jsonPathExtractors: ['productVersion', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/hosting/capabilities'],
+      },
+      latestSource: { type: 'github-releases', target: 'CollaboraOnline/online' },
+      evidenceUrl: 'https://sdk.collaboraonline.com/docs/How_to_integrate_Collabora_Online_into_your_own_solution.html',
+    },
+  ],
+
+  'docmost': [
+    {
+      id: 'self-hosted',
+      label: 'Docmost (Self-Hosted)',
+      description: 'Docmost collaborative wiki. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://docmost.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'docmost/docmost' },
+      evidenceUrl: 'https://docmost.com/docs',
+    },
+  ],
+
+  'spacebar': [
+    {
+      id: 'self-hosted',
+      label: 'Spacebar (Self-Hosted)',
+      description: 'Spacebar Discord-compatible server. Version via /api/ping (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://spacebar.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/ping',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/ping'],
+      },
+      latestSource: { type: 'github-releases', target: 'spacebarchat/server' },
+      evidenceUrl: 'https://docs.spacebar.chat/setup/',
+    },
+  ],
+
+  'tubearchivist': [
+    {
+      id: 'self-hosted',
+      label: 'TubeArchivist (Self-Hosted)',
+      description: 'TubeArchivist YouTube archiver. Version via /api/ping/ (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://tubearchivist.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/ping/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/ping/'],
+      },
+      latestSource: { type: 'github-releases', target: 'tubearchivist/tubearchivist' },
+      evidenceUrl: 'https://docs.tubearchivist.com/api/',
+    },
+  ],
+
+  'metube': [
+    {
+      id: 'self-hosted',
+      label: 'MeTube (Self-Hosted)',
+      description: 'MeTube web GUI for yt-dlp. Version via /api/q (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://metube.example.com:8081',
+      versionSource: { type: 'github-releases', target: 'alexta69/metube' },
+      latestSource: { type: 'github-releases', target: 'alexta69/metube' },
+      evidenceUrl: 'https://github.com/alexta69/metube',
+    },
+  ],
+
+  'scrypted': [
+    {
+      id: 'self-hosted',
+      label: 'Scrypted (Self-Hosted)',
+      description: 'Scrypted home security video integration platform. Version via /api/version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://scrypted.example.com:10443',
+      versionSource: { type: 'github-releases', target: 'koush/scrypted' },
+      latestSource: { type: 'github-releases', target: 'koush/scrypted' },
+      evidenceUrl: 'https://docs.scrypted.app/',
+    },
+  ],
+
+  'penpot': [
+    {
+      id: 'self-hosted',
+      label: 'Penpot (Self-Hosted)',
+      description: 'Penpot open-source design tool. Version via /api/rpc/command/get-profile (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://penpot.example.com:3449',
+      versionSource: { type: 'github-releases', target: 'penpot/penpot' },
+      latestSource: { type: 'github-releases', target: 'penpot/penpot' },
+      evidenceUrl: 'https://help.penpot.app/technical-guide/developer/backend/',
+    },
+  ],
+
+  'lago': [
+    {
+      id: 'self-hosted',
+      label: 'Lago (Self-Hosted)',
+      description: 'Lago open-source metering and billing. Version via /api/v1/version (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://lago.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'getlago/lago' },
+      evidenceUrl: 'https://getlago.com/docs/api-reference/intro',
+    },
+  ],
+
+  'maybe-finance': [
+    {
+      id: 'self-hosted',
+      label: 'Maybe Finance (Self-Hosted)',
+      description: 'Maybe personal finance app. Version via /api/v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://maybe.example.com:3000',
+      versionSource: { type: 'github-releases', target: 'maybe-finance/maybe' },
+      latestSource: { type: 'github-releases', target: 'maybe-finance/maybe' },
+      evidenceUrl: 'https://github.com/maybe-finance/maybe',
+    },
+  ],
+
+  'hoarder': [
+    {
+      id: 'self-hosted',
+      label: 'Hoarder (Self-Hosted)',
+      description: 'Hoarder bookmark manager with AI tagging. Version via /api/v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://hoarder.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'hoarder-app/hoarder' },
+      evidenceUrl: 'https://docs.hoarder.app/',
+    },
+  ],
+
+  'karakeep': [
+    {
+      id: 'self-hosted',
+      label: 'Karakeep (Self-Hosted)',
+      description: 'Karakeep (formerly Hoarder) bookmark manager. Version via /api/v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://karakeep.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'karakeep-app/karakeep' },
+      evidenceUrl: 'https://karakeep.app/',
+    },
+  ],
+
+  'it-tools': [
+    {
+      id: 'self-hosted',
+      label: 'IT Tools (Self-Hosted)',
+      description: 'IT Tools collection of handy online tools. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://it-tools.example.com',
+      versionSource: { type: 'github-releases', target: 'CorentinTh/it-tools' },
+      latestSource: { type: 'github-releases', target: 'CorentinTh/it-tools' },
+      evidenceUrl: 'https://github.com/CorentinTh/it-tools',
+    },
+  ],
+
+  'traggo': [
+    {
+      id: 'self-hosted',
+      label: 'Traggo (Self-Hosted)',
+      description: 'Traggo time tracking tool. Version via /api/graphql (GraphQL, no auth for schema).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://traggo.example.com:3030',
+      versionSource: { type: 'github-releases', target: 'traggo/server' },
+      latestSource: { type: 'github-releases', target: 'traggo/server' },
+      evidenceUrl: 'https://traggo.net/',
+    },
+  ],
+
+  'reactive-resume': [
+    {
+      id: 'self-hosted',
+      label: 'Reactive Resume (Self-Hosted)',
+      description: 'Reactive Resume open-source resume builder. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://rxresume.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'AmruthPillai/Reactive-Resume' },
+      evidenceUrl: 'https://docs.rxresu.me/',
+    },
+  ],
+
+  'kasm-workspaces': [
+    {
+      id: 'self-hosted',
+      label: 'Kasm Workspaces (Self-Hosted)',
+      description: 'Kasm container streaming platform. Version via /api/public/get_client_settings (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://kasm.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/public/get_client_settings',
+        jsonPath: '$.response.server_settings.desktop_header_subtitle',
+        jsonPathExtractors: ['response.server_settings.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/public/get_client_settings'],
+      },
+      latestSource: { type: 'github-releases', target: 'kasmtech/KasmVNC' },
+      evidenceUrl: 'https://kasmweb.com/docs/latest/how_to_guides/developer_api.html',
+    },
+  ],
+
+  'webtop': [
+    {
+      id: 'self-hosted',
+      label: 'Webtop (Self-Hosted)',
+      description: 'Webtop containerized Linux desktop. No HTTP version API — tracks LSIO Docker Hub tags.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://webtop.example.com:3000',
+      versionSource: { type: 'docker-hub', target: 'linuxserver/webtop' },
+      latestSource: { type: 'docker-hub', target: 'linuxserver/webtop' },
+      evidenceUrl: 'https://docs.linuxserver.io/images/docker-webtop/',
+    },
+  ],
+
+  'langfuse': [
+    {
+      id: 'self-hosted',
+      label: 'Langfuse (Self-Hosted)',
+      description: 'Langfuse LLM observability platform. Version via /api/public/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://langfuse.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/public/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/public/version', '/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'langfuse/langfuse' },
+      evidenceUrl: 'https://langfuse.com/docs/api',
+    },
+  ],
+
+  'excalidraw-plus': [
+    {
+      id: 'self-hosted',
+      label: 'Excalidraw (Self-Hosted)',
+      description: 'Excalidraw collaborative virtual whiteboard. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://excalidraw.example.com',
+      versionSource: { type: 'github-releases', target: 'excalidraw/excalidraw' },
+      latestSource: { type: 'github-releases', target: 'excalidraw/excalidraw' },
+      evidenceUrl: 'https://github.com/excalidraw/excalidraw',
+    },
+  ],
+
+  'teable': [
+    {
+      id: 'self-hosted',
+      label: 'Teable (Self-Hosted)',
+      description: 'Teable no-code database. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://teable.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'teableio/teable' },
+      evidenceUrl: 'https://docs.teable.io/developer/api',
+    },
+  ],
+
+  'dokploy': [
+    {
+      id: 'self-hosted',
+      label: 'Dokploy (Self-Hosted)',
+      description: 'Dokploy open-source PaaS. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://dokploy.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'Dokploy/dokploy' },
+      evidenceUrl: 'https://docs.dokploy.com/',
+    },
+  ],
+
+  'cacti': [
+    {
+      id: 'self-hosted',
+      label: 'Cacti (Self-Hosted)',
+      description: 'Cacti network graphing solution. Version via /cacti/utilities.php (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://cacti.example.com',
+      versionSource: { type: 'github-releases', target: 'Cacti/cacti' },
+      latestSource: { type: 'github-releases', target: 'Cacti/cacti' },
+      evidenceUrl: 'https://docs.cacti.net/',
+    },
+  ],
+
+  'smokeping': [
+    {
+      id: 'self-hosted',
+      label: 'SmokePing (Self-Hosted)',
+      description: 'SmokePing network latency monitor. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://smokeping.example.com',
+      versionSource: { type: 'github-releases', target: 'oetiker/SmokePing' },
+      latestSource: { type: 'github-releases', target: 'oetiker/SmokePing' },
+      evidenceUrl: 'https://oss.oetiker.ch/smokeping/',
+    },
+  ],
+
+  'librenms': [
+    {
+      id: 'self-hosted',
+      label: 'LibreNMS (Self-Hosted)',
+      description: 'LibreNMS network monitoring. Version via /api/v0/version (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://librenms.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v0/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v0/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'librenms/librenms' },
+      evidenceUrl: 'https://docs.librenms.org/API/',
+    },
+  ],
+
+  'icinga2': [
+    {
+      id: 'self-hosted',
+      label: 'Icinga 2 (Self-Hosted)',
+      description: 'Icinga 2 monitoring system. Version via /v1/status (requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://icinga.example.com:5665',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/status/IcingaApplication',
+        jsonPath: '$.results[0].status.icingaapplication.app.version',
+        jsonPathExtractors: ['results.0.status.icingaapplication.app.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/v1/status/IcingaApplication', '/v1/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'Icinga/icinga2' },
+      evidenceUrl: 'https://icinga.com/docs/icinga-2/latest/doc/12-icinga2-api/',
+    },
+  ],
+
+  'observium': [
+    {
+      id: 'self-hosted',
+      label: 'Observium (Self-Hosted)',
+      description: 'Observium network monitoring platform. No public HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://observium.example.com',
+      versionSource: { type: 'github-releases', target: 'observium/observium-community-edition' },
+      latestSource: { type: 'github-releases', target: 'observium/observium-community-edition' },
+      evidenceUrl: 'https://docs.observium.org/',
+    },
+  ],
+
+  'monit': [
+    {
+      id: 'self-hosted',
+      label: 'Monit (Self-Hosted)',
+      description: 'Monit process/service monitoring. Version via /_status?format=json (requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://monit.example.com:2812',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/_status?format=json',
+        jsonPath: '$.monit.version',
+        jsonPathExtractors: ['monit.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/_status?format=json'],
+      },
+      latestSource: { type: 'github-releases', target: 'watchingfrog/monit' },
+      evidenceUrl: 'https://mmonit.com/monit/documentation/monit.html',
+    },
+  ],
+
+  'prometheus-pushgateway': [
+    {
+      id: 'self-hosted',
+      label: 'Prometheus Pushgateway (Self-Hosted)',
+      description: 'Prometheus Pushgateway for ephemeral jobs. Version via /api/v1/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://pushgateway.example.com:9091',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/status',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/status', '/metrics'],
+      },
+      latestSource: { type: 'github-releases', target: 'prometheus/pushgateway' },
+      evidenceUrl: 'https://github.com/prometheus/pushgateway#api',
+    },
+  ],
+
+  'grafana-mimir': [
+    {
+      id: 'self-hosted',
+      label: 'Grafana Mimir (Self-Hosted)',
+      description: 'Grafana Mimir long-term Prometheus metrics storage. Version via /status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://mimir.example.com:9009',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/status', '/ready'],
+      },
+      latestSource: { type: 'github-releases', target: 'grafana/mimir' },
+      evidenceUrl: 'https://grafana.com/docs/mimir/latest/references/http-api/',
+    },
+  ],
+
+  'thanos-query': [
+    {
+      id: 'self-hosted',
+      label: 'Thanos Query (Self-Hosted)',
+      description: 'Thanos Query highly available Prometheus. Version via /api/v1/status/buildinfo (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://thanos.example.com:10902',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/status/buildinfo',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/status/buildinfo'],
+      },
+      latestSource: { type: 'github-releases', target: 'thanos-io/thanos' },
+      evidenceUrl: 'https://thanos.io/tip/components/query.md/',
+    },
+  ],
+
+  'ceph-dashboard': [
+    {
+      id: 'self-hosted',
+      label: 'Ceph Dashboard (Self-Hosted)',
+      description: 'Ceph distributed storage dashboard. Version via /api/summary (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://ceph.example.com:8443',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/summary',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/summary', '/api/health/minimal'],
+      },
+      latestSource: { type: 'github-releases', target: 'ceph/ceph' },
+      evidenceUrl: 'https://docs.ceph.com/en/latest/mgr/dashboard/',
+    },
+  ],
+
+  'xen-orchestra': [
+    {
+      id: 'self-hosted',
+      label: 'Xen Orchestra (Self-Hosted)',
+      description: 'Xen Orchestra Xen/XCP-ng management. Version via /api/version (requires auth token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://xo.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'vatesfr/xen-orchestra' },
+      evidenceUrl: 'https://docs.xen-orchestra.com/api',
+    },
+  ],
+
+  'zwavejs': [
+    {
+      id: 'self-hosted',
+      label: 'Z-Wave JS (Self-Hosted)',
+      description: 'Z-Wave JS controller library/server. Version via /health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://zwavejs.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/health', '/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'zwave-js/zwave-js-server' },
+      evidenceUrl: 'https://zwave-js.github.io/zwave-js-server/',
+    },
+  ],
+
+  'frigate-nvr': [
+    {
+      id: 'self-hosted',
+      label: 'Frigate NVR (Self-Hosted)',
+      description: 'Frigate open-source NVR with AI object detection. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://frigate.example.com:5000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'blakeblackshear/frigate' },
+      evidenceUrl: 'https://docs.frigate.video/integrations/api/',
+    },
+  ],
+
+  'double-take': [
+    {
+      id: 'self-hosted',
+      label: 'Double Take (Self-Hosted)',
+      description: 'Double Take facial recognition for Frigate/NVR. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://double-take.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'jakowenko/double-take' },
+      evidenceUrl: 'https://github.com/jakowenko/double-take',
+    },
+  ],
+
+  'bazarr-ng': [
+    {
+      id: 'self-hosted',
+      label: 'Bazarr (Self-Hosted)',
+      description: 'Bazarr subtitle manager for Sonarr/Radarr. Version via /api/system/status (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://bazarr.example.com:6767',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/system/status',
+        jsonPath: '$.data.bazarr_version',
+        jsonPathExtractors: ['data.bazarr_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/system/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'morpheus65535/bazarr' },
+      evidenceUrl: 'https://wiki.bazarr.media/API/',
+    },
+  ],
+
+  'mealie-ng': [
+    {
+      id: 'self-hosted',
+      label: 'Mealie (Next-Gen, Self-Hosted)',
+      description: 'Mealie v1+ recipe manager. Version via /api/app/about (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://mealie.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/app/about',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/app/about'],
+      },
+      latestSource: { type: 'github-releases', target: 'mealie-recipes/mealie' },
+      evidenceUrl: 'https://nightly.mealie.io/api/docs',
+    },
+  ],
+
+  'grocy-web': [
+    {
+      id: 'self-hosted',
+      label: 'Grocy Web (Self-Hosted)',
+      description: 'Grocy web-based household management. Version via /api/system/info (requires GROCY-API-KEY header).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://grocy.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/system/info',
+        jsonPath: '$.grocy_version',
+        jsonPathExtractors: ['grocy_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/system/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'grocy/grocy' },
+      evidenceUrl: 'https://demo.grocy.info/api/#/System/get_system_info',
+    },
+  ],
+
+  'yarr': [
+    {
+      id: 'self-hosted',
+      label: 'Yarr (Self-Hosted)',
+      description: 'Yarr self-hosted RSS aggregator. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://yarr.example.com:7070',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'nkanaev/yarr' },
+      evidenceUrl: 'https://github.com/nkanaev/yarr',
+    },
+  ],
+
+  'linkding-app': [
+    {
+      id: 'self-hosted',
+      label: 'linkding (Self-Hosted)',
+      description: 'linkding bookmark manager. Version via /api/version (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://linkding.example.com:9090',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'sissbruecker/linkding' },
+      evidenceUrl: 'https://github.com/sissbruecker/linkding/blob/master/docs/API.md',
+    },
+  ],
+
+  'gitea-runner': [
+    {
+      id: 'self-hosted',
+      label: 'Gitea Runner (Self-Hosted)',
+      description: 'Gitea Actions runner. Version via /api/v1/version (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://gitea-runner.example.com:3000',
+      versionSource: { type: 'github-releases', target: 'go-gitea/act_runner' },
+      latestSource: { type: 'github-releases', target: 'go-gitea/act_runner' },
+      evidenceUrl: 'https://gitea.com/gitea/act_runner',
+    },
+  ],
+
+  'appsmith-web': [
+    {
+      id: 'self-hosted',
+      label: 'Appsmith Web (Self-Hosted)',
+      description: 'Appsmith low-code builder web variant. Version via /api/v1/admin/version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://appsmith-web.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/admin/version',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/admin/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'appsmithorg/appsmith' },
+      evidenceUrl: 'https://docs.appsmith.com/reference/api',
+    },
+  ],
+
+  'tooljet-web': [
+    {
+      id: 'self-hosted',
+      label: 'ToolJet Web (Self-Hosted)',
+      description: 'ToolJet low-code builder web variant. Version via /api/v2/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://tooljet-web.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/version',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v2/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'ToolJet/ToolJet' },
+      evidenceUrl: 'https://docs.tooljet.com/docs/',
+    },
+  ],
+
+  'nocodb-web': [
+    {
+      id: 'self-hosted',
+      label: 'NocoDB Web (Self-Hosted)',
+      description: 'NocoDB no-code database platform. Version via /api/v1/auth/token/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://nocodb.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/meta/tables',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/meta/tables', '/api/v2/meta/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'nocodb/nocodb' },
+      evidenceUrl: 'https://docs.nocodb.com/developer-resources/rest-apis/',
+    },
+  ],
+
+  'baserow-web': [
+    {
+      id: 'self-hosted',
+      label: 'Baserow Web (Self-Hosted)',
+      description: 'Baserow open-source no-code database. Version via /api/version/ (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://baserow.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version/'],
+      },
+      latestSource: { type: 'github-releases', target: 'bram2w/baserow' },
+      evidenceUrl: 'https://baserow.io/docs/apis%2Frest-api',
+    },
+  ],
+
+  'grist-web': [
+    {
+      id: 'self-hosted',
+      label: 'Grist (Self-Hosted)',
+      description: 'Grist modern relational spreadsheet. Version via /api/version (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://grist.example.com:8484',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'gristlabs/grist-core' },
+      evidenceUrl: 'https://support.getgrist.com/api/',
+    },
+  ],
+
+  'metabase-web': [
+    {
+      id: 'self-hosted',
+      label: 'Metabase Web (Self-Hosted)',
+      description: 'Metabase open-source BI tool. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://metabase.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version.tag',
+        jsonPathExtractors: ['version.tag', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health', '/api/session/properties'],
+      },
+      latestSource: { type: 'github-releases', target: 'metabase/metabase' },
+      evidenceUrl: 'https://www.metabase.com/docs/latest/api/',
+    },
+  ],
+
+  'redash-web': [
+    {
+      id: 'self-hosted',
+      label: 'Redash Web (Self-Hosted)',
+      description: 'Redash open-source BI/query tool. Version via /status.json (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://redash.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/status.json',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/status.json'],
+      },
+      latestSource: { type: 'github-releases', target: 'getredash/redash' },
+      evidenceUrl: 'https://redash.io/help/user-guide/getting-started',
+    },
+  ],
+
+  'superset-web': [
+    {
+      id: 'self-hosted',
+      label: 'Apache Superset Web (Self-Hosted)',
+      description: 'Apache Superset data visualization platform. Version via /api/v1/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://superset.example.com:8088',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'apache/superset' },
+      evidenceUrl: 'https://superset.apache.org/docs/api/',
+    },
+  ],
+
+  'lightdash-web': [
+    {
+      id: 'self-hosted',
+      label: 'Lightdash (Self-Hosted)',
+      description: 'Lightdash open-source BI tool. Version via /api/v1/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://lightdash.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'lightdash-io/lightdash' },
+      evidenceUrl: 'https://docs.lightdash.com/api/v1/',
+    },
+  ],
+
+  'cube-js': [
+    {
+      id: 'self-hosted',
+      label: 'Cube (Self-Hosted)',
+      description: 'Cube semantic analytics layer. Version via /readyz (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://cube.example.com:4000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/readyz',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/readyz', '/livez'],
+      },
+      latestSource: { type: 'github-releases', target: 'cube-js/cube.js' },
+      evidenceUrl: 'https://cube.dev/docs/http-api/rest',
+    },
+  ],
+
+  'twentycrm': [
+    {
+      id: 'self-hosted',
+      label: 'Twenty CRM (Self-Hosted)',
+      description: 'Twenty open-source CRM. Version via /api/v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://twentycrm.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'twentyhq/twenty' },
+      evidenceUrl: 'https://twenty.com/developers',
+    },
+  ],
+
+  'chatwoot-web': [
+    {
+      id: 'self-hosted',
+      label: 'Chatwoot Web (Self-Hosted)',
+      description: 'Chatwoot open-source customer support. Version via /auth/sign_in (no version endpoint; tracks GitHub releases).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://chatwoot.example.com',
+      versionSource: { type: 'github-releases', target: 'chatwoot/chatwoot' },
+      latestSource: { type: 'github-releases', target: 'chatwoot/chatwoot' },
+      evidenceUrl: 'https://www.chatwoot.com/docs/self-hosted',
+    },
+  ],
+
+  'plane-app': [
+    {
+      id: 'self-hosted',
+      label: 'Plane (Self-Hosted)',
+      description: 'Plane open-source project management. Version via /api/v1/instances/ (requires API token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://plane.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/instances/',
+        jsonPath: '$.current_version',
+        jsonPathExtractors: ['current_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/instances/'],
+      },
+      latestSource: { type: 'github-releases', target: 'makeplane/plane' },
+      evidenceUrl: 'https://developers.plane.so/api-reference/introduction',
+    },
+  ],
+
+  'cal-dot-com': [
+    {
+      id: 'self-hosted',
+      label: 'Cal.com (Self-Hosted)',
+      description: 'Cal.com scheduling platform. Version via /api/v1/health (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://cal.example.com',
+      versionSource: { type: 'github-releases', target: 'calcom/cal.com' },
+      latestSource: { type: 'github-releases', target: 'calcom/cal.com' },
+      evidenceUrl: 'https://cal.com/docs/enterprise-features/api',
+    },
+  ],
+
+  'directus-cms': [
+    {
+      id: 'self-hosted',
+      label: 'Directus CMS (Self-Hosted)',
+      description: 'Directus headless CMS. Version via /server/info (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://directus.example.com:8055',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/server/info',
+        jsonPath: '$.data.directus',
+        jsonPathExtractors: ['data.directus', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/server/info', '/server/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'directus/directus' },
+      evidenceUrl: 'https://docs.directus.io/reference/system/server.html',
+    },
+  ],
+
+  'payload-cms-v3': [
+    {
+      id: 'self-hosted',
+      label: 'Payload CMS v3 (Self-Hosted)',
+      description: 'Payload CMS v3 headless CMS. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://payload.example.com:3000',
+      versionSource: { type: 'github-releases', target: 'payloadcms/payload' },
+      latestSource: { type: 'github-releases', target: 'payloadcms/payload' },
+      evidenceUrl: 'https://payloadcms.com/docs/rest-api/overview',
+    },
+  ],
+
+  'medplum': [
+    {
+      id: 'self-hosted',
+      label: 'Medplum (Self-Hosted)',
+      description: 'Medplum healthcare platform. Version via /healthcheck (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://medplum.example.com:8103',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/healthcheck',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/healthcheck'],
+      },
+      latestSource: { type: 'github-releases', target: 'medplum/medplum' },
+      evidenceUrl: 'https://www.medplum.com/docs/api',
+    },
+  ],
+
+  'evidence-dev': [
+    {
+      id: 'self-hosted',
+      label: 'Evidence (Self-Hosted)',
+      description: 'Evidence code-driven BI framework. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://evidence.example.com:3000',
+      versionSource: { type: 'github-releases', target: 'evidence-dev/evidence' },
+      latestSource: { type: 'github-releases', target: 'evidence-dev/evidence' },
+      evidenceUrl: 'https://docs.evidence.dev/',
+    },
+  ],
+
+  'jeedom': [
+    {
+      id: 'self-hosted',
+      label: 'Jeedom (Self-Hosted)',
+      description: 'Jeedom home automation platform. Version via /core/api/jeeApi.php (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://jeedom.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/core/api/jeeApi.php?apikey={{apiKey}}&type=core&action=version',
+        jsonPath: '$.result',
+        jsonPathExtractors: ['result', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/core/api/jeeApi.php'],
+      },
+      latestSource: { type: 'github-releases', target: 'jeedom/jeedom' },
+      evidenceUrl: 'https://doc.jeedom.com/en_US/core/4.4/api_http',
+    },
+  ],
+
+  'homegenie': [
+    {
+      id: 'self-hosted',
+      label: 'HomeGenie (Self-Hosted)',
+      description: 'HomeGenie home automation server. Version via /api/HomeAutomation.HomeGenie/Config/System.Version/Get (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://homegenie.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/HomeAutomation.HomeGenie/Config/System.Version/Get',
+        jsonPath: '$.ResponseValue',
+        jsonPathExtractors: ['ResponseValue', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/HomeAutomation.HomeGenie/Config/System.Version/Get'],
+      },
+      latestSource: { type: 'github-releases', target: 'genielabs/HomeGenie' },
+      evidenceUrl: 'https://genielabs.github.io/HomeGenie/api/',
+    },
+  ],
+
+  'zigbee2mqtt-ui': [
+    {
+      id: 'self-hosted',
+      label: 'Zigbee2MQTT (Self-Hosted)',
+      description: 'Zigbee2MQTT gateway. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://zigbee2mqtt.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'Koenkk/zigbee2mqtt' },
+      evidenceUrl: 'https://www.zigbee2mqtt.io/guide/usage/frontend.html',
+    },
+  ],
+
+  'zwavejs2mqtt-ui': [
+    {
+      id: 'self-hosted',
+      label: 'Z-Wave JS UI (Self-Hosted)',
+      description: 'Z-Wave JS UI (zwavejs2mqtt). Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://zwavejs2mqtt.example.com:8091',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'zwave-js/zwave-js-ui' },
+      evidenceUrl: 'https://zwave-js.github.io/zwave-js-ui/',
+    },
+  ],
+
+  'motioneye': [
+    {
+      id: 'self-hosted',
+      label: 'motionEye (Self-Hosted)',
+      description: 'motionEye motion detection/CCTV. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://motioneye.example.com:8765',
+      versionSource: { type: 'github-releases', target: 'motioneye-project/motioneye' },
+      latestSource: { type: 'github-releases', target: 'motioneye-project/motioneye' },
+      evidenceUrl: 'https://github.com/motioneye-project/motioneye/wiki',
+    },
+  ],
+
+  'agentdvr': [
+    {
+      id: 'self-hosted',
+      label: 'Agent DVR (Self-Hosted)',
+      description: 'Agent DVR IP camera management. Version via /command/getversion (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://agentdvr.example.com:8090',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/command/getversion',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/command/getversion'],
+      },
+      latestSource: { type: 'github-releases', target: 'ispysoftware/agent-dvr' },
+      evidenceUrl: 'https://www.ispyconnect.com/agentdvr.aspx',
+    },
+  ],
+
+  'compreface': [
+    {
+      id: 'self-hosted',
+      label: 'CompreFace (Self-Hosted)',
+      description: 'CompreFace open-source facial recognition. Version via /actuator/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://compreface.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/actuator/info',
+        jsonPath: '$.build.version',
+        jsonPathExtractors: ['build.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/actuator/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'exadel-inc/CompreFace' },
+      evidenceUrl: 'https://github.com/exadel-inc/CompreFace',
+    },
+  ],
+
+  'deepstack': [
+    {
+      id: 'self-hosted',
+      label: 'DeepStack (Self-Hosted)',
+      description: 'DeepStack AI API server for image processing. Version via /v1/vision/models (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://deepstack.example.com:80',
+      versionSource: { type: 'github-releases', target: 'johnolafenwa/DeepStack' },
+      latestSource: { type: 'github-releases', target: 'johnolafenwa/DeepStack' },
+      evidenceUrl: 'https://docs.deepstack.cc/',
+    },
+  ],
+
+  'codeproject-ai': [
+    {
+      id: 'self-hosted',
+      label: 'CodeProject.AI Server (Self-Hosted)',
+      description: 'CodeProject.AI AI inference server. Version via /v1/server/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://cpai.example.com:32168',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/server/status',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/v1/server/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'codeproject/CodeProject.AI-Server' },
+      evidenceUrl: 'https://www.codeproject.com/ai/',
+    },
+  ],
+
+  'viseron': [
+    {
+      id: 'self-hosted',
+      label: 'Viseron (Self-Hosted)',
+      description: 'Viseron self-hosted AI NVR. Version via /api/v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://viseron.example.com:8888',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'roflcoopter/viseron' },
+      evidenceUrl: 'https://viseron.netlify.app/docs/api/',
+    },
+  ],
+
+  'go2rtc': [
+    {
+      id: 'self-hosted',
+      label: 'go2rtc (Self-Hosted)',
+      description: 'go2rtc ultimate camera streaming application. Version via /api (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://go2rtc.example.com:1984',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api'],
+      },
+      latestSource: { type: 'github-releases', target: 'AlexxIT/go2rtc' },
+      evidenceUrl: 'https://github.com/AlexxIT/go2rtc',
+    },
+  ],
+
+  'evcc': [
+    {
+      id: 'self-hosted',
+      label: 'evcc (Self-Hosted)',
+      description: 'evcc EV charge controller. Version via /api/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://evcc.example.com:7070',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/state',
+        jsonPath: '$.result.version',
+        jsonPathExtractors: ['result.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/state', '/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'evcc-io/evcc' },
+      evidenceUrl: 'https://docs.evcc.io/docs/reference/api/',
+    },
+  ],
+
+  'emoncms': [
+    {
+      id: 'self-hosted',
+      label: 'EmonCMS (Self-Hosted)',
+      description: 'EmonCMS energy monitoring platform. Version via /emoncms/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://emoncms.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/emoncms/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/emoncms/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'emoncms/emoncms' },
+      evidenceUrl: 'https://emoncms.org/',
+    },
+  ],
+
+  'rtsp-simple-server': [
+    {
+      id: 'self-hosted',
+      label: 'RTSP Simple Server (Self-Hosted)',
+      description: 'rtsp-simple-server (now MediaMTX) camera streaming. Version via /v3/general (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://rtsp-simple-server.example.com:9997',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v3/general',
+        jsonPath: '$.serverVersion',
+        jsonPathExtractors: ['serverVersion', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/v3/general', '/v2/config/global/get'],
+      },
+      latestSource: { type: 'github-releases', target: 'bluenviron/mediamtx' },
+      evidenceUrl: 'https://github.com/bluenviron/mediamtx',
+    },
+  ],
+
+  'amp-cubecoders': [
+    {
+      id: 'self-hosted',
+      label: 'AMP (CubeCoders, Self-Hosted)',
+      description: 'AMP game server management panel. Version via /API/Core/GetModuleInfo (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://amp.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/API/Core/GetModuleInfo',
+        jsonPath: '$.result.Version',
+        jsonPathExtractors: ['result.Version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/API/Core/GetModuleInfo'],
+      },
+      latestSource: { type: 'github-releases', target: 'CubeCoders/AMP' },
+      evidenceUrl: 'https://github.com/CubeCoders/AMP/wiki/API',
+    },
+  ],
+
+  'piwigo-gallery': [
+    {
+      id: 'self-hosted',
+      label: 'Piwigo (Self-Hosted)',
+      description: 'Piwigo photo gallery. Version via /ws.php?format=json&method=pwg.getVersion (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://piwigo.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/ws.php?format=json&method=pwg.getVersion',
+        jsonPath: '$.result',
+        jsonPathExtractors: ['result', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/ws.php?format=json&method=pwg.getVersion'],
+      },
+      latestSource: { type: 'github-releases', target: 'Piwigo/Piwigo' },
+      evidenceUrl: 'https://piwigo.org/doc/doku.php?id=api',
+    },
+  ],
+
+  'chevereto': [
+    {
+      id: 'self-hosted',
+      label: 'Chevereto (Self-Hosted)',
+      description: 'Chevereto image hosting platform. Version via /api/1 (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://chevereto.example.com',
+      versionSource: { type: 'github-releases', target: 'chevereto/chevereto' },
+      latestSource: { type: 'github-releases', target: 'chevereto/chevereto' },
+      evidenceUrl: 'https://v4-docs.chevereto.com/developer/api/api-v1.html',
+    },
+  ],
+
+  'pinry': [
+    {
+      id: 'self-hosted',
+      label: 'Pinry (Self-Hosted)',
+      description: 'Pinry self-hosted image board. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://pinry.example.com',
+      versionSource: { type: 'github-releases', target: 'pinry/pinry' },
+      latestSource: { type: 'github-releases', target: 'pinry/pinry' },
+      evidenceUrl: 'https://github.com/pinry/pinry',
+    },
+  ],
+
+  'photostructure': [
+    {
+      id: 'self-hosted',
+      label: 'PhotoStructure (Self-Hosted)',
+      description: 'PhotoStructure photo/video organizer. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://photostructure.example.com:1787',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'photostructure/photostructure-for-servers' },
+      evidenceUrl: 'https://photostructure.com/server/',
+    },
+  ],
+
+  'coppermine': [
+    {
+      id: 'self-hosted',
+      label: 'Coppermine Photo Gallery (Self-Hosted)',
+      description: 'Coppermine web-based photo gallery. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://coppermine.example.com',
+      versionSource: { type: 'github-releases', target: 'coppermine-gallery/coppermine' },
+      latestSource: { type: 'github-releases', target: 'coppermine-gallery/coppermine' },
+      evidenceUrl: 'https://coppermine-gallery.net/',
+    },
+  ],
+
+  'mayan-edms': [
+    {
+      id: 'self-hosted',
+      label: 'Mayan EDMS (Self-Hosted)',
+      description: 'Mayan EDMS document management. Version via /api/v4/ root (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://mayan.example.com:80',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v4/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v4/'],
+      },
+      latestSource: { type: 'github-releases', target: 'mayan-edms/mayan-edms' },
+      evidenceUrl: 'https://docs.mayan-edms.com/parts/development/api.html',
+    },
+  ],
+
+  'memoria-photos': [
+    {
+      id: 'self-hosted',
+      label: 'Memoria (Self-Hosted)',
+      description: 'Memoria self-hosted photo library. Version via /api/v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://memoria.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'unimorph/Memoria' },
+      evidenceUrl: 'https://github.com/unimorph/Memoria',
+    },
+  ],
+
+  'kroki': [
+    {
+      id: 'self-hosted',
+      label: 'Kroki (Self-Hosted)',
+      description: 'Kroki diagram rendering server. Version via /health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://kroki.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'yuzutech/kroki' },
+      evidenceUrl: 'https://kroki.io/docs/',
+    },
+  ],
+
+  'structurizr': [
+    {
+      id: 'self-hosted',
+      label: 'Structurizr (Self-Hosted)',
+      description: 'Structurizr architecture diagrams. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://structurizr.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'structurizr/onpremises' },
+      evidenceUrl: 'https://docs.structurizr.com/onpremises',
+    },
+  ],
+
+  'repetier-server': [
+    {
+      id: 'self-hosted',
+      label: 'Repetier Server (Self-Hosted)',
+      description: 'Repetier Server 3D printer management. Version via /server/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://repetier.example.com:3344',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/printer/info',
+        jsonPath: '$.serverVersion',
+        jsonPathExtractors: ['serverVersion', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/printer/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'repetier/Repetier-Server' },
+      evidenceUrl: 'https://www.repetier-server.com/manuals/0.93/en/ch01.html',
+    },
+  ],
+
+  'astroprint': [
+    {
+      id: 'self-hosted',
+      label: 'AstroPrint (Self-Hosted)',
+      description: 'AstroPrint 3D printer cloud platform. Version via /api/version (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://astroprint.example.com:5000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.api',
+        jsonPathExtractors: ['api', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'AstroPrint/AstroBox' },
+      evidenceUrl: 'https://github.com/AstroPrint/AstroBox',
+    },
+  ],
+
+  'duet-web': [
+    {
+      id: 'self-hosted',
+      label: 'Duet Web Control (Self-Hosted)',
+      description: 'Duet Web Control 3D printer interface. Version via /rr_config (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://duet.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/rr_status?type=2',
+        jsonPath: '$.firmwareVersion',
+        jsonPathExtractors: ['firmwareVersion', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/rr_status?type=2', '/machine/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'Duet3D/DuetWebControl' },
+      evidenceUrl: 'https://docs.duet3d.com/en/User_manual/Reference/Duet_Web_Control_API',
+    },
+  ],
+
+  'prusalink': [
+    {
+      id: 'self-hosted',
+      label: 'PrusaLink (Self-Hosted)',
+      description: 'PrusaLink Prusa printer web interface. Version via /api/version (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://prusalink.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.api',
+        jsonPathExtractors: ['api', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'prusa3d/Prusa-Link' },
+      evidenceUrl: 'https://github.com/prusa3d/Prusa-Link-Web',
+    },
+  ],
+
+  'code-server': [
+    {
+      id: 'self-hosted',
+      label: 'code-server (Self-Hosted)',
+      description: 'code-server VS Code in the browser. Version via /healthz (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://code-server.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/healthz',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/healthz', '/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'coder/code-server' },
+      evidenceUrl: 'https://coder.com/docs/code-server/latest',
+    },
+  ],
+
+  'theia-cloud': [
+    {
+      id: 'self-hosted',
+      label: 'Eclipse Theia (Self-Hosted)',
+      description: 'Eclipse Theia cloud IDE. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://theia.example.com:3000',
+      versionSource: { type: 'github-releases', target: 'eclipse-theia/theia' },
+      latestSource: { type: 'github-releases', target: 'eclipse-theia/theia' },
+      evidenceUrl: 'https://theia-ide.org/',
+    },
+  ],
+
+  'eclipse-che': [
+    {
+      id: 'self-hosted',
+      label: 'Eclipse Che (Self-Hosted)',
+      description: 'Eclipse Che cloud development environment. Version via /api/system/state (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://che.example.com',
+      versionSource: { type: 'github-releases', target: 'eclipse-che/che-server' },
+      latestSource: { type: 'github-releases', target: 'eclipse-che/che-server' },
+      evidenceUrl: 'https://eclipse.dev/che/docs/',
+    },
+  ],
+
+  'remotely': [
+    {
+      id: 'self-hosted',
+      label: 'Remotely (Self-Hosted)',
+      description: 'Remotely remote desktop and screen sharing. Version via /api/Version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://remotely.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/Version',
+        jsonPath: '$',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/Version', '/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'immense-networks/Remotely' },
+      evidenceUrl: 'https://remotely.one/docs/',
+    },
+  ],
+
+  'pockethost': [
+    {
+      id: 'self-hosted',
+      label: 'PocketHost (Self-Hosted)',
+      description: 'PocketHost managed PocketBase hosting. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://pockethost.example.com:3000',
+      versionSource: { type: 'github-releases', target: 'pockethost/pockethost' },
+      latestSource: { type: 'github-releases', target: 'pockethost/pockethost' },
+      evidenceUrl: 'https://pockethost.io/docs/',
+    },
+  ],
+
+  'huly-app': [
+    {
+      id: 'self-hosted',
+      label: 'Huly (Self-Hosted)',
+      description: 'Huly all-in-one project management. Version via /api/v1/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://huly.example.com:8083',
+      versionSource: { type: 'github-releases', target: 'hcengineering/huly-selfhost' },
+      latestSource: { type: 'github-releases', target: 'hcengineering/huly-selfhost' },
+      evidenceUrl: 'https://github.com/hcengineering/huly-selfhost',
+    },
+  ],
+
+  'jira-dc': [
+    {
+      id: 'data-center',
+      label: 'Jira Data Center (Self-Hosted)',
+      description: 'Atlassian Jira Data Center. Version via /rest/api/2/serverInfo (requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://jira.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/rest/api/2/serverInfo',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/rest/api/2/serverInfo'],
+      },
+      latestSource: { type: 'github-releases', target: 'atlassian/jira' },
+      evidenceUrl: 'https://developer.atlassian.com/server/jira/platform/rest/v10000/',
+    },
+  ],
+
+  'confluence-dc': [
+    {
+      id: 'data-center',
+      label: 'Confluence Data Center (Self-Hosted)',
+      description: 'Atlassian Confluence Data Center. Version via /rest/api/space (requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://confluence.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/rest/api/2/serverInfo',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/rest/api/2/serverInfo'],
+      },
+      latestSource: { type: 'github-releases', target: 'atlassian/confluence-server' },
+      evidenceUrl: 'https://developer.atlassian.com/server/confluence/confluence-server-rest-api/',
+    },
+  ],
+
+  'kresus': [
+    {
+      id: 'self-hosted',
+      label: 'Kresus (Self-Hosted)',
+      description: 'Kresus personal finance manager. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://kresus.example.com:9876',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'kresusapp/kresus' },
+      evidenceUrl: 'https://kresus.org/blog/kresus-api.html',
+    },
+  ],
+
+  'hledger-web': [
+    {
+      id: 'self-hosted',
+      label: 'hledger-web (Self-Hosted)',
+      description: 'hledger-web plain-text accounting web UI. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://hledger.example.com:5000',
+      versionSource: { type: 'github-releases', target: 'simonmichael/hledger' },
+      latestSource: { type: 'github-releases', target: 'simonmichael/hledger' },
+      evidenceUrl: 'https://hledger.org/hledger-web.html',
+    },
+  ],
+
+  'moodle': [
+    {
+      id: 'self-hosted',
+      label: 'Moodle (Self-Hosted)',
+      description: 'Moodle LMS. Version via /webservice/rest/server.php (requires token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://moodle.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/webservice/rest/server.php?wstoken={{apiKey}}&wsfunction=core_webservice_get_site_info&moodlewsrestformat=json',
+        jsonPath: '$.release',
+        jsonPathExtractors: ['release', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/webservice/rest/server.php'],
+      },
+      latestSource: { type: 'github-releases', target: 'moodle/moodle' },
+      evidenceUrl: 'https://moodledev.io/docs/apis/subsystems/external/rest/overview',
+    },
+  ],
+
+  'canvas-lms': [
+    {
+      id: 'self-hosted',
+      label: 'Canvas LMS (Self-Hosted)',
+      description: 'Instructure Canvas LMS. Version via /api/v1/accounts (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://canvas.example.com',
+      versionSource: { type: 'github-releases', target: 'instructure/canvas-lms' },
+      latestSource: { type: 'github-releases', target: 'instructure/canvas-lms' },
+      evidenceUrl: 'https://canvas.instructure.com/doc/api/',
+    },
+  ],
+
+  'open-edx': [
+    {
+      id: 'self-hosted',
+      label: 'Open edX (Self-Hosted)',
+      description: 'Open edX online learning platform. Version via /heartbeat (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://openedx.example.com',
+      versionSource: { type: 'github-releases', target: 'openedx/edx-platform' },
+      latestSource: { type: 'github-releases', target: 'openedx/edx-platform' },
+      evidenceUrl: 'https://docs.openedx.org/en/latest/developers/references/api.html',
+    },
+  ],
+
+  'sakai-lms': [
+    {
+      id: 'self-hosted',
+      label: 'Sakai LMS (Self-Hosted)',
+      description: 'Sakai learning management system. Version via /direct/server-info (requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://sakai.example.com',
+      versionSource: { type: 'github-releases', target: 'sakaiproject/sakai' },
+      latestSource: { type: 'github-releases', target: 'sakaiproject/sakai' },
+      evidenceUrl: 'https://www.sakailms.org/learn/developer-resources/',
+    },
+  ],
+
+  'chamilo': [
+    {
+      id: 'self-hosted',
+      label: 'Chamilo LMS (Self-Hosted)',
+      description: 'Chamilo LMS e-learning platform. Version via /api/v2/index.php (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://chamilo.example.com',
+      versionSource: { type: 'github-releases', target: 'chamilo/chamilo-lms' },
+      latestSource: { type: 'github-releases', target: 'chamilo/chamilo-lms' },
+      evidenceUrl: 'https://docs.chamilo.org/developer-documentation/api/',
+    },
+  ],
+
+  'ilias-lms': [
+    {
+      id: 'self-hosted',
+      label: 'ILIAS LMS (Self-Hosted)',
+      description: 'ILIAS open-source LMS. Version via REST API (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://ilias.example.com',
+      versionSource: { type: 'github-releases', target: 'ILIAS-eLearning/ILIAS' },
+      latestSource: { type: 'github-releases', target: 'ILIAS-eLearning/ILIAS' },
+      evidenceUrl: 'https://www.ilias.de/dokumentation/',
+    },
+  ],
+
+  'claroline': [
+    {
+      id: 'self-hosted',
+      label: 'Claroline (Self-Hosted)',
+      description: 'Claroline open-source LMS. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://claroline.example.com',
+      versionSource: { type: 'github-releases', target: 'claroline/Claroline' },
+      latestSource: { type: 'github-releases', target: 'claroline/Claroline' },
+      evidenceUrl: 'https://claroline.github.io/Claroline/',
+    },
+  ],
+
+  'opigno': [
+    {
+      id: 'self-hosted',
+      label: 'Opigno LMS (Self-Hosted)',
+      description: 'Opigno Drupal-based LMS. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://opigno.example.com',
+      versionSource: { type: 'github-releases', target: 'opigno/opigno' },
+      latestSource: { type: 'github-releases', target: 'opigno/opigno' },
+      evidenceUrl: 'https://www.opigno.org/',
+    },
+  ],
+
+  'forma-lms': [
+    {
+      id: 'self-hosted',
+      label: 'Forma LMS (Self-Hosted)',
+      description: 'Forma LMS e-learning platform. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://forma.example.com',
+      versionSource: { type: 'github-releases', target: 'formalms/formalms' },
+      latestSource: { type: 'github-releases', target: 'formalms/formalms' },
+      evidenceUrl: 'https://www.formalms.org/',
+    },
+  ],
+
+  'atutor': [
+    {
+      id: 'self-hosted',
+      label: 'ATutor LMS (Self-Hosted)',
+      description: 'ATutor accessible LMS. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://atutor.example.com',
+      versionSource: { type: 'github-releases', target: 'atutor/atutor' },
+      latestSource: { type: 'github-releases', target: 'atutor/atutor' },
+      evidenceUrl: 'https://atutor.github.io/',
+    },
+  ],
+
+  'orangehrm': [
+    {
+      id: 'self-hosted',
+      label: 'OrangeHRM (Self-Hosted)',
+      description: 'OrangeHRM open-source HR management. Version via /api/v2/system/info (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://orangehrm.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/system/info',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v2/system/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'orangehrm/orangehrm' },
+      evidenceUrl: 'https://orangehrm.github.io/orangehrm-api-doc/',
+    },
+  ],
+
+  'sentrifugo': [
+    {
+      id: 'self-hosted',
+      label: 'Sentrifugo HRMS (Self-Hosted)',
+      description: 'Sentrifugo free HR management system. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://sentrifugo.example.com',
+      versionSource: { type: 'github-releases', target: 'sapplica/sentrifugo' },
+      latestSource: { type: 'github-releases', target: 'sapplica/sentrifugo' },
+      evidenceUrl: 'https://www.sentrifugo.com/',
+    },
+  ],
+
+  'icehrm': [
+    {
+      id: 'self-hosted',
+      label: 'IceHrm (Self-Hosted)',
+      description: 'IceHrm open-source HR management. Version via /app/service.php (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://icehrm.example.com',
+      versionSource: { type: 'github-releases', target: 'gamonoid/icehrm' },
+      latestSource: { type: 'github-releases', target: 'gamonoid/icehrm' },
+      evidenceUrl: 'https://icehrm.com/docs/',
+    },
+  ],
+
+  'openhrms': [
+    {
+      id: 'self-hosted',
+      label: 'OpenHRMS (Self-Hosted)',
+      description: 'OpenHRMS Odoo-based HR management. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://openhrms.example.com',
+      versionSource: { type: 'github-releases', target: 'CybroOdoo/OpenHRMS' },
+      latestSource: { type: 'github-releases', target: 'CybroOdoo/OpenHRMS' },
+      evidenceUrl: 'https://github.com/CybroOdoo/OpenHRMS',
+    },
+  ],
+
+  'erpnext-hr': [
+    {
+      id: 'self-hosted',
+      label: 'ERPNext HR (Self-Hosted)',
+      description: 'ERPNext HR module. Version via /api/method/frappe.utils.change_log.get_change_log (requires session auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://erpnext.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/method/frappe.client.get_value',
+        jsonPath: '$.message.app_version',
+        jsonPathExtractors: ['message.app_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/method/frappe.client.get_value'],
+      },
+      latestSource: { type: 'github-releases', target: 'frappe/erpnext' },
+      evidenceUrl: 'https://docs.erpnext.com/docs/en/api',
+    },
+  ],
+
+  'zitadel-core': [
+    {
+      id: 'self-hosted',
+      label: 'ZITADEL (Self-Hosted)',
+      description: 'ZITADEL identity provider. Version via /debug/healthz (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://zitadel.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/debug/healthz',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/debug/healthz', '/debug/ready'],
+      },
+      latestSource: { type: 'github-releases', target: 'zitadel/zitadel' },
+      evidenceUrl: 'https://zitadel.com/docs/apis/introduction',
+    },
+  ],
+
+  'authentik-core': [
+    {
+      id: 'self-hosted',
+      label: 'Authentik Core (Self-Hosted)',
+      description: 'Authentik identity provider. Version via /api/v3/core/version/ (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://authentik.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v3/core/version/',
+        jsonPath: '$.version_current',
+        jsonPathExtractors: ['version_current', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v3/core/version/'],
+      },
+      latestSource: { type: 'github-releases', target: 'goauthentik/authentik' },
+      evidenceUrl: 'https://docs.goauthentik.io/developer-docs/api/',
+    },
+  ],
+
+  'casdoor-core': [
+    {
+      id: 'self-hosted',
+      label: 'Casdoor (Self-Hosted)',
+      description: 'Casdoor SSO identity server. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://casdoor.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'casdoor/casdoor' },
+      evidenceUrl: 'https://casdoor.org/docs/developer-guide/restful-api/',
+    },
+  ],
+
+  'kanidm-core': [
+    {
+      id: 'self-hosted',
+      label: 'Kanidm Core (Self-Hosted)',
+      description: 'Kanidm identity management core. Version via /v1/debug/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://kanidm.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/debug/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/v1/debug/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'kanidm/kanidm' },
+      evidenceUrl: 'https://kanidm.github.io/kanidm/master/apis.html',
+    },
+  ],
+
+  'lldap-core': [
+    {
+      id: 'self-hosted',
+      label: 'lldap (Self-Hosted)',
+      description: 'lldap lightweight LDAP server. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://lldap.example.com:3890',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'lldap/lldap' },
+      evidenceUrl: 'https://github.com/lldap/lldap',
+    },
+  ],
+
+  'authelia-core': [
+    {
+      id: 'self-hosted',
+      label: 'Authelia (Self-Hosted)',
+      description: 'Authelia SSO/MFA authentication server. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://authelia.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health', '/api/state'],
+      },
+      latestSource: { type: 'github-releases', target: 'authelia/authelia' },
+      evidenceUrl: 'https://www.authelia.com/reference/guides/introduction/',
+    },
+  ],
+
+  'ory-hydra-core': [
+    {
+      id: 'self-hosted',
+      label: 'Ory Hydra Core (Self-Hosted)',
+      description: 'Ory Hydra OAuth2/OIDC server. Version via /version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://hydra.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/version', '/health/alive'],
+      },
+      latestSource: { type: 'github-releases', target: 'ory/hydra' },
+      evidenceUrl: 'https://www.ory.sh/docs/hydra/reference/api',
+    },
+  ],
+
+  'ory-kratos-core': [
+    {
+      id: 'self-hosted',
+      label: 'Ory Kratos Core (Self-Hosted)',
+      description: 'Ory Kratos identity server. Version via /version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://kratos.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'ory/kratos' },
+      evidenceUrl: 'https://www.ory.sh/docs/kratos/reference/api',
+    },
+  ],
+
+  'ory-oathkeeper-core': [
+    {
+      id: 'self-hosted',
+      label: 'Ory Oathkeeper (Self-Hosted)',
+      description: 'Ory Oathkeeper identity & access proxy. Version via /version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://oathkeeper.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/version', '/health/alive'],
+      },
+      latestSource: { type: 'github-releases', target: 'ory/oathkeeper' },
+      evidenceUrl: 'https://www.ory.sh/docs/oathkeeper/reference/api',
+    },
+  ],
+
+  'dex-core': [
+    {
+      id: 'self-hosted',
+      label: 'Dex IdP (Self-Hosted)',
+      description: 'Dex federated OpenID Connect provider. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://dex.example.com',
+      versionSource: { type: 'github-releases', target: 'dexidp/dex' },
+      latestSource: { type: 'github-releases', target: 'dexidp/dex' },
+      evidenceUrl: 'https://dexidp.io/docs/',
+    },
+  ],
+
+  'vouch-proxy-core': [
+    {
+      id: 'self-hosted',
+      label: 'Vouch Proxy (Self-Hosted)',
+      description: 'Vouch Proxy SSO authentication proxy. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://vouch.example.com',
+      versionSource: { type: 'github-releases', target: 'vouch/vouch-proxy' },
+      latestSource: { type: 'github-releases', target: 'vouch/vouch-proxy' },
+      evidenceUrl: 'https://github.com/vouch/vouch-proxy',
+    },
+  ],
+
+  'pomerium-core': [
+    {
+      id: 'self-hosted',
+      label: 'Pomerium (Self-Hosted)',
+      description: 'Pomerium identity-aware access proxy. Version via /.pomerium/api/v1/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://pomerium.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/.pomerium/api/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/.pomerium/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'pomerium/pomerium' },
+      evidenceUrl: 'https://www.pomerium.com/docs/reference/api',
+    },
+  ],
+
+  'oauth2-proxy-core': [
+    {
+      id: 'self-hosted',
+      label: 'OAuth2 Proxy (Self-Hosted)',
+      description: 'OAuth2 Proxy reverse proxy authentication. Version via /ping (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://oauth2-proxy.example.com',
+      versionSource: { type: 'github-releases', target: 'oauth2-proxy/oauth2-proxy' },
+      latestSource: { type: 'github-releases', target: 'oauth2-proxy/oauth2-proxy' },
+      evidenceUrl: 'https://oauth2-proxy.github.io/oauth2-proxy/docs/',
+    },
+  ],
+
+  'glauth-core': [
+    {
+      id: 'self-hosted',
+      label: 'GLAuth (Self-Hosted)',
+      description: 'GLAuth simplified LDAP server. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://glauth.example.com:5555',
+      versionSource: { type: 'github-releases', target: 'glauth/glauth' },
+      latestSource: { type: 'github-releases', target: 'glauth/glauth' },
+      evidenceUrl: 'https://glauth.github.io/',
+    },
+  ],
+
+  'lemonldap-core': [
+    {
+      id: 'self-hosted',
+      label: 'LemonLDAP::NG (Self-Hosted)',
+      description: 'LemonLDAP::NG SSO/IAM solution. Version via /manager.psgi/sessions/global (requires admin auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://sso.example.com',
+      versionSource: { type: 'github-releases', target: 'LemonLDAPNG/lemonldap-ng' },
+      latestSource: { type: 'github-releases', target: 'LemonLDAPNG/lemonldap-ng' },
+      evidenceUrl: 'https://lemonldap-ng.org/documentation/',
+    },
+  ],
+
+  'privacyidea-core': [
+    {
+      id: 'self-hosted',
+      label: 'privacyIDEA (Self-Hosted)',
+      description: 'privacyIDEA MFA/token management server. Version via /version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://privacyidea.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.result.value',
+        jsonPathExtractors: ['result.value', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/version', '/healthcheck'],
+      },
+      latestSource: { type: 'github-releases', target: 'privacyidea/privacyidea' },
+      evidenceUrl: 'https://privacyidea.readthedocs.io/en/latest/installation/index.html',
+    },
+  ],
+
+  'supertokens-core': [
+    {
+      id: 'self-hosted',
+      label: 'SuperTokens Core (Self-Hosted)',
+      description: 'SuperTokens open-source auth solution. Version via /apiversion (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://supertokens.example.com:3567',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/apiversion',
+        jsonPath: '$.versions[0]',
+        jsonPathExtractors: ['versions.0', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/apiversion', '/hello'],
+      },
+      latestSource: { type: 'github-releases', target: 'supertokens/supertokens-core' },
+      evidenceUrl: 'https://app.swaggerhub.com/apis/supertokens/CDI',
+    },
+  ],
+
+  'logto-core': [
+    {
+      id: 'self-hosted',
+      label: 'Logto (Self-Hosted)',
+      description: 'Logto identity/auth platform. Version via /api/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://logto.example.com:3001',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'logto-io/logto' },
+      evidenceUrl: 'https://docs.logto.io/integrate-logto/interact-with-management-api/',
+    },
+  ],
+
+  'ory-keto-core': [
+    {
+      id: 'self-hosted',
+      label: 'Ory Keto (Self-Hosted)',
+      description: 'Ory Keto permission server. Version via /version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://keto.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/version', '/health/alive'],
+      },
+      latestSource: { type: 'github-releases', target: 'ory/keto' },
+      evidenceUrl: 'https://www.ory.sh/docs/keto/reference/api',
+    },
+  ],
+
+  'keycloakx-core': [
+    {
+      id: 'self-hosted',
+      label: 'Keycloak X (Self-Hosted)',
+      description: 'Keycloak Quarkus distribution. Version via /realms/master (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://keycloak.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/realms/master',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/realms/master', '/'],
+      },
+      latestSource: { type: 'github-releases', target: 'keycloak/keycloak' },
+      evidenceUrl: 'https://www.keycloak.org/docs/latest/server_admin/',
+    },
+  ],
+
+  'gerrit': [
+    {
+      id: 'self-hosted',
+      label: 'Gerrit (Self-Hosted)',
+      description: 'Gerrit code review system. Version via /config/server/info (no auth required for version info).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://gerrit.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/config/server/version',
+        jsonPath: '$',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/config/server/version', '/config/server/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'GerritCodeReview/gerrit' },
+      evidenceUrl: 'https://gerrit-review.googlesource.com/Documentation/rest-api-config.html',
+    },
+  ],
+
+  'reviewboard': [
+    {
+      id: 'self-hosted',
+      label: 'Review Board (Self-Hosted)',
+      description: 'Review Board code review tool. Version via /api/ root (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://reviewboard.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/',
+        jsonPath: '$.product.version',
+        jsonPathExtractors: ['product.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/'],
+      },
+      latestSource: { type: 'github-releases', target: 'reviewboard/reviewboard' },
+      evidenceUrl: 'https://www.reviewboard.org/docs/codebase/api/',
+    },
+  ],
+
+  'vscode-server': [
+    {
+      id: 'self-hosted',
+      label: 'VS Code Server (Self-Hosted)',
+      description: 'VS Code Server (code-server or openvscode-server). Version via /healthz (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://vscode-server.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/healthz',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/healthz', '/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'gitpod-io/openvscode-server' },
+      evidenceUrl: 'https://coder.com/docs/code-server/latest',
+    },
+  ],
+
+  'rstudio-server': [
+    {
+      id: 'self-hosted',
+      label: 'RStudio Server (Self-Hosted)',
+      description: 'RStudio Server R IDE. Version via /api/server-settings (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://rstudio.example.com:8787',
+      versionSource: { type: 'github-releases', target: 'rstudio/rstudio' },
+      latestSource: { type: 'github-releases', target: 'rstudio/rstudio' },
+      evidenceUrl: 'https://docs.posit.co/rspm/api/',
+    },
+  ],
+
+  'anchore': [
+    {
+      id: 'self-hosted',
+      label: 'Anchore Engine (Self-Hosted)',
+      description: 'Anchore container image security analysis. Version via /version (requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://anchore.example.com:8228',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.service.version',
+        jsonPathExtractors: ['service.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/version', '/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'anchore/anchore-engine' },
+      evidenceUrl: 'https://docs.anchore.com/current/docs/deployment/anchore_api/',
+    },
+  ],
+
+  'elastic-apm': [
+    {
+      id: 'self-hosted',
+      label: 'Elastic APM Server (Self-Hosted)',
+      description: 'Elastic APM Server for application performance monitoring. Version via / (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://apm.example.com:8200',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/', '/healthcheck'],
+      },
+      latestSource: { type: 'github-releases', target: 'elastic/apm-server' },
+      evidenceUrl: 'https://www.elastic.co/guide/en/apm/server/current/api.html',
+    },
+  ],
+
+  'victorialogs': [
+    {
+      id: 'self-hosted',
+      label: 'VictoriaLogs (Self-Hosted)',
+      description: 'VictoriaLogs fast log storage. Version via /api/v1/status/buildinfo (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://victorialogs.example.com:9428',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/status/buildinfo',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/status/buildinfo'],
+      },
+      latestSource: { type: 'github-releases', target: 'VictoriaMetrics/VictoriaMetrics' },
+      evidenceUrl: 'https://docs.victoriametrics.com/victorialogs/',
+    },
+  ],
+
+  'm3db': [
+    {
+      id: 'self-hosted',
+      label: 'M3DB (Self-Hosted)',
+      description: 'M3DB distributed time-series database. Version via /api/v1/services/m3db/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://m3db.example.com:7201',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/services/m3db/status',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/services/m3db/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'm3db/m3' },
+      evidenceUrl: 'https://m3db.io/docs/operational_guide/m3coordinator_config/',
+    },
+  ],
+
+  'skywalking': [
+    {
+      id: 'self-hosted',
+      label: 'Apache SkyWalking (Self-Hosted)',
+      description: 'Apache SkyWalking APM. Version via /api/version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://skywalking.example.com:12800',
+      versionSource: { type: 'github-releases', target: 'apache/skywalking' },
+      latestSource: { type: 'github-releases', target: 'apache/skywalking' },
+      evidenceUrl: 'https://skywalking.apache.org/docs/',
+    },
+  ],
+
+  'pinpoint': [
+    {
+      id: 'self-hosted',
+      label: 'Pinpoint APM (Self-Hosted)',
+      description: 'Pinpoint distributed systems APM. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://pinpoint.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.data.pinpointVersion',
+        jsonPathExtractors: ['data.pinpointVersion', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'pinpoint-apm/pinpoint' },
+      evidenceUrl: 'https://pinpoint-apm.gitbook.io/pinpoint/',
+    },
+  ],
+
+  'glitchtip': [
+    {
+      id: 'self-hosted',
+      label: 'GlitchTip (Self-Hosted)',
+      description: 'GlitchTip open-source error tracking. Version via /api/v1/health/ (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://glitchtip.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/health/'],
+      },
+      latestSource: { type: 'github-releases', target: 'glitchtip/glitchtip' },
+      evidenceUrl: 'https://glitchtip.com/documentation',
+    },
+  ],
+
+  'ossec': [
+    {
+      id: 'self-hosted',
+      label: 'OSSEC (Self-Hosted)',
+      description: 'OSSEC open-source HIDS. Version via /api/version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://ossec.example.com:55000',
+      versionSource: { type: 'github-releases', target: 'ossec/ossec-hids' },
+      latestSource: { type: 'github-releases', target: 'ossec/ossec-hids' },
+      evidenceUrl: 'https://www.ossec.net/docs/',
+    },
+  ],
+
+  'alienvault-ossim': [
+    {
+      id: 'self-hosted',
+      label: 'AlienVault OSSIM (Self-Hosted)',
+      description: 'AlienVault OSSIM open-source SIEM. Version via /ossim/conf/ (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://ossim.example.com',
+      versionSource: { type: 'github-releases', target: 'AlienVault/OSSIM' },
+      latestSource: { type: 'github-releases', target: 'AlienVault/OSSIM' },
+      evidenceUrl: 'https://cybersecurity.att.com/products/ossim',
+    },
+  ],
+
+  'panther-siem': [
+    {
+      id: 'self-hosted',
+      label: 'Panther SIEM (Self-Hosted)',
+      description: 'Panther cloud-native SIEM. Version via /health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://panther.example.com',
+      versionSource: { type: 'github-releases', target: 'panther-labs/panther' },
+      latestSource: { type: 'github-releases', target: 'panther-labs/panther' },
+      evidenceUrl: 'https://docs.panther.com/',
+    },
+  ],
+
+  'elastic-siem': [
+    {
+      id: 'self-hosted',
+      label: 'Elastic SIEM (Self-Hosted)',
+      description: 'Elastic Security SIEM (self-hosted). Version via /api/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://elastic-siem.example.com:5601',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/status',
+        jsonPath: '$.version.number',
+        jsonPathExtractors: ['version.number', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'elastic/kibana' },
+      evidenceUrl: 'https://www.elastic.co/guide/en/kibana/current/api.html',
+    },
+  ],
+
+  'ibm-qradar': [
+    {
+      id: 'self-hosted',
+      label: 'IBM QRadar (Self-Hosted)',
+      description: 'IBM QRadar SIEM. Version via /api/version (requires auth token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://qradar.example.com',
+      versionSource: { type: 'github-releases', target: 'IBM/qradar-sample-apps' },
+      latestSource: { type: 'github-releases', target: 'IBM/qradar-sample-apps' },
+      evidenceUrl: 'https://www.ibm.com/docs/en/qradar-siem',
+    },
+  ],
+
+  'greenbone': [
+    {
+      id: 'community',
+      label: 'Greenbone Community Edition (Self-Hosted)',
+      description: 'Greenbone OpenVAS vulnerability scanner CE. Version via /api/v1/health (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://greenbone.example.com:9392',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/health',
+        jsonPath: '$.gvmd.version',
+        jsonPathExtractors: ['gvmd.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'greenbone/openvas-scanner' },
+      evidenceUrl: 'https://greenbone.github.io/docs/',
+    },
+  ],
+
+  'nessus': [
+    {
+      id: 'essentials',
+      label: 'Nessus Essentials (Self-Hosted)',
+      description: 'Tenable Nessus vulnerability scanner. Version via /server/status (requires auth token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://nessus.example.com:8834',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/server/status',
+        jsonPath: '$.server_version',
+        jsonPathExtractors: ['server_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/server/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'tenable/nessus' },
+      evidenceUrl: 'https://developer.tenable.com/reference/navigate',
+    },
+  ],
+
+  'dex-idp': [
+    {
+      id: 'self-hosted',
+      label: 'Dex IdP (Self-Hosted)',
+      description: 'Dex federated OIDC provider. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://dex.example.com:5556',
+      versionSource: { type: 'github-releases', target: 'dexidp/dex' },
+      latestSource: { type: 'github-releases', target: 'dexidp/dex' },
+      evidenceUrl: 'https://dexidp.io/docs/',
+    },
+  ],
+
+  'pomerium': [
+    {
+      id: 'self-hosted',
+      label: 'Pomerium (Self-Hosted)',
+      description: 'Pomerium identity-aware access proxy. Version via /.pomerium/api/v1/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://pomerium.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/.pomerium/api/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/.pomerium/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'pomerium/pomerium' },
+      evidenceUrl: 'https://www.pomerium.com/docs/reference/api',
+    },
+  ],
+
+  'smallstep': [
+    {
+      id: 'self-hosted',
+      label: 'Smallstep CA (Self-Hosted)',
+      description: 'Smallstep open-source certificate authority. Version via /health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://smallstep.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/version', '/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'smallstep/certificates' },
+      evidenceUrl: 'https://smallstep.com/docs/step-ca/configuration/',
+    },
+  ],
+
+  'cyberark-conjur': [
+    {
+      id: 'self-hosted',
+      label: 'CyberArk Conjur OSS (Self-Hosted)',
+      description: 'CyberArk Conjur secrets management. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://conjur.example.com:80',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.conjur.version',
+        jsonPathExtractors: ['conjur.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'cyberark/conjur' },
+      evidenceUrl: 'https://docs.conjur.org/Latest/en/Content/Developer/Conjur_API.htm',
+    },
+  ],
+
+  'awx': [
+    {
+      id: 'self-hosted',
+      label: 'AWX (Self-Hosted)',
+      description: 'Red Hat AWX Ansible automation. Version via /api/v2/ root (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://awx.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/',
+        jsonPath: '$.ansible_version',
+        jsonPathExtractors: ['ansible_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v2/', '/api/v1/'],
+      },
+      latestSource: { type: 'github-releases', target: 'ansible/awx' },
+      evidenceUrl: 'https://ansible.readthedocs.io/projects/awx/en/latest/api_ref/',
+    },
+  ],
+
+  'kuma': [
+    {
+      id: 'self-hosted',
+      label: 'Kuma Service Mesh (Self-Hosted)',
+      description: 'Kuma (Kong) service mesh. Version via /api (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://kuma.example.com:5681',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api'],
+      },
+      latestSource: { type: 'github-releases', target: 'kumahq/kuma' },
+      evidenceUrl: 'https://kuma.io/docs/',
+    },
+  ],
+
+  'cilium-service-mesh': [
+    {
+      id: 'self-hosted',
+      label: 'Cilium (Self-Hosted)',
+      description: 'Cilium eBPF-based networking/service mesh. Version via /healthz (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://cilium.example.com',
+      versionSource: { type: 'github-releases', target: 'cilium/cilium' },
+      latestSource: { type: 'github-releases', target: 'cilium/cilium' },
+      evidenceUrl: 'https://docs.cilium.io/en/stable/cmdref/cilium/',
+    },
+  ],
+
+  'traefik-mesh': [
+    {
+      id: 'self-hosted',
+      label: 'Traefik Mesh (Self-Hosted)',
+      description: 'Traefik Mesh lightweight service mesh. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://traefik-mesh.example.com:9000',
+      versionSource: { type: 'github-releases', target: 'traefik/mesh' },
+      latestSource: { type: 'github-releases', target: 'traefik/mesh' },
+      evidenceUrl: 'https://doc.traefik.io/traefik-mesh/',
+    },
+  ],
+
+  'weave-gitops': [
+    {
+      id: 'self-hosted',
+      label: 'Weave GitOps (Self-Hosted)',
+      description: 'Weave GitOps Flux UI. Version via /api/v1/version (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://weave-gitops.example.com:9001',
+      versionSource: { type: 'github-releases', target: 'weaveworks/weave-gitops' },
+      latestSource: { type: 'github-releases', target: 'weaveworks/weave-gitops' },
+      evidenceUrl: 'https://docs.gitops.weave.works/docs/',
+    },
+  ],
+
+  'jenkinsx': [
+    {
+      id: 'self-hosted',
+      label: 'Jenkins X (Self-Hosted)',
+      description: 'Jenkins X cloud-native CI/CD for Kubernetes. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://jenkinsx.example.com',
+      versionSource: { type: 'github-releases', target: 'jenkins-x/jx' },
+      latestSource: { type: 'github-releases', target: 'jenkins-x/jx' },
+      evidenceUrl: 'https://jenkins-x.io/docs/',
+    },
+  ],
+
+  'kratix': [
+    {
+      id: 'self-hosted',
+      label: 'Kratix (Self-Hosted)',
+      description: 'Kratix platform-as-a-product framework. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://kratix.example.com',
+      versionSource: { type: 'github-releases', target: 'syntasso/kratix' },
+      latestSource: { type: 'github-releases', target: 'syntasso/kratix' },
+      evidenceUrl: 'https://kratix.io/docs/',
+    },
+  ],
+
+  'opencost': [
+    {
+      id: 'self-hosted',
+      label: 'OpenCost (Self-Hosted)',
+      description: 'OpenCost Kubernetes cost monitoring. Version via /version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://opencost.example.com:9090',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/version', '/healthz'],
+      },
+      latestSource: { type: 'github-releases', target: 'opencost/opencost' },
+      evidenceUrl: 'https://www.opencost.io/docs/api',
+    },
+  ],
+
+  'litmus-chaos': [
+    {
+      id: 'self-hosted',
+      label: 'Litmus Chaos (Self-Hosted)',
+      description: 'LitmusChaos chaos engineering platform. Version via /auth/dex/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://litmus.example.com:9091',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'litmuschaos/litmus' },
+      evidenceUrl: 'https://litmuschaos.io/docs/',
+    },
+  ],
+
+  'chaos-mesh': [
+    {
+      id: 'self-hosted',
+      label: 'Chaos Mesh (Self-Hosted)',
+      description: 'Chaos Mesh cloud-native chaos engineering. Version via /api/common/config (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://chaos-mesh.example.com:2333',
+      versionSource: { type: 'github-releases', target: 'chaos-mesh/chaos-mesh' },
+      latestSource: { type: 'github-releases', target: 'chaos-mesh/chaos-mesh' },
+      evidenceUrl: 'https://chaos-mesh.org/docs/',
+    },
+  ],
+
+  'singlestore': [
+    {
+      id: 'self-hosted',
+      label: 'SingleStore (Self-Hosted)',
+      description: 'SingleStore (MemSQL) distributed database. Version via /api/v1/version (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://singlestore.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'memsql/singlestoredb-dev-image' },
+      evidenceUrl: 'https://docs.singlestore.com/cloud/reference/api-reference/',
+    },
+  ],
+
+  'rqlite': [
+    {
+      id: 'self-hosted',
+      label: 'rqlite (Self-Hosted)',
+      description: 'rqlite lightweight distributed relational database. Version via /status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://rqlite.example.com:4001',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/status',
+        jsonPath: '$.build.version',
+        jsonPathExtractors: ['build.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/status', '/readyz'],
+      },
+      latestSource: { type: 'github-releases', target: 'rqlite/rqlite' },
+      evidenceUrl: 'https://rqlite.io/docs/api/api/',
+    },
+  ],
+
+  'citus': [
+    {
+      id: 'self-hosted',
+      label: 'Citus (Self-Hosted)',
+      description: 'Citus distributed PostgreSQL extension. Version via PostgreSQL SQL query — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'postgresql://citus.example.com:5432',
+      versionSource: { type: 'github-releases', target: 'citusdata/citus' },
+      latestSource: { type: 'github-releases', target: 'citusdata/citus' },
+      evidenceUrl: 'https://docs.citusdata.com/',
+    },
+  ],
+
+  'opentsdb': [
+    {
+      id: 'self-hosted',
+      label: 'OpenTSDB (Self-Hosted)',
+      description: 'OpenTSDB time-series database. Version via /version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://opentsdb.example.com:4242',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/version', '/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'OpenTSDB/opentsdb' },
+      evidenceUrl: 'http://opentsdb.net/docs/build/html/api_http/version.html',
+    },
+  ],
+
+  'typedb': [
+    {
+      id: 'self-hosted',
+      label: 'TypeDB (Self-Hosted)',
+      description: 'TypeDB polymorphic knowledge graph database. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://typedb.example.com:1729',
+      versionSource: { type: 'github-releases', target: 'typedb/typedb' },
+      latestSource: { type: 'github-releases', target: 'typedb/typedb' },
+      evidenceUrl: 'https://typedb.com/docs/',
+    },
+  ],
+
+  'janusgraph': [
+    {
+      id: 'self-hosted',
+      label: 'JanusGraph (Self-Hosted)',
+      description: 'JanusGraph distributed graph database. Version via /ui/api/server (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://janusgraph.example.com:8182',
+      versionSource: { type: 'github-releases', target: 'JanusGraph/janusgraph' },
+      latestSource: { type: 'github-releases', target: 'JanusGraph/janusgraph' },
+      evidenceUrl: 'https://docs.janusgraph.org/',
+    },
+  ],
+
+  'hugegraph': [
+    {
+      id: 'self-hosted',
+      label: 'HugeGraph (Self-Hosted)',
+      description: 'Apache HugeGraph graph database. Version via /versions (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://hugegraph.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/versions',
+        jsonPath: '$.versions.core',
+        jsonPathExtractors: ['versions.core', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/versions'],
+      },
+      latestSource: { type: 'github-releases', target: 'apache/incubator-hugegraph' },
+      evidenceUrl: 'https://hugegraph.apache.org/docs/clients/restful-api/',
+    },
+  ],
+
+  'dgraph': [
+    {
+      id: 'self-hosted',
+      label: 'Dgraph (Self-Hosted)',
+      description: 'Dgraph native GraphQL + graph database. Version via /health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://dgraph.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'dgraph-io/dgraph' },
+      evidenceUrl: 'https://dgraph.io/docs/graphql/api/',
+    },
+  ],
+
+  'artemis': [
+    {
+      id: 'self-hosted',
+      label: 'Apache ActiveMQ Artemis (Self-Hosted)',
+      description: 'Apache ActiveMQ Artemis message broker. Version via /console/jolokia/read/org.apache.activemq.artemis:broker=... (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://artemis.example.com:8161',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/console/jolokia/version',
+        jsonPath: '$.value.AgentVersion',
+        jsonPathExtractors: ['value.AgentVersion', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/console/jolokia/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'apache/activemq-artemis' },
+      evidenceUrl: 'https://activemq.apache.org/components/artemis/documentation/latest/management.html',
+    },
+  ],
+
+  'memphis': [
+    {
+      id: 'self-hosted',
+      label: 'Memphis (Self-Hosted)',
+      description: 'Memphis.dev cloud-native message broker. Version via /api/version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://memphis.example.com:9000',
+      versionSource: { type: 'github-releases', target: 'memphisdev/memphis' },
+      latestSource: { type: 'github-releases', target: 'memphisdev/memphis' },
+      evidenceUrl: 'https://docs.memphis.dev/',
+    },
+  ],
+
+  'centrifugo': [
+    {
+      id: 'self-hosted',
+      label: 'Centrifugo (Self-Hosted)',
+      description: 'Centrifugo real-time messaging server. Version via /api/info (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://centrifugo.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/info',
+        jsonPath: '$.result.version',
+        jsonPathExtractors: ['result.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'centrifugal/centrifugo' },
+      evidenceUrl: 'https://centrifugal.dev/docs/server/server_api#info',
+    },
+  ],
+
+  'soketi': [
+    {
+      id: 'self-hosted',
+      label: 'Soketi (Self-Hosted)',
+      description: 'Soketi Pusher-compatible WebSocket server. Version via /health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://soketi.example.com:6001',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'soketi/soketi' },
+      evidenceUrl: 'https://docs.soketi.app/',
+    },
+  ],
+
+  'phabricator': [
+    {
+      id: 'self-hosted',
+      label: 'Phabricator (Self-Hosted)',
+      description: 'Phabricator code review + project management. Version via /api/conduit.ping (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://phabricator.example.com',
+      versionSource: { type: 'github-releases', target: 'phacility/phabricator' },
+      latestSource: { type: 'github-releases', target: 'phacility/phabricator' },
+      evidenceUrl: 'https://secure.phabricator.com/book/phabricator/article/conduit/',
+    },
+  ],
+
+  'flux': [
+    {
+      id: 'self-hosted',
+      label: 'Flux GitOps (Self-Hosted)',
+      description: 'Flux GitOps toolkit for Kubernetes. Version via /metrics (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://flux.example.com:9292',
+      versionSource: { type: 'github-releases', target: 'fluxcd/flux2' },
+      latestSource: { type: 'github-releases', target: 'fluxcd/flux2' },
+      evidenceUrl: 'https://fluxcd.io/flux/components/',
+    },
+  ],
+
+  'open-service-mesh': [
+    {
+      id: 'self-hosted',
+      label: 'Open Service Mesh (Self-Hosted)',
+      description: 'Open Service Mesh (OSM) Kubernetes service mesh. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://osm.example.com',
+      versionSource: { type: 'github-releases', target: 'openservicemesh/osm' },
+      latestSource: { type: 'github-releases', target: 'openservicemesh/osm' },
+      evidenceUrl: 'https://release-v1-2.docs.openservicemesh.io/',
+    },
+  ],
+
+  'consul-connect': [
+    {
+      id: 'self-hosted',
+      label: 'Consul Service Mesh (Self-Hosted)',
+      description: 'Consul Connect service mesh. Version via /v1/agent/self (no auth required by default).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://consul-connect.example.com:8500',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/agent/self',
+        jsonPath: '$.Config.Version',
+        jsonPathExtractors: ['Config.Version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/v1/agent/self'],
+      },
+      latestSource: { type: 'github-releases', target: 'hashicorp/consul' },
+      evidenceUrl: 'https://developer.hashicorp.com/consul/api-docs/agent#read-configuration',
+    },
+  ],
+
+  'splunk-log': [
+    {
+      id: 'self-hosted',
+      label: 'Splunk Enterprise (Self-Hosted)',
+      description: 'Splunk log management and SIEM. Version via /services/server/info (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://splunk.example.com:8089',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/services/server/info?output_mode=json',
+        jsonPath: '$.entry[0].content.version',
+        jsonPathExtractors: ['entry.0.content.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/services/server/info?output_mode=json'],
+      },
+      latestSource: { type: 'github-releases', target: 'splunk/splunk-sdk-python' },
+      evidenceUrl: 'https://docs.splunk.com/Documentation/Splunk/latest/RESTREF/RESTsystem#server.2Finfo',
+    },
+  ],
+
+  'trac': [
+    {
+      id: 'self-hosted',
+      label: 'Trac (Self-Hosted)',
+      description: 'Trac project management and bug tracker. Version via /about (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://trac.example.com',
+      versionSource: { type: 'github-releases', target: 'edgewall/trac' },
+      latestSource: { type: 'github-releases', target: 'edgewall/trac' },
+      evidenceUrl: 'https://trac.edgewall.org/wiki/TracDev/ApiDocs',
+    },
+  ],
+
+  'nexus-oss': [
+    {
+      id: 'oss',
+      label: 'Nexus Repository OSS (Self-Hosted)',
+      description: 'Sonatype Nexus Repository Manager OSS. Version via /service/rest/v1/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://nexus.example.com:8081',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/service/rest/v1/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/service/rest/v1/status', '/service/rest/v1/status/check'],
+      },
+      latestSource: { type: 'github-releases', target: 'sonatype/nexus-public' },
+      evidenceUrl: 'https://help.sonatype.com/en/rest-and-integration-api.html',
+    },
+  ],
+
+  'artifactory': [
+    {
+      id: 'oss',
+      label: 'JFrog Artifactory OSS (Self-Hosted)',
+      description: 'JFrog Artifactory artifact repository. Version via /api/system/version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://artifactory.example.com:8082',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/artifactory/api/system/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/artifactory/api/system/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'jfrog/artifactory-oss' },
+      evidenceUrl: 'https://jfrog.com/help/r/jfrog-rest-apis/get-version-and-add-ons-information',
+    },
+  ],
+
+  'zot-registry': [
+    {
+      id: 'self-hosted',
+      label: 'Zot Registry (Self-Hosted)',
+      description: 'Zot OCI-native container registry. Version via /v2/_oci/ext/discover (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://zot-registry.example.com:5000',
+      versionSource: { type: 'github-releases', target: 'project-zot/zot' },
+      latestSource: { type: 'github-releases', target: 'project-zot/zot' },
+      evidenceUrl: 'https://zotregistry.dev/',
+    },
+  ],
+
+  'solr': [
+    {
+      id: 'self-hosted',
+      label: 'Apache Solr (Self-Hosted)',
+      description: 'Apache Solr enterprise search. Version via /solr/admin/info/system?wt=json (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://solr.example.com:8983',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/solr/admin/info/system?wt=json',
+        jsonPath: '$.lucene.solr-spec-version',
+        jsonPathExtractors: ['lucene.solr-spec-version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/solr/admin/info/system?wt=json'],
+      },
+      latestSource: { type: 'github-releases', target: 'apache/solr' },
+      evidenceUrl: 'https://solr.apache.org/guide/solr/latest/deployment-guide/about-this-guide.html',
+    },
+  ],
+
+  'docker-swarm': [
+    {
+      id: 'self-hosted',
+      label: 'Docker Swarm (Self-Hosted)',
+      description: 'Docker Swarm container orchestration. Version via /version (requires Docker daemon access).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://docker.example.com:2375',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.Version',
+        jsonPathExtractors: ['Version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'moby/moby' },
+      evidenceUrl: 'https://docs.docker.com/engine/api/',
+    },
+  ],
+
+  'cerbos': [
+    {
+      id: 'self-hosted',
+      label: 'Cerbos (Self-Hosted)',
+      description: 'Cerbos open-source authorization. Version via /api/check (no auth required for health).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://cerbos.example.com:3592',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/server_info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/server_info'],
+      },
+      latestSource: { type: 'github-releases', target: 'cerbos/cerbos' },
+      evidenceUrl: 'https://docs.cerbos.dev/cerbos/latest/api/',
+    },
+  ],
+
+  'openfga': [
+    {
+      id: 'self-hosted',
+      label: 'OpenFGA (Self-Hosted)',
+      description: 'OpenFGA open-source authorization (FGA). Version via /health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://openfga.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/health', '/api/v1/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'openfga/openfga' },
+      evidenceUrl: 'https://openfga.dev/docs/getting-started/running-fga',
+    },
+  ],
+
+  'sealed-secrets': [
+    {
+      id: 'self-hosted',
+      label: 'Sealed Secrets (Self-Hosted)',
+      description: 'Bitnami Sealed Secrets Kubernetes controller. Version via /v1/secret (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://sealed-secrets.example.com:8080',
+      versionSource: { type: 'github-releases', target: 'bitnami-labs/sealed-secrets' },
+      latestSource: { type: 'github-releases', target: 'bitnami-labs/sealed-secrets' },
+      evidenceUrl: 'https://github.com/bitnami-labs/sealed-secrets',
+    },
+  ],
+
+  'prometheus-alertmanager': [
+    {
+      id: 'self-hosted',
+      label: 'Prometheus Alertmanager (Self-Hosted)',
+      description: 'Prometheus Alertmanager. Version via /api/v2/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://alertmanager.example.com:9093',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/status',
+        jsonPath: '$.versionInfo.version',
+        jsonPathExtractors: ['versionInfo.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v2/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'prometheus/alertmanager' },
+      evidenceUrl: 'https://prometheus.io/docs/alerting/latest/alertmanager/',
+    },
+  ],
+
+  'grafana-oncall': [
+    {
+      id: 'self-hosted',
+      label: 'Grafana OnCall (Self-Hosted)',
+      description: 'Grafana OnCall on-call management. Version via /api/v1/info (requires API token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://oncall.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'grafana/oncall' },
+      evidenceUrl: 'https://grafana.com/docs/oncall/latest/',
+    },
+  ],
+
+  'cachet': [
+    {
+      id: 'self-hosted',
+      label: 'Cachet (Self-Hosted)',
+      description: 'Cachet open-source status page. Version via /api/v1/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://cachet.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.data.tag',
+        jsonPathExtractors: ['data.tag', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'CachetHQ/Cachet' },
+      evidenceUrl: 'https://docs.cachethq.io/',
+    },
+  ],
+
+  'uptrace': [
+    {
+      id: 'self-hosted',
+      label: 'Uptrace (Self-Hosted)',
+      description: 'Uptrace open-source APM with OpenTelemetry. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://uptrace.example.com:14318',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'uptrace/uptrace' },
+      evidenceUrl: 'https://uptrace.dev/docs/',
+    },
+  ],
+
+  'nagios-xi': [
+    {
+      id: 'self-hosted',
+      label: 'Nagios XI (Self-Hosted)',
+      description: 'Nagios XI enterprise monitoring. Version via /nagiosxi/api/v1/system/info (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://nagios.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/nagiosxi/api/v1/system/info',
+        jsonPath: '$.xi_version',
+        jsonPathExtractors: ['xi_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/nagiosxi/api/v1/system/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'nagios/nagiosxi' },
+      evidenceUrl: 'https://support.nagios.com/kb/article/nagios-xi-api-how-to-use-the-nagios-xi-api-274.html',
+    },
+  ],
+
+  'prtg': [
+    {
+      id: 'self-hosted',
+      label: 'PRTG Network Monitor (Self-Hosted)',
+      description: 'Paessler PRTG network monitoring. Version via /api/info.xml (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://prtg.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/info.json',
+        jsonPath: '$.prtgversion',
+        jsonPathExtractors: ['prtgversion', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/info.json'],
+      },
+      latestSource: { type: 'github-releases', target: 'paessler/prtg' },
+      evidenceUrl: 'https://www.paessler.com/manuals/prtg/http_api',
+    },
+  ],
+
+  'statsd': [
+    {
+      id: 'self-hosted',
+      label: 'StatsD (Self-Hosted)',
+      description: 'StatsD metrics aggregation daemon. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://statsd.example.com:8126',
+      versionSource: { type: 'github-releases', target: 'statsd/statsd' },
+      latestSource: { type: 'github-releases', target: 'statsd/statsd' },
+      evidenceUrl: 'https://github.com/statsd/statsd',
+    },
+  ],
+
+  'dynamodb-local': [
+    {
+      id: 'self-hosted',
+      label: 'DynamoDB Local (Self-Hosted)',
+      description: 'Amazon DynamoDB Local for development. No HTTP version API — tracks GitHub/release pages.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://dynamodb-local.example.com:8000',
+      versionSource: { type: 'github-releases', target: 'aws-samples/aws-dynamodb-examples' },
+      latestSource: { type: 'github-releases', target: 'aws-samples/aws-dynamodb-examples' },
+      evidenceUrl: 'https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/DynamoDBLocal.html',
+    },
+  ],
+
+  'daytona': [
+    {
+      id: 'self-hosted',
+      label: 'Daytona (Self-Hosted)',
+      description: 'Daytona dev environment manager. Version via /api/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://daytona.example.com:3986',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'daytonaio/daytona' },
+      evidenceUrl: 'https://www.daytona.io/docs/',
+    },
+  ],
+
+  'turborepo-remote-cache': [
+    {
+      id: 'self-hosted',
+      label: 'Turborepo Remote Cache (Self-Hosted)',
+      description: 'Turborepo remote caching server. Version via /v8/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://turborepo-cache.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v8/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/v8/health', '/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'ducktors/turborepo-remote-cache' },
+      evidenceUrl: 'https://github.com/ducktors/turborepo-remote-cache',
+    },
+  ],
+
+  'unifi-controller': [
+    {
+      id: 'self-hosted',
+      label: 'UniFi Controller (Self-Hosted)',
+      description: 'Ubiquiti UniFi Network Controller. Version via /api/v2/system/version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://unifi.example.com:8443',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/system/version',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v2/system/version', '/api/stat/sysinfo'],
+      },
+      latestSource: { type: 'github-releases', target: 'nicehash/NiceHashQuickMiner' },
+      evidenceUrl: 'https://ubntwiki.com/products/software/unifi-controller/api',
+    },
+  ],
+
+  'ntopng': [
+    {
+      id: 'self-hosted',
+      label: 'ntopng (Self-Hosted)',
+      description: 'ntopng network traffic analyzer. Version via /lua/rest/v2/get/ntopng/info.lua (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://ntopng.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/lua/rest/v2/get/ntopng/info.lua',
+        jsonPath: '$.rsp.version',
+        jsonPathExtractors: ['rsp.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/lua/rest/v2/get/ntopng/info.lua'],
+      },
+      latestSource: { type: 'github-releases', target: 'ntop/ntopng' },
+      evidenceUrl: 'https://www.ntop.org/products/traffic-analysis/ntop/',
+    },
+  ],
+
+  'logrhythm': [
+    {
+      id: 'self-hosted',
+      label: 'LogRhythm SIEM (Self-Hosted)',
+      description: 'LogRhythm SIEM platform. Version via REST API (requires auth token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://logrhythm.example.com',
+      versionSource: { type: 'github-releases', target: 'LogRhythm/API-Science' },
+      latestSource: { type: 'github-releases', target: 'LogRhythm/API-Science' },
+      evidenceUrl: 'https://docs.logrhythm.com/lrsiem/',
+    },
+  ],
+
+  'rapid7-nexpose': [
+    {
+      id: 'self-hosted',
+      label: 'Rapid7 Nexpose (Self-Hosted)',
+      description: 'Rapid7 Nexpose vulnerability scanner. Version via /api/3/administration/settings (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://nexpose.example.com:3780',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/3/administration/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/3/administration/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'rapid7/nexpose-client-python' },
+      evidenceUrl: 'https://help.rapid7.com/insightvm/en-us/api/index.html',
+    },
+  ],
+
+  'tenable-sc': [
+    {
+      id: 'self-hosted',
+      label: 'Tenable.sc (Self-Hosted)',
+      description: 'Tenable Security Center vulnerability management. Version via /rest/system (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://tenable-sc.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/rest/system',
+        jsonPath: '$.response.version',
+        jsonPathExtractors: ['response.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/rest/system'],
+      },
+      latestSource: { type: 'github-releases', target: 'tenable/pyTenable' },
+      evidenceUrl: 'https://docs.tenable.com/tenablesc/api/',
+    },
+  ],
+
+  'netflow-analyzer': [
+    {
+      id: 'self-hosted',
+      label: 'ManageEngine NetFlow Analyzer (Self-Hosted)',
+      description: 'NetFlow Analyzer network traffic analysis. Version via /api/json/v3/dashboard (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://netflow.example.com:8080',
+      versionSource: { type: 'github-releases', target: 'ManageEngine/NetFlowAnalyzer' },
+      latestSource: { type: 'github-releases', target: 'ManageEngine/NetFlowAnalyzer' },
+      evidenceUrl: 'https://www.manageengine.com/products/netflow/restapi.html',
+    },
+  ],
+
+  'ibm-db2': [
+    {
+      id: 'self-hosted',
+      label: 'IBM Db2 (Self-Hosted)',
+      description: 'IBM Db2 relational database. Version via Db2 REST services (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://db2.example.com:50050',
+      versionSource: { type: 'github-releases', target: 'ibmdb/node-ibm_db' },
+      latestSource: { type: 'github-releases', target: 'ibmdb/node-ibm_db' },
+      evidenceUrl: 'https://www.ibm.com/docs/en/db2/latest?topic=interfaces-db2-rest-services',
+    },
+  ],
+
+  'sap-hana': [
+    {
+      id: 'self-hosted',
+      label: 'SAP HANA (Self-Hosted)',
+      description: 'SAP HANA in-memory database. Version via OData service (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://hana.example.com:8090',
+      versionSource: { type: 'github-releases', target: 'SAP/node-hdb' },
+      latestSource: { type: 'github-releases', target: 'SAP/node-hdb' },
+      evidenceUrl: 'https://help.sap.com/docs/SAP_HANA_PLATFORM',
+    },
+  ],
+
+  'oracle-db': [
+    {
+      id: 'self-hosted',
+      label: 'Oracle Database (Self-Hosted)',
+      description: 'Oracle Database relational DBMS. Version via ORDS or Enterprise Manager (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://oracle.example.com:1521',
+      versionSource: { type: 'github-releases', target: 'oracle/docker-images' },
+      latestSource: { type: 'github-releases', target: 'oracle/docker-images' },
+      evidenceUrl: 'https://docs.oracle.com/en/database/',
+    },
+  ],
+
+  'mssql': [
+    {
+      id: 'self-hosted',
+      label: 'Microsoft SQL Server (Self-Hosted)',
+      description: 'Microsoft SQL Server. Version via /healthz (no auth required for SQL Server 2022+).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://mssql.example.com:1433',
+      versionSource: { type: 'github-releases', target: 'microsoft/mssql-docker' },
+      latestSource: { type: 'github-releases', target: 'microsoft/mssql-docker' },
+      evidenceUrl: 'https://docs.microsoft.com/en-us/sql/linux/sql-server-linux-overview',
+    },
+  ],
+
+  'influxdb-v3': [
+    {
+      id: 'self-hosted',
+      label: 'InfluxDB v3 (Self-Hosted)',
+      description: 'InfluxDB v3 time-series platform. Version via /health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://influxdb3.example.com:8086',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/health', '/ping'],
+      },
+      latestSource: { type: 'github-releases', target: 'influxdata/influxdb' },
+      evidenceUrl: 'https://docs.influxdata.com/influxdb/v3/',
+    },
+  ],
+
+  'appwrite-db': [
+    {
+      id: 'self-hosted',
+      label: 'Appwrite (Self-Hosted)',
+      description: 'Appwrite backend-as-a-service. Version via /v1/health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://appwrite.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/health/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/v1/health/version', '/v1/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'appwrite/appwrite' },
+      evidenceUrl: 'https://appwrite.io/docs/apis/rest',
+    },
+  ],
+
+  'supabase-db': [
+    {
+      id: 'self-hosted',
+      label: 'Supabase (Self-Hosted)',
+      description: 'Supabase open-source Firebase alternative. Version via /health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://supabase.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/health', '/rest/v1/'],
+      },
+      latestSource: { type: 'github-releases', target: 'supabase/supabase' },
+      evidenceUrl: 'https://supabase.com/docs/guides/self-hosting',
+    },
+  ],
+
+  'lakefs': [
+    {
+      id: 'self-hosted',
+      label: 'lakeFS (Self-Hosted)',
+      description: 'lakeFS data lake version control. Version via /api/v1/config (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://lakefs.example.com:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/config',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/config', '/api/v1/healthcheck'],
+      },
+      latestSource: { type: 'github-releases', target: 'treeverse/lakeFS' },
+      evidenceUrl: 'https://docs.lakefs.io/reference/api.html',
+    },
+  ],
+
+  'terminusdb': [
+    {
+      id: 'self-hosted',
+      label: 'TerminusDB (Self-Hosted)',
+      description: 'TerminusDB document graph database. Version via /api (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://terminusdb.example.com:6363',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api'],
+      },
+      latestSource: { type: 'github-releases', target: 'terminusdb/terminusdb' },
+      evidenceUrl: 'https://terminusdb.com/docs/',
+    },
+  ],
+
+  'oxigraph': [
+    {
+      id: 'self-hosted',
+      label: 'Oxigraph (Self-Hosted)',
+      description: 'Oxigraph RDF triple store. Version via /version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://oxigraph.example.com:7878',
+      versionSource: { type: 'github-releases', target: 'oxigraph/oxigraph' },
+      latestSource: { type: 'github-releases', target: 'oxigraph/oxigraph' },
+      evidenceUrl: 'https://github.com/oxigraph/oxigraph',
+    },
+  ],
+
+  'virtuoso-db': [
+    {
+      id: 'self-hosted',
+      label: 'Virtuoso Universal Server (Self-Hosted)',
+      description: 'OpenLink Virtuoso RDF + relational database. Version via /sparql (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://virtuoso.example.com:8890',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/conductor/main_login.vsp',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/sparql', '/'],
+      },
+      latestSource: { type: 'github-releases', target: 'openlink/virtuoso-opensource' },
+      evidenceUrl: 'http://vos.openlinksw.com/owiki/wiki/VOS/',
+    },
+  ],
+
+  'stardog': [
+    {
+      id: 'self-hosted',
+      label: 'Stardog (Self-Hosted)',
+      description: 'Stardog enterprise knowledge graph. Version via /admin/status (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://stardog.example.com:5820',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/admin/status',
+        jsonPath: '$.dbms.build.version',
+        jsonPathExtractors: ['dbms.build.version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/admin/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'stardog-union/stardog-docs' },
+      evidenceUrl: 'https://docs.stardog.com/operating-stardog/server-administration/server-monitoring/',
+    },
+  ],
+
+  'graphdb': [
+    {
+      id: 'self-hosted',
+      label: 'Ontotext GraphDB (Self-Hosted)',
+      description: 'Ontotext GraphDB RDF database. Version via /rest/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://graphdb.example.com:7200',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/rest/info',
+        jsonPath: '$.productVersion',
+        jsonPathExtractors: ['productVersion', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/rest/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'Ontotext-AD/graphdb-free' },
+      evidenceUrl: 'https://graphdb.ontotext.com/documentation/',
+    },
+  ],
+
+  'conduit-matrix': [
+    {
+      id: 'self-hosted',
+      label: 'Conduit (Matrix, Self-Hosted)',
+      description: 'Conduit fast Matrix homeserver. Version via /_matrix/client/versions (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://conduit.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/_matrix/client/versions',
+        jsonPath: '$.server.conduit',
+        jsonPathExtractors: ['server.conduit', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/_matrix/client/versions'],
+      },
+      latestSource: { type: 'github-releases', target: 'famedly/conduit' },
+      evidenceUrl: 'https://conduit.rs/deployment/',
+    },
+  ],
+
+  'dendrite-matrix': [
+    {
+      id: 'self-hosted',
+      label: 'Dendrite (Matrix, Self-Hosted)',
+      description: 'Dendrite Matrix homeserver. Version via /_matrix/client/versions (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://dendrite.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/_matrix/client/versions',
+        jsonPath: '$.server.dendrite',
+        jsonPathExtractors: ['server.dendrite', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/_matrix/client/versions'],
+      },
+      latestSource: { type: 'github-releases', target: 'matrix-org/dendrite' },
+      evidenceUrl: 'https://matrix-org.github.io/dendrite/',
+    },
+  ],
+
+  'element-web': [
+    {
+      id: 'self-hosted',
+      label: 'Element Web (Self-Hosted)',
+      description: 'Element Matrix web client. Version via /config.json (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://element.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/config.json',
+        jsonPath: '$.brand',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/config.json'],
+      },
+      latestSource: { type: 'github-releases', target: 'element-hq/element-web' },
+      evidenceUrl: 'https://github.com/element-hq/element-web',
+    },
+  ],
+
+  'hydrogen-matrix': [
+    {
+      id: 'self-hosted',
+      label: 'Hydrogen Matrix (Self-Hosted)',
+      description: 'Hydrogen Matrix web client. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://hydrogen.example.com',
+      versionSource: { type: 'github-releases', target: 'vector-im/hydrogen-web' },
+      latestSource: { type: 'github-releases', target: 'vector-im/hydrogen-web' },
+      evidenceUrl: 'https://github.com/vector-im/hydrogen-web',
+    },
+  ],
+
+  'cinny-matrix': [
+    {
+      id: 'self-hosted',
+      label: 'Cinny Matrix (Self-Hosted)',
+      description: 'Cinny Matrix web client. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://cinny.example.com',
+      versionSource: { type: 'github-releases', target: 'cinnyapp/cinny' },
+      latestSource: { type: 'github-releases', target: 'cinnyapp/cinny' },
+      evidenceUrl: 'https://github.com/cinnyapp/cinny',
+    },
+  ],
+
+  'matterbridge': [
+    {
+      id: 'self-hosted',
+      label: 'Matterbridge (Self-Hosted)',
+      description: 'Matterbridge multi-protocol chat bridge. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://matterbridge.example.com:4242',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/version'],
+      },
+      latestSource: { type: 'github-releases', target: '42wim/matterbridge' },
+      evidenceUrl: 'https://github.com/42wim/matterbridge',
+    },
+  ],
+
+  'heisenbridge': [
+    {
+      id: 'self-hosted',
+      label: 'Heisenbridge (Self-Hosted)',
+      description: 'Heisenbridge Matrix IRC bridge. No HTTP version API — tracks GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://heisenbridge.example.com:9898',
+      versionSource: { type: 'github-releases', target: 'hifi/heisenbridge' },
+      latestSource: { type: 'github-releases', target: 'hifi/heisenbridge' },
+      evidenceUrl: 'https://github.com/hifi/heisenbridge',
+    },
+  ],
+
+  'obsidian-sync-server': [
+    {
+      id: 'self-hosted',
+      label: 'Obsidian Live Sync Server (Self-Hosted)',
+      description: 'Obsidian Live Sync (CouchDB-based). Version via CouchDB / root (no auth required by default).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://obsidian-sync.example.com:5984',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/'],
+      },
+      latestSource: { type: 'github-releases', target: 'vrtmrz/obsidian-livesync' },
+      evidenceUrl: 'https://github.com/vrtmrz/obsidian-livesync',
+    },
+  ],
+
+  'clearml': [
+    {
+      id: 'self-hosted',
+      label: 'ClearML Server (Self-Hosted)',
+      description: 'ClearML MLOps platform. Version via /api/v2.x/debug.get_logs (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://clearml.example.com:8008',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2.9/system.version',
+        jsonPath: '$.data.server',
+        jsonPathExtractors: ['data.server', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v2.9/system.version'],
+      },
+      latestSource: { type: 'github-releases', target: 'allegroai/clearml-server' },
+      evidenceUrl: 'https://clear.ml/docs/latest/docs/deploying_clearml/',
+    },
+  ],
+
+  'determined-ai': [
+    {
+      id: 'self-hosted',
+      label: 'Determined AI (Self-Hosted)',
+      description: 'Determined ML training platform. Version via /api/v1/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://determined.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'determined-ai/determined' },
+      evidenceUrl: 'https://docs.determined.ai/latest/reference/rest-api.html',
+    },
+  ],
+
+  'polyaxon': [
+    {
+      id: 'self-hosted',
+      label: 'Polyaxon (Self-Hosted)',
+      description: 'Polyaxon MLOps platform. Version via /api/v1/version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://polyaxon.example.com:80',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.app',
+        jsonPathExtractors: ['app', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'polyaxon/polyaxon' },
+      evidenceUrl: 'https://polyaxon.com/docs/core/api/',
+    },
+  ],
+
+  'woocommerce': [
+    {
+      id: 'self-hosted',
+      label: 'WooCommerce (Self-Hosted)',
+      description: 'WooCommerce WordPress e-commerce plugin. Version via /wp-json/wc/v3/system_status (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://woocommerce.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/wp-json/wc/v3/system_status',
+        jsonPath: '$.environment.wc_version',
+        jsonPathExtractors: ['environment.wc_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/wp-json/wc/v3/system_status'],
+      },
+      latestSource: { type: 'github-releases', target: 'woocommerce/woocommerce' },
+      evidenceUrl: 'https://woocommerce.github.io/woocommerce-rest-api-docs/',
+    },
+  ],
+
+  'magento': [
+    {
+      id: 'open-source',
+      label: 'Magento Open Source (Self-Hosted)',
+      description: 'Adobe Magento Open Source e-commerce. Version via /rest/V1/modules (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://magento.example.com',
+      versionSource: { type: 'github-releases', target: 'magento/magento2' },
+      latestSource: { type: 'github-releases', target: 'magento/magento2' },
+      evidenceUrl: 'https://adobe-commerce.redoc.ly/',
+    },
+  ],
+
+  'opencart': [
+    {
+      id: 'self-hosted',
+      label: 'OpenCart (Self-Hosted)',
+      description: 'OpenCart e-commerce platform. Version via /index.php?route=api/account/login (requires API key).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://opencart.example.com',
+      versionSource: { type: 'github-releases', target: 'opencart/opencart' },
+      latestSource: { type: 'github-releases', target: 'opencart/opencart' },
+      evidenceUrl: 'https://docs.opencart.com/en-gb/system/users/api/',
+    },
+  ],
+
+  'vendure': [
+    {
+      id: 'self-hosted',
+      label: 'Vendure (Self-Hosted)',
+      description: 'Vendure headless e-commerce framework. Version via /health (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://vendure.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/health'],
+      },
+      latestSource: { type: 'github-releases', target: 'vendure-ecommerce/vendure' },
+      evidenceUrl: 'https://docs.vendure.io/reference/graphql-api/',
+    },
+  ],
+
+  'bagisto': [
+    {
+      id: 'self-hosted',
+      label: 'Bagisto (Self-Hosted)',
+      description: 'Bagisto Laravel-based e-commerce. Version via /api/v1/version (requires Bearer token).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://bagisto.example.com',
+      versionSource: { type: 'github-releases', target: 'bagisto/bagisto' },
+      latestSource: { type: 'github-releases', target: 'bagisto/bagisto' },
+      evidenceUrl: 'https://devdocs.bagisto.com/',
+    },
+  ],
+
+  'netdata-monitor': [
+    {
+      id: 'self-hosted',
+      label: 'Netdata Monitor (Self-Hosted)',
+      description: 'Netdata real-time monitoring. Version via /api/v1/info (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://netdata.example.com:19999',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/info'],
+      },
+      latestSource: { type: 'github-releases', target: 'netdata/netdata' },
+      evidenceUrl: 'https://learn.netdata.cloud/docs/api/',
+    },
+  ],
+
+  'atlantis-iac': [
+    {
+      id: 'self-hosted',
+      label: 'Atlantis (Self-Hosted)',
+      description: 'Atlantis Terraform pull request automation. Version via /healthz (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://atlantis.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/healthz',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/healthz'],
+      },
+      latestSource: { type: 'github-releases', target: 'runatlantis/atlantis' },
+      evidenceUrl: 'https://www.runatlantis.io/docs/server-configuration.html',
+    },
+  ],
+
+  'nats-server': [
+    {
+      id: 'self-hosted',
+      label: 'NATS Server (Self-Hosted)',
+      description: 'NATS cloud-native messaging. Version via /varz (no auth required by default).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://nats.example.com:8222',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/varz',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/varz', '/healthz'],
+      },
+      latestSource: { type: 'github-releases', target: 'nats-io/nats-server' },
+      evidenceUrl: 'https://docs.nats.io/running-a-nats-service/nats_admin/monitoring',
+    },
+  ],
+
+  'vernemq': [
+    {
+      id: 'self-hosted',
+      label: 'VerneMQ (Self-Hosted)',
+      description: 'VerneMQ MQTT broker. Version via /api/v1/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://vernemq.example.com:8888',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/api/v1/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'vernemq/vernemq' },
+      evidenceUrl: 'https://docs.vernemq.com/administration/http_api',
+    },
+  ],
+
+  'apachemq-rabbitmq-alt': [
+    {
+      id: 'self-hosted',
+      label: 'Apache ActiveMQ Classic (Self-Hosted)',
+      description: 'Apache ActiveMQ Classic message broker. Version via /admin/xml/queues.jsp (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://activemq.example.com:8161',
+      versionSource: { type: 'github-releases', target: 'apache/activemq' },
+      latestSource: { type: 'github-releases', target: 'apache/activemq' },
+      evidenceUrl: 'https://activemq.apache.org/rest',
+    },
+  ],
+
+  'liftbridge': [
+    {
+      id: 'self-hosted',
+      label: 'Liftbridge (Self-Hosted)',
+      description: 'Liftbridge fault-tolerant message streams. Version via /v1/metadata (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://liftbridge.example.com:8080',
+      versionSource: { type: 'github-releases', target: 'liftbridge-io/liftbridge' },
+      latestSource: { type: 'github-releases', target: 'liftbridge-io/liftbridge' },
+      evidenceUrl: 'https://liftbridge.io/docs/',
+    },
+  ],
+
+  'gerrit-review': [
+    {
+      id: 'self-hosted',
+      label: 'Gerrit Code Review (Self-Hosted)',
+      description: 'Gerrit web-based code review. Version via /config/server/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://gerrit-review.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/config/server/version',
+        jsonPath: '$',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/config/server/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'GerritCodeReview/gerrit' },
+      evidenceUrl: 'https://gerrit-review.googlesource.com/Documentation/rest-api-config.html',
+    },
+  ],
+
+  'allura': [
+    {
+      id: 'self-hosted',
+      label: 'Apache Allura (Self-Hosted)',
+      description: 'Apache Allura open-source forge. Version via /rest/version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://allura.example.com',
+      versionSource: { type: 'github-releases', target: 'apache/allura' },
+      latestSource: { type: 'github-releases', target: 'apache/allura' },
+      evidenceUrl: 'https://allura.apache.org/docs/',
+    },
+  ],
+
+  'sourcehut': [
+    {
+      id: 'self-hosted',
+      label: 'Sourcehut (Self-Hosted)',
+      description: 'Sourcehut open-source development forge. Version via /api/version (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://sourcehut.example.com',
+      versionSource: { type: 'github-releases', target: 'sourcehut/sourcehut' },
+      latestSource: { type: 'github-releases', target: 'sourcehut/sourcehut' },
+      evidenceUrl: 'https://man.sr.ht/api-conventions.md',
+    },
+  ],
+
+  'jfrog-artifactory': [
+    {
+      id: 'self-hosted',
+      label: 'JFrog Artifactory (Self-Hosted)',
+      description: 'JFrog Artifactory artifact repository. Version via /artifactory/api/system/version (requires auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://artifactory.example.com:8082',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/artifactory/api/system/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+        endpointFallbacks: ['/artifactory/api/system/version'],
+      },
+      latestSource: { type: 'github-releases', target: 'jfrog/jfrog-cli' },
+      evidenceUrl: 'https://jfrog.com/help/r/jfrog-rest-apis/get-version-and-add-ons-information',
+    },
+  ],
+
+  'nexus-repository': [
+    {
+      id: 'self-hosted',
+      label: 'Sonatype Nexus Repository (Self-Hosted)',
+      description: 'Sonatype Nexus Repository Manager. Version via /service/rest/v1/status (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://nexus.example.com:8081',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/service/rest/v1/status',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/service/rest/v1/status'],
+      },
+      latestSource: { type: 'github-releases', target: 'sonatype/nexus-public' },
+      evidenceUrl: 'https://help.sonatype.com/en/rest-and-integration-api.html',
+    },
+  ],
+
+  'verdaccio': [
+    {
+      id: 'self-hosted',
+      label: 'Verdaccio (Self-Hosted)',
+      description: 'Verdaccio private npm registry. Version via /-/ping (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://verdaccio.example.com:4873',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/-/ping',
+        jsonPath: '$.customData.version',
+        jsonPathExtractors: ['customData.version', 'version'],
+        authRequired: false,
+        endpointFallbacks: ['/-/ping', '/'],
+      },
+      latestSource: { type: 'github-releases', target: 'verdaccio/verdaccio' },
+      evidenceUrl: 'https://verdaccio.org/docs/api/',
+    },
+  ],
+
+  'harbor-registry': [
+    {
+      id: 'self-hosted',
+      label: 'Harbor Registry (Self-Hosted)',
+      description: 'Harbor container image registry. Version via /api/v2.0/systeminfo (requires Basic auth).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://harbor-registry.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2.0/systeminfo',
+        jsonPath: '$.harbor_version',
+        jsonPathExtractors: ['harbor_version', 'version'],
+        authRequired: true,
+        endpointFallbacks: ['/api/v2.0/systeminfo'],
+      },
+      latestSource: { type: 'github-releases', target: 'goharbor/harbor' },
+      evidenceUrl: 'https://harbor.io/docs/latest/',
+    },
+  ],
+
+  'distribution-registry': [
+    {
+      id: 'self-hosted',
+      label: 'Docker Distribution Registry (Self-Hosted)',
+      description: 'CNCF Distribution container registry (Docker Registry v2). Version via /v2/ (no auth required).',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://registry.example.com:5000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v2/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+        endpointFallbacks: ['/v2/'],
+      },
+      latestSource: { type: 'github-releases', target: 'distribution/distribution' },
+      evidenceUrl: 'https://distribution.github.io/distribution/',
+    },
+  ],
+
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Databases
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'postgresql': [
+    {
+      id: 'self-hosted',
+      label: 'PostgreSQL (Self-Hosted / APT)',
+      description: 'PostgreSQL installed from apt. Version detected via apt-cache policy postgresql.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'apt-release', target: 'postgresql' },
+      latestSource: { type: 'github-releases', target: 'postgres/postgres' },
+      evidenceUrl: 'https://apt.postgresql.org/',
+    },
+    {
+      id: 'docker',
+      label: 'PostgreSQL (Docker / docker.io/postgres)',
+      description: 'Official Docker Hub postgres image. Tracks latest tag for version.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'library/postgres' },
+      latestSource: { type: 'github-releases', target: 'postgres/postgres' },
+      evidenceUrl: 'https://hub.docker.com/_/postgres',
+    },
+  ],
+
+  'mysql': [
+    {
+      id: 'community',
+      label: 'MySQL Community (APT / Self-Hosted)',
+      description: 'MySQL Community Edition installed from APT. Version via apt-cache.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'apt-release', target: 'mysql-server' },
+      latestSource: { type: 'github-releases', target: 'mysql/mysql-server' },
+      evidenceUrl: 'https://dev.mysql.com/downloads/mysql/',
+    },
+    {
+      id: 'docker',
+      label: 'MySQL (Docker / docker.io/mysql)',
+      description: 'Official Docker Hub MySQL image.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'library/mysql' },
+      latestSource: { type: 'github-releases', target: 'mysql/mysql-server' },
+      evidenceUrl: 'https://hub.docker.com/_/mysql',
+    },
+  ],
+
+  'mariadb': [
+    {
+      id: 'self-hosted',
+      label: 'MariaDB (APT / Self-Hosted)',
+      description: 'MariaDB installed from APT package manager.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'apt-release', target: 'mariadb-server' },
+      latestSource: { type: 'github-releases', target: 'MariaDB/server' },
+      evidenceUrl: 'https://mariadb.com/downloads/',
+    },
+    {
+      id: 'docker',
+      label: 'MariaDB (Docker / docker.io/mariadb)',
+      description: 'Official Docker Hub MariaDB image.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'library/mariadb' },
+      latestSource: { type: 'github-releases', target: 'MariaDB/server' },
+      evidenceUrl: 'https://hub.docker.com/_/mariadb',
+    },
+  ],
+
+  'redis': [
+    {
+      id: 'oss',
+      label: 'Redis OSS (APT / Self-Hosted)',
+      description: 'Redis open-source. Version detected via apt-cache or docker image tag.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'apt-release', target: 'redis-server' },
+      latestSource: { type: 'github-releases', target: 'redis/redis' },
+      evidenceUrl: 'https://redis.io/downloads/',
+    },
+    {
+      id: 'docker',
+      label: 'Redis (Docker / docker.io/redis)',
+      description: 'Official Docker Hub Redis image.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'library/redis' },
+      latestSource: { type: 'github-releases', target: 'redis/redis' },
+      evidenceUrl: 'https://hub.docker.com/_/redis',
+    },
+  ],
+
+  'mongodb': [
+    {
+      id: 'community',
+      label: 'MongoDB Community (Self-Hosted)',
+      description: 'MongoDB Community Edition. Version via Docker Hub image tag.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'library/mongo' },
+      latestSource: { type: 'github-releases', target: 'mongodb/mongo' },
+      evidenceUrl: 'https://www.mongodb.com/try/download/community',
+    },
+    {
+      id: 'atlas',
+      label: 'MongoDB Atlas (Cloud)',
+      description: 'MongoDB Atlas managed cloud service. Tracks server version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'mongodb/mongo' },
+      latestSource: { type: 'github-releases', target: 'mongodb/mongo' },
+      evidenceUrl: 'https://www.mongodb.com/cloud/atlas',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Observability / Monitoring
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'alertmanager': [
+    {
+      id: 'self-hosted',
+      label: 'Alertmanager (Self-Hosted)',
+      description: 'Prometheus Alertmanager. Version via /-/status JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://alertmanager.example.com:9093',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/-/status',
+        jsonPath: '$.versionInfo.version',
+        jsonPathExtractors: ['versionInfo.version', 'version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'prometheus/alertmanager' },
+      evidenceUrl: 'https://prometheus.io/docs/alerting/latest/alertmanager/',
+    },
+  ],
+
+  'loki': [
+    {
+      id: 'self-hosted',
+      label: 'Grafana Loki (Self-Hosted)',
+      description: 'Grafana Loki log aggregation. Version via /loki/api/v1/status/buildinfo.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://loki.example.com:3100',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/loki/api/v1/status/buildinfo',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'grafana/loki' },
+      evidenceUrl: 'https://grafana.com/docs/loki/latest/reference/api/#get-lokiapiv1statusbuildinfo',
+    },
+  ],
+
+  'jaeger': [
+    {
+      id: 'self-hosted',
+      label: 'Jaeger (Self-Hosted)',
+      description: 'Jaeger distributed tracing. Version via /metrics Prometheus exposition or GitHub release.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'jaegertracing/jaeger' },
+      latestSource: { type: 'github-releases', target: 'jaegertracing/jaeger' },
+      evidenceUrl: 'https://www.jaegertracing.io/docs/latest/deployment/',
+    },
+  ],
+
+  'zabbix': [
+    {
+      id: 'self-hosted',
+      label: 'Zabbix (Self-Hosted)',
+      description: 'Zabbix monitoring server. Version via Zabbix API jsonrpc endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://zabbix.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api_jsonrpc.php',
+        jsonPath: '$.result',
+        jsonPathExtractors: ['result'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'zabbix/zabbix' },
+      evidenceUrl: 'https://www.zabbix.com/documentation/current/en/manual/api',
+    },
+  ],
+
+  'graylog': [
+    {
+      id: 'self-hosted',
+      label: 'Graylog (Self-Hosted)',
+      description: 'Graylog log management platform. Version via /api/system endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://graylog.example.com:9000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/system',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+      },
+      latestSource: { type: 'github-releases', target: 'Graylog2/graylog2-server' },
+      evidenceUrl: 'https://go2docs.graylog.org/current/setting_up_graylog/rest_api.html',
+    },
+    {
+      id: 'cloud',
+      label: 'Graylog Cloud',
+      description: 'Graylog managed cloud service. Tracks release version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Graylog2/graylog2-server' },
+      latestSource: { type: 'github-releases', target: 'Graylog2/graylog2-server' },
+      evidenceUrl: 'https://graylog.org/products/cloud/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Security
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'bitwarden': [
+    {
+      id: 'self-hosted',
+      label: 'Bitwarden Server (Self-Hosted)',
+      description: 'Bitwarden open-source server. Deployed via Docker. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'bitwarden/server' },
+      latestSource: { type: 'github-releases', target: 'bitwarden/server' },
+      evidenceUrl: 'https://bitwarden.com/help/install-on-premise-linux/',
+    },
+    {
+      id: 'cloud',
+      label: 'Bitwarden Cloud (SaaS)',
+      description: 'Bitwarden SaaS service at bitwarden.com. Tracks server release from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'bitwarden/server' },
+      latestSource: { type: 'github-releases', target: 'bitwarden/server' },
+      evidenceUrl: 'https://bitwarden.com',
+    },
+  ],
+
+  'crowdsec': [
+    {
+      id: 'self-hosted',
+      label: 'CrowdSec (Self-Hosted)',
+      description: 'CrowdSec collaborative security engine. Version via /v1/version API.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://localhost:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'crowdsecurity/crowdsec' },
+      evidenceUrl: 'https://docs.crowdsec.net/docs/local_api/intro/',
+    },
+  ],
+
+  'wazuh': [
+    {
+      id: 'self-hosted',
+      label: 'Wazuh (Self-Hosted)',
+      description: 'Wazuh SIEM/XDR platform. Version via Wazuh API /version endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://wazuh.example.com:55000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.data.api_version',
+        jsonPathExtractors: ['data.api_version', 'version'],
+        authRequired: true,
+      },
+      latestSource: { type: 'github-releases', target: 'wazuh/wazuh' },
+      evidenceUrl: 'https://documentation.wazuh.com/current/user-manual/api/reference.html',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Container / Infrastructure
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'podman': [
+    {
+      id: 'self-hosted',
+      label: 'Podman (Local / Self-Hosted)',
+      description: 'Daemonless container engine. Version detected from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'containers/podman' },
+      latestSource: { type: 'github-releases', target: 'containers/podman' },
+      evidenceUrl: 'https://github.com/containers/podman/releases',
+    },
+  ],
+
+  'nomad': [
+    {
+      id: 'self-hosted',
+      label: 'HashiCorp Nomad (Self-Hosted)',
+      description: 'Nomad workload orchestrator. Deployed version via Nomad Agent API.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://nomad.example.com:4646',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/agent/self',
+        jsonPath: '$.member.Tags.build',
+        jsonPathExtractors: ['member.Tags.build', 'config.Version.Version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'hashicorp/nomad' },
+      evidenceUrl: 'https://developer.hashicorp.com/nomad/api-docs/agent',
+    },
+    {
+      id: 'hcp',
+      label: 'HCP Nomad (HashiCorp Cloud Platform)',
+      description: 'Managed Nomad on HashiCorp Cloud Platform.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hashicorp/nomad' },
+      latestSource: { type: 'github-releases', target: 'hashicorp/nomad' },
+      evidenceUrl: 'https://developer.hashicorp.com/hcp/docs/nomad',
+    },
+  ],
+
+  'k0s': [
+    {
+      id: 'self-hosted',
+      label: 'k0s (Self-Hosted Kubernetes)',
+      description: 'Zero-friction Kubernetes distribution. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'k0sproject/k0s' },
+      latestSource: { type: 'github-releases', target: 'k0sproject/k0s' },
+      evidenceUrl: 'https://docs.k0sproject.io/stable/',
+    },
+  ],
+
+  'drone-ci': [
+    {
+      id: 'self-hosted',
+      label: 'Drone CI (Self-Hosted)',
+      description: 'Drone CI server. Version via /version JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://drone.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version', 'source'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'harness/drone' },
+      evidenceUrl: 'https://docs.drone.io/server/reference/',
+    },
+    {
+      id: 'cloud',
+      label: 'Drone CI Cloud (drone.io)',
+      description: 'Drone CI hosted at drone.io. Tracks release version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'harness/drone' },
+      latestSource: { type: 'github-releases', target: 'harness/drone' },
+      evidenceUrl: 'https://drone.io',
+    },
+  ],
+
+  'clickhouse': [
+    {
+      id: 'self-hosted',
+      label: 'ClickHouse (Self-Hosted)',
+      description: 'ClickHouse OLAP database. Version via /ping or GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'ClickHouse/ClickHouse' },
+      latestSource: { type: 'github-releases', target: 'ClickHouse/ClickHouse' },
+      evidenceUrl: 'https://clickhouse.com/docs/en/getting-started/install',
+    },
+    {
+      id: 'cloud',
+      label: 'ClickHouse Cloud',
+      description: 'ClickHouse managed cloud service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'ClickHouse/ClickHouse' },
+      latestSource: { type: 'github-releases', target: 'ClickHouse/ClickHouse' },
+      evidenceUrl: 'https://clickhouse.com/cloud',
+    },
+  ],
+
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // CI/CD
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'fluxcd': [
+    {
+      id: 'self-hosted',
+      label: 'Flux CD (Self-Hosted / GitOps)',
+      description: 'Flux v2 GitOps toolkit. Version tracked from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'fluxcd/flux2' },
+      latestSource: { type: 'github-releases', target: 'fluxcd/flux2' },
+      evidenceUrl: 'https://github.com/fluxcd/flux2/releases',
+    },
+  ],
+
+  'tekton': [
+    {
+      id: 'pipelines',
+      label: 'Tekton Pipelines (Self-Hosted)',
+      description: 'Tekton Pipelines on Kubernetes. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'tektoncd/pipeline' },
+      latestSource: { type: 'github-releases', target: 'tektoncd/pipeline' },
+      evidenceUrl: 'https://github.com/tektoncd/pipeline/releases',
+    },
+    {
+      id: 'triggers',
+      label: 'Tekton Triggers (Self-Hosted)',
+      description: 'Tekton Triggers component. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'tektoncd/triggers' },
+      latestSource: { type: 'github-releases', target: 'tektoncd/triggers' },
+      evidenceUrl: 'https://github.com/tektoncd/triggers/releases',
+    },
+  ],
+
+  'concourse-ci': [
+    {
+      id: 'self-hosted',
+      label: 'Concourse CI (Self-Hosted)',
+      description: 'Concourse CI server. Version via /api/v1/info JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://concourse.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'concourse/concourse' },
+      evidenceUrl: 'https://concourse-ci.org/concourse-info.html',
+    },
+    {
+      id: 'cloud',
+      label: 'Concourse CI (Cloud / Hosted)',
+      description: 'Hosted Concourse CI. Tracks release version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'concourse/concourse' },
+      latestSource: { type: 'github-releases', target: 'concourse/concourse' },
+      evidenceUrl: 'https://github.com/concourse/concourse/releases',
+    },
+  ],
+
+  'teamcity': [
+    {
+      id: 'self-hosted',
+      label: 'TeamCity (Self-Hosted)',
+      description: 'JetBrains TeamCity server. Version via /app/rest/server JSON.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://teamcity.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/app/rest/server',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'docker-hub', target: 'jetbrains/teamcity-server' },
+      evidenceUrl: 'https://www.jetbrains.com/help/teamcity/rest/get-started-with-rest-api.html',
+    },
+    {
+      id: 'cloud',
+      label: 'TeamCity Cloud (JetBrains Cloud)',
+      description: 'TeamCity Cloud managed service by JetBrains.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'jetbrains/teamcity-server' },
+      latestSource: { type: 'docker-hub', target: 'jetbrains/teamcity-server' },
+      evidenceUrl: 'https://www.jetbrains.com/teamcity/cloud/',
+    },
+  ],
+
+  'fleet': [
+    {
+      id: 'self-hosted',
+      label: 'Rancher Fleet (Self-Hosted)',
+      description: 'Rancher Fleet GitOps at scale. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'rancher/fleet' },
+      latestSource: { type: 'github-releases', target: 'rancher/fleet' },
+      evidenceUrl: 'https://fleet.rancher.io/installation',
+    },
+  ],
+
+  'okd': [
+    {
+      id: 'self-hosted',
+      label: 'OKD (Self-Hosted OpenShift Origin)',
+      description: 'OKD Kubernetes distribution (OpenShift community). Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'openshift/okd' },
+      latestSource: { type: 'github-releases', target: 'openshift/okd' },
+      evidenceUrl: 'https://www.okd.io/installation/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // More databases
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'duckdb': [
+    {
+      id: 'embedded',
+      label: 'DuckDB (Embedded / CLI)',
+      description: 'DuckDB in-process analytical database. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'duckdb/duckdb' },
+      latestSource: { type: 'github-releases', target: 'duckdb/duckdb' },
+      evidenceUrl: 'https://github.com/duckdb/duckdb/releases',
+    },
+  ],
+
+  'typesense': [
+    {
+      id: 'self-hosted',
+      label: 'Typesense (Self-Hosted)',
+      description: 'Typesense search engine. Version via /health JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://typesense.example.com:8108',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'typesense/typesense' },
+      evidenceUrl: 'https://typesense.org/docs/guide/running-in-production.html',
+    },
+    {
+      id: 'cloud',
+      label: 'Typesense Cloud',
+      description: 'Typesense managed cloud service. Tracks release from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'typesense/typesense' },
+      latestSource: { type: 'github-releases', target: 'typesense/typesense' },
+      evidenceUrl: 'https://cloud.typesense.org',
+    },
+  ],
+
+  'surrealdb': [
+    {
+      id: 'self-hosted',
+      label: 'SurrealDB (Self-Hosted)',
+      description: 'SurrealDB multi-model database. Version via /version endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://localhost:8000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'surrealdb/surrealdb' },
+      evidenceUrl: 'https://surrealdb.com/docs/surrealdb/cli/start',
+    },
+  ],
+
+  'valkey': [
+    {
+      id: 'self-hosted',
+      label: 'Valkey (Self-Hosted)',
+      description: 'Valkey open-source Redis fork. Version from GitHub releases or Docker Hub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'valkey-io/valkey' },
+      latestSource: { type: 'github-releases', target: 'valkey-io/valkey' },
+      evidenceUrl: 'https://valkey.io/download/',
+    },
+    {
+      id: 'docker',
+      label: 'Valkey (Docker / docker.io/valkey)',
+      description: 'Official Docker Hub Valkey image.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'valkey/valkey' },
+      latestSource: { type: 'github-releases', target: 'valkey-io/valkey' },
+      evidenceUrl: 'https://hub.docker.com/r/valkey/valkey',
+    },
+  ],
+
+  'timescaledb': [
+    {
+      id: 'self-hosted',
+      label: 'TimescaleDB (Self-Hosted)',
+      description: 'TimescaleDB time-series PostgreSQL extension. Version via Docker Hub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'timescale/timescaledb' },
+      latestSource: { type: 'docker-hub', target: 'timescale/timescaledb' },
+      evidenceUrl: 'https://docs.timescale.com/self-hosted/latest/install/',
+    },
+    {
+      id: 'cloud',
+      label: 'Timescale Cloud',
+      description: 'Fully managed TimescaleDB in the cloud.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'timescale/timescaledb' },
+      latestSource: { type: 'docker-hub', target: 'timescale/timescaledb' },
+      evidenceUrl: 'https://www.timescale.com/cloud',
+    },
+  ],
+
+  'cockroachdb': [
+    {
+      id: 'self-hosted',
+      label: 'CockroachDB (Self-Hosted)',
+      description: 'CockroachDB distributed SQL. Version via /_status/version or GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'cockroachdb/cockroach' },
+      latestSource: { type: 'github-releases', target: 'cockroachdb/cockroach' },
+      evidenceUrl: 'https://www.cockroachlabs.com/docs/stable/install-cockroachdb.html',
+    },
+    {
+      id: 'cloud',
+      label: 'CockroachDB Cloud (Serverless / Dedicated)',
+      description: 'CockroachDB managed cloud (Serverless or Dedicated clusters).',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'cockroachdb/cockroach' },
+      latestSource: { type: 'github-releases', target: 'cockroachdb/cockroach' },
+      evidenceUrl: 'https://www.cockroachlabs.com/product/cockroachdb-cloud/',
+    },
+  ],
+
+  'cassandra': [
+    {
+      id: 'self-hosted',
+      label: 'Apache Cassandra (Self-Hosted)',
+      description: 'Apache Cassandra distributed database. Version via Docker Hub image tag.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'library/cassandra' },
+      latestSource: { type: 'docker-hub', target: 'library/cassandra' },
+      evidenceUrl: 'https://cassandra.apache.org/doc/latest/cassandra/getting_started/installing.html',
+    },
+  ],
+
+  'opensearch': [
+    {
+      id: 'self-hosted',
+      label: 'OpenSearch (Self-Hosted)',
+      description: 'OpenSearch distributed search. Version via /_cat/nodes or GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://opensearch.example.com:9200',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/',
+        jsonPath: '$.version.number',
+        jsonPathExtractors: ['version.number'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'opensearch-project/OpenSearch' },
+      evidenceUrl: 'https://opensearch.org/docs/latest/getting-started/intro/',
+    },
+    {
+      id: 'cloud',
+      label: 'Amazon OpenSearch Service',
+      description: 'AWS managed OpenSearch Service. Tracks upstream releases from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'opensearch-project/OpenSearch' },
+      latestSource: { type: 'github-releases', target: 'opensearch-project/OpenSearch' },
+      evidenceUrl: 'https://docs.aws.amazon.com/opensearch-service/',
+    },
+  ],
+
+  'keydb': [
+    {
+      id: 'self-hosted',
+      label: 'KeyDB (Self-Hosted)',
+      description: 'KeyDB high-performance Redis fork. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Snapchat/KeyDB' },
+      latestSource: { type: 'github-releases', target: 'Snapchat/KeyDB' },
+      evidenceUrl: 'https://docs.keydb.dev/docs/installation/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Observability (traces / telemetry)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'opentelemetry-collector': [
+    {
+      id: 'self-hosted',
+      label: 'OpenTelemetry Collector (Self-Hosted)',
+      description: 'OTel Collector. Deployed version via GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'open-telemetry/opentelemetry-collector' },
+      latestSource: { type: 'github-releases', target: 'open-telemetry/opentelemetry-collector' },
+      evidenceUrl: 'https://opentelemetry.io/docs/collector/',
+    },
+    {
+      id: 'contrib',
+      label: 'OpenTelemetry Collector Contrib',
+      description: 'OTel Collector Contrib distribution with extra receivers/exporters.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'open-telemetry/opentelemetry-collector-contrib' },
+      latestSource: { type: 'github-releases', target: 'open-telemetry/opentelemetry-collector-contrib' },
+      evidenceUrl: 'https://github.com/open-telemetry/opentelemetry-collector-contrib/releases',
+    },
+  ],
+
+  'tempo': [
+    {
+      id: 'self-hosted',
+      label: 'Grafana Tempo (Self-Hosted)',
+      description: 'Grafana Tempo distributed tracing. Version via /api/status/buildinfo.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://tempo.example.com:3200',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/status/buildinfo',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'grafana/tempo' },
+      evidenceUrl: 'https://grafana.com/docs/tempo/latest/api_docs/',
+    },
+  ],
+
+  'zipkin': [
+    {
+      id: 'self-hosted',
+      label: 'Zipkin (Self-Hosted)',
+      description: 'Zipkin distributed tracing. Version via /api/v2/version JSON.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://zipkin.example.com:9411',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'openzipkin/zipkin' },
+      evidenceUrl: 'https://zipkin.io/pages/quickstart.html',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Security / Scanners
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'trivy': [
+    {
+      id: 'cli',
+      label: 'Trivy (CLI / Local)',
+      description: 'Aqua Trivy vulnerability scanner. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'aquasecurity/trivy' },
+      latestSource: { type: 'github-releases', target: 'aquasecurity/trivy' },
+      evidenceUrl: 'https://aquasecurity.github.io/trivy/latest/',
+    },
+    {
+      id: 'server',
+      label: 'Trivy Server (Self-Hosted)',
+      description: 'Trivy in server mode. Version via /version JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://trivy-server.example.com:4954',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/version',
+        jsonPath: '$.Version',
+        jsonPathExtractors: ['Version', 'version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'aquasecurity/trivy' },
+      evidenceUrl: 'https://aquasecurity.github.io/trivy/latest/docs/references/modes/server/',
+    },
+  ],
+
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Networking / Proxies / Service Mesh
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'nginx': [
+    {
+      id: 'oss',
+      label: 'NGINX (OSS / APT)',
+      description: 'NGINX open-source web server installed from APT.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'apt-release', target: 'nginx' },
+      latestSource: { type: 'github-releases', target: 'nginx/nginx' },
+      evidenceUrl: 'https://nginx.org/en/download.html',
+    },
+    {
+      id: 'plus',
+      label: 'NGINX Plus (Commercial)',
+      description: 'NGINX Plus commercial edition. Tracks OSS releases as version reference.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'apt-release', target: 'nginx-plus' },
+      latestSource: { type: 'github-releases', target: 'nginx/nginx' },
+      evidenceUrl: 'https://www.nginx.com/products/nginx/',
+    },
+    {
+      id: 'self-hosted-instance',
+      label: 'NGINX (Self-Hosted / Version Header)',
+      description: 'Detect NGINX version from Server response header.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://nginx.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['server'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'nginx/nginx' },
+      evidenceUrl: 'https://nginx.org/en/docs/',
+    },
+  ],
+
+  'caddy': [
+    {
+      id: 'self-hosted',
+      label: 'Caddy (Self-Hosted)',
+      description: 'Caddy web server. Version via /api/config/ or GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'apt-release', target: 'caddy' },
+      latestSource: { type: 'github-releases', target: 'caddyserver/caddy' },
+      evidenceUrl: 'https://caddyserver.com/docs/install',
+    },
+  ],
+
+  'haproxy': [
+    {
+      id: 'community',
+      label: 'HAProxy Community (Self-Hosted)',
+      description: 'HAProxy open-source load balancer. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'haproxy/haproxy' },
+      latestSource: { type: 'github-releases', target: 'haproxy/haproxy' },
+      evidenceUrl: 'https://www.haproxy.org/#down',
+    },
+    {
+      id: 'enterprise',
+      label: 'HAProxy Enterprise',
+      description: 'HAProxy Technologies commercial edition.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'haproxy/haproxy' },
+      latestSource: { type: 'github-releases', target: 'haproxy/haproxy' },
+      evidenceUrl: 'https://www.haproxy.com/products/haproxy-enterprise',
+    },
+  ],
+
+  'envoy': [
+    {
+      id: 'self-hosted',
+      label: 'Envoy Proxy (Self-Hosted)',
+      description: 'Envoy L7 proxy. Version via /server_info JSON admin endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://envoy.example.com:9901',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/server_info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'envoyproxy/envoy' },
+      evidenceUrl: 'https://www.envoyproxy.io/docs/envoy/latest/operations/admin',
+    },
+  ],
+
+  'istio': [
+    {
+      id: 'self-hosted',
+      label: 'Istio (Self-Hosted on Kubernetes)',
+      description: 'Istio service mesh. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'istio/istio' },
+      latestSource: { type: 'github-releases', target: 'istio/istio' },
+      evidenceUrl: 'https://istio.io/latest/docs/setup/install/',
+    },
+  ],
+
+  'linkerd': [
+    {
+      id: 'oss',
+      label: 'Linkerd (OSS)',
+      description: 'Linkerd ultra-light service mesh for Kubernetes.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'linkerd/linkerd2' },
+      latestSource: { type: 'github-releases', target: 'linkerd/linkerd2' },
+      evidenceUrl: 'https://linkerd.io/2.15/getting-started/',
+    },
+    {
+      id: 'enterprise',
+      label: 'Linkerd Enterprise (Buoyant Cloud)',
+      description: 'Buoyant Enterprise for Linkerd (BEL).',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'linkerd/linkerd2' },
+      latestSource: { type: 'github-releases', target: 'linkerd/linkerd2' },
+      evidenceUrl: 'https://buoyant.io/enterprise-linkerd',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Infrastructure as Code / Config Management
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'terraform': [
+    {
+      id: 'oss',
+      label: 'Terraform (OSS / APT)',
+      description: 'HashiCorp Terraform open-source. Version from APT or GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'apt-release', target: 'terraform' },
+      latestSource: { type: 'github-releases', target: 'hashicorp/terraform' },
+      evidenceUrl: 'https://developer.hashicorp.com/terraform/install',
+    },
+    {
+      id: 'cloud',
+      label: 'HCP Terraform (Terraform Cloud)',
+      description: 'HashiCorp Cloud Platform Terraform managed service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hashicorp/terraform' },
+      latestSource: { type: 'github-releases', target: 'hashicorp/terraform' },
+      evidenceUrl: 'https://developer.hashicorp.com/hcp/docs/terraform',
+    },
+    {
+      id: 'enterprise',
+      label: 'Terraform Enterprise (Self-Hosted)',
+      description: 'Terraform Enterprise on-prem. Version matches OSS releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hashicorp/terraform' },
+      latestSource: { type: 'github-releases', target: 'hashicorp/terraform' },
+      evidenceUrl: 'https://developer.hashicorp.com/terraform/enterprise',
+    },
+  ],
+
+  'opentofu': [
+    {
+      id: 'oss',
+      label: 'OpenTofu (Open-Source Terraform Fork)',
+      description: 'OpenTofu IaC tool — community Terraform fork under Linux Foundation.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'opentofu/opentofu' },
+      latestSource: { type: 'github-releases', target: 'opentofu/opentofu' },
+      evidenceUrl: 'https://opentofu.org/docs/intro/install/',
+    },
+  ],
+
+  'ansible': [
+    {
+      id: 'community',
+      label: 'Ansible Community (PyPI)',
+      description: 'Ansible community package. Version from PyPI.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'pypi', target: 'ansible' },
+      latestSource: { type: 'pypi', target: 'ansible' },
+      evidenceUrl: 'https://pypi.org/project/ansible/',
+    },
+    {
+      id: 'core',
+      label: 'Ansible Core (ansible-core PyPI)',
+      description: 'Ansible Core minimal package. Version from PyPI.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'pypi', target: 'ansible-core' },
+      latestSource: { type: 'pypi', target: 'ansible-core' },
+      evidenceUrl: 'https://pypi.org/project/ansible-core/',
+    },
+    {
+      id: 'awx',
+      label: 'AWX / Ansible Automation Platform (Self-Hosted)',
+      description: 'AWX is the upstream of Red Hat AAP. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'ansible/awx' },
+      latestSource: { type: 'github-releases', target: 'ansible/awx' },
+      evidenceUrl: 'https://github.com/ansible/awx/releases',
+    },
+  ],
+
+  'pulumi': [
+    {
+      id: 'oss',
+      label: 'Pulumi (OSS CLI)',
+      description: 'Pulumi infrastructure as code CLI. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'pulumi/pulumi' },
+      latestSource: { type: 'github-releases', target: 'pulumi/pulumi' },
+      evidenceUrl: 'https://www.pulumi.com/docs/install/',
+    },
+    {
+      id: 'cloud',
+      label: 'Pulumi Cloud (SaaS)',
+      description: 'Pulumi Cloud managed service at app.pulumi.com.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'pulumi/pulumi' },
+      latestSource: { type: 'github-releases', target: 'pulumi/pulumi' },
+      evidenceUrl: 'https://www.pulumi.com/product/pulumi-cloud/',
+    },
+  ],
+
+  'saltstack': [
+    {
+      id: 'self-hosted',
+      label: 'SaltStack / Salt (Self-Hosted)',
+      description: 'Salt configuration management system. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'saltstack/salt' },
+      latestSource: { type: 'github-releases', target: 'saltstack/salt' },
+      evidenceUrl: 'https://docs.saltproject.io/salt/install-guide/en/latest/',
+    },
+  ],
+
+  'chef': [
+    {
+      id: 'infra',
+      label: 'Chef Infra Client (Open Source)',
+      description: 'Chef Infra Client configuration management. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'chef/chef' },
+      latestSource: { type: 'github-releases', target: 'chef/chef' },
+      evidenceUrl: 'https://docs.chef.io/chef_install_script/',
+    },
+    {
+      id: 'automate',
+      label: 'Chef Automate (Self-Hosted)',
+      description: 'Chef Automate self-hosted management platform.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'chef/automate' },
+      latestSource: { type: 'github-releases', target: 'chef/automate' },
+      evidenceUrl: 'https://docs.chef.io/automate/install/',
+    },
+  ],
+
+  'puppet': [
+    {
+      id: 'open-source',
+      label: 'Puppet (Open Source)',
+      description: 'Puppet open-source configuration management. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'puppetlabs/puppet' },
+      latestSource: { type: 'github-releases', target: 'puppetlabs/puppet' },
+      evidenceUrl: 'https://www.puppet.com/docs/puppet/latest/install_puppet.html',
+    },
+    {
+      id: 'enterprise',
+      label: 'Puppet Enterprise (Self-Hosted)',
+      description: 'Puppet Enterprise on-prem. Version via PE API /pe-info endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://puppet.example.com:4433',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/pe-info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: true,
+      },
+      latestSource: { type: 'github-releases', target: 'puppetlabs/puppet' },
+      evidenceUrl: 'https://www.puppet.com/docs/pe/latest/api_index.html',
+    },
+  ],
+
+  'gocd': [
+    {
+      id: 'self-hosted',
+      label: 'GoCD (Self-Hosted)',
+      description: 'GoCD CI/CD server. Version via /go/api/version JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://gocd.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/go/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'gocd/gocd' },
+      evidenceUrl: 'https://api.gocd.org/#version',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // CMS / Headless
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'strapi': [
+    {
+      id: 'self-hosted',
+      label: 'Strapi (Self-Hosted)',
+      description: 'Strapi headless CMS. Version from npm registry.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: '@strapi/strapi' },
+      latestSource: { type: 'npm-registry', target: '@strapi/strapi' },
+      evidenceUrl: 'https://www.npmjs.com/package/@strapi/strapi',
+    },
+    {
+      id: 'cloud',
+      label: 'Strapi Cloud',
+      description: 'Strapi managed cloud platform.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: '@strapi/strapi' },
+      latestSource: { type: 'npm-registry', target: '@strapi/strapi' },
+      evidenceUrl: 'https://strapi.io/cloud',
+    },
+  ],
+
+  'directus': [
+    {
+      id: 'self-hosted',
+      label: 'Directus (Self-Hosted)',
+      description: 'Directus data platform. Version via /server/info JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://directus.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/server/info',
+        jsonPath: '$.data.directus',
+        jsonPathExtractors: ['data.directus', 'directus'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'directus/directus' },
+      evidenceUrl: 'https://docs.directus.io/reference/system/server.html',
+    },
+    {
+      id: 'cloud',
+      label: 'Directus Cloud',
+      description: 'Directus managed cloud. Tracks GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'directus/directus' },
+      latestSource: { type: 'github-releases', target: 'directus/directus' },
+      evidenceUrl: 'https://directus.cloud',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Analytics
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'matomo': [
+    {
+      id: 'self-hosted',
+      label: 'Matomo (Self-Hosted)',
+      description: 'Matomo web analytics. Version via /index.php?module=API&method=API.getMatomoVersion.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://matomo.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/index.php?module=API&method=API.getMatomoVersion&format=JSON',
+        jsonPath: '$.value',
+        jsonPathExtractors: ['value'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'matomo-org/matomo' },
+      evidenceUrl: 'https://developer.matomo.org/api-reference/reporting-api#api',
+    },
+    {
+      id: 'cloud',
+      label: 'Matomo Cloud',
+      description: 'Matomo managed cloud service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'matomo-org/matomo' },
+      latestSource: { type: 'github-releases', target: 'matomo-org/matomo' },
+      evidenceUrl: 'https://matomo.org/matomo-cloud/',
+    },
+  ],
+
+  'umami': [
+    {
+      id: 'self-hosted',
+      label: 'Umami (Self-Hosted)',
+      description: 'Umami privacy-focused analytics. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'umami-software/umami' },
+      latestSource: { type: 'github-releases', target: 'umami-software/umami' },
+      evidenceUrl: 'https://umami.is/docs/install',
+    },
+    {
+      id: 'cloud',
+      label: 'Umami Cloud',
+      description: 'Umami managed cloud at umami.is/cloud.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'umami-software/umami' },
+      latestSource: { type: 'github-releases', target: 'umami-software/umami' },
+      evidenceUrl: 'https://umami.is/cloud',
+    },
+  ],
+
+  'fail2ban': [
+    {
+      id: 'self-hosted',
+      label: 'Fail2ban (Self-Hosted)',
+      description: 'Fail2ban intrusion prevention. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'fail2ban/fail2ban' },
+      latestSource: { type: 'github-releases', target: 'fail2ban/fail2ban' },
+      evidenceUrl: 'https://github.com/fail2ban/fail2ban/releases',
+    },
+  ],
+
+  'nagios': [
+    {
+      id: 'core',
+      label: 'Nagios Core (Self-Hosted)',
+      description: 'Nagios Core open-source monitoring. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'NagiosEnterprises/nagioscore' },
+      latestSource: { type: 'github-releases', target: 'NagiosEnterprises/nagioscore' },
+      evidenceUrl: 'https://github.com/NagiosEnterprises/nagioscore/releases',
+    },
+    {
+      id: 'xi',
+      label: 'Nagios XI (Commercial)',
+      description: 'Nagios XI commercial edition. Tracks core version as reference.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'NagiosEnterprises/nagioscore' },
+      latestSource: { type: 'github-releases', target: 'NagiosEnterprises/nagioscore' },
+      evidenceUrl: 'https://www.nagios.com/products/nagios-xi/',
+    },
+  ],
+
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Security / Zero-trust
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'checkmk': [
+    {
+      id: 'raw',
+      label: 'Checkmk RAW (Self-Hosted, Free)',
+      description: 'Checkmk RAW open-source edition. Version via GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'tribe29/checkmk' },
+      latestSource: { type: 'github-releases', target: 'tribe29/checkmk' },
+      evidenceUrl: 'https://github.com/tribe29/checkmk/releases',
+    },
+    {
+      id: 'enterprise',
+      label: 'Checkmk Cloud / Enterprise',
+      description: 'Checkmk Enterprise or Cloud editions. Tracks release from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'tribe29/checkmk' },
+      latestSource: { type: 'github-releases', target: 'tribe29/checkmk' },
+      evidenceUrl: 'https://checkmk.com/product/editions',
+    },
+  ],
+
+  'passbolt': [
+    {
+      id: 'community',
+      label: 'Passbolt Community Edition (Self-Hosted)',
+      description: 'Passbolt CE open-source password manager. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'passbolt/passbolt_api' },
+      latestSource: { type: 'github-releases', target: 'passbolt/passbolt_api' },
+      evidenceUrl: 'https://www.passbolt.com/ce/docker',
+    },
+    {
+      id: 'pro',
+      label: 'Passbolt Pro / Business (Self-Hosted)',
+      description: 'Passbolt Pro or Business edition with advanced features.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'passbolt/passbolt_api' },
+      latestSource: { type: 'github-releases', target: 'passbolt/passbolt_api' },
+      evidenceUrl: 'https://www.passbolt.com/pro',
+    },
+    {
+      id: 'cloud',
+      label: 'Passbolt Cloud',
+      description: 'Passbolt managed cloud service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'passbolt/passbolt_api' },
+      latestSource: { type: 'github-releases', target: 'passbolt/passbolt_api' },
+      evidenceUrl: 'https://www.passbolt.com/cloud',
+    },
+  ],
+
+  'falco': [
+    {
+      id: 'self-hosted',
+      label: 'Falco (Self-Hosted on Kubernetes/Linux)',
+      description: 'Falco runtime security. Version via /version endpoint or GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'falcosecurity/falco' },
+      latestSource: { type: 'github-releases', target: 'falcosecurity/falco' },
+      evidenceUrl: 'https://falco.org/docs/getting-started/installation/',
+    },
+  ],
+
+  'tailscale': [
+    {
+      id: 'saas',
+      label: 'Tailscale (SaaS / Cloud)',
+      description: 'Tailscale VPN managed control plane. Client version from APT or GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'apt-release', target: 'tailscale' },
+      latestSource: { type: 'github-releases', target: 'tailscale/tailscale' },
+      evidenceUrl: 'https://pkgs.tailscale.com/stable/',
+    },
+    {
+      id: 'headscale',
+      label: 'Headscale (Self-Hosted Control Plane)',
+      description: 'Headscale open-source Tailscale control server. Version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'juanfont/headscale' },
+      latestSource: { type: 'github-releases', target: 'juanfont/headscale' },
+      evidenceUrl: 'https://headscale.net/running-headscale-linux/',
+    },
+  ],
+
+  'wireguard': [
+    {
+      id: 'kernel',
+      label: 'WireGuard (Linux Kernel Module)',
+      description: 'WireGuard in-kernel VPN. Version tracks kernel/tool releases from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'WireGuard/wireguard-tools' },
+      latestSource: { type: 'github-releases', target: 'WireGuard/wireguard-tools' },
+      evidenceUrl: 'https://www.wireguard.com/install/',
+    },
+  ],
+
+  'netbird': [
+    {
+      id: 'cloud',
+      label: 'NetBird (Cloud)',
+      description: 'NetBird managed WireGuard mesh network. Client from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'netbirdio/netbird' },
+      latestSource: { type: 'github-releases', target: 'netbirdio/netbird' },
+      evidenceUrl: 'https://docs.netbird.io/how-to/installation',
+    },
+    {
+      id: 'self-hosted',
+      label: 'NetBird (Self-Hosted)',
+      description: 'NetBird with self-hosted management server.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'netbirdio/netbird' },
+      latestSource: { type: 'github-releases', target: 'netbirdio/netbird' },
+      evidenceUrl: 'https://docs.netbird.io/selfhosted/selfhosted-guide',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Storage / File sync
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'seafile': [
+    {
+      id: 'community',
+      label: 'Seafile Community Edition (Self-Hosted)',
+      description: 'Seafile CE file sync. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'haiwen/seafile' },
+      latestSource: { type: 'github-releases', target: 'haiwen/seafile' },
+      evidenceUrl: 'https://seafile.com/en/download/',
+    },
+    {
+      id: 'pro',
+      label: 'Seafile Pro Edition (Self-Hosted)',
+      description: 'Seafile Pro with advanced features. Tracks CE GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'haiwen/seafile' },
+      latestSource: { type: 'github-releases', target: 'haiwen/seafile' },
+      evidenceUrl: 'https://seafile.com/en/product/private-cloud/',
+    },
+  ],
+
+  'longhorn': [
+    {
+      id: 'self-hosted',
+      label: 'Longhorn (Self-Hosted on Kubernetes)',
+      description: 'Rancher Longhorn distributed block storage. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'longhorn/longhorn' },
+      latestSource: { type: 'github-releases', target: 'longhorn/longhorn' },
+      evidenceUrl: 'https://longhorn.io/docs/latest/deploy/install/',
+    },
+  ],
+
+  'rclone': [
+    {
+      id: 'cli',
+      label: 'Rclone (CLI)',
+      description: 'Rclone cloud storage sync tool. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'rclone/rclone' },
+      latestSource: { type: 'github-releases', target: 'rclone/rclone' },
+      evidenceUrl: 'https://rclone.org/install/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Media / Self-hosted apps
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'navidrome': [
+    {
+      id: 'self-hosted',
+      label: 'Navidrome (Self-Hosted)',
+      description: 'Navidrome music server. Version via /app/ build info or GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'navidrome/navidrome' },
+      latestSource: { type: 'github-releases', target: 'navidrome/navidrome' },
+      evidenceUrl: 'https://www.navidrome.org/docs/installation/',
+    },
+  ],
+
+  'photoprism': [
+    {
+      id: 'self-hosted',
+      label: 'PhotoPrism (Self-Hosted)',
+      description: 'PhotoPrism AI photo management. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'photoprism/photoprism' },
+      latestSource: { type: 'github-releases', target: 'photoprism/photoprism' },
+      evidenceUrl: 'https://docs.photoprism.app/getting-started/',
+    },
+    {
+      id: 'membership',
+      label: 'PhotoPrism+ (Membership)',
+      description: 'PhotoPrism with Plus features via membership. Same release track.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'photoprism/photoprism' },
+      latestSource: { type: 'github-releases', target: 'photoprism/photoprism' },
+      evidenceUrl: 'https://www.photoprism.app/membership',
+    },
+  ],
+
+  'emby': [
+    {
+      id: 'self-hosted',
+      label: 'Emby Server (Self-Hosted)',
+      description: 'Emby media server. Version via /System/Info/Public JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://emby.example.com:8096',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/System/Info/Public',
+        jsonPath: '$.ServerVersion',
+        jsonPathExtractors: ['ServerVersion', 'Version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'MediaBrowser/Emby' },
+      evidenceUrl: 'https://dev.emby.media/doc/restapi/System-Service.html',
+    },
+    {
+      id: 'premiere',
+      label: 'Emby Premiere (Self-Hosted, Licensed)',
+      description: 'Emby with Premiere license. Same version endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://emby.example.com:8096',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/System/Info/Public',
+        jsonPath: '$.ServerVersion',
+        jsonPathExtractors: ['ServerVersion'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'MediaBrowser/Emby' },
+      evidenceUrl: 'https://emby.media/premiere.html',
+    },
+  ],
+
+  'owncast': [
+    {
+      id: 'self-hosted',
+      label: 'Owncast (Self-Hosted)',
+      description: 'Owncast live streaming server. Version via /api/config JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://stream.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/config',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'owncast/owncast' },
+      evidenceUrl: 'https://owncast.online/docs/api/',
+    },
+  ],
+
+  'payload-cms': [
+    {
+      id: 'self-hosted',
+      label: 'Payload CMS (Self-Hosted)',
+      description: 'Payload headless CMS. Version from npm registry.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'payload' },
+      latestSource: { type: 'npm-registry', target: 'payload' },
+      evidenceUrl: 'https://www.npmjs.com/package/payload',
+    },
+    {
+      id: 'cloud',
+      label: 'Payload Cloud',
+      description: 'Payload managed cloud hosting. Tracks npm release version.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'payload' },
+      latestSource: { type: 'npm-registry', target: 'payload' },
+      evidenceUrl: 'https://payloadcms.com/cloud',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Messaging / Streaming
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'kafka': [
+    {
+      id: 'self-hosted',
+      label: 'Apache Kafka (Self-Hosted)',
+      description: 'Apache Kafka distributed event streaming. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'apache/kafka' },
+      latestSource: { type: 'github-releases', target: 'apache/kafka' },
+      evidenceUrl: 'https://kafka.apache.org/downloads',
+    },
+    {
+      id: 'confluent',
+      label: 'Confluent Platform / Cloud',
+      description: 'Confluent Kafka distribution with enterprise features.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'apache/kafka' },
+      latestSource: { type: 'github-releases', target: 'apache/kafka' },
+      evidenceUrl: 'https://www.confluent.io/product/confluent-platform/',
+    },
+  ],
+
+  'redpanda': [
+    {
+      id: 'self-hosted',
+      label: 'Redpanda (Self-Hosted)',
+      description: 'Redpanda Kafka-compatible streaming. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'redpanda-data/redpanda' },
+      latestSource: { type: 'github-releases', target: 'redpanda-data/redpanda' },
+      evidenceUrl: 'https://docs.redpanda.com/current/deploy/deployment-option/self-hosted/',
+    },
+    {
+      id: 'cloud',
+      label: 'Redpanda Cloud (Serverless / Dedicated)',
+      description: 'Redpanda managed cloud streaming platform.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'redpanda-data/redpanda' },
+      latestSource: { type: 'github-releases', target: 'redpanda-data/redpanda' },
+      evidenceUrl: 'https://www.redpanda.com/redpanda-cloud',
+    },
+  ],
+
+  'mosquitto': [
+    {
+      id: 'self-hosted',
+      label: 'Eclipse Mosquitto (Self-Hosted)',
+      description: 'Eclipse Mosquitto MQTT broker. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'eclipse/mosquitto' },
+      latestSource: { type: 'github-releases', target: 'eclipse/mosquitto' },
+      evidenceUrl: 'https://mosquitto.org/download/',
+    },
+  ],
+
+  'activemq': [
+    {
+      id: 'classic',
+      label: 'ActiveMQ Classic (Self-Hosted)',
+      description: 'Apache ActiveMQ Classic message broker. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'apache/activemq' },
+      latestSource: { type: 'github-releases', target: 'apache/activemq' },
+      evidenceUrl: 'https://activemq.apache.org/components/classic/',
+    },
+    {
+      id: 'artemis',
+      label: 'ActiveMQ Artemis (Self-Hosted)',
+      description: 'Apache ActiveMQ Artemis next-gen broker. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'apache/activemq-artemis' },
+      latestSource: { type: 'github-releases', target: 'apache/activemq-artemis' },
+      evidenceUrl: 'https://activemq.apache.org/components/artemis/',
+    },
+  ],
+
+  'supabase': [
+    {
+      id: 'self-hosted',
+      label: 'Supabase (Self-Hosted)',
+      description: 'Supabase open-source Firebase alternative. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'supabase/supabase' },
+      latestSource: { type: 'github-releases', target: 'supabase/supabase' },
+      evidenceUrl: 'https://supabase.com/docs/guides/self-hosting',
+    },
+    {
+      id: 'cloud',
+      label: 'Supabase Cloud',
+      description: 'Supabase managed cloud platform at supabase.com.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'supabase/supabase' },
+      latestSource: { type: 'github-releases', target: 'supabase/supabase' },
+      evidenceUrl: 'https://supabase.com/dashboard',
+    },
+  ],
+
+  'packer': [
+    {
+      id: 'oss',
+      label: 'HashiCorp Packer (OSS)',
+      description: 'Packer machine image builder. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hashicorp/packer' },
+      latestSource: { type: 'github-releases', target: 'hashicorp/packer' },
+      evidenceUrl: 'https://developer.hashicorp.com/packer/install',
+    },
+  ],
+
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Security / Scanning
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'openvas': [
+    {
+      id: 'self-hosted',
+      label: 'OpenVAS / Greenbone Community Edition (Self-Hosted)',
+      description: 'OpenVAS vulnerability scanner. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'greenbone/openvas-scanner' },
+      latestSource: { type: 'github-releases', target: 'greenbone/openvas-scanner' },
+      evidenceUrl: 'https://greenbone.github.io/docs/latest/22.4/container/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Storage / NAS
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'openmediavault': [
+    {
+      id: 'self-hosted',
+      label: 'OpenMediaVault (Self-Hosted NAS)',
+      description: 'OpenMediaVault NAS solution. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'openmediavault/openmediavault' },
+      latestSource: { type: 'github-releases', target: 'openmediavault/openmediavault' },
+      evidenceUrl: 'https://docs.openmediavault.org/en/latest/installation/index.html',
+    },
+  ],
+
+  'garage': [
+    {
+      id: 'self-hosted',
+      label: 'Garage (Self-Hosted S3)',
+      description: 'Garage distributed S3-compatible object store. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'deuxfleurs/garage' },
+      latestSource: { type: 'github-releases', target: 'deuxfleurs/garage' },
+      evidenceUrl: 'https://garagehq.deuxfleurs.fr/documentation/quick-start/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Communication (self-hosted)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'revolt': [
+    {
+      id: 'self-hosted',
+      label: 'Revolt (Self-Hosted)',
+      description: 'Revolt open-source Discord alternative. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'revoltchat/backend' },
+      latestSource: { type: 'github-releases', target: 'revoltchat/backend' },
+      evidenceUrl: 'https://revolt.chat/install',
+    },
+    {
+      id: 'cloud',
+      label: 'Revolt Cloud (revolt.chat)',
+      description: 'Revolt managed cloud at revolt.chat.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'revoltchat/backend' },
+      latestSource: { type: 'github-releases', target: 'revoltchat/backend' },
+      evidenceUrl: 'https://revolt.chat',
+    },
+  ],
+
+  'element': [
+    {
+      id: 'web',
+      label: 'Element Web (Self-Hosted)',
+      description: 'Element Matrix client (web app). Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'element-hq/element-web' },
+      latestSource: { type: 'github-releases', target: 'element-hq/element-web' },
+      evidenceUrl: 'https://github.com/element-hq/element-web/releases',
+    },
+    {
+      id: 'desktop',
+      label: 'Element Desktop',
+      description: 'Element desktop app. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'element-hq/element-desktop' },
+      latestSource: { type: 'github-releases', target: 'element-hq/element-desktop' },
+      evidenceUrl: 'https://github.com/element-hq/element-desktop/releases',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Dev Tools / Workflow
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'windmill': [
+    {
+      id: 'self-hosted',
+      label: 'Windmill (Self-Hosted)',
+      description: 'Windmill developer platform for scripts and workflows. Version from GitHub.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://windmill.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'windmill-labs/windmill' },
+      evidenceUrl: 'https://www.windmill.dev/docs/advanced/self-host',
+    },
+    {
+      id: 'cloud',
+      label: 'Windmill Cloud',
+      description: 'Windmill managed cloud at app.windmill.dev.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'windmill-labs/windmill' },
+      latestSource: { type: 'github-releases', target: 'windmill-labs/windmill' },
+      evidenceUrl: 'https://app.windmill.dev',
+    },
+  ],
+
+  'temporal': [
+    {
+      id: 'self-hosted',
+      label: 'Temporal (Self-Hosted)',
+      description: 'Temporal workflow orchestration. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'temporalio/temporal' },
+      latestSource: { type: 'github-releases', target: 'temporalio/temporal' },
+      evidenceUrl: 'https://docs.temporal.io/self-hosted-guide',
+    },
+    {
+      id: 'cloud',
+      label: 'Temporal Cloud',
+      description: 'Temporal managed cloud at cloud.temporal.io.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'temporalio/temporal' },
+      latestSource: { type: 'github-releases', target: 'temporalio/temporal' },
+      evidenceUrl: 'https://cloud.temporal.io',
+    },
+  ],
+
+  'prefect': [
+    {
+      id: 'self-hosted',
+      label: 'Prefect (Self-Hosted / Prefect Server)',
+      description: 'Prefect workflow orchestration server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'PrefectHQ/prefect' },
+      latestSource: { type: 'github-releases', target: 'PrefectHQ/prefect' },
+      evidenceUrl: 'https://docs.prefect.io/v3/get-started/server',
+    },
+    {
+      id: 'cloud',
+      label: 'Prefect Cloud',
+      description: 'Prefect managed cloud at app.prefect.cloud.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'PrefectHQ/prefect' },
+      latestSource: { type: 'github-releases', target: 'PrefectHQ/prefect' },
+      evidenceUrl: 'https://app.prefect.cloud',
+    },
+  ],
+
+  'coder': [
+    {
+      id: 'self-hosted',
+      label: 'Coder (Self-Hosted)',
+      description: 'Coder remote development platform. Version via /api/v2/buildinfo JSON.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://coder.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v2/buildinfo',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'coder/coder' },
+      evidenceUrl: 'https://coder.com/docs/v2/latest/reference/api/buildinfo',
+    },
+    {
+      id: 'cloud',
+      label: 'Coder Cloud',
+      description: 'Coder managed cloud at coder.com.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'coder/coder' },
+      latestSource: { type: 'github-releases', target: 'coder/coder' },
+      evidenceUrl: 'https://coder.com/docs/v2/latest/platforms/cloud',
+    },
+  ],
+
+  'airflow': [
+    {
+      id: 'self-hosted',
+      label: 'Apache Airflow (Self-Hosted)',
+      description: 'Apache Airflow workflow platform. Version via /api/v1/version JSON.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://airflow.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'apache/airflow' },
+      evidenceUrl: 'https://airflow.apache.org/docs/apache-airflow/stable/stable-rest-api-ref.html',
+    },
+    {
+      id: 'managed',
+      label: 'Managed Airflow (MWAA / Cloud Composer / Astro)',
+      description: 'Managed Airflow on AWS MWAA, GCP Cloud Composer, or Astronomer Astro.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'apache/airflow' },
+      latestSource: { type: 'github-releases', target: 'apache/airflow' },
+      evidenceUrl: 'https://airflow.apache.org/docs/apache-airflow/stable/installation/index.html',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Helm charts (single-edition, tracked via ArtifactHub)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'helm-postgresql': [
+    {
+      id: 'bitnami',
+      label: 'Bitnami PostgreSQL Helm Chart',
+      description: 'Bitnami PostgreSQL Helm chart. App version tracked via ArtifactHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'helm-chart', target: 'bitnami/postgresql' },
+      latestSource: { type: 'helm-chart', target: 'bitnami/postgresql' },
+      evidenceUrl: 'https://artifacthub.io/packages/helm/bitnami/postgresql',
+    },
+  ],
+
+  'helm-redis': [
+    {
+      id: 'bitnami',
+      label: 'Bitnami Redis Helm Chart',
+      description: 'Bitnami Redis Helm chart. App version tracked via ArtifactHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'helm-chart', target: 'bitnami/redis' },
+      latestSource: { type: 'helm-chart', target: 'bitnami/redis' },
+      evidenceUrl: 'https://artifacthub.io/packages/helm/bitnami/redis',
+    },
+  ],
+
+  'helm-ingress-nginx': [
+    {
+      id: 'ingress-nginx',
+      label: 'ingress-nginx Helm Chart',
+      description: 'Kubernetes ingress-nginx controller Helm chart. Version via ArtifactHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'helm-chart', target: 'ingress-nginx/ingress-nginx' },
+      latestSource: { type: 'helm-chart', target: 'ingress-nginx/ingress-nginx' },
+      evidenceUrl: 'https://artifacthub.io/packages/helm/ingress-nginx/ingress-nginx',
+    },
+  ],
+
+  'helm-cert-manager': [
+    {
+      id: 'cert-manager',
+      label: 'cert-manager Helm Chart',
+      description: 'cert-manager Kubernetes certificate controller. Version via ArtifactHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'helm-chart', target: 'cert-manager/cert-manager' },
+      latestSource: { type: 'helm-chart', target: 'cert-manager/cert-manager' },
+      evidenceUrl: 'https://artifacthub.io/packages/helm/cert-manager/cert-manager',
+    },
+  ],
+
+  'helm-prometheus': [
+    {
+      id: 'prometheus-community',
+      label: 'kube-prometheus-stack Helm Chart',
+      description: 'Prometheus + Grafana + Alertmanager stack chart. Version via ArtifactHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'helm-chart', target: 'prometheus-community/kube-prometheus-stack' },
+      latestSource: { type: 'helm-chart', target: 'prometheus-community/kube-prometheus-stack' },
+      evidenceUrl: 'https://artifacthub.io/packages/helm/prometheus-community/kube-prometheus-stack',
+    },
+  ],
+
+  'helm-grafana': [
+    {
+      id: 'grafana',
+      label: 'Grafana Helm Chart',
+      description: 'Grafana Helm chart by grafana.io. Version via ArtifactHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'helm-chart', target: 'grafana/grafana' },
+      latestSource: { type: 'helm-chart', target: 'grafana/grafana' },
+      evidenceUrl: 'https://artifacthub.io/packages/helm/grafana/grafana',
+    },
+  ],
+
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Dev frameworks / libraries (npm)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'jupyter': [
+    {
+      id: 'jupyterlab',
+      label: 'JupyterLab (npm / Self-Hosted)',
+      description: 'JupyterLab interactive development environment. Version from npm registry.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: '@jupyterlab/application' },
+      latestSource: { type: 'npm-registry', target: '@jupyterlab/application' },
+      evidenceUrl: 'https://www.npmjs.com/package/@jupyterlab/application',
+    },
+    {
+      id: 'notebook',
+      label: 'Jupyter Notebook (Classic)',
+      description: 'Classic Jupyter Notebook package. Version from PyPI.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'pypi', target: 'notebook' },
+      latestSource: { type: 'pypi', target: 'notebook' },
+      evidenceUrl: 'https://pypi.org/project/notebook/',
+    },
+    {
+      id: 'hub',
+      label: 'JupyterHub (Self-Hosted)',
+      description: 'JupyterHub multi-user server. Version from PyPI or GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'pypi', target: 'jupyterhub' },
+      latestSource: { type: 'pypi', target: 'jupyterhub' },
+      evidenceUrl: 'https://pypi.org/project/jupyterhub/',
+    },
+  ],
+
+  'nestjs': [
+    {
+      id: 'npm',
+      label: 'NestJS (npm)',
+      description: 'NestJS Node.js framework. Version from npm registry.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: '@nestjs/core' },
+      latestSource: { type: 'npm-registry', target: '@nestjs/core' },
+      evidenceUrl: 'https://www.npmjs.com/package/@nestjs/core',
+    },
+  ],
+
+  'nextjs': [
+    {
+      id: 'npm',
+      label: 'Next.js (npm)',
+      description: 'Next.js React framework. Version from npm registry.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'next' },
+      latestSource: { type: 'npm-registry', target: 'next' },
+      evidenceUrl: 'https://www.npmjs.com/package/next',
+    },
+    {
+      id: 'vercel',
+      label: 'Next.js on Vercel (Managed)',
+      description: 'Next.js deployed on Vercel. Tracks npm release version.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'next' },
+      latestSource: { type: 'npm-registry', target: 'next' },
+      evidenceUrl: 'https://vercel.com/docs/frameworks/nextjs',
+    },
+  ],
+
+  'prisma': [
+    {
+      id: 'npm',
+      label: 'Prisma ORM (npm)',
+      description: 'Prisma Node.js ORM. Version from npm registry.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'prisma' },
+      latestSource: { type: 'npm-registry', target: 'prisma' },
+      evidenceUrl: 'https://www.npmjs.com/package/prisma',
+    },
+  ],
+
+  'fastify': [
+    {
+      id: 'npm',
+      label: 'Fastify (npm)',
+      description: 'Fastify web framework for Node.js. Version from npm registry.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'fastify' },
+      latestSource: { type: 'npm-registry', target: 'fastify' },
+      evidenceUrl: 'https://www.npmjs.com/package/fastify',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Java / JVM frameworks (Maven Central)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'spring-boot': [
+    {
+      id: 'maven',
+      label: 'Spring Boot (Maven Central)',
+      description: 'Spring Boot framework. Version from Maven Central.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'maven-central', target: 'org.springframework.boot:spring-boot' },
+      latestSource: { type: 'maven-central', target: 'org.springframework.boot:spring-boot' },
+      evidenceUrl: 'https://mvnrepository.com/artifact/org.springframework.boot/spring-boot',
+    },
+  ],
+
+  'quarkus': [
+    {
+      id: 'maven',
+      label: 'Quarkus (Maven Central)',
+      description: 'Quarkus Kubernetes-native Java framework. Version from Maven Central.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'maven-central', target: 'io.quarkus:quarkus-bom' },
+      latestSource: { type: 'maven-central', target: 'io.quarkus:quarkus-bom' },
+      evidenceUrl: 'https://mvnrepository.com/artifact/io.quarkus/quarkus-bom',
+    },
+  ],
+
+  'micronaut': [
+    {
+      id: 'maven',
+      label: 'Micronaut (Maven Central)',
+      description: 'Micronaut JVM microservices framework. Version from Maven Central.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'maven-central', target: 'io.micronaut:micronaut-bom' },
+      latestSource: { type: 'maven-central', target: 'io.micronaut:micronaut-bom' },
+      evidenceUrl: 'https://mvnrepository.com/artifact/io.micronaut/micronaut-bom',
+    },
+  ],
+
+  'jackson-databind': [
+    {
+      id: 'maven',
+      label: 'Jackson Databind (Maven Central)',
+      description: 'Jackson JSON library for Java. Version from Maven Central.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'maven-central', target: 'com.fasterxml.jackson.core:jackson-databind' },
+      latestSource: { type: 'maven-central', target: 'com.fasterxml.jackson.core:jackson-databind' },
+      evidenceUrl: 'https://mvnrepository.com/artifact/com.fasterxml.jackson.core/jackson-databind',
+    },
+  ],
+
+  'log4j': [
+    {
+      id: 'log4j2',
+      label: 'Log4j 2 (Maven Central)',
+      description: 'Apache Log4j 2 logging library. Version from Maven Central.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'maven-central', target: 'org.apache.logging.log4j:log4j-core' },
+      latestSource: { type: 'maven-central', target: 'org.apache.logging.log4j:log4j-core' },
+      evidenceUrl: 'https://mvnrepository.com/artifact/org.apache.logging.log4j/log4j-core',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // API Gateways
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'kong': [
+    {
+      id: 'oss',
+      label: 'Kong Gateway (OSS / Self-Hosted)',
+      description: 'Kong open-source API gateway. Version via /status JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://kong.example.com:8001',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/status',
+        jsonPath: '$.server.version',
+        jsonPathExtractors: ['server.version', 'version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'Kong/kong' },
+      evidenceUrl: 'https://docs.konghq.com/gateway/latest/admin-api/#status-route',
+    },
+    {
+      id: 'enterprise',
+      label: 'Kong Konnect (Enterprise / Cloud)',
+      description: 'Kong Konnect managed API platform.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Kong/kong' },
+      latestSource: { type: 'github-releases', target: 'Kong/kong' },
+      evidenceUrl: 'https://konghq.com/products/kong-konnect',
+    },
+  ],
+
+  'apisix': [
+    {
+      id: 'self-hosted',
+      label: 'Apache APISIX (Self-Hosted)',
+      description: 'Apache APISIX API gateway. Version via admin API /v1/schema.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://apisix.example.com:9080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/schema',
+        jsonPath: '$.main.version',
+        jsonPathExtractors: ['main.version', 'version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'apache/apisix' },
+      evidenceUrl: 'https://apisix.apache.org/docs/apisix/control-api/',
+    },
+  ],
+
+  'tyk': [
+    {
+      id: 'self-hosted',
+      label: 'Tyk Gateway (Self-Hosted)',
+      description: 'Tyk API gateway. Version via /hello JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://tyk.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/hello',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'TykTechnologies/tyk' },
+      evidenceUrl: 'https://tyk.io/docs/tyk-gateway-api/',
+    },
+    {
+      id: 'cloud',
+      label: 'Tyk Cloud',
+      description: 'Tyk managed cloud API management.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'TykTechnologies/tyk' },
+      latestSource: { type: 'github-releases', target: 'TykTechnologies/tyk' },
+      evidenceUrl: 'https://tyk.io/cloud/',
+    },
+  ],
+
+  'hasura': [
+    {
+      id: 'self-hosted',
+      label: 'Hasura GraphQL Engine (Self-Hosted)',
+      description: 'Hasura instant GraphQL API. Version via /v1/version JSON.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://hasura.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/version',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'hasura/graphql-engine' },
+      evidenceUrl: 'https://hasura.io/docs/latest/api-reference/version-api/',
+    },
+    {
+      id: 'cloud',
+      label: 'Hasura Cloud',
+      description: 'Hasura managed cloud at cloud.hasura.io.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hasura/graphql-engine' },
+      latestSource: { type: 'github-releases', target: 'hasura/graphql-engine' },
+      evidenceUrl: 'https://cloud.hasura.io',
+    },
+  ],
+
+  'postgrest': [
+    {
+      id: 'self-hosted',
+      label: 'PostgREST (Self-Hosted)',
+      description: 'PostgREST REST API from PostgreSQL. Version via / root JSON.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://postgrest.example.com:3000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/',
+        jsonPath: '$.info.postgrest.version',
+        jsonPathExtractors: ['info.postgrest.version', 'version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'PostgREST/postgrest' },
+      evidenceUrl: 'https://docs.postgrest.org/en/stable/references/api/schemas.html',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Container runtimes / Kubernetes operators
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'containerd': [
+    {
+      id: 'self-hosted',
+      label: 'containerd (Self-Hosted)',
+      description: 'containerd container runtime. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'containerd/containerd' },
+      latestSource: { type: 'github-releases', target: 'containerd/containerd' },
+      evidenceUrl: 'https://containerd.io/docs/getting-started/',
+    },
+  ],
+
+  'cri-o': [
+    {
+      id: 'self-hosted',
+      label: 'CRI-O (Self-Hosted)',
+      description: 'CRI-O lightweight container runtime for Kubernetes. Version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'cri-o/cri-o' },
+      latestSource: { type: 'github-releases', target: 'cri-o/cri-o' },
+      evidenceUrl: 'https://cri-o.io/#installation',
+    },
+  ],
+
+  'keda': [
+    {
+      id: 'self-hosted',
+      label: 'KEDA (Self-Hosted on Kubernetes)',
+      description: 'Kubernetes Event-Driven Autoscaling. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'kedacore/keda' },
+      latestSource: { type: 'github-releases', target: 'kedacore/keda' },
+      evidenceUrl: 'https://keda.sh/docs/latest/deploy/',
+    },
+  ],
+
+  'flagger': [
+    {
+      id: 'self-hosted',
+      label: 'Flagger (Self-Hosted)',
+      description: 'Flagger progressive delivery Kubernetes operator. Version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'fluxcd/flagger' },
+      latestSource: { type: 'github-releases', target: 'fluxcd/flagger' },
+      evidenceUrl: 'https://docs.flagger.app/install/flagger-install-on-kubernetes',
+    },
+  ],
+
+  'helm-argocd': [
+    {
+      id: 'argo',
+      label: 'Argo CD Helm Chart (argo/argo-cd)',
+      description: 'Argo CD GitOps CD tool Helm chart. Version via ArtifactHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'helm-chart', target: 'argo/argo-cd' },
+      latestSource: { type: 'helm-chart', target: 'argo/argo-cd' },
+      evidenceUrl: 'https://artifacthub.io/packages/helm/argo/argo-cd',
+    },
+  ],
+
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Kubernetes distros / operators
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'microk8s': [
+    {
+      id: 'self-hosted',
+      label: 'MicroK8s (Self-Hosted)',
+      description: 'Canonical MicroK8s low-ops Kubernetes. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'canonical/microk8s' },
+      latestSource: { type: 'github-releases', target: 'canonical/microk8s' },
+      evidenceUrl: 'https://microk8s.io/docs/getting-started',
+    },
+  ],
+
+  'talos': [
+    {
+      id: 'self-hosted',
+      label: 'Talos Linux (Self-Hosted)',
+      description: 'Talos immutable Kubernetes OS. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'siderolabs/talos' },
+      latestSource: { type: 'github-releases', target: 'siderolabs/talos' },
+      evidenceUrl: 'https://www.talos.dev/latest/introduction/getting-started/',
+    },
+  ],
+
+  'crossplane': [
+    {
+      id: 'self-hosted',
+      label: 'Crossplane (Self-Hosted on Kubernetes)',
+      description: 'Crossplane cloud-native control plane. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'crossplane/crossplane' },
+      latestSource: { type: 'github-releases', target: 'crossplane/crossplane' },
+      evidenceUrl: 'https://docs.crossplane.io/latest/software/install/',
+    },
+  ],
+
+  'actions-runner-controller': [
+    {
+      id: 'self-hosted',
+      label: 'Actions Runner Controller (ARC)',
+      description: 'Kubernetes controller for GitHub Actions self-hosted runners.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'actions/actions-runner-controller' },
+      latestSource: { type: 'github-releases', target: 'actions/actions-runner-controller' },
+      evidenceUrl: 'https://docs.github.com/en/actions/hosting-your-own-runners/managing-self-hosted-runners-with-actions-runner-controller',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // CI/CD build tools
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'argo-workflows': [
+    {
+      id: 'self-hosted',
+      label: 'Argo Workflows (Self-Hosted)',
+      description: 'Argo Workflows Kubernetes workflow engine. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'argoproj/argo-workflows' },
+      latestSource: { type: 'github-releases', target: 'argoproj/argo-workflows' },
+      evidenceUrl: 'https://argo-workflows.readthedocs.io/en/latest/installation/',
+    },
+  ],
+
+  'argo-events': [
+    {
+      id: 'self-hosted',
+      label: 'Argo Events (Self-Hosted)',
+      description: 'Argo Events event-driven workflow automation. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'argoproj/argo-events' },
+      latestSource: { type: 'github-releases', target: 'argoproj/argo-events' },
+      evidenceUrl: 'https://argoproj.github.io/argo-events/installation/',
+    },
+  ],
+
+  'dagger': [
+    {
+      id: 'cli',
+      label: 'Dagger (CLI / Self-Hosted)',
+      description: 'Dagger portable CI/CD engine. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'dagger/dagger' },
+      latestSource: { type: 'github-releases', target: 'dagger/dagger' },
+      evidenceUrl: 'https://docs.dagger.io/install',
+    },
+    {
+      id: 'cloud',
+      label: 'Dagger Cloud',
+      description: 'Dagger Cloud managed CI/CD visualizer.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'dagger/dagger' },
+      latestSource: { type: 'github-releases', target: 'dagger/dagger' },
+      evidenceUrl: 'https://dagger.io/cloud',
+    },
+  ],
+
+  'earthly': [
+    {
+      id: 'cli',
+      label: 'Earthly (CLI)',
+      description: 'Earthly reproducible build tool. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'earthly/earthly' },
+      latestSource: { type: 'github-releases', target: 'earthly/earthly' },
+      evidenceUrl: 'https://docs.earthly.dev/docs/earthly-in-5-minutes',
+    },
+  ],
+
+  'buildkite-agent': [
+    {
+      id: 'self-hosted',
+      label: 'Buildkite Agent (Self-Hosted)',
+      description: 'Buildkite CI/CD agent. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'buildkite/agent' },
+      latestSource: { type: 'github-releases', target: 'buildkite/agent' },
+      evidenceUrl: 'https://buildkite.com/docs/agent/v3/installation',
+    },
+    {
+      id: 'cloud',
+      label: 'Buildkite (Cloud / SaaS)',
+      description: 'Buildkite managed CI/CD at buildkite.com.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'buildkite/agent' },
+      latestSource: { type: 'github-releases', target: 'buildkite/agent' },
+      evidenceUrl: 'https://buildkite.com',
+    },
+  ],
+
+  'spinnaker': [
+    {
+      id: 'self-hosted',
+      label: 'Spinnaker (Self-Hosted)',
+      description: 'Spinnaker multi-cloud CD platform. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'spinnaker/spinnaker' },
+      latestSource: { type: 'github-releases', target: 'spinnaker/spinnaker' },
+      evidenceUrl: 'https://spinnaker.io/docs/setup/install/',
+    },
+  ],
+
+  'gitlab-runner': [
+    {
+      id: 'self-hosted',
+      label: 'GitLab Runner (Self-Hosted)',
+      description: 'GitLab CI/CD runner. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'gitlabhq/gitlab-runner' },
+      latestSource: { type: 'github-releases', target: 'gitlabhq/gitlab-runner' },
+      evidenceUrl: 'https://docs.gitlab.com/runner/install/',
+    },
+    {
+      id: 'saas',
+      label: 'GitLab.com Shared Runners (SaaS)',
+      description: 'GitLab.com hosted runners. Tracks runner version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'gitlabhq/gitlab-runner' },
+      latestSource: { type: 'github-releases', target: 'gitlabhq/gitlab-runner' },
+      evidenceUrl: 'https://docs.gitlab.com/ee/ci/runners/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // More databases
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'scylladb': [
+    {
+      id: 'self-hosted',
+      label: 'ScyllaDB (Self-Hosted)',
+      description: 'ScyllaDB Cassandra-compatible database. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'scylladb/scylla' },
+      latestSource: { type: 'github-releases', target: 'scylladb/scylla' },
+      evidenceUrl: 'https://www.scylladb.com/download/',
+    },
+    {
+      id: 'cloud',
+      label: 'ScyllaDB Cloud',
+      description: 'ScyllaDB managed cloud service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'scylladb/scylla' },
+      latestSource: { type: 'github-releases', target: 'scylladb/scylla' },
+      evidenceUrl: 'https://cloud.scylladb.com',
+    },
+  ],
+
+  'yugabytedb': [
+    {
+      id: 'self-hosted',
+      label: 'YugabyteDB (Self-Hosted)',
+      description: 'YugabyteDB distributed SQL. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'yugabyte/yugabyte-db' },
+      latestSource: { type: 'github-releases', target: 'yugabyte/yugabyte-db' },
+      evidenceUrl: 'https://docs.yugabyte.com/preview/quick-start/',
+    },
+    {
+      id: 'cloud',
+      label: 'YugabyteDB Aeon (Managed Cloud)',
+      description: 'YugabyteDB Aeon managed cloud database.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'yugabyte/yugabyte-db' },
+      latestSource: { type: 'github-releases', target: 'yugabyte/yugabyte-db' },
+      evidenceUrl: 'https://www.yugabyte.com/yugabytedb-aeon/',
+    },
+  ],
+
+  'tidb': [
+    {
+      id: 'self-hosted',
+      label: 'TiDB (Self-Hosted)',
+      description: 'TiDB distributed NewSQL database. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'pingcap/tidb' },
+      latestSource: { type: 'github-releases', target: 'pingcap/tidb' },
+      evidenceUrl: 'https://docs.pingcap.com/tidb/stable/quick-start-with-tidb',
+    },
+    {
+      id: 'cloud',
+      label: 'TiDB Cloud (Serverless / Dedicated)',
+      description: 'PingCAP TiDB Cloud managed service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'pingcap/tidb' },
+      latestSource: { type: 'github-releases', target: 'pingcap/tidb' },
+      evidenceUrl: 'https://tidbcloud.com',
+    },
+  ],
+
+  'ferretdb': [
+    {
+      id: 'self-hosted',
+      label: 'FerretDB (Self-Hosted)',
+      description: 'FerretDB MongoDB-compatible database on PostgreSQL. Version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'FerretDB/FerretDB' },
+      latestSource: { type: 'github-releases', target: 'FerretDB/FerretDB' },
+      evidenceUrl: 'https://docs.ferretdb.io/quickstart-guide/',
+    },
+  ],
+
+  'edgedb': [
+    {
+      id: 'self-hosted',
+      label: 'EdgeDB (Self-Hosted)',
+      description: 'EdgeDB graph-relational database. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'edgedb/edgedb' },
+      latestSource: { type: 'github-releases', target: 'edgedb/edgedb' },
+      evidenceUrl: 'https://www.edgedb.com/docs/intro/install',
+    },
+    {
+      id: 'cloud',
+      label: 'EdgeDB Cloud',
+      description: 'EdgeDB managed cloud service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'edgedb/edgedb' },
+      latestSource: { type: 'github-releases', target: 'edgedb/edgedb' },
+      evidenceUrl: 'https://www.edgedb.com/cloud',
+    },
+  ],
+
+  'dragonfly': [
+    {
+      id: 'self-hosted',
+      label: 'DragonflyDB (Self-Hosted)',
+      description: 'Dragonfly Redis-compatible high-performance store. Version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'dragonflydb/dragonfly' },
+      latestSource: { type: 'github-releases', target: 'dragonflydb/dragonfly' },
+      evidenceUrl: 'https://www.dragonflydb.io/docs/getting-started',
+    },
+    {
+      id: 'cloud',
+      label: 'Dragonfly Cloud',
+      description: 'DragonflyDB managed cloud service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'dragonflydb/dragonfly' },
+      latestSource: { type: 'github-releases', target: 'dragonflydb/dragonfly' },
+      evidenceUrl: 'https://www.dragonflydb.io/cloud',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Observability — log shippers / next-gen stacks
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'fluentd': [
+    {
+      id: 'self-hosted',
+      label: 'Fluentd (Self-Hosted)',
+      description: 'Fluentd unified logging layer. Version from GitHub tags.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-tags', target: 'fluent/fluentd' },
+      latestSource: { type: 'github-tags', target: 'fluent/fluentd' },
+      evidenceUrl: 'https://www.fluentd.org/download',
+    },
+    {
+      id: 'td-agent',
+      label: 'td-agent / Fluent Package (Treasure Data)',
+      description: 'Fluentd packaged as td-agent by Treasure Data.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-tags', target: 'fluent/fluentd' },
+      latestSource: { type: 'github-tags', target: 'fluent/fluentd' },
+      evidenceUrl: 'https://www.fluentd.org/download',
+    },
+  ],
+
+  'fluent-bit': [
+    {
+      id: 'self-hosted',
+      label: 'Fluent Bit (Self-Hosted)',
+      description: 'Fluent Bit lightweight log processor. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'fluent/fluent-bit' },
+      latestSource: { type: 'github-releases', target: 'fluent/fluent-bit' },
+      evidenceUrl: 'https://docs.fluentbit.io/manual/installation/getting-started-with-fluent-bit',
+    },
+  ],
+
+  'signoz': [
+    {
+      id: 'self-hosted',
+      label: 'SigNoz (Self-Hosted)',
+      description: 'SigNoz open-source observability platform. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'SigNoz/signoz' },
+      latestSource: { type: 'github-releases', target: 'SigNoz/signoz' },
+      evidenceUrl: 'https://signoz.io/docs/install/',
+    },
+    {
+      id: 'cloud',
+      label: 'SigNoz Cloud',
+      description: 'SigNoz managed cloud observability.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'SigNoz/signoz' },
+      latestSource: { type: 'github-releases', target: 'SigNoz/signoz' },
+      evidenceUrl: 'https://signoz.io/teams/',
+    },
+  ],
+
+  'openobserve': [
+    {
+      id: 'self-hosted',
+      label: 'OpenObserve (Self-Hosted)',
+      description: 'OpenObserve log/metric/trace platform. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'openobserve/openobserve' },
+      latestSource: { type: 'github-releases', target: 'openobserve/openobserve' },
+      evidenceUrl: 'https://openobserve.ai/docs/quickstart/',
+    },
+    {
+      id: 'cloud',
+      label: 'OpenObserve Cloud',
+      description: 'OpenObserve managed cloud service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'openobserve/openobserve' },
+      latestSource: { type: 'github-releases', target: 'openobserve/openobserve' },
+      evidenceUrl: 'https://cloud.openobserve.ai',
+    },
+  ],
+
+  'pyroscope': [
+    {
+      id: 'self-hosted',
+      label: 'Grafana Pyroscope (Self-Hosted)',
+      description: 'Grafana Pyroscope continuous profiling. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'grafana/pyroscope' },
+      latestSource: { type: 'github-releases', target: 'grafana/pyroscope' },
+      evidenceUrl: 'https://grafana.com/docs/pyroscope/latest/configure-server/',
+    },
+  ],
+
+  'coroot': [
+    {
+      id: 'self-hosted',
+      label: 'Coroot (Self-Hosted)',
+      description: 'Coroot eBPF-based observability. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'coroot/coroot' },
+      latestSource: { type: 'github-releases', target: 'coroot/coroot' },
+      evidenceUrl: 'https://coroot.com/docs/coroot-community-edition/getting-started/',
+    },
+    {
+      id: 'cloud',
+      label: 'Coroot Cloud',
+      description: 'Coroot managed cloud observability.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'coroot/coroot' },
+      latestSource: { type: 'github-releases', target: 'coroot/coroot' },
+      evidenceUrl: 'https://coroot.com/cloud',
+    },
+  ],
+
+  'quickwit': [
+    {
+      id: 'self-hosted',
+      label: 'Quickwit (Self-Hosted)',
+      description: 'Quickwit cloud-native search engine. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'quickwit-oss/quickwit' },
+      latestSource: { type: 'github-releases', target: 'quickwit-oss/quickwit' },
+      evidenceUrl: 'https://quickwit.io/docs/get-started/quickstart',
+    },
+    {
+      id: 'cloud',
+      label: 'Quickwit Cloud',
+      description: 'Quickwit managed cloud search.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'quickwit-oss/quickwit' },
+      latestSource: { type: 'github-releases', target: 'quickwit-oss/quickwit' },
+      evidenceUrl: 'https://quickwit.io/cloud',
+    },
+  ],
+
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Security policy / secrets / scanning
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'opa': [
+    {
+      id: 'self-hosted',
+      label: 'Open Policy Agent (OPA) (Self-Hosted)',
+      description: 'OPA policy engine. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'open-policy-agent/opa' },
+      latestSource: { type: 'github-releases', target: 'open-policy-agent/opa' },
+      evidenceUrl: 'https://www.openpolicyagent.org/docs/latest/#running-opa',
+    },
+  ],
+
+  'kyverno': [
+    {
+      id: 'self-hosted',
+      label: 'Kyverno (Self-Hosted on Kubernetes)',
+      description: 'Kyverno Kubernetes-native policy engine. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'kyverno/kyverno' },
+      latestSource: { type: 'github-releases', target: 'kyverno/kyverno' },
+      evidenceUrl: 'https://kyverno.io/docs/installation/',
+    },
+  ],
+
+  'boundary': [
+    {
+      id: 'self-hosted',
+      label: 'HashiCorp Boundary (Self-Hosted)',
+      description: 'Boundary identity-based access management. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hashicorp/boundary' },
+      latestSource: { type: 'github-releases', target: 'hashicorp/boundary' },
+      evidenceUrl: 'https://developer.hashicorp.com/boundary/install',
+    },
+    {
+      id: 'hcp',
+      label: 'HCP Boundary (HashiCorp Cloud Platform)',
+      description: 'Boundary managed on HCP.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hashicorp/boundary' },
+      latestSource: { type: 'github-releases', target: 'hashicorp/boundary' },
+      evidenceUrl: 'https://developer.hashicorp.com/hcp/docs/boundary',
+    },
+  ],
+
+  'external-secrets': [
+    {
+      id: 'self-hosted',
+      label: 'External Secrets Operator (Self-Hosted)',
+      description: 'Kubernetes operator for syncing secrets from external stores.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'external-secrets/external-secrets' },
+      latestSource: { type: 'github-releases', target: 'external-secrets/external-secrets' },
+      evidenceUrl: 'https://external-secrets.io/latest/introduction/getting-started/',
+    },
+  ],
+
+  'grype': [
+    {
+      id: 'cli',
+      label: 'Grype (CLI Vulnerability Scanner)',
+      description: 'Anchore Grype container vulnerability scanner. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'anchore/grype' },
+      latestSource: { type: 'github-releases', target: 'anchore/grype' },
+      evidenceUrl: 'https://github.com/anchore/grype#installation',
+    },
+  ],
+
+  'syft': [
+    {
+      id: 'cli',
+      label: 'Syft (SBOM CLI Tool)',
+      description: 'Anchore Syft software bill of materials generator. Version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'anchore/syft' },
+      latestSource: { type: 'github-releases', target: 'anchore/syft' },
+      evidenceUrl: 'https://github.com/anchore/syft#installation',
+    },
+  ],
+
+  'semgrep': [
+    {
+      id: 'cli',
+      label: 'Semgrep (CLI / Self-Hosted)',
+      description: 'Semgrep static analysis tool. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'semgrep/semgrep' },
+      latestSource: { type: 'github-releases', target: 'semgrep/semgrep' },
+      evidenceUrl: 'https://semgrep.dev/docs/getting-started/quickstart/',
+    },
+    {
+      id: 'cloud',
+      label: 'Semgrep Cloud Platform',
+      description: 'Semgrep managed cloud SAST platform at semgrep.dev.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'semgrep/semgrep' },
+      latestSource: { type: 'github-releases', target: 'semgrep/semgrep' },
+      evidenceUrl: 'https://semgrep.dev',
+    },
+  ],
+
+  'infisical': [
+    {
+      id: 'self-hosted',
+      label: 'Infisical (Self-Hosted)',
+      description: 'Infisical open-source secrets manager. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Infisical/infisical' },
+      latestSource: { type: 'github-releases', target: 'Infisical/infisical' },
+      evidenceUrl: 'https://infisical.com/docs/self-hosting/overview',
+    },
+    {
+      id: 'cloud',
+      label: 'Infisical Cloud',
+      description: 'Infisical managed cloud secrets platform.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Infisical/infisical' },
+      latestSource: { type: 'github-releases', target: 'Infisical/infisical' },
+      evidenceUrl: 'https://app.infisical.com',
+    },
+  ],
+
+  'openbao': [
+    {
+      id: 'self-hosted',
+      label: 'OpenBao (Self-Hosted)',
+      description: 'OpenBao open-source HashiCorp Vault fork. Version from GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://openbao.example.com:8200',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/sys/health',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'openbao/openbao' },
+      evidenceUrl: 'https://openbao.org/docs/install/',
+    },
+  ],
+
+  'checkov': [
+    {
+      id: 'cli',
+      label: 'Checkov (CLI IaC Scanner)',
+      description: 'Bridgecrew Checkov static IaC analysis. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'bridgecrewio/checkov' },
+      latestSource: { type: 'github-releases', target: 'bridgecrewio/checkov' },
+      evidenceUrl: 'https://www.checkov.io/1.Welcome/Quick%20Start.html',
+    },
+  ],
+
+  'sops': [
+    {
+      id: 'cli',
+      label: 'SOPS (Secrets OPerationS CLI)',
+      description: 'Mozilla/CNCF SOPS encrypted files tool. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'getsops/sops' },
+      latestSource: { type: 'github-releases', target: 'getsops/sops' },
+      evidenceUrl: 'https://getsops.io/docs/#stable-releases',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Networking / VPN / DNS
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'cilium': [
+    {
+      id: 'self-hosted',
+      label: 'Cilium (Self-Hosted on Kubernetes)',
+      description: 'Cilium eBPF-based networking and security. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'cilium/cilium' },
+      latestSource: { type: 'github-releases', target: 'cilium/cilium' },
+      evidenceUrl: 'https://docs.cilium.io/en/stable/gettingstarted/',
+    },
+  ],
+
+  'cloudflared': [
+    {
+      id: 'tunnel',
+      label: 'Cloudflare Tunnel (cloudflared)',
+      description: 'Cloudflare Tunnel daemon. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'cloudflare/cloudflared' },
+      latestSource: { type: 'github-releases', target: 'cloudflare/cloudflared' },
+      evidenceUrl: 'https://developers.cloudflare.com/cloudflare-one/connections/connect-networks/downloads/',
+    },
+  ],
+
+  'zerotier': [
+    {
+      id: 'self-hosted',
+      label: 'ZeroTier (Self-Hosted Controller)',
+      description: 'ZeroTier Software-Defined WAN. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'zerotier/ZeroTierOne' },
+      latestSource: { type: 'github-releases', target: 'zerotier/ZeroTierOne' },
+      evidenceUrl: 'https://docs.zerotier.com/self-hosting/network-controllers/',
+    },
+    {
+      id: 'cloud',
+      label: 'ZeroTier Central (Cloud)',
+      description: 'ZeroTier managed control plane at my.zerotier.com.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'zerotier/ZeroTierOne' },
+      latestSource: { type: 'github-releases', target: 'zerotier/ZeroTierOne' },
+      evidenceUrl: 'https://my.zerotier.com',
+    },
+  ],
+
+  'openvpn': [
+    {
+      id: 'community',
+      label: 'OpenVPN Community (Self-Hosted)',
+      description: 'OpenVPN open-source VPN. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'OpenVPN/openvpn' },
+      latestSource: { type: 'github-releases', target: 'OpenVPN/openvpn' },
+      evidenceUrl: 'https://community.openvpn.net/openvpn/wiki/OpenvpnSoftwareRepos',
+    },
+    {
+      id: 'access-server',
+      label: 'OpenVPN Access Server (Commercial)',
+      description: 'OpenVPN Access Server with web UI and management API.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'OpenVPN/openvpn' },
+      latestSource: { type: 'github-releases', target: 'OpenVPN/openvpn' },
+      evidenceUrl: 'https://openvpn.net/access-server/',
+    },
+  ],
+
+  'netmaker': [
+    {
+      id: 'self-hosted',
+      label: 'Netmaker (Self-Hosted)',
+      description: 'Netmaker WireGuard mesh network manager. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'gravitl/netmaker' },
+      latestSource: { type: 'github-releases', target: 'gravitl/netmaker' },
+      evidenceUrl: 'https://docs.netmaker.io/quick-start.html',
+    },
+    {
+      id: 'cloud',
+      label: 'Netmaker Cloud (SaaS)',
+      description: 'Netmaker managed cloud network.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'gravitl/netmaker' },
+      latestSource: { type: 'github-releases', target: 'gravitl/netmaker' },
+      evidenceUrl: 'https://app.netmaker.io',
+    },
+  ],
+
+  'frp': [
+    {
+      id: 'self-hosted',
+      label: 'frp (Fast Reverse Proxy)',
+      description: 'frp fast reverse proxy for NAT traversal. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'fatedier/frp' },
+      latestSource: { type: 'github-releases', target: 'fatedier/frp' },
+      evidenceUrl: 'https://github.com/fatedier/frp#installation',
+    },
+  ],
+
+  'unbound': [
+    {
+      id: 'self-hosted',
+      label: 'Unbound DNS Resolver (Self-Hosted)',
+      description: 'NLnet Labs Unbound validating DNS resolver. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'NLnetLabs/unbound' },
+      latestSource: { type: 'github-releases', target: 'NLnetLabs/unbound' },
+      evidenceUrl: 'https://nlnetlabs.nl/documentation/unbound/howto-setup/',
+    },
+  ],
+
+  'rethinkdb': [
+    {
+      id: 'self-hosted',
+      label: 'RethinkDB (Self-Hosted)',
+      description: 'RethinkDB realtime document database. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'rethinkdb/rethinkdb' },
+      latestSource: { type: 'github-releases', target: 'rethinkdb/rethinkdb' },
+      evidenceUrl: 'https://rethinkdb.com/docs/install/',
+    },
+  ],
+
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Networking / DNS / Ingress
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'headscale': [
+    {
+      id: 'self-hosted',
+      label: 'Headscale (Self-Hosted Tailscale Control)',
+      description: 'Headscale open-source Tailscale control server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'juanfont/headscale' },
+      latestSource: { type: 'github-releases', target: 'juanfont/headscale' },
+      evidenceUrl: 'https://headscale.net/running-headscale-linux/',
+    },
+  ],
+
+  'coredns': [
+    {
+      id: 'self-hosted',
+      label: 'CoreDNS (Self-Hosted)',
+      description: 'CoreDNS DNS server. Version via /metrics Prometheus or GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'coredns/coredns' },
+      latestSource: { type: 'github-releases', target: 'coredns/coredns' },
+      evidenceUrl: 'https://coredns.io/manual/installation/',
+    },
+  ],
+
+  'nginx-ingress': [
+    {
+      id: 'kubernetes',
+      label: 'NGINX Ingress Controller (Kubernetes)',
+      description: 'Kubernetes NGINX ingress controller. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'kubernetes/ingress-nginx' },
+      latestSource: { type: 'github-releases', target: 'kubernetes/ingress-nginx' },
+      evidenceUrl: 'https://kubernetes.github.io/ingress-nginx/deploy/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Storage / Backup
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'openebs': [
+    {
+      id: 'self-hosted',
+      label: 'OpenEBS (Self-Hosted on Kubernetes)',
+      description: 'OpenEBS container-native storage for Kubernetes. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'openebs/openebs' },
+      latestSource: { type: 'github-releases', target: 'openebs/openebs' },
+      evidenceUrl: 'https://openebs.io/docs/user-guides/installation',
+    },
+  ],
+
+  'velero': [
+    {
+      id: 'self-hosted',
+      label: 'Velero (Self-Hosted on Kubernetes)',
+      description: 'Velero Kubernetes backup and restore. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'vmware-tanzu/velero' },
+      latestSource: { type: 'github-releases', target: 'vmware-tanzu/velero' },
+      evidenceUrl: 'https://velero.io/docs/latest/basic-install/',
+    },
+  ],
+
+  'restic': [
+    {
+      id: 'cli',
+      label: 'Restic (CLI Backup Tool)',
+      description: 'Restic fast and secure backup program. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'restic/restic' },
+      latestSource: { type: 'github-releases', target: 'restic/restic' },
+      evidenceUrl: 'https://restic.readthedocs.io/en/latest/020_installation.html',
+    },
+  ],
+
+  'kopia': [
+    {
+      id: 'cli',
+      label: 'Kopia (CLI / Self-Hosted)',
+      description: 'Kopia fast and incremental backup tool. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'kopia/kopia' },
+      latestSource: { type: 'github-releases', target: 'kopia/kopia' },
+      evidenceUrl: 'https://kopia.io/docs/installation/',
+    },
+    {
+      id: 'server',
+      label: 'Kopia Server (Self-Hosted UI)',
+      description: 'Kopia running in server mode with web UI. Version from GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://kopia.example.com:51515',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/v1/repo/status',
+        jsonPath: '$.buildInfo.buildVersion',
+        jsonPathExtractors: ['buildInfo.buildVersion', 'version'],
+        authRequired: true,
+      },
+      latestSource: { type: 'github-releases', target: 'kopia/kopia' },
+      evidenceUrl: 'https://kopia.io/docs/reference/server/',
+    },
+  ],
+
+  'borgbackup': [
+    {
+      id: 'cli',
+      label: 'BorgBackup (CLI)',
+      description: 'BorgBackup deduplicating archiver. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'borgbackup/borg' },
+      latestSource: { type: 'github-releases', target: 'borgbackup/borg' },
+      evidenceUrl: 'https://borgbackup.readthedocs.io/en/stable/installation.html',
+    },
+  ],
+
+  'duplicati': [
+    {
+      id: 'self-hosted',
+      label: 'Duplicati (Self-Hosted)',
+      description: 'Duplicati free backup client with web UI. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'duplicati/duplicati' },
+      latestSource: { type: 'github-releases', target: 'duplicati/duplicati' },
+      evidenceUrl: 'https://duplicati.readthedocs.io/en/latest/01-installation/',
+    },
+  ],
+
+  'seaweedfs': [
+    {
+      id: 'self-hosted',
+      label: 'SeaweedFS (Self-Hosted)',
+      description: 'SeaweedFS distributed storage. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'seaweedfs/seaweedfs' },
+      latestSource: { type: 'github-releases', target: 'seaweedfs/seaweedfs' },
+      evidenceUrl: 'https://github.com/seaweedfs/seaweedfs/wiki/Getting-Started',
+    },
+  ],
+
+  'juicefs': [
+    {
+      id: 'self-hosted',
+      label: 'JuiceFS (Self-Hosted)',
+      description: 'JuiceFS cloud-native distributed file system. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'juicedata/juicefs' },
+      latestSource: { type: 'github-releases', target: 'juicedata/juicefs' },
+      evidenceUrl: 'https://juicefs.com/docs/community/introduction/',
+    },
+    {
+      id: 'cloud',
+      label: 'JuiceFS Cloud',
+      description: 'JuiceFS managed cloud file system.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'juicedata/juicefs' },
+      latestSource: { type: 'github-releases', target: 'juicedata/juicefs' },
+      evidenceUrl: 'https://juicefs.com/cloud/',
+    },
+  ],
+
+  'ceph': [
+    {
+      id: 'self-hosted',
+      label: 'Ceph (Self-Hosted)',
+      description: 'Ceph distributed storage cluster. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'ceph/ceph' },
+      latestSource: { type: 'github-releases', target: 'ceph/ceph' },
+      evidenceUrl: 'https://docs.ceph.com/en/latest/start/intro/',
+    },
+    {
+      id: 'rook',
+      label: 'Rook-Ceph (Kubernetes Operator)',
+      description: 'Ceph managed by Rook operator on Kubernetes.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'rook/rook' },
+      latestSource: { type: 'github-releases', target: 'rook/rook' },
+      evidenceUrl: 'https://rook.io/docs/rook/latest-release/Getting-Started/intro/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // CMS
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'keystonejs': [
+    {
+      id: 'npm',
+      label: 'KeystoneJS (npm)',
+      description: 'KeystoneJS Node.js headless CMS. Version from npm registry.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: '@keystone-6/core' },
+      latestSource: { type: 'npm-registry', target: '@keystone-6/core' },
+      evidenceUrl: 'https://www.npmjs.com/package/@keystone-6/core',
+    },
+  ],
+
+  'craft-cms': [
+    {
+      id: 'self-hosted',
+      label: 'Craft CMS (Self-Hosted)',
+      description: 'Craft CMS flexible content management. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'craftcms/cms' },
+      latestSource: { type: 'github-releases', target: 'craftcms/cms' },
+      evidenceUrl: 'https://craftcms.com/docs/5.x/install.html',
+    },
+    {
+      id: 'cloud',
+      label: 'Craft Cloud',
+      description: 'Craft CMS managed cloud hosting.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'craftcms/cms' },
+      latestSource: { type: 'github-releases', target: 'craftcms/cms' },
+      evidenceUrl: 'https://craftcms.com/cloud',
+    },
+  ],
+
+  'processwire': [
+    {
+      id: 'self-hosted',
+      label: 'ProcessWire (Self-Hosted)',
+      description: 'ProcessWire flexible CMS/CMF. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'processwire/processwire' },
+      latestSource: { type: 'github-releases', target: 'processwire/processwire' },
+      evidenceUrl: 'https://processwire.com/download/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Communication / Video conferencing / XMPP
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'jitsi-meet': [
+    {
+      id: 'self-hosted',
+      label: 'Jitsi Meet (Self-Hosted)',
+      description: 'Jitsi Meet open-source video conferencing. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'jitsi/jitsi-meet' },
+      latestSource: { type: 'github-releases', target: 'jitsi/jitsi-meet' },
+      evidenceUrl: 'https://jitsi.github.io/handbook/docs/devops-guide/devops-guide-docker',
+    },
+    {
+      id: 'cloud',
+      label: 'Jitsi as a Service (JaaS)',
+      description: '8x8 Jitsi as a Service managed platform.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'jitsi/jitsi-meet' },
+      latestSource: { type: 'github-releases', target: 'jitsi/jitsi-meet' },
+      evidenceUrl: 'https://jaas.8x8.vc',
+    },
+  ],
+
+  'bigbluebutton': [
+    {
+      id: 'self-hosted',
+      label: 'BigBlueButton (Self-Hosted)',
+      description: 'BigBlueButton open-source video conferencing for education.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://bbb.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/bigbluebutton/api',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'bigbluebutton/bigbluebutton' },
+      evidenceUrl: 'https://docs.bigbluebutton.org/administration/install/',
+    },
+  ],
+
+  'livekit': [
+    {
+      id: 'self-hosted',
+      label: 'LiveKit (Self-Hosted)',
+      description: 'LiveKit real-time video/audio infrastructure. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'livekit/livekit' },
+      latestSource: { type: 'github-releases', target: 'livekit/livekit' },
+      evidenceUrl: 'https://docs.livekit.io/realtime/self-hosting/local/',
+    },
+    {
+      id: 'cloud',
+      label: 'LiveKit Cloud',
+      description: 'LiveKit managed cloud real-time infrastructure.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'livekit/livekit' },
+      latestSource: { type: 'github-releases', target: 'livekit/livekit' },
+      evidenceUrl: 'https://livekit.io/cloud',
+    },
+  ],
+
+  'ejabberd': [
+    {
+      id: 'community',
+      label: 'ejabberd Community Edition (Self-Hosted)',
+      description: 'ejabberd XMPP/MQTT/SIP server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'processone/ejabberd' },
+      latestSource: { type: 'github-releases', target: 'processone/ejabberd' },
+      evidenceUrl: 'https://docs.ejabberd.im/admin/installation/',
+    },
+    {
+      id: 'business',
+      label: 'ejabberd Business Edition (Fluux.io)',
+      description: 'ejabberd Business Edition by ProcessOne with SLA.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'processone/ejabberd' },
+      latestSource: { type: 'github-releases', target: 'processone/ejabberd' },
+      evidenceUrl: 'https://www.process-one.net/en/ejabberd/',
+    },
+  ],
+
+  'prosody': [
+    {
+      id: 'self-hosted',
+      label: 'Prosody XMPP Server (Self-Hosted)',
+      description: 'Prosody modern XMPP server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'bjc/prosody' },
+      latestSource: { type: 'github-releases', target: 'bjc/prosody' },
+      evidenceUrl: 'https://prosody.im/doc/installing_from_source',
+    },
+  ],
+
+  'mumble': [
+    {
+      id: 'server',
+      label: 'Murmur (Mumble Server)',
+      description: 'Mumble open-source voice chat server (Murmur). Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'mumble-voip/mumble' },
+      latestSource: { type: 'github-releases', target: 'mumble-voip/mumble' },
+      evidenceUrl: 'https://wiki.mumble.info/wiki/Running_Murmur',
+    },
+  ],
+
+  'coturn': [
+    {
+      id: 'self-hosted',
+      label: 'Coturn (TURN/STUN Server)',
+      description: 'Coturn TURN/STUN server for WebRTC. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'coturn/coturn' },
+      latestSource: { type: 'github-releases', target: 'coturn/coturn' },
+      evidenceUrl: 'https://github.com/coturn/coturn/wiki/CoturnConfig',
+    },
+  ],
+
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // CMS (continued)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'microweber': [
+    {
+      id: 'self-hosted',
+      label: 'Microweber (Self-Hosted)',
+      description: 'Microweber open-source CMS and e-commerce. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'microweber/microweber' },
+      latestSource: { type: 'github-releases', target: 'microweber/microweber' },
+      evidenceUrl: 'https://microweber.com/download.php',
+    },
+  ],
+
+  'cockpit-cms': [
+    {
+      id: 'self-hosted',
+      label: 'Cockpit CMS (Self-Hosted)',
+      description: 'Cockpit headless CMS. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Cockpit-HQ/Cockpit' },
+      latestSource: { type: 'github-releases', target: 'Cockpit-HQ/Cockpit' },
+      evidenceUrl: 'https://getcockpit.com/docs/getting-started/installation',
+    },
+  ],
+
+  'decap-cms': [
+    {
+      id: 'npm',
+      label: 'Decap CMS (npm / Static Site)',
+      description: 'Decap CMS (formerly Netlify CMS) Git-based headless CMS.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'decap-cms' },
+      latestSource: { type: 'npm-registry', target: 'decap-cms' },
+      evidenceUrl: 'https://www.npmjs.com/package/decap-cms',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Notifications / Alerting
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'ntfy': [
+    {
+      id: 'self-hosted',
+      label: 'ntfy (Self-Hosted)',
+      description: 'ntfy push notification server. Version via /v1/info JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://ntfy.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/v1/info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'binwiederhier/ntfy' },
+      evidenceUrl: 'https://docs.ntfy.sh/install/',
+    },
+    {
+      id: 'cloud',
+      label: 'ntfy.sh (Cloud)',
+      description: 'ntfy.sh managed cloud push notifications at ntfy.sh.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'binwiederhier/ntfy' },
+      latestSource: { type: 'github-releases', target: 'binwiederhier/ntfy' },
+      evidenceUrl: 'https://ntfy.sh',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Media / Books / Self-hosted apps
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'kavita': [
+    {
+      id: 'self-hosted',
+      label: 'Kavita (Self-Hosted)',
+      description: 'Kavita digital library server. Version via /api/Server/server-info JSON.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://kavita.example.com:5000',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/Server/server-info',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version', 'kavitaVersion'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'Kareadita/Kavita' },
+      evidenceUrl: 'https://wiki.kavitareader.com/en/get-started',
+    },
+  ],
+
+  'komga': [
+    {
+      id: 'self-hosted',
+      label: 'Komga (Self-Hosted)',
+      description: 'Komga comic/manga server. Version via /actuator/info JSON endpoint.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://komga.example.com:25600',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/actuator/info',
+        jsonPath: '$.build.version',
+        jsonPathExtractors: ['build.version', 'version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'gotson/komga' },
+      evidenceUrl: 'https://komga.org/docs/installation/docker',
+    },
+  ],
+
+  'calibre-web': [
+    {
+      id: 'self-hosted',
+      label: 'Calibre-Web (Self-Hosted)',
+      description: 'Calibre-Web e-book library web app. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'janeczku/calibre-web' },
+      latestSource: { type: 'github-releases', target: 'janeczku/calibre-web' },
+      evidenceUrl: 'https://github.com/janeczku/calibre-web/wiki/Quick-Start-Guide',
+    },
+  ],
+
+  'audiobookshelf': [
+    {
+      id: 'self-hosted',
+      label: 'Audiobookshelf (Self-Hosted)',
+      description: 'Audiobookshelf self-hosted audiobook server. Version via /ping JSON.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://audiobookshelf.example.com:13378',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/ping',
+        jsonPath: '$.serverVersion',
+        jsonPathExtractors: ['serverVersion', 'version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'advplyr/audiobookshelf' },
+      evidenceUrl: 'https://www.audiobookshelf.org/docs/',
+    },
+  ],
+
+  'tautulli': [
+    {
+      id: 'self-hosted',
+      label: 'Tautulli (Self-Hosted)',
+      description: 'Tautulli Plex monitoring server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Tautulli/Tautulli' },
+      latestSource: { type: 'github-releases', target: 'Tautulli/Tautulli' },
+      evidenceUrl: 'https://tautulli.com',
+    },
+  ],
+
+  'bazarr': [
+    {
+      id: 'self-hosted',
+      label: 'Bazarr (Self-Hosted)',
+      description: 'Bazarr subtitle management companion to Sonarr/Radarr. Version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'morpheus65535/bazarr' },
+      latestSource: { type: 'github-releases', target: 'morpheus65535/bazarr' },
+      evidenceUrl: 'https://wiki.bazarr.media/Getting-Started/Setup-Guide/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Runtimes / Dev tools
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'deno': [
+    {
+      id: 'runtime',
+      label: 'Deno Runtime',
+      description: 'Deno JavaScript/TypeScript runtime. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'denoland/deno' },
+      latestSource: { type: 'github-releases', target: 'denoland/deno' },
+      evidenceUrl: 'https://docs.deno.com/runtime/manual/getting_started/installation/',
+    },
+    {
+      id: 'deploy',
+      label: 'Deno Deploy (Cloud)',
+      description: 'Deno Deploy edge runtime managed service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'denoland/deno' },
+      latestSource: { type: 'github-releases', target: 'denoland/deno' },
+      evidenceUrl: 'https://deno.com/deploy',
+    },
+  ],
+
+  'bun': [
+    {
+      id: 'runtime',
+      label: 'Bun Runtime',
+      description: 'Bun all-in-one JavaScript runtime and toolkit. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'oven-sh/bun' },
+      latestSource: { type: 'github-releases', target: 'oven-sh/bun' },
+      evidenceUrl: 'https://bun.sh/docs/installation',
+    },
+  ],
+
+  'devpod': [
+    {
+      id: 'cli',
+      label: 'DevPod (CLI / Desktop)',
+      description: 'DevPod OSS dev environment manager. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'loft-sh/devpod' },
+      latestSource: { type: 'github-releases', target: 'loft-sh/devpod' },
+      evidenceUrl: 'https://devpod.sh/docs/getting-started/install',
+    },
+  ],
+
+  'act': [
+    {
+      id: 'cli',
+      label: 'act (Local GitHub Actions Runner)',
+      description: 'nektos/act — run GitHub Actions locally. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'nektos/act' },
+      latestSource: { type: 'github-releases', target: 'nektos/act' },
+      evidenceUrl: 'https://nektosact.com/installation/',
+    },
+  ],
+
+  'hoppscotch': [
+    {
+      id: 'self-hosted',
+      label: 'Hoppscotch (Self-Hosted)',
+      description: 'Hoppscotch open-source API testing platform. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hoppscotch/hoppscotch' },
+      latestSource: { type: 'github-releases', target: 'hoppscotch/hoppscotch' },
+      evidenceUrl: 'https://docs.hoppscotch.io/documentation/self-host/community-edition/install-and-build',
+    },
+    {
+      id: 'cloud',
+      label: 'Hoppscotch Cloud',
+      description: 'Hoppscotch managed cloud at hoppscotch.io.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hoppscotch/hoppscotch' },
+      latestSource: { type: 'github-releases', target: 'hoppscotch/hoppscotch' },
+      evidenceUrl: 'https://hoppscotch.io',
+    },
+  ],
+
+  'gitea-actions': [
+    {
+      id: 'self-hosted',
+      label: 'Gitea Actions Runner (Self-Hosted)',
+      description: 'Gitea Actions runner (act_runner). Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'nektos/act' },
+      latestSource: { type: 'github-releases', target: 'nektos/act' },
+      evidenceUrl: 'https://docs.gitea.com/usage/actions/act-runner',
+    },
+  ],
+
+  'gitness': [
+    {
+      id: 'self-hosted',
+      label: 'Gitness (Self-Hosted)',
+      description: 'Harness Gitness open-source CI/SCM. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'harness/gitness' },
+      latestSource: { type: 'github-releases', target: 'harness/gitness' },
+      evidenceUrl: 'https://docs.gitness.com/installation',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Project Management
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'plane': [
+    {
+      id: 'self-hosted',
+      label: 'Plane (Self-Hosted)',
+      description: 'Plane open-source project management. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'makeplane/plane' },
+      latestSource: { type: 'github-releases', target: 'makeplane/plane' },
+      evidenceUrl: 'https://docs.plane.so/self-hosting',
+    },
+    {
+      id: 'cloud',
+      label: 'Plane Cloud',
+      description: 'Plane managed cloud at app.plane.so.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'makeplane/plane' },
+      latestSource: { type: 'github-releases', target: 'makeplane/plane' },
+      evidenceUrl: 'https://app.plane.so',
+    },
+  ],
+
+  'linear-oss': [
+    {
+      id: 'npm',
+      label: 'Linear SDK (npm)',
+      description: 'Linear project management API SDK for Node.js. Version from npm.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: '@linear/sdk' },
+      latestSource: { type: 'npm-registry', target: '@linear/sdk' },
+      evidenceUrl: 'https://www.npmjs.com/package/@linear/sdk',
+    },
+  ],
+
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Knowledge / Wiki / No-code
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'outline': [
+    {
+      id: 'self-hosted',
+      label: 'Outline (Self-Hosted)',
+      description: 'Outline knowledge base and wiki. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'outline/outline' },
+      latestSource: { type: 'github-releases', target: 'outline/outline' },
+      evidenceUrl: 'https://docs.getoutline.com/s/hosting',
+    },
+    {
+      id: 'cloud',
+      label: 'Outline Cloud',
+      description: 'Outline managed cloud at getoutline.com.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'outline/outline' },
+      latestSource: { type: 'github-releases', target: 'outline/outline' },
+      evidenceUrl: 'https://www.getoutline.com',
+    },
+  ],
+
+  'bookstack': [
+    {
+      id: 'self-hosted',
+      label: 'BookStack (Self-Hosted)',
+      description: 'BookStack simple wiki platform. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'BookStackApp/BookStack' },
+      latestSource: { type: 'github-releases', target: 'BookStackApp/BookStack' },
+      evidenceUrl: 'https://www.bookstackapp.com/docs/admin/installation/',
+    },
+  ],
+
+  'wiki-js': [
+    {
+      id: 'self-hosted',
+      label: 'Wiki.js (Self-Hosted)',
+      description: 'Wiki.js modern open-source wiki. Version from GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'https://wiki.example.com',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/healthz',
+        jsonPath: '$.version',
+        jsonPathExtractors: ['version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'requarks/wiki' },
+      evidenceUrl: 'https://docs.requarks.io/install',
+    },
+  ],
+
+  'nocodb': [
+    {
+      id: 'self-hosted',
+      label: 'NocoDB (Self-Hosted)',
+      description: 'NocoDB Airtable alternative. Version via /api/v1/meta/tables or GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'nocodb/nocodb' },
+      latestSource: { type: 'github-releases', target: 'nocodb/nocodb' },
+      evidenceUrl: 'https://docs.nocodb.com/getting-started/self-hosted/installation/',
+    },
+    {
+      id: 'cloud',
+      label: 'NocoDB Cloud',
+      description: 'NocoDB managed cloud at app.nocodb.com.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'nocodb/nocodb' },
+      latestSource: { type: 'github-releases', target: 'nocodb/nocodb' },
+      evidenceUrl: 'https://app.nocodb.com',
+    },
+  ],
+
+  'baserow': [
+    {
+      id: 'self-hosted',
+      label: 'Baserow (Self-Hosted)',
+      description: 'Baserow open-source no-code database. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'bram2w/baserow' },
+      latestSource: { type: 'github-releases', target: 'bram2w/baserow' },
+      evidenceUrl: 'https://baserow.io/docs/installation/install-on-debian',
+    },
+    {
+      id: 'cloud',
+      label: 'Baserow Cloud',
+      description: 'Baserow managed cloud at baserow.io.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'bram2w/baserow' },
+      latestSource: { type: 'github-releases', target: 'bram2w/baserow' },
+      evidenceUrl: 'https://baserow.io',
+    },
+  ],
+
+  'appflowy': [
+    {
+      id: 'self-hosted',
+      label: 'AppFlowy (Self-Hosted)',
+      description: 'AppFlowy open-source Notion alternative. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'AppFlowy-IO/AppFlowy' },
+      latestSource: { type: 'github-releases', target: 'AppFlowy-IO/AppFlowy' },
+      evidenceUrl: 'https://docs.appflowy.io/docs/self-hosting-appflowy/overview',
+    },
+    {
+      id: 'cloud',
+      label: 'AppFlowy Cloud',
+      description: 'AppFlowy managed cloud service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'AppFlowy-IO/AppFlowy' },
+      latestSource: { type: 'github-releases', target: 'AppFlowy-IO/AppFlowy' },
+      evidenceUrl: 'https://appflowy.io',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Diagramming (npm)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'excalidraw': [
+    {
+      id: 'npm',
+      label: 'Excalidraw (npm / Self-Hosted)',
+      description: 'Excalidraw virtual whiteboard library. Version from npm registry.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: '@excalidraw/excalidraw' },
+      latestSource: { type: 'npm-registry', target: '@excalidraw/excalidraw' },
+      evidenceUrl: 'https://www.npmjs.com/package/@excalidraw/excalidraw',
+    },
+    {
+      id: 'cloud',
+      label: 'Excalidraw+ (Cloud)',
+      description: 'Excalidraw managed cloud at plus.excalidraw.com.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: '@excalidraw/excalidraw' },
+      latestSource: { type: 'npm-registry', target: '@excalidraw/excalidraw' },
+      evidenceUrl: 'https://plus.excalidraw.com',
+    },
+  ],
+
+  'drawio': [
+    {
+      id: 'self-hosted',
+      label: 'draw.io (Self-Hosted)',
+      description: 'draw.io/diagrams.net diagramming tool. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'jgraph/drawio' },
+      latestSource: { type: 'github-releases', target: 'jgraph/drawio' },
+      evidenceUrl: 'https://github.com/jgraph/drawio/releases',
+    },
+    {
+      id: 'cloud',
+      label: 'diagrams.net (Cloud)',
+      description: 'diagrams.net managed cloud diagramming service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'jgraph/drawio' },
+      latestSource: { type: 'github-releases', target: 'jgraph/drawio' },
+      evidenceUrl: 'https://app.diagrams.net',
+    },
+  ],
+
+  'mermaid': [
+    {
+      id: 'npm',
+      label: 'Mermaid (npm)',
+      description: 'Mermaid diagram-as-code library. Version from npm registry.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'mermaid' },
+      latestSource: { type: 'npm-registry', target: 'mermaid' },
+      evidenceUrl: 'https://www.npmjs.com/package/mermaid',
+    },
+  ],
+
+  'stremio': [
+    {
+      id: 'self-hosted',
+      label: 'Stremio Server (Self-Hosted)',
+      description: 'Stremio media streaming server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Stremio/server-docker' },
+      latestSource: { type: 'github-releases', target: 'Stremio/server-docker' },
+      evidenceUrl: 'https://github.com/Stremio/server-docker',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // IaC / Cloud tooling (npm)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'vagrant': [
+    {
+      id: 'oss',
+      label: 'HashiCorp Vagrant (OSS)',
+      description: 'Vagrant development environment manager. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hashicorp/vagrant' },
+      latestSource: { type: 'github-releases', target: 'hashicorp/vagrant' },
+      evidenceUrl: 'https://developer.hashicorp.com/vagrant/install',
+    },
+  ],
+
+  'serverless-framework': [
+    {
+      id: 'npm',
+      label: 'Serverless Framework (npm)',
+      description: 'Serverless Framework for cloud functions. Version from npm.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'serverless' },
+      latestSource: { type: 'npm-registry', target: 'serverless' },
+      evidenceUrl: 'https://www.npmjs.com/package/serverless',
+    },
+    {
+      id: 'cloud',
+      label: 'Serverless.com Cloud (Serverless Console)',
+      description: 'Serverless.com managed observability for serverless apps.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'serverless' },
+      latestSource: { type: 'npm-registry', target: 'serverless' },
+      evidenceUrl: 'https://www.serverless.com/console',
+    },
+  ],
+
+  'cdk': [
+    {
+      id: 'aws-cdk',
+      label: 'AWS CDK (npm)',
+      description: 'AWS Cloud Development Kit. Version from npm registry.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'aws-cdk' },
+      latestSource: { type: 'npm-registry', target: 'aws-cdk' },
+      evidenceUrl: 'https://www.npmjs.com/package/aws-cdk',
+    },
+    {
+      id: 'cdk8s',
+      label: 'CDK for Kubernetes (cdk8s)',
+      description: 'CDK for Kubernetes. Version from npm registry.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'cdk8s' },
+      latestSource: { type: 'npm-registry', target: 'cdk8s' },
+      evidenceUrl: 'https://www.npmjs.com/package/cdk8s',
+    },
+  ],
+
+  'cdktf': [
+    {
+      id: 'npm',
+      label: 'CDKTF — CDK for Terraform (npm)',
+      description: 'Cloud Development Kit for Terraform. Version from npm.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'cdktf' },
+      latestSource: { type: 'npm-registry', target: 'cdktf' },
+      evidenceUrl: 'https://www.npmjs.com/package/cdktf',
+    },
+  ],
+
+  'atlantis': [
+    {
+      id: 'self-hosted',
+      label: 'Atlantis (Self-Hosted)',
+      description: 'Atlantis Terraform pull request automation. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'runatlantis/atlantis' },
+      latestSource: { type: 'github-releases', target: 'runatlantis/atlantis' },
+      evidenceUrl: 'https://www.runatlantis.io/docs/installation-guide.html',
+    },
+  ],
+
+  'infracost': [
+    {
+      id: 'cli',
+      label: 'Infracost (CLI)',
+      description: 'Infracost cloud cost estimation CLI. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'infracost/infracost' },
+      latestSource: { type: 'github-releases', target: 'infracost/infracost' },
+      evidenceUrl: 'https://www.infracost.io/docs/',
+    },
+    {
+      id: 'cloud',
+      label: 'Infracost Cloud',
+      description: 'Infracost Cloud CI/CD cost management platform.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'infracost/infracost' },
+      latestSource: { type: 'github-releases', target: 'infracost/infracost' },
+      evidenceUrl: 'https://www.infracost.io/cloud',
+    },
+  ],
+
+  'waypoint': [
+    {
+      id: 'self-hosted',
+      label: 'HashiCorp Waypoint (Self-Hosted)',
+      description: 'Waypoint application deployment lifecycle tool. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hashicorp/waypoint' },
+      latestSource: { type: 'github-releases', target: 'hashicorp/waypoint' },
+      evidenceUrl: 'https://developer.hashicorp.com/waypoint/tutorials/get-started-docker/get-started-install',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Messaging / Streaming (Apache)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'apache-pulsar': [
+    {
+      id: 'self-hosted',
+      label: 'Apache Pulsar (Self-Hosted)',
+      description: 'Apache Pulsar cloud-native messaging. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'apache/pulsar' },
+      latestSource: { type: 'github-releases', target: 'apache/pulsar' },
+      evidenceUrl: 'https://pulsar.apache.org/docs/getting-started-docker/',
+    },
+    {
+      id: 'cloud',
+      label: 'StreamNative Cloud (Managed Pulsar)',
+      description: 'StreamNative managed Apache Pulsar cloud service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'apache/pulsar' },
+      latestSource: { type: 'github-releases', target: 'apache/pulsar' },
+      evidenceUrl: 'https://streamnative.io/cloud',
+    },
+  ],
+
+  'apache-rocketmq': [
+    {
+      id: 'self-hosted',
+      label: 'Apache RocketMQ (Self-Hosted)',
+      description: 'Apache RocketMQ distributed messaging. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'apache/rocketmq' },
+      latestSource: { type: 'github-releases', target: 'apache/rocketmq' },
+      evidenceUrl: 'https://rocketmq.apache.org/docs/quick-start/',
+    },
+  ],
+
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Identity & SSO
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'supertokens': [
+    {
+      id: 'self-hosted',
+      label: 'SuperTokens (Self-Hosted)',
+      description: 'SuperTokens open-source auth. Version via /apiversion JSON.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://supertokens.example.com:3567',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/apiversion',
+        jsonPath: '$.versions[0]',
+        jsonPathExtractors: ['versions[0]', 'version'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'supertokens/supertokens-core' },
+      evidenceUrl: 'https://supertokens.com/docs/community/installation',
+    },
+    {
+      id: 'cloud',
+      label: 'SuperTokens Managed Service',
+      description: 'SuperTokens hosted managed service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'supertokens/supertokens-core' },
+      latestSource: { type: 'github-releases', target: 'supertokens/supertokens-core' },
+      evidenceUrl: 'https://supertokens.com/pricing',
+    },
+  ],
+
+  'logto': [
+    {
+      id: 'self-hosted',
+      label: 'Logto (Self-Hosted)',
+      description: 'Logto modern Auth0 alternative. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'logto-io/logto' },
+      latestSource: { type: 'github-releases', target: 'logto-io/logto' },
+      evidenceUrl: 'https://docs.logto.io/docs/tutorials/get-started/',
+    },
+    {
+      id: 'cloud',
+      label: 'Logto Cloud',
+      description: 'Logto managed cloud at cloud.logto.io.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'logto-io/logto' },
+      latestSource: { type: 'github-releases', target: 'logto-io/logto' },
+      evidenceUrl: 'https://cloud.logto.io',
+    },
+  ],
+
+  'zitadel': [
+    {
+      id: 'self-hosted',
+      label: 'ZITADEL (Self-Hosted)',
+      description: 'ZITADEL identity platform. Version via /debug/healthz or GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'zitadel/zitadel' },
+      latestSource: { type: 'github-releases', target: 'zitadel/zitadel' },
+      evidenceUrl: 'https://zitadel.com/docs/self-hosting/deploy/overview',
+    },
+    {
+      id: 'cloud',
+      label: 'ZITADEL Cloud',
+      description: 'ZITADEL managed cloud identity service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'zitadel/zitadel' },
+      latestSource: { type: 'github-releases', target: 'zitadel/zitadel' },
+      evidenceUrl: 'https://zitadel.com/pricing',
+    },
+  ],
+
+  'casdoor': [
+    {
+      id: 'self-hosted',
+      label: 'Casdoor (Self-Hosted)',
+      description: 'Casdoor SSO/OAuth2/OIDC server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'casdoor/casdoor' },
+      latestSource: { type: 'github-releases', target: 'casdoor/casdoor' },
+      evidenceUrl: 'https://casdoor.org/docs/basic/server-installation',
+    },
+    {
+      id: 'cloud',
+      label: 'Casdoor Cloud',
+      description: 'Casdoor managed cloud service at door.casdoor.com.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'casdoor/casdoor' },
+      latestSource: { type: 'github-releases', target: 'casdoor/casdoor' },
+      evidenceUrl: 'https://door.casdoor.com',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // IaC / DevOps tooling
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'spacelift': [
+    {
+      id: 'cloud',
+      label: 'Spacelift (Cloud)',
+      description: 'Spacelift IaC management platform. Tracks agent version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'spacelift-io/spacelift-agent' },
+      latestSource: { type: 'github-releases', target: 'spacelift-io/spacelift-agent' },
+      evidenceUrl: 'https://docs.spacelift.io',
+    },
+    {
+      id: 'self-hosted',
+      label: 'Spacelift Worker Pool (Self-Hosted)',
+      description: 'Spacelift private worker pool for on-prem execution.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'spacelift-io/spacelift-agent' },
+      latestSource: { type: 'github-releases', target: 'spacelift-io/spacelift-agent' },
+      evidenceUrl: 'https://docs.spacelift.io/concepts/worker-pools',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // API Gateways (continued)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'krakend': [
+    {
+      id: 'ce',
+      label: 'KrakenD Community Edition (Self-Hosted)',
+      description: 'KrakenD ultra-high performance API gateway. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'luraproject/lura' },
+      latestSource: { type: 'github-releases', target: 'luraproject/lura' },
+      evidenceUrl: 'https://www.krakend.io/docs/getting-started/',
+    },
+    {
+      id: 'ee',
+      label: 'KrakenD Enterprise Edition',
+      description: 'KrakenD EE with advanced features. Tracks CE releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'luraproject/lura' },
+      latestSource: { type: 'github-releases', target: 'luraproject/lura' },
+      evidenceUrl: 'https://www.krakend.io/enterprise/',
+    },
+  ],
+
+  'gravitee': [
+    {
+      id: 'self-hosted',
+      label: 'Gravitee API Management (Self-Hosted)',
+      description: 'Gravitee.io APIM platform. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'gravitee-io/gravitee-api-management' },
+      latestSource: { type: 'github-releases', target: 'gravitee-io/gravitee-api-management' },
+      evidenceUrl: 'https://documentation.gravitee.io/apim/getting-started/install-gravitee-api-management',
+    },
+    {
+      id: 'cloud',
+      label: 'Gravitee Cloud',
+      description: 'Gravitee.io managed cloud APIM.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'gravitee-io/gravitee-api-management' },
+      latestSource: { type: 'github-releases', target: 'gravitee-io/gravitee-api-management' },
+      evidenceUrl: 'https://gravitee.io/cloud',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Messaging
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'nsq': [
+    {
+      id: 'self-hosted',
+      label: 'NSQ (Self-Hosted)',
+      description: 'NSQ realtime distributed messaging. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'nsqio/nsq' },
+      latestSource: { type: 'github-releases', target: 'nsqio/nsq' },
+      evidenceUrl: 'https://nsq.io/deployment/installing.html',
+    },
+  ],
+
+  'hivemq': [
+    {
+      id: 'community',
+      label: 'HiveMQ Community Edition (Self-Hosted)',
+      description: 'HiveMQ MQTT broker CE. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hivemq/hivemq-community-edition' },
+      latestSource: { type: 'github-releases', target: 'hivemq/hivemq-community-edition' },
+      evidenceUrl: 'https://github.com/hivemq/hivemq-community-edition/releases',
+    },
+    {
+      id: 'enterprise',
+      label: 'HiveMQ Enterprise (Self-Hosted)',
+      description: 'HiveMQ Enterprise MQTT broker with enhanced features.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hivemq/hivemq-community-edition' },
+      latestSource: { type: 'github-releases', target: 'hivemq/hivemq-community-edition' },
+      evidenceUrl: 'https://www.hivemq.com/hivemq/hivemq-enterprise/',
+    },
+    {
+      id: 'cloud',
+      label: 'HiveMQ Cloud',
+      description: 'HiveMQ managed MQTT cloud service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'hivemq/hivemq-community-edition' },
+      latestSource: { type: 'github-releases', target: 'hivemq/hivemq-community-edition' },
+      evidenceUrl: 'https://www.hivemq.com/mqtt-cloud-broker/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Kubernetes local dev distros
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'k3d': [
+    {
+      id: 'cli',
+      label: 'k3d (Local k3s in Docker)',
+      description: 'k3d wrapper to run k3s in Docker. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'k3d-io/k3d' },
+      latestSource: { type: 'github-releases', target: 'k3d-io/k3d' },
+      evidenceUrl: 'https://k3d.io/stable/#installation',
+    },
+  ],
+
+  'kind': [
+    {
+      id: 'cli',
+      label: 'kind (Kubernetes in Docker)',
+      description: 'kind Kubernetes-in-Docker for local testing. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'kubernetes-sigs/kind' },
+      latestSource: { type: 'github-releases', target: 'kubernetes-sigs/kind' },
+      evidenceUrl: 'https://kind.sigs.k8s.io/docs/user/quick-start/#installation',
+    },
+  ],
+
+  'minikube': [
+    {
+      id: 'cli',
+      label: 'minikube (Local Kubernetes)',
+      description: 'minikube local Kubernetes cluster. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'kubernetes/minikube' },
+      latestSource: { type: 'github-releases', target: 'kubernetes/minikube' },
+      evidenceUrl: 'https://minikube.sigs.k8s.io/docs/start/',
+    },
+  ],
+
+  'kubeadm': [
+    {
+      id: 'self-hosted',
+      label: 'kubeadm (Production Kubernetes Bootstrap)',
+      description: 'kubeadm cluster bootstrapper. Tracks Kubernetes release from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'kubernetes/kubernetes' },
+      latestSource: { type: 'github-releases', target: 'kubernetes/kubernetes' },
+      evidenceUrl: 'https://kubernetes.io/docs/setup/production-environment/tools/kubeadm/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Email servers
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'mailu': [
+    {
+      id: 'self-hosted',
+      label: 'Mailu (Self-Hosted)',
+      description: 'Mailu full-featured mail server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Mailu/Mailu' },
+      latestSource: { type: 'github-releases', target: 'Mailu/Mailu' },
+      evidenceUrl: 'https://mailu.io/master/setup/',
+    },
+  ],
+
+  'stalwart-mail': [
+    {
+      id: 'self-hosted',
+      label: 'Stalwart Mail Server (Self-Hosted)',
+      description: 'Stalwart modern all-in-one mail server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'stalwartlabs/mail-server' },
+      latestSource: { type: 'github-releases', target: 'stalwartlabs/mail-server' },
+      evidenceUrl: 'https://stalw.art/docs/install/linux',
+    },
+  ],
+
+  'roundcube': [
+    {
+      id: 'self-hosted',
+      label: 'Roundcube (Self-Hosted Webmail)',
+      description: 'Roundcube browser-based webmail. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'roundcube/roundcubemail' },
+      latestSource: { type: 'github-releases', target: 'roundcube/roundcubemail' },
+      evidenceUrl: 'https://roundcube.net/download/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // IoT / Home Automation
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'zigbee2mqtt': [
+    {
+      id: 'self-hosted',
+      label: 'Zigbee2MQTT (Self-Hosted)',
+      description: 'Zigbee2MQTT bridge. Version via frontend /api/health or GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Koenkk/zigbee2mqtt' },
+      latestSource: { type: 'github-releases', target: 'Koenkk/zigbee2mqtt' },
+      evidenceUrl: 'https://www.zigbee2mqtt.io/guide/installation/',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Self-hosted dashboards / home apps
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'homarr': [
+    {
+      id: 'self-hosted',
+      label: 'Homarr (Self-Hosted Dashboard)',
+      description: 'Homarr homelab dashboard. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'ajnart/homarr' },
+      latestSource: { type: 'github-releases', target: 'ajnart/homarr' },
+      evidenceUrl: 'https://homarr.dev/docs/getting-started/installation/',
+    },
+  ],
+
+  'homer': [
+    {
+      id: 'self-hosted',
+      label: 'Homer (Self-Hosted Dashboard)',
+      description: 'Homer static homelab dashboard. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'bastienwirtz/homer' },
+      latestSource: { type: 'github-releases', target: 'bastienwirtz/homer' },
+      evidenceUrl: 'https://github.com/bastienwirtz/homer#getting-started',
+    },
+  ],
+
+  'flame': [
+    {
+      id: 'self-hosted',
+      label: 'Flame (Self-Hosted Startpage)',
+      description: 'Flame self-hosted startpage dashboard. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'pawelmalak/flame' },
+      latestSource: { type: 'github-releases', target: 'pawelmalak/flame' },
+      evidenceUrl: 'https://github.com/pawelmalak/flame#installation-with-docker',
+    },
+  ],
+
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // More dashboards / self-hosted utilities
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'dasherr': [
+    {
+      id: 'self-hosted',
+      label: 'Dasherr (Self-Hosted Dashboard)',
+      description: 'Dasherr minimal homelab dashboard. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'erohtar/Dasherr' },
+      latestSource: { type: 'github-releases', target: 'erohtar/Dasherr' },
+      evidenceUrl: 'https://github.com/erohtar/Dasherr',
+    },
+  ],
+
+  'dashdot': [
+    {
+      id: 'self-hosted',
+      label: 'dashdot (Server Monitoring Dashboard)',
+      description: 'dashdot self-hosted server metrics dashboard. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'MauriceNino/dashdot' },
+      latestSource: { type: 'github-releases', target: 'MauriceNino/dashdot' },
+      evidenceUrl: 'https://getdashdot.com/docs/installation',
+    },
+  ],
+
+  'librespeed': [
+    {
+      id: 'self-hosted',
+      label: 'LibreSpeed (Self-Hosted Speed Test)',
+      description: 'LibreSpeed network speed test server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'librespeed/speedtest' },
+      latestSource: { type: 'github-releases', target: 'librespeed/speedtest' },
+      evidenceUrl: 'https://github.com/librespeed/speedtest/wiki/Self-Hosting',
+    },
+  ],
+
+  'scrutiny': [
+    {
+      id: 'self-hosted',
+      label: 'Scrutiny (Self-Hosted S.M.A.R.T Monitor)',
+      description: 'Scrutiny hard drive health monitoring. Version from GitHub releases.',
+      requiresInstanceUrl: true,
+      authRequired: false,
+      urlPlaceholder: 'http://scrutiny.example.com:8080',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api/health',
+        jsonPath: '$.success',
+        jsonPathExtractors: ['success'],
+        authRequired: false,
+      },
+      latestSource: { type: 'github-releases', target: 'AnalogJ/scrutiny' },
+      evidenceUrl: 'https://github.com/AnalogJ/scrutiny#installation',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // RSS / Read later / Bookmarks
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'freshrss': [
+    {
+      id: 'self-hosted',
+      label: 'FreshRSS (Self-Hosted)',
+      description: 'FreshRSS RSS feed aggregator. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'FreshRSS/FreshRSS' },
+      latestSource: { type: 'github-releases', target: 'FreshRSS/FreshRSS' },
+      evidenceUrl: 'https://freshrss.github.io/FreshRSS/en/admins/02_Installation.html',
+    },
+  ],
+
+  'wallabag': [
+    {
+      id: 'self-hosted',
+      label: 'wallabag (Self-Hosted)',
+      description: 'wallabag read-later application. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'wallabag/wallabag' },
+      latestSource: { type: 'github-releases', target: 'wallabag/wallabag' },
+      evidenceUrl: 'https://doc.wallabag.org/en/admin/installation/installation.html',
+    },
+    {
+      id: 'cloud',
+      label: 'wallabag.it (Hosted)',
+      description: 'wallabag hosted service at wallabag.it.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'wallabag/wallabag' },
+      latestSource: { type: 'github-releases', target: 'wallabag/wallabag' },
+      evidenceUrl: 'https://www.wallabag.it/en',
+    },
+  ],
+
+  'linkding': [
+    {
+      id: 'self-hosted',
+      label: 'linkding (Self-Hosted Bookmarks)',
+      description: 'linkding bookmark manager. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'sissbruecker/linkding' },
+      latestSource: { type: 'github-releases', target: 'sissbruecker/linkding' },
+      evidenceUrl: 'https://github.com/sissbruecker/linkding/blob/master/README.md#installation',
+    },
+  ],
+
+  'linkwarden': [
+    {
+      id: 'self-hosted',
+      label: 'Linkwarden (Self-Hosted)',
+      description: 'Linkwarden collaborative bookmark manager. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'linkwarden/linkwarden' },
+      latestSource: { type: 'github-releases', target: 'linkwarden/linkwarden' },
+      evidenceUrl: 'https://docs.linkwarden.app/self-hosting/installation',
+    },
+    {
+      id: 'cloud',
+      label: 'Linkwarden Cloud',
+      description: 'Linkwarden managed cloud at cloud.linkwarden.app.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'linkwarden/linkwarden' },
+      latestSource: { type: 'github-releases', target: 'linkwarden/linkwarden' },
+      evidenceUrl: 'https://cloud.linkwarden.app',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Photo / Gallery
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'lychee': [
+    {
+      id: 'self-hosted',
+      label: 'Lychee (Self-Hosted Photo Manager)',
+      description: 'Lychee self-hosted photo management. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'LycheeOrg/Lychee' },
+      latestSource: { type: 'github-releases', target: 'LycheeOrg/Lychee' },
+      evidenceUrl: 'https://lychee.electerious.com/#installation',
+    },
+  ],
+
+  'photoview': [
+    {
+      id: 'self-hosted',
+      label: 'Photoview (Self-Hosted)',
+      description: 'Photoview photo gallery server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'photoview/photoview' },
+      latestSource: { type: 'github-releases', target: 'photoview/photoview' },
+      evidenceUrl: 'https://photoview.github.io/en/docs/installation-docker/',
+    },
+  ],
+
+  'piwigo': [
+    {
+      id: 'self-hosted',
+      label: 'Piwigo (Self-Hosted)',
+      description: 'Piwigo open-source photo gallery. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Piwigo/Piwigo' },
+      latestSource: { type: 'github-releases', target: 'Piwigo/Piwigo' },
+      evidenceUrl: 'https://piwigo.org/get-piwigo',
+    },
+    {
+      id: 'cloud',
+      label: 'Piwigo.com (Hosted)',
+      description: 'Piwigo hosted photo gallery at piwigo.com.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Piwigo/Piwigo' },
+      latestSource: { type: 'github-releases', target: 'Piwigo/Piwigo' },
+      evidenceUrl: 'https://piwigo.com',
+    },
+  ],
+
+  'pixelfed': [
+    {
+      id: 'self-hosted',
+      label: 'Pixelfed (Self-Hosted)',
+      description: 'Pixelfed federated photo sharing (ActivityPub). Version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'pixelfed/pixelfed' },
+      latestSource: { type: 'github-releases', target: 'pixelfed/pixelfed' },
+      evidenceUrl: 'https://docs.pixelfed.org/running-pixelfed/installation.html',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Notes / Productivity
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'standard-notes': [
+    {
+      id: 'self-hosted',
+      label: 'Standard Notes Server (Self-Hosted)',
+      description: 'Standard Notes encrypted notes server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'standardnotes/server' },
+      latestSource: { type: 'github-releases', target: 'standardnotes/server' },
+      evidenceUrl: 'https://docs.standardnotes.com/self-hosting/getting-started',
+    },
+    {
+      id: 'cloud',
+      label: 'Standard Notes (Cloud)',
+      description: 'Standard Notes managed cloud at app.standardnotes.com.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'standardnotes/server' },
+      latestSource: { type: 'github-releases', target: 'standardnotes/server' },
+      evidenceUrl: 'https://app.standardnotes.com',
+    },
+  ],
+
+  'leantime': [
+    {
+      id: 'self-hosted',
+      label: 'Leantime (Self-Hosted)',
+      description: 'Leantime open-source project management. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Leantime/leantime' },
+      latestSource: { type: 'github-releases', target: 'Leantime/leantime' },
+      evidenceUrl: 'https://docs.leantime.io/#/installation',
+    },
+    {
+      id: 'cloud',
+      label: 'Leantime Cloud',
+      description: 'Leantime managed cloud service.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'Leantime/leantime' },
+      latestSource: { type: 'github-releases', target: 'Leantime/leantime' },
+      evidenceUrl: 'https://leantime.io/pricing',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Database tools / Network / PaaS
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'adminer': [
+    {
+      id: 'self-hosted',
+      label: 'Adminer (Self-Hosted DB UI)',
+      description: 'Adminer lightweight database management UI. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'vrana/adminer' },
+      latestSource: { type: 'github-releases', target: 'vrana/adminer' },
+      evidenceUrl: 'https://www.adminer.org/#download',
+    },
+  ],
+
+  'pfsense': [
+    {
+      id: 'self-hosted',
+      label: 'pfSense (Self-Hosted Firewall/Router)',
+      description: 'pfSense open-source firewall. Monitored via PulseDock agent.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://pfsense.example.com',
+      versionSource: { type: 'pulsedock-agent' },
+      latestSource: { type: 'github-releases', target: 'pfsense/pfsense' },
+      evidenceUrl: 'https://docs.netgate.com/pfsense/en/latest/install/index.html',
+    },
+    {
+      id: 'plus',
+      label: 'pfSense Plus (Netgate Appliance)',
+      description: 'pfSense Plus commercial/appliance edition by Netgate.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://pfsense.example.com',
+      versionSource: { type: 'pulsedock-agent' },
+      latestSource: { type: 'github-releases', target: 'pfsense/pfsense' },
+      evidenceUrl: 'https://www.netgate.com/pfsense-plus-software',
+    },
+  ],
+
+  'dokku': [
+    {
+      id: 'self-hosted',
+      label: 'Dokku (Self-Hosted PaaS)',
+      description: 'Dokku Docker-based mini-Heroku PaaS. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'dokku/dokku' },
+      latestSource: { type: 'github-releases', target: 'dokku/dokku' },
+      evidenceUrl: 'https://dokku.com/docs/getting-started/installation/',
+    },
+  ],
+
+  'telegraf': [
+    {
+      id: 'self-hosted',
+      label: 'Telegraf (Self-Hosted Metrics Agent)',
+      description: 'InfluxData Telegraf metrics collection agent. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'influxdata/telegraf' },
+      latestSource: { type: 'github-releases', target: 'influxdata/telegraf' },
+      evidenceUrl: 'https://docs.influxdata.com/telegraf/v1/install/',
+    },
+  ],
+
+  'lldap': [
+    {
+      id: 'self-hosted',
+      label: 'LLDAP (Self-Hosted Lightweight LDAP)',
+      description: 'LLDAP lightweight LDAP server. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'lldap/lldap' },
+      latestSource: { type: 'github-releases', target: 'lldap/lldap' },
+      evidenceUrl: 'https://github.com/lldap/lldap#getting-started',
+    },
+  ],
+
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Networking / Infra (agent-monitored)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'proxmox-ve': [
+    {
+      id: 'self-hosted',
+      label: 'Proxmox VE (Self-Hosted)',
+      description: 'Proxmox Virtual Environment hypervisor. Version via /api2/json/version.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://proxmox.example.com:8006',
+      versionSource: {
+        type: 'json-path',
+        urlTemplate: '{{instanceUrl}}/api2/json/version',
+        jsonPath: '$.data.version',
+        jsonPathExtractors: ['data.version', 'version'],
+        authRequired: true,
+      },
+      latestSource: { type: 'github-releases', target: 'proxmox/pve-manager' },
+      evidenceUrl: 'https://pve.proxmox.com/wiki/Proxmox_VE_API',
+    },
+  ],
+
+  'unraid': [
+    {
+      id: 'self-hosted',
+      label: 'Unraid (Self-Hosted NAS/VM)',
+      description: 'Unraid OS for NAS and VMs. Monitored via PulseDock agent.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://unraid.local',
+      versionSource: { type: 'pulsedock-agent' },
+      latestSource: { type: 'github-releases', target: 'unraid/webgui' },
+      evidenceUrl: 'https://docs.unraid.net/unraid-os/getting-started/',
+    },
+  ],
+
+  'vyos': [
+    {
+      id: 'self-hosted',
+      label: 'VyOS (Self-Hosted Network OS)',
+      description: 'VyOS open-source network OS. Monitored via PulseDock agent.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://vyos.example.com',
+      versionSource: { type: 'pulsedock-agent' },
+      latestSource: { type: 'github-releases', target: 'vyos/vyos-1x' },
+      evidenceUrl: 'https://docs.vyos.io/en/latest/installation/install.html',
+    },
+    {
+      id: 'lts',
+      label: 'VyOS LTS (Subscription)',
+      description: 'VyOS Long Term Support release (subscription).',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'https://vyos.example.com',
+      versionSource: { type: 'pulsedock-agent' },
+      latestSource: { type: 'github-releases', target: 'vyos/vyos-1x' },
+      evidenceUrl: 'https://vyos.io/subscriptions/',
+    },
+  ],
+
+  'openwrt': [
+    {
+      id: 'self-hosted',
+      label: 'OpenWrt (Self-Hosted Router OS)',
+      description: 'OpenWrt Linux-based router firmware. Monitored via PulseDock agent.',
+      requiresInstanceUrl: true,
+      authRequired: true,
+      urlPlaceholder: 'http://192.168.1.1',
+      versionSource: { type: 'pulsedock-agent' },
+      latestSource: { type: 'github-releases', target: 'openwrt/openwrt' },
+      evidenceUrl: 'https://openwrt.org/docs/guide-user/installation/start',
+    },
+  ],
+
+  'wireguard-ui': [
+    {
+      id: 'self-hosted',
+      label: 'WireGuard UI (Self-Hosted)',
+      description: 'WireGuard web UI management panel. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'ngoduykhanh/wireguard-ui' },
+      latestSource: { type: 'github-releases', target: 'ngoduykhanh/wireguard-ui' },
+      evidenceUrl: 'https://github.com/ngoduykhanh/wireguard-ui#deployment',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Docker image versions
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'postgresql-docker': [
+    {
+      id: 'docker-hub',
+      label: 'PostgreSQL Docker Image (library/postgres)',
+      description: 'Official PostgreSQL Docker Hub image. Tag tracked via Docker Hub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'library/postgres' },
+      latestSource: { type: 'github-releases', target: 'postgres/postgres' },
+      evidenceUrl: 'https://hub.docker.com/_/postgres',
+    },
+  ],
+
+  'nginx-docker': [
+    {
+      id: 'docker-hub',
+      label: 'NGINX Docker Image (library/nginx)',
+      description: 'Official NGINX Docker Hub image. Tag tracked via Docker Hub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'library/nginx' },
+      latestSource: { type: 'github-releases', target: 'nginx/nginx' },
+      evidenceUrl: 'https://hub.docker.com/_/nginx',
+    },
+  ],
+
+  'apache-httpd': [
+    {
+      id: 'docker-hub',
+      label: 'Apache HTTPD Docker Image (library/httpd)',
+      description: 'Official Apache HTTPD Docker Hub image. Tag tracked via Docker Hub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'docker-hub', target: 'library/httpd' },
+      latestSource: { type: 'docker-hub', target: 'library/httpd' },
+      evidenceUrl: 'https://hub.docker.com/_/httpd',
+    },
+  ],
+
+  // ───────────────────────────────────────────────────────────────────────────
+  // Dev frameworks / tools (miscellaneous)
+  // ───────────────────────────────────────────────────────────────────────────
+
+  'hono': [
+    {
+      id: 'npm',
+      label: 'Hono (npm)',
+      description: 'Hono ultrafast web framework for edge runtimes. Version from npm.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'npm-registry', target: 'hono' },
+      latestSource: { type: 'npm-registry', target: 'hono' },
+      evidenceUrl: 'https://www.npmjs.com/package/hono',
+    },
+  ],
+
+  'garnet': [
+    {
+      id: 'self-hosted',
+      label: 'Microsoft Garnet (Self-Hosted)',
+      description: 'Garnet high-performance Redis-compatible cache store from Microsoft.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'microsoft/garnet' },
+      latestSource: { type: 'github-releases', target: 'microsoft/garnet' },
+      evidenceUrl: 'https://microsoft.github.io/garnet/docs/getting-started/run-garnet',
+    },
+  ],
+
+  'zeromq': [
+    {
+      id: 'library',
+      label: 'ZeroMQ (libzmq)',
+      description: 'ZeroMQ high-performance messaging library. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'zeromq/libzmq' },
+      latestSource: { type: 'github-releases', target: 'zeromq/libzmq' },
+      evidenceUrl: 'https://github.com/zeromq/libzmq/releases',
+    },
+  ],
+
+  'cert-manager': [
+    {
+      id: 'kubernetes',
+      label: 'cert-manager (Kubernetes)',
+      description: 'cert-manager X.509 certificate controller. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'cert-manager/cert-manager' },
+      latestSource: { type: 'github-releases', target: 'cert-manager/cert-manager' },
+      evidenceUrl: 'https://cert-manager.io/docs/installation/',
+    },
+  ],
+
+  'watchtower': [
+    {
+      id: 'self-hosted',
+      label: 'Watchtower (Self-Hosted)',
+      description: 'Watchtower automatic Docker container updates. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'containrrr/watchtower' },
+      latestSource: { type: 'github-releases', target: 'containrrr/watchtower' },
+      evidenceUrl: 'https://containrrr.dev/watchtower/getting-started/',
+    },
+  ],
+
+  'clair': [
+    {
+      id: 'self-hosted',
+      label: 'Clair (Self-Hosted)',
+      description: 'Quay/CNCF Clair container vulnerability scanner. Version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'quay/clair' },
+      latestSource: { type: 'github-releases', target: 'quay/clair' },
+      evidenceUrl: 'https://quay.github.io/clair/howto/getting_started.html',
+    },
+  ],
+
+  'writefreely': [
+    {
+      id: 'self-hosted',
+      label: 'WriteFreely (Self-Hosted)',
+      description: 'WriteFreely federated blogging platform (ActivityPub). Version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'writefreely/writefreely' },
+      latestSource: { type: 'github-releases', target: 'writefreely/writefreely' },
+      evidenceUrl: 'https://writefreely.org/start',
+    },
+    {
+      id: 'cloud',
+      label: 'Write.as (Cloud)',
+      description: 'Write.as managed cloud blogging at write.as.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'writefreely/writefreely' },
+      latestSource: { type: 'github-releases', target: 'writefreely/writefreely' },
+      evidenceUrl: 'https://write.as',
+    },
+  ],
+
+  'shaarli': [
+    {
+      id: 'self-hosted',
+      label: 'Shaarli (Self-Hosted Bookmarks)',
+      description: 'Shaarli personal minimalist link manager. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'shaarli/Shaarli' },
+      latestSource: { type: 'github-releases', target: 'shaarli/Shaarli' },
+      evidenceUrl: 'https://shaarli.readthedocs.io/en/master/Shaarli-installation/',
+    },
+  ],
+
+  'mylar3': [
+    {
+      id: 'self-hosted',
+      label: 'Mylar3 (Self-Hosted Comic Manager)',
+      description: 'Mylar3 automated comic book downloader. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'mylar3/mylar3' },
+      latestSource: { type: 'github-releases', target: 'mylar3/mylar3' },
+      evidenceUrl: 'https://github.com/mylar3/mylar3/wiki/Setup-Instructions',
+    },
+  ],
+
+  'gitpod': [
+    {
+      id: 'self-hosted',
+      label: 'Gitpod Self-Hosted',
+      description: 'Gitpod cloud dev environments on your own infra. Version from GitHub.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'gitpod-io/gitpod' },
+      latestSource: { type: 'github-releases', target: 'gitpod-io/gitpod' },
+      evidenceUrl: 'https://www.gitpod.io/docs/configure/self-hosted/latest',
+    },
+    {
+      id: 'cloud',
+      label: 'Gitpod Cloud (gitpod.io)',
+      description: 'Gitpod managed cloud dev environments at gitpod.io.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'gitpod-io/gitpod' },
+      latestSource: { type: 'github-releases', target: 'gitpod-io/gitpod' },
+      evidenceUrl: 'https://gitpod.io',
+    },
+  ],
+
+  'harness': [
+    {
+      id: 'self-hosted',
+      label: 'Harness Gitness (Self-Hosted)',
+      description: 'Harness open-source Gitness CI/SCM platform. Version from GitHub releases.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'harness/gitness' },
+      latestSource: { type: 'github-releases', target: 'harness/gitness' },
+      evidenceUrl: 'https://docs.gitness.com/installation',
+    },
+    {
+      id: 'cloud',
+      label: 'Harness Cloud Platform',
+      description: 'Harness managed SaaS CI/CD platform at app.harness.io.',
+      requiresInstanceUrl: false,
+      authRequired: false,
+      versionSource: { type: 'github-releases', target: 'harness/gitness' },
+      latestSource: { type: 'github-releases', target: 'harness/gitness' },
+      evidenceUrl: 'https://app.harness.io',
+    },
+  ],
+
+};
+
+/**
+ * Get variants for a tool by ID.
+ * Returns empty array if no variants are defined.
+ */
+export function getToolVariants(toolId: string): ToolVariant[] {
+  return TOOL_VARIANTS[toolId] ?? [];
+}

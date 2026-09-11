@@ -1,0 +1,235 @@
+#!/usr/bin/env bash
+# Rotate heartbeat branch at 00:00/12:00 UTC:
+# merge current heartbeat/* -> dev, delete old branch (local+remote), create/push new heartbeat branch.
+#
+# Usage:
+#   ./scripts/heartbeat-rotate-branch.sh
+#   ./scripts/heartbeat-rotate-branch.sh --name custom-suffix
+#   ./scripts/heartbeat-rotate-branch.sh --new-branch heartbeat/2026-04-08-midnight
+#   ./scripts/heartbeat-rotate-branch.sh --allow-off-schedule
+#
+# Optional env:
+#   HEARTBEAT_ROTATE_WINDOW_GRACE_MINUTES=5 (default) allows scheduled runs within
+#   the first N minutes of 00:00/12:00 UTC to tolerate scheduler jitter.
+
+set -euo pipefail
+
+CUSTOM_SUFFIX=""
+EXPLICIT_NEW_BRANCH=""
+ALLOW_OFF_SCHEDULE=false
+ROTATION_WINDOW_GRACE_MINUTES="${HEARTBEAT_ROTATE_WINDOW_GRACE_MINUTES:-5}"
+
+validate_custom_suffix() {
+  local suffix="$1"
+
+  if [[ -z "$suffix" ]]; then
+    echo "Custom suffix must be non-empty." >&2
+    exit 1
+  fi
+
+  if ! [[ "$suffix" =~ ^[a-z0-9][a-z0-9-]*$ ]]; then
+    echo "Invalid --name suffix '$suffix'. Use lowercase letters, numbers, and hyphens only." >&2
+    exit 1
+  fi
+}
+
+validate_branch_name() {
+  local branch="$1"
+
+  if [[ -z "$branch" ]]; then
+    echo "Branch name must be non-empty." >&2
+    exit 1
+  fi
+
+  if [[ "$branch" =~ [[:space:]] ]]; then
+    echo "Branch name must not contain whitespace (got '$branch')." >&2
+    exit 1
+  fi
+
+  if ! git check-ref-format --branch "$branch" >/dev/null 2>&1; then
+    echo "Invalid git branch name: '$branch'." >&2
+    exit 1
+  fi
+}
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --name)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "--name requires a non-empty suffix value." >&2
+        exit 1
+      fi
+      validate_custom_suffix "$2"
+      CUSTOM_SUFFIX="$2"
+      shift 2
+      ;;
+    --new-branch)
+      if [[ $# -lt 2 || -z "${2:-}" ]]; then
+        echo "--new-branch requires a non-empty heartbeat/* branch name." >&2
+        exit 1
+      fi
+      validate_branch_name "$2"
+      EXPLICIT_NEW_BRANCH="$2"
+      shift 2
+      ;;
+    --allow-off-schedule)
+      ALLOW_OFF_SCHEDULE=true
+      shift
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      echo "Usage: $0 [--name <suffix>] [--new-branch <heartbeat/...>] [--allow-off-schedule]" >&2
+      exit 1
+      ;;
+  esac
+done
+
+require_clean_worktree() {
+  if [[ -n "$(git status --porcelain)" ]]; then
+    echo "Working tree is not clean. Commit/stash changes before rotating branches." >&2
+    exit 1
+  fi
+}
+
+current_branch() {
+  git branch --show-current
+}
+
+ensure_heartbeat_branch() {
+  local branch="$1"
+
+  if [[ -z "$branch" ]]; then
+    echo "Detached HEAD is not allowed." >&2
+    exit 1
+  fi
+
+  if [[ "$branch" == "dev" || "$branch" == "main" ]]; then
+    echo "Rotate from heartbeat/* only, not '$branch'." >&2
+    exit 1
+  fi
+
+  if [[ "$branch" != heartbeat/* ]]; then
+    echo "Current branch must be heartbeat/*, got '$branch'." >&2
+    exit 1
+  fi
+}
+
+compute_default_suffix() {
+  local hour
+  hour="$(date -u +%H)"
+
+  if [[ "$hour" == "00" ]]; then
+    echo "midnight"
+  elif [[ "$hour" == "12" ]]; then
+    echo "noon"
+  else
+    echo "rotation"
+  fi
+}
+
+ensure_rotation_window() {
+  if $ALLOW_OFF_SCHEDULE; then
+    return
+  fi
+
+  local hour minute
+  hour="$(date -u +%H)"
+  minute="$(date -u +%M)"
+
+  if ! [[ "$ROTATION_WINDOW_GRACE_MINUTES" =~ ^[0-9]+$ ]] || [[ "$ROTATION_WINDOW_GRACE_MINUTES" -gt 59 ]]; then
+    echo "HEARTBEAT_ROTATE_WINDOW_GRACE_MINUTES must be an integer between 0 and 59 (got '${ROTATION_WINDOW_GRACE_MINUTES}')." >&2
+    exit 1
+  fi
+
+  local minute_value
+  minute_value=$((10#$minute))
+
+  if [[ ( "$hour" != "00" && "$hour" != "12" ) || "$minute_value" -gt "$ROTATION_WINDOW_GRACE_MINUTES" ]]; then
+    echo "Heartbeat branch rotation is only allowed between 00:00-00:${ROTATION_WINDOW_GRACE_MINUTES} or 12:00-12:${ROTATION_WINDOW_GRACE_MINUTES} UTC (current: ${hour}:${minute} UTC)." >&2
+    echo "If this is an emergency/manual run, use --allow-off-schedule." >&2
+    exit 1
+  fi
+}
+
+compute_new_branch() {
+  if [[ -n "$EXPLICIT_NEW_BRANCH" ]]; then
+    echo "$EXPLICIT_NEW_BRANCH"
+    return
+  fi
+
+  local day suffix
+  day="$(date -u +%F)"
+  suffix="${CUSTOM_SUFFIX:-$(compute_default_suffix)}"
+  echo "heartbeat/${day}-${suffix}"
+}
+
+ensure_new_branch_available() {
+  local branch="$1"
+
+  if git show-ref --verify --quiet "refs/heads/${branch}"; then
+    echo "Local branch already exists: ${branch}" >&2
+    exit 1
+  fi
+
+  if git ls-remote --exit-code --heads origin "${branch}" >/dev/null 2>&1; then
+    echo "Remote branch already exists on origin: ${branch}" >&2
+    exit 1
+  fi
+}
+
+sync_old_branch_from_origin_if_present() {
+  local branch="$1"
+
+  if git ls-remote --exit-code --heads origin "$branch" >/dev/null 2>&1; then
+    git pull --ff-only origin "$branch"
+  else
+    echo "Remote branch origin/$branch not found, skipping heartbeat branch fast-forward sync before merge."
+  fi
+}
+
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "Not inside a git repository." >&2
+  exit 1
+fi
+
+OLD_BRANCH="$(current_branch)"
+ensure_heartbeat_branch "$OLD_BRANCH"
+require_clean_worktree
+ensure_rotation_window
+
+git fetch origin --prune
+
+# Update current heartbeat branch from remote if available.
+sync_old_branch_from_origin_if_present "$OLD_BRANCH"
+
+NEW_BRANCH="$(compute_new_branch)"
+validate_branch_name "$NEW_BRANCH"
+if [[ "$NEW_BRANCH" != heartbeat/* ]]; then
+  echo "New branch must be heartbeat/*, got '$NEW_BRANCH'." >&2
+  exit 1
+fi
+
+if [[ "$NEW_BRANCH" == "$OLD_BRANCH" ]]; then
+  echo "New branch equals current branch ($OLD_BRANCH). Use --name or --new-branch." >&2
+  exit 1
+fi
+
+ensure_new_branch_available "$NEW_BRANCH"
+
+# Merge old heartbeat branch into dev.
+git checkout dev
+git pull --ff-only origin dev
+
+git merge --no-ff "$OLD_BRANCH" -m "chore(heartbeat): merge ${OLD_BRANCH} into dev"
+
+git push origin dev
+
+# Delete old heartbeat branch local + remote.
+git branch -d "$OLD_BRANCH"
+git push origin --delete "$OLD_BRANCH"
+
+# Create and push new heartbeat branch from updated dev.
+git checkout -b "$NEW_BRANCH"
+git push -u origin "$NEW_BRANCH"
+
+echo "Rotation complete: ${OLD_BRANCH} -> dev, deleted old branch, now on ${NEW_BRANCH}."

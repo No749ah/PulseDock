@@ -1,0 +1,59 @@
+"use client";
+
+import React from "react";
+import { MonitorFormModal } from "./MonitorFormModal";
+import type { TagItem, MonitorPlugin, MonitorFormDataExtended } from "../types";
+
+interface Props {
+  isOpen: boolean;
+  showTemplates: boolean;
+  formData: MonitorFormDataExtended;
+  formErrors: Record<string, string>;
+  formTouched: Record<string, boolean>;
+  tagInput: string;
+  selectedTags: string[];
+  allTags: TagItem[];
+  folders: { id: string; name: string }[];
+  availablePlugins: MonitorPlugin[];
+  selectedPlugin: MonitorPlugin | null;
+  onClose: () => void;
+  onSubmit: () => void;
+  onSetShowTemplates: (value: boolean) => void;
+  onSetFormData: (value: MonitorFormDataExtended) => void;
+  onSetFormErrors: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  onSetFormTouched: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
+  onSetTagInput: (value: string) => void;
+  onSetSelectedTags: React.Dispatch<React.SetStateAction<string[]>>;
+  onApplyTemplate: (template: import("../../components/MonitorTemplates").MonitorTemplate) => void;
+  onCopySuccess: (message: string) => void;
+}
+
+export function EditMonitorModal(props: Props) {
+  return (
+    <MonitorFormModal
+      isOpen={props.isOpen}
+      mode="edit"
+      showTemplates={props.showTemplates}
+      formData={props.formData}
+      formErrors={props.formErrors}
+      formTouched={props.formTouched}
+      tagInput={props.tagInput}
+      selectedTags={props.selectedTags}
+      allTags={props.allTags}
+      folders={props.folders}
+      availablePlugins={props.availablePlugins}
+      selectedPlugin={props.selectedPlugin}
+      onClose={props.onClose}
+      onCancel={props.onClose}
+      onSubmit={props.onSubmit}
+      onSetShowTemplates={props.onSetShowTemplates}
+      onSetFormData={props.onSetFormData}
+      onSetFormErrors={props.onSetFormErrors}
+      onSetFormTouched={props.onSetFormTouched}
+      onSetTagInput={props.onSetTagInput}
+      onSetSelectedTags={props.onSetSelectedTags}
+      onApplyTemplate={props.onApplyTemplate}
+      onCopySuccess={props.onCopySuccess}
+    />
+  );
+}

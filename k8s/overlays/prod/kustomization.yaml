@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../../base
+
+patches:
+  - path: ingress-host.patch.yaml
+
+images:
+  - name: ghcr.io/no749ah/pulsedock-api
+    newTag: latest
+  - name: ghcr.io/no749ah/pulsedock-web
+    newTag: latest

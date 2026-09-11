@@ -1,270 +1,249 @@
-'use client';
+"use client";
 
-import { Badge, Button, Card, Collapse, Group, NumberInput, Pagination, Select, Switch, Table, Text, TextInput } from '@mantine/core';
-import { useEffect, useMemo, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { AppFrame } from '../../components/app-frame';
-import { LoadingState } from '../../components/ui/loading-state';
-import { AppModal, ConfirmModal } from '../../components/ui/modal-framework';
-import { getToken, getUser } from '../../components/auth';
-import { api } from '../../lib/api';
+import React, { Suspense } from "react";
+import nextDynamic from "next/dynamic";
+import { AlertCircle, Bell, CheckCircle2, ChevronDown, ChevronUp, ChevronsUpDown, Download, Eye, LayoutGrid, Layers, List, Monitor, Plus, Upload } from "lucide-react";
+import { AppFrame } from "../../components/app-frame";
+import { brand } from "../../lib/brand";
+import { Card } from "../components/Card";
+import { Button } from "../components/Button";
+import { Table, TableBody, TableHead, TableHeader } from "../components/Table";
+import { useMonitors } from "./hooks/useMonitors";
+import { AdvancedFiltersPanel } from "./components/AdvancedFiltersPanel";
+import { AlertPanel } from "./components/AlertPanel";
+import { MonitorGridView, MonitorGroupedView } from "./components/MonitorGridView";
+import { MonitorRow } from "./components/MonitorRow";
+import { MonitorFiltersPanel } from "./components/MonitorFiltersPanel";
+import { MonitorBulkActionsBar } from "./components/MonitorBulkActionsBar";
+import { MonitorsPagination } from "./components/MonitorsPagination";
+import { CreateMonitorModal } from "./components/CreateMonitorModal";
+import { EditMonitorModal } from "./components/EditMonitorModal";
 
-type Monitor = { id: string; name: string; type: 'HTTP' | 'GIT_RELEASE' | 'DOCKER_IMAGE'; target: string; intervalSec: number };
-type Run = { id: string; monitorId: string; level: 'green' | 'yellow' | 'red'; checkedAt: string };
-type RunDetail = { id: string; monitorId: string; checkedAt: string; ok: boolean; statusCode: number; latencyMs: number | null; message: string; level: 'green'|'yellow'|'red' };
-type Overview = { latestRuns: Run[] };
+const ExternalImportModal = nextDynamic(() => import("./components/ExternalImportModal").then(m => ({ default: m.ExternalImportModal })), { ssr: false });
+const BadgeModal = nextDynamic(() => import("./components/BadgeModal").then(m => ({ default: m.BadgeModal })), { ssr: false });
+const QuickAddModal = nextDynamic(() => import("./components/QuickAddModal").then(m => ({ default: m.QuickAddModal })), { ssr: false });
+const ImportFromComposeModal = nextDynamic(() => import("./components/ImportFromComposeModal").then(m => ({ default: m.ImportFromComposeModal })), { ssr: false });
+const OpenApiImportModal = nextDynamic(() => import("./components/OpenApiImportModal").then(m => ({ default: m.OpenApiImportModal })), { ssr: false });
+const PlaygroundModal = nextDynamic(() => import("./components/PlaygroundModal").then(m => ({ default: m.PlaygroundModal })), { ssr: false });
 
-export default function MonitorsPage() {
-  const router = useRouter();
-  const token = useMemo(() => (typeof window !== 'undefined' ? getToken() : ''), []);
-  const [monitors, setMonitors] = useState<Monitor[]>([]);
-  const [runs, setRuns] = useState<Run[]>([]);
-  const [filter, setFilter] = useState<'ALL' | Monitor['type']>('ALL');
-  const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState('10');
+function MonitorsPageInner() {
+  const vm = useMonitors();
+  if (!vm.user) return null;
 
-  const [editOpen, setEditOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [createOpen, setCreateOpen] = useState(false);
-  const [createStep, setCreateStep] = useState(0);
-  const [createName, setCreateName] = useState('');
-  const [createTarget, setCreateTarget] = useState('');
-  const [createInterval, setCreateInterval] = useState(60);
-  const [createTimeoutMs, setCreateTimeoutMs] = useState(5000);
-  const [createAdvanced, setCreateAdvanced] = useState(false);
-  const [createEnabled, setCreateEnabled] = useState(true);
-  const [selected, setSelected] = useState<Monitor | null>(null);
-  const [historyRows, setHistoryRows] = useState<RunDetail[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [editName, setEditName] = useState('');
-  const [editTarget, setEditTarget] = useState('');
-  const [editInterval, setEditInterval] = useState(60);
-
-  useEffect(() => {
-    const user = getUser();
-    if (!user || !token) router.push('/login');
-  }, [router, token]);
-
-  async function load() {
-    setLoading(true);
-    try {
-      const [m, o] = await Promise.all([
-        api<Monitor[]>('/v1/monitors', token),
-        api<Overview>('/v1/dashboard/overview', token),
-      ]);
-      setMonitors(m);
-      setRuns(o.latestRuns);
-    } finally {
-      setLoading(false);
-    }
+  if (vm.loading) {
+    return (
+      <AppFrame title="Uptime Checks">
+        <div className="flex items-center justify-center min-h-[400px]"><div className="animate-spin rounded-full h-12 w-12 border-2 border-accent border-t-transparent" /></div>
+      </AppFrame>
+    );
   }
-
-  useEffect(() => { load().catch(() => router.push('/login')); }, []);
-
-  async function runNow(monitorId: string) {
-    await api('/v1/monitors/run', token, { method: 'POST', body: JSON.stringify({ monitorId }) });
-    await load();
-  }
-
-  function resetCreateForm() {
-    setCreateStep(0);
-    setCreateName('');
-    setCreateTarget('');
-    setCreateInterval(60);
-    setCreateTimeoutMs(5000);
-    setCreateAdvanced(false);
-    setCreateEnabled(true);
-  }
-
-  async function createMonitor() {
-    await api('/v1/monitors', token, {
-      method: 'POST',
-      body: JSON.stringify({
-        name: createName,
-        target: createTarget,
-        type: 'HTTP',
-        intervalSec: createInterval,
-        timeoutMs: createTimeoutMs,
-      }),
-    });
-    setCreateOpen(false);
-    resetCreateForm();
-    await load();
-  }
-
-  function openEdit(m: Monitor) {
-    setSelected(m);
-    setEditName(m.name);
-    setEditTarget(m.target);
-    setEditInterval(m.intervalSec);
-    setEditOpen(true);
-  }
-
-  async function saveEdit() {
-    if (!selected) return;
-    await api(`/v1/monitors/${selected.id}`, token, {
-      method: 'PATCH',
-      body: JSON.stringify({ name: editName, target: editTarget, intervalSec: editInterval }),
-    });
-    setEditOpen(false);
-    await load();
-  }
-
-  function openDelete(m: Monitor) {
-    setSelected(m);
-    setDeleteOpen(true);
-  }
-
-  async function confirmDelete() {
-    if (!selected) return;
-    await api(`/v1/monitors/${selected.id}`, token, { method: 'DELETE' });
-    setDeleteOpen(false);
-    await load();
-  }
-
-  async function openHistory(m: Monitor) {
-    setSelected(m);
-    const rows = await api<RunDetail[]>(`/v1/monitors/${m.id}/runs`, token);
-    setHistoryRows(rows);
-    setHistoryOpen(true);
-  }
-
-  const visible = filter === 'ALL' ? monitors : monitors.filter((m) => m.type === filter);
-  const size = Number(pageSize);
-  const pages = Math.max(1, Math.ceil(visible.length / size));
-  const safePage = Math.min(page, pages);
-  const pageRows = visible.slice((safePage - 1) * size, safePage * size);
 
   return (
-    <AppFrame title="Monitors" subtitle="Filter by check type and manually trigger run checks.">
-      {loading ? <LoadingState label="Loading monitors..." /> : <>
-      <AppModal opened={createOpen} onClose={() => { setCreateOpen(false); resetCreateForm(); }} title="Create website ping" size="lg">
-        {createStep === 0 ? (
-          <>
-            <Text fw={600} mb="sm">Step 1/3 · Basics</Text>
-            <TextInput label="Name" value={createName} onChange={(e) => setCreateName(e.currentTarget.value)} />
-            <TextInput mt="sm" label="URL" value={createTarget} onChange={(e) => setCreateTarget(e.currentTarget.value)} />
-          </>
-        ) : null}
+    <AppFrame title="Uptime Checks" subtitle="HTTP, TCP, SSL & Heartbeat monitors" breadcrumbs={[{ label: "Monitors" }]}>
+      <div className="space-y-6">
+        {vm.error && <div className="flex items-start gap-3 p-4 rounded-xl bg-danger/10 border border-danger/20"><AlertCircle className="w-5 h-5 text-danger mt-0.5" /><span className="text-danger text-sm">{vm.error}</span></div>}
+        {vm.realtimeAlert && <div className="flex items-start gap-3 p-4 rounded-xl bg-warning/10 border border-warning/20"><Bell className="w-5 h-5 text-warning mt-0.5" /><span className="text-warning text-sm">{vm.realtimeAlert}</span></div>}
 
-        {createStep === 1 ? (
-          <>
-            <Text fw={600} mb="sm">Step 2/3 · Timing</Text>
-            <NumberInput label="Interval (sec)" min={10} value={createInterval} onChange={(v) => setCreateInterval(Number(v || 60))} />
-            <Button mt="sm" variant="subtle" onClick={() => setCreateAdvanced((v) => !v)}>{createAdvanced ? 'Hide advanced' : 'Show advanced'}</Button>
-            <Collapse in={createAdvanced}>
-              <NumberInput mt="sm" label="Timeout (ms)" min={100} value={createTimeoutMs} onChange={(v) => setCreateTimeoutMs(Number(v || 5000))} />
-              <Switch mt="sm" checked={createEnabled} onChange={(e) => setCreateEnabled(e.currentTarget.checked)} label="Enabled after create" disabled />
-            </Collapse>
-          </>
-        ) : null}
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-2xl font-bold text-text-primary">Uptime Checks</h2>
+            <p className="text-text-secondary text-sm mt-1">{vm.uptimeMonitors.length} monitors · {vm.monitorSummary.up} up · {vm.monitorSummary.degraded} degraded · {vm.monitorSummary.down} down · {vm.monitorSummary.paused} paused</p>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="flex rounded-lg border border-border overflow-hidden">
+              <button onClick={() => vm.setViewMode("table")} className={`p-1.5 ${vm.viewMode === "table" ? "bg-accent/20 text-accent" : "text-text-secondary"}`}><List className="w-3.5 h-3.5" /></button>
+              <button onClick={() => vm.setViewMode("grid")} className={`p-1.5 ${vm.viewMode === "grid" ? "bg-accent/20 text-accent" : "text-text-secondary"}`}><LayoutGrid className="w-3.5 h-3.5" /></button>
+              <button onClick={() => vm.setViewMode("grouped")} className={`p-1.5 ${vm.viewMode === "grouped" ? "bg-accent/20 text-accent" : "text-text-secondary"}`}><Layers className="w-3.5 h-3.5" /></button>
+            </div>
+            <Button variant="secondary" size="sm" onClick={() => vm.fileInputRef.current?.click()} className="flex items-center gap-2" title={`Import monitors from ${brand.name} JSON`} disabled={vm.importing}><Upload className="w-4 h-4" /><span className="hidden sm:inline">{vm.importing ? "Importing…" : "Import"}</span></Button>
+            <input ref={vm.fileInputRef} type="file" accept=".json,application/json" className="hidden" onChange={vm.handleImportFile} />
+            <Button variant="secondary" size="sm" onClick={() => vm.handleExport("json")} className="flex items-center gap-2"><Download className="w-4 h-4" /><span className="hidden sm:inline">Export</span></Button>
+            <Button size="sm" onClick={vm.openCreateModal} className="flex items-center gap-2"><Plus className="w-4 h-4" />New Monitor</Button>
+          </div>
+        </div>
 
-        {createStep === 2 ? (
-          <>
-            <Text fw={600} mb="sm">Step 3/3 · Review</Text>
-            <Text size="sm">Name: <b>{createName}</b></Text>
-            <Text size="sm">URL: <b>{createTarget}</b></Text>
-            <Text size="sm">Interval: <b>{createInterval}s</b></Text>
-            <Text size="sm">Timeout: <b>{createTimeoutMs}ms</b></Text>
-          </>
-        ) : null}
+        <MonitorFiltersPanel
+          searchQuery={vm.searchQuery}
+          onSearchQueryChange={vm.setSearchQuery}
+          statusFilter={vm.statusFilter}
+          onStatusFilterChange={vm.setStatusFilter}
+          folders={vm.folders}
+          folderFilter={vm.folderFilter}
+          onFolderFilterChange={vm.setFolderFilter}
+          showAdvancedFilters={vm.showAdvancedFilters}
+          activeFilterCount={vm.activeFilterCount}
+          onToggleAdvancedFilters={() => vm.setShowAdvancedFilters((v: boolean) => !v)}
+          allTags={vm.allTags}
+          activeTagFilter={vm.activeTagFilter}
+          onActiveTagFilterChange={vm.setActiveTagFilter}
+        />
 
-        <Group justify="space-between" mt="md">
-          <Button variant="default" onClick={() => setCreateStep((s) => Math.max(0, s - 1))} disabled={createStep === 0}>Back</Button>
-          {createStep < 2 ? <Button onClick={() => setCreateStep((s) => Math.min(2, s + 1))}>Next</Button> : <Button onClick={createMonitor}>Create ping</Button>}
-        </Group>
-      </AppModal>
-
-      <AppModal opened={editOpen} onClose={() => setEditOpen(false)} title="Edit monitor">
-        <TextInput label="Name" value={editName} onChange={(e) => setEditName(e.currentTarget.value)} />
-        <TextInput mt="sm" label="Target" value={editTarget} onChange={(e) => setEditTarget(e.currentTarget.value)} />
-        <NumberInput mt="sm" label="Interval (sec)" min={10} value={editInterval} onChange={(v) => setEditInterval(Number(v || 60))} />
-        <Group mt="md" justify="flex-end">
-          <Button variant="default" onClick={() => setEditOpen(false)}>Cancel</Button>
-          <Button onClick={saveEdit}>Save</Button>
-        </Group>
-      </AppModal>
-
-      <ConfirmModal
-        opened={deleteOpen}
-        onClose={() => setDeleteOpen(false)}
-        title="Delete monitor"
-        message={<>Delete <b>{selected?.name}</b>?</>}
-        onConfirm={confirmDelete}
-        confirmLabel="Delete"
-      />
-
-      <AppModal opened={historyOpen} onClose={() => setHistoryOpen(false)} title={`Run history · ${selected?.name ?? ''}`} size="xl">
-        <Table withTableBorder withColumnBorders>
-          <Table.Thead><Table.Tr><Table.Th>Time</Table.Th><Table.Th>Level</Table.Th><Table.Th>Status</Table.Th><Table.Th>Latency</Table.Th><Table.Th>Message</Table.Th></Table.Tr></Table.Thead>
-          <Table.Tbody>
-            {historyRows.map((r) => (
-              <Table.Tr key={r.id}>
-                <Table.Td>{new Date(r.checkedAt).toLocaleString()}</Table.Td>
-                <Table.Td><Badge color={r.level === 'green' ? 'green' : r.level === 'yellow' ? 'yellow' : 'red'}>{r.level.toUpperCase()}</Badge></Table.Td>
-                <Table.Td>{r.statusCode}</Table.Td>
-                <Table.Td>{r.latencyMs ?? '-'}</Table.Td>
-                <Table.Td>{r.message}</Table.Td>
-              </Table.Tr>
-            ))}
-          </Table.Tbody>
-        </Table>
-      </AppModal>
-
-      <Card withBorder radius="md" mb="md">
-        <Group justify="space-between">
-          <Text fw={700}>Website pings</Text>
-          <Button onClick={() => { resetCreateForm(); setCreateOpen(true); }}>Create ping</Button>
-        </Group>
-      </Card>
-
-      <Card withBorder radius="md" mb="md">
-        <Group>
-          <Select
-            label="Filter"
-            value={filter}
-            onChange={(v) => { setFilter((v as any) || 'ALL'); setPage(1); }}
-            data={[{ value: 'ALL', label: 'All' }, { value: 'HTTP', label: 'HTTP' }, { value: 'GIT_RELEASE', label: 'Git Release' }, { value: 'DOCKER_IMAGE', label: 'Docker Image' }]}
+        {vm.showAdvancedFilters && (
+          <AdvancedFiltersPanel
+            filterStatuses={vm.filterStatuses}
+            filterTypes={vm.filterTypes}
+            filterTags={vm.filterTags}
+            allTags={vm.allTags}
+            savedPresets={vm.savedPresets}
+            activeFilterCount={vm.activeFilterCount}
+            onSetFilterStatuses={vm.setFilterStatuses}
+            onSetFilterTypes={vm.setFilterTypes}
+            onSetFilterTags={vm.setFilterTags}
+            onSavePreset={vm.saveCurrentPreset}
+            onApplyPreset={vm.applyPreset}
+            onDeletePreset={vm.deletePreset}
+            onClearFilters={() => { vm.setFilterStatuses(new Set(["up", "down", "degraded", "paused"])); vm.setFilterTypes(new Set(["HTTP", "TCP", "SSL_CERT", "HEARTBEAT", "DNS", "PING", "SMTP", "GIT_RELEASE", "DOCKER_IMAGE", "BROWSER", "WHOIS", "FTP", "IMAP", "POP3", "CT_LOG", "GRAPHQL"])); vm.setFilterTags(new Set()); vm.setTypeFilter("all"); vm.setStatusFilter("all"); vm.setActiveTagFilter(null); vm.setFolderFilter(null); }}
           />
-        </Group>
-      </Card>
+        )}
 
-      <Card withBorder radius="md">
-        <Table withTableBorder withColumnBorders>
-          <Table.Thead><Table.Tr><Table.Th>Name</Table.Th><Table.Th>Type</Table.Th><Table.Th>Target</Table.Th><Table.Th>Interval</Table.Th><Table.Th>Status (click)</Table.Th><Table.Th>Actions</Table.Th></Table.Tr></Table.Thead>
-          <Table.Tbody>
-            {pageRows.map((m) => {
-              const latest = runs.find((r) => r.monitorId === m.id);
-              const level = latest?.level ?? 'green';
-              return (
-                <Table.Tr key={m.id}>
-                  <Table.Td style={{ cursor: 'pointer' }} onClick={() => openHistory(m)}>{m.name}</Table.Td>
-                  <Table.Td>{m.type}</Table.Td>
-                  <Table.Td>{m.target}</Table.Td>
-                  <Table.Td>{m.intervalSec}s</Table.Td>
-                  <Table.Td style={{ cursor: 'pointer' }} onClick={() => openHistory(m)}><Badge color={level === 'green' ? 'green' : level === 'yellow' ? 'yellow' : 'red'}>{level.toUpperCase()}</Badge></Table.Td>
-                  <Table.Td>
-                    <Group gap="xs">
-                      <Button size="xs" onClick={() => runNow(m.id)}>Run</Button>
-                      <Button size="xs" variant="light" onClick={() => openEdit(m)}>Edit</Button>
-                      <Button size="xs" variant="light" color="red" onClick={() => openDelete(m)}>Delete</Button>
-                    </Group>
-                  </Table.Td>
-                </Table.Tr>
-              );
-            })}
-          </Table.Tbody>
-        </Table>
-        <Group justify="space-between" mt="md">
-          <Pagination value={safePage} onChange={setPage} total={pages} />
-          <Group gap="xs">
-            <Text size="sm" c="dimmed">Rows per page</Text>
-            <Select w={90} value={pageSize} onChange={(v) => { setPageSize(v || '10'); setPage(1); }} data={['10', '25', '50']} />
-          </Group>
-        </Group>
-      </Card>
-      </>}
+        {vm.importResult && (
+          <div className={`flex items-start gap-3 p-4 rounded-xl border ${vm.importResult.errors.length === 0 ? "bg-success/10 border-success/20" : "bg-warning/10 border-warning/20"}`}>
+            <CheckCircle2 className={`w-5 h-5 mt-0.5 ${vm.importResult.errors.length === 0 ? "text-success" : "text-warning"}`} />
+            <div className="flex-1 text-sm">Imported {vm.importResult.imported} monitor{vm.importResult.imported !== 1 ? "s" : ""}{vm.importResult.errors.length > 0 && `, ${vm.importResult.errors.length} failed`}</div>
+            <button onClick={() => vm.setImportResult(null)}><Eye className="w-4 h-4" /></button>
+          </div>
+        )}
+
+        {vm.filteredMonitors.length === 0 ? (
+          <Card className="text-center py-16">
+            <Monitor className="w-12 h-12 text-text-secondary opacity-50 mx-auto mb-4" />
+            <p className="text-text-primary text-lg font-medium mb-2">No monitors match</p>
+            <p className="text-text-secondary text-sm mb-6">Try adjusting your search or filters</p>
+            <Button variant="secondary" size="sm" onClick={() => { vm.setActiveTagFilter(null); vm.setSearchQuery(""); vm.setStatusFilter("all"); vm.setFolderFilter(null); }}>Clear filters</Button>
+          </Card>
+        ) : (
+          <>
+            <MonitorBulkActionsBar
+              selectedCount={vm.selectedIds.size}
+              bulkLoading={vm.bulkLoading}
+              allTags={vm.allTags}
+              bulkTagId={vm.bulkTagId}
+              onBulkTagIdChange={vm.setBulkTagId}
+              bulkValue={vm.bulkValue}
+              onBulkValueChange={vm.setBulkValue}
+              onBulkAction={vm.handleBulkAction}
+              onOpenBulkEdit={() => vm.setShowBulkEditModal(true)}
+              onClearSelection={() => vm.setSelectedIds(new Set())}
+            />
+
+            {vm.viewMode === "grid" ? (
+              <MonitorGridView monitors={vm.paginatedMonitors} runs={vm.runs} onEdit={vm.openEditModal} onDelete={vm.handleDelete} />
+            ) : vm.viewMode === "grouped" ? (
+              <MonitorGroupedView monitors={vm.filteredMonitors} runs={vm.runs} />
+            ) : (
+              <Card className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHead>
+                      <tr>
+                        <TableHeader className="w-10" />
+                        <TableHeader><button onClick={() => vm.handleSort("name")} className="flex items-center gap-1">Name {vm.sortBy === "name" ? (vm.sortDir === "asc" ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />) : <ChevronsUpDown className="h-3 w-3 opacity-40" />}</button></TableHeader>
+                        {vm.visibleCols.type && <TableHeader>Type</TableHeader>}
+                        {vm.visibleCols.target && <TableHeader>Target</TableHeader>}
+                        {vm.visibleCols.interval && <TableHeader>Interval</TableHeader>}
+                        <TableHeader>Status</TableHeader>
+                        {vm.visibleCols.latency && <TableHeader>Latency</TableHeader>}
+                        {vm.visibleCols.alerts && <TableHeader>Alerts</TableHeader>}
+                        {vm.visibleCols.health && <TableHeader>Health</TableHeader>}
+                        <TableHeader>Last check</TableHeader>
+                        <TableHeader>Actions</TableHeader>
+                      </tr>
+                    </TableHead>
+                    <TableBody>
+                      {vm.paginatedMonitors.map((monitor) => (
+                        <MonitorRow
+                          key={monitor.id}
+                          monitor={monitor}
+                          runs={vm.runs}
+                          selected={vm.selectedIds.has(monitor.id)}
+                          visibleCols={vm.visibleCols}
+                          healthScore={vm.healthScores[monitor.id]}
+                          folderName={vm.folders.find((f) => f.id === monitor.folderId)?.name}
+                          onToggleSelect={() => vm.toggleSelect(monitor.id)}
+                          onEdit={() => vm.openEditModal(monitor)}
+                          onDelete={() => vm.handleDelete(monitor.id)}
+                          onClone={() => vm.handleClone(monitor.id)}
+                          onCheckNow={() => vm.handleCheckNow(monitor.id)}
+                          onToggleEnabled={() => vm.handleToggleEnabled(monitor)}
+                          onOpenAlerts={() => vm.openAlertPanel(monitor)}
+                          onPin={() => vm.handlePin(monitor)}
+                        />
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+                <MonitorsPagination pageSize={vm.pageSize} totalPages={vm.totalPages} safePage={vm.safePage} onPageChange={vm.setCurrentPage} />
+              </Card>
+            )}
+          </>
+        )}
+      </div>
+
+      {vm.modalMode === "create" ? (
+        <CreateMonitorModal
+          isOpen={vm.showModal}
+          showTemplates={vm.showTemplates}
+          formData={vm.formData}
+          formErrors={vm.formErrors}
+          formTouched={vm.formTouched}
+          tagInput={vm.tagInput}
+          selectedTags={vm.selectedTags}
+          allTags={vm.allTags}
+          folders={vm.folders}
+          availablePlugins={vm.availablePlugins}
+          selectedPlugin={vm.selectedPlugin}
+          onClose={() => vm.setShowModal(false)}
+          onSubmit={vm.handleCreate}
+          onSetShowTemplates={vm.setShowTemplates}
+          onSetFormData={vm.setFormData}
+          onSetFormErrors={vm.setFormErrors}
+          onSetFormTouched={vm.setFormTouched}
+          onSetTagInput={vm.setTagInput}
+          onSetSelectedTags={vm.setSelectedTags}
+          onApplyTemplate={vm.handleApplyTemplate}
+          onCopySuccess={() => {}}
+        />
+      ) : (
+        <EditMonitorModal
+          isOpen={vm.showModal}
+          showTemplates={vm.showTemplates}
+          formData={vm.formData}
+          formErrors={vm.formErrors}
+          formTouched={vm.formTouched}
+          tagInput={vm.tagInput}
+          selectedTags={vm.selectedTags}
+          allTags={vm.allTags}
+          folders={vm.folders}
+          availablePlugins={vm.availablePlugins}
+          selectedPlugin={vm.selectedPlugin}
+          onClose={() => vm.setShowModal(false)}
+          onSubmit={vm.handleUpdate}
+          onSetShowTemplates={vm.setShowTemplates}
+          onSetFormData={vm.setFormData}
+          onSetFormErrors={vm.setFormErrors}
+          onSetFormTouched={vm.setFormTouched}
+          onSetTagInput={vm.setTagInput}
+          onSetSelectedTags={vm.setSelectedTags}
+          onApplyTemplate={vm.handleApplyTemplate}
+          onCopySuccess={() => {}}
+        />
+      )}
+
+      {vm.alertPanelMonitor && <AlertPanel monitor={vm.alertPanelMonitor} assignedChannels={vm.assignedChannels} unassignedChannels={vm.unassignedChannels} allChannels={vm.allChannels} loading={vm.alertPanelLoading} error={vm.alertPanelError} onClose={() => vm.setAlertPanelMonitor(null)} onAssign={vm.assignChannel} onUnassign={vm.unassignChannel} onUpdateNotifyOn={vm.updateNotifyOn} />}
+      {vm.showExternalImport && <ExternalImportModal source={vm.externalImportSource} onSourceChange={vm.setExternalImportSource} importing={vm.externalImporting} result={vm.externalImportResult} onClose={() => vm.setShowExternalImport(false)} onImportFile={vm.handleExternalImportFile} />}
+      {vm.badgeMonitor && <BadgeModal monitor={vm.badgeMonitor} onClose={() => vm.setBadgeMonitor(null)} onCopySuccess={() => {}} />}
+      {vm.showQuickAdd && <QuickAddModal folders={vm.folders} channels={vm.allChannels} onClose={() => vm.setShowQuickAdd(false)} onSubmit={vm.handleQuickAdd} />}
+      {vm.showComposeImport && <ImportFromComposeModal userId={vm.user?.id} onClose={() => vm.setShowComposeImport(false)} onCreated={async () => {}} />}
+      {vm.showPlayground && <PlaygroundModal onClose={() => vm.setShowPlayground(false)} onCreateMonitor={() => vm.openCreateModal()} />}
+      {vm.showOpenApiImport && <OpenApiImportModal onClose={() => vm.setShowOpenApiImport(false)} onImported={async () => { vm.setShowOpenApiImport(false); }} />}
     </AppFrame>
+  );
+}
+
+export default function MonitorsPage() {
+  return (
+    <Suspense fallback={<AppFrame title="Uptime Checks"><div className="flex items-center justify-center min-h-[400px]"><div className="animate-spin rounded-full h-12 w-12 border-2 border-accent border-t-transparent" /></div></AppFrame>}>
+      <MonitorsPageInner />
+    </Suspense>
   );
 }

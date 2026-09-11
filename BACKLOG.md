@@ -1,3 +1,13 @@
+## Status Summary (2026-09-10 12:45 UTC)
+- **Build/Test/Audit:** ✅ Production build passes. Tests: 5698 Web + 5327 API + 114 CLI + 12 Agent. `npm audit --audit-level=high`: 0 vulnerabilities.
+- **Deployment:** ⚠️ Services restarted and remain healthy locally (`/health` 200, `/login` 200, direct/proxied authenticated-path probes return expected 401). Public Cloudflare route is blocked upstream with HTTP 502 on every page/API path.
+- **Branch:** heartbeat/2026-09-10-boot-security
+- **Changes:**
+  - [x] **fix(e2e): support local web-proxy login responses** — updated Playwright auth response matchers to accept both direct `/v1/auth/login` and proxied `/api/v1/auth/login` URLs, restoring localhost valid-login and authenticated dashboard checks.
+  - [x] **chore(web): migrate live URL checker off deprecated Edge Runtime** — switched `/api/check-url` to the supported Node.js route runtime and added a regression assertion so Next.js production builds no longer emit the Edge Runtime deprecation/static-generation warning.
+  - [x] **fix(security): patch production dependency advisories** — upgraded Next.js to 16.3.4, sharp to 0.35.4, multer to 2.3.0, js-yaml to 5.x, and nodemailer to 10.0.3; refreshed the lockfile and verified the full build/test/audit suite.
+  - [x] **fix(ops): keep restarted services alive after heartbeat shell exit** — detached API/web stdin, ignored terminal hangups, and started each service in a new session, preventing heartbeat runners from immediately shutting down otherwise healthy services.
+
 ## Status Summary (2026-09-01 02:40 UTC)
 - **Build/Test/Audit:** ✅ Build passes. Tests: 5327 API + 5698 Web (last verified 22:30 UTC Aug 31). TypeScript clean. 0 vulnerabilities.
 - **Deployment:** ⚠️ Docker/dind unavailable in sandbox — infrastructure only.
@@ -16,98 +26,6 @@
   - [x] **feat(registry): 20 more variants (737 → 757)** — knowledge: outline, bookstack, wiki-js, nocodb, baserow, appflowy; diagramming: excalidraw, drawio, mermaid; media: stremio; IaC: vagrant, serverless-framework, cdk, cdktf, atlantis, infracost, waypoint; messaging: apache-pulsar, apache-rocketmq.
   - **Registry: 757 / 1292 tools with variants** (+ 227 total this session, 897 still missing).
 
-## Status Summary (2026-08-31 22:45 UTC)
-- **Build/Test/Audit:** ✅ Build passes. Web: 5698 tests (257 files). API: 5327 tests (239 files). TypeScript clean. 0 vulnerabilities.
-- **Deployment:** ⚠️ Docker/dind unavailable in sandbox — infrastructure only.
-- **Branch:** heartbeat/2026-08-31-noon (20 commits, pushed; rotation due ~00:00 UTC)
-- **Changes (21:40–22:45 UTC):**
-  - [x] **feat(registry): 22 more variants (695 → 717)** — networking: headscale, coredns, nginx-ingress; storage/backup: openebs, velero, restic, kopia (+server), borgbackup, duplicati, seaweedfs, juicefs (+cloud), ceph (+Rook); CMS: keystonejs, craft-cms (+cloud), processwire; comms: jitsi-meet (+JaaS), bigbluebutton, livekit (+cloud), ejabberd (+business), prosody, mumble, coturn.
-  - [x] **feat(registry): 20 more variants (717 → 737)** — CMS: microweber, cockpit-cms, decap-cms; notifications: ntfy (+cloud); media/books: kavita, komga, calibre-web, audiobookshelf, tautulli, bazarr; runtimes: deno (+Deploy), bun, devpod, act, hoppscotch (+cloud), gitea-actions, gitness; project mgmt: plane (+cloud), linear-oss.
-  - **Registry: 737 / 1292 tools with variants** (+ 207 today total, 915 still missing).
-
-## Status Summary (2026-08-31 21:40 UTC)
-- **Build/Test/Audit:** ✅ Build passes. Web: 5698 tests. API: 5327 tests. TypeScript clean. 0 vulnerabilities.
-- **Deployment:** ⚠️ Docker/dind unavailable in sandbox — infrastructure only.
-- **Branch:** heartbeat/2026-08-31-noon (17 commits, pushed; rotation due ~00:00 UTC)
-- **Changes (20:40–21:40 UTC):**
-  - [x] **feat(registry): 20 more variants (675 → 695)** — security: opa, kyverno, boundary (+HCP), external-secrets, grype, syft, semgrep (+cloud), infisical (+cloud), openbao, checkov, sops; networking: cilium, cloudflared, zerotier (+central), openvpn, netmaker (+cloud), frp, unbound; DB: rethinkdb.
-  - [x] **feat(registry): 22 more variants (695 → 717)** — networking: headscale, coredns, nginx-ingress; storage/backup: openebs, velero, restic, kopia (+server), borgbackup, duplicati, seaweedfs, juicefs (+cloud), ceph (+Rook); CMS: keystonejs, craft-cms (+cloud), processwire; comms: jitsi-meet (+JaaS), bigbluebutton, livekit (+cloud), ejabberd (+business), prosody, mumble, coturn.
-  - **Registry: 717 / 1292 tools with variants** (+ 187 today total, 935 still missing).
-
-## Status Summary (2026-08-31 20:40 UTC)
-- **Build/Test/Audit:** ✅ Build passes. Web: 5698 tests. API: 5327 tests. TypeScript clean. 0 vulnerabilities.
-- **Deployment:** ⚠️ Docker/dind unavailable in sandbox — infrastructure only.
-- **Branch:** heartbeat/2026-08-31-noon (15 commits, pushed; rotation due at 00:00 UTC)
-- **Changes (19:30–20:40 UTC):**
-  - [x] **feat(registry): 24 more variants (651 → 675)** — K8s distros (microk8s, talos, crossplane, ARC), CI/CD build tools (argo-workflows, argo-events, dagger, earthly, buildkite-agent, spinnaker, gitlab-runner), databases (scylladb, yugabytedb, tidb, ferretdb, edgedb, dragonfly), observability (fluentd, fluent-bit, signoz, openobserve, pyroscope, coroot, quickwit).
-  - [x] **feat(registry): 20 more variants (675 → 695)** — security: opa, kyverno, boundary, external-secrets, grype, syft, semgrep, infisical, openbao, checkov, sops; networking: cilium, cloudflared, zerotier, openvpn, netmaker, frp, unbound; DB: rethinkdb.
-  - **Registry: 695 / 1292 tools with variants** (+ 165 today total, 957 still missing).
-
-## Status Summary (2026-08-31 18:40 UTC)
-- **Build/Test/Audit:** ✅ Build passes. Web: 5698 tests (257 files). API: 5327 tests (239 files). TypeScript clean. 0 vulnerabilities.
-- **Deployment:** ⚠️ Docker/dind unavailable in sandbox — infrastructure only.
-- **Branch:** heartbeat/2026-08-31-noon (12 commits, pushed)
-- **Changes (17:30–18:40 UTC):**
-  - [x] **feat(registry): 21 more variants (608 → 630)** — security: openvas; storage: openmediavault, garage; comms: revolt, element; dev/workflow: windmill, temporal, prefect, coder, airflow; Helm: argocd, postgresql, redis, ingress-nginx, cert-manager, kube-prometheus-stack, grafana.
-  - [x] **feat(registry): 21 more variants (630 → 651)** — npm: jupyter, nestjs, nextjs, prisma, fastify; JVM/Maven: spring-boot, quarkus, micronaut, jackson-databind, log4j; API gateways: kong, apisix, tyk, hasura, postgrest; container runtimes: containerd, cri-o, keda, flagger; helm-argocd.
-  - **Registry: 651 / 1292 tools with variants** (+ 121 today total, 641 still missing).
-
-## Status Summary (2026-08-31 17:00 UTC)
-- **Build/Test/Audit:** ✅ Build passes. Web: 5698 tests (257 files). API: 5327 tests (239 files). TypeScript clean x2. 0 npm vulnerabilities.
-- **Deployment:** ⚠️ Docker/dind unavailable in sandbox — infrastructure issue, not code.
-- **Branch:** heartbeat/2026-08-31-noon (pushed; 5 commits this session)
-- **Changes (16:30–17:00 UTC):**
-  - [x] **feat(registry): 19 more tool variants (548 → 567)** — CI/CD: fluxcd, tekton (pipelines+triggers), concourse-ci, teamcity, fleet, okd; databases: duckdb, typesense, surrealdb, valkey, timescaledb, cockroachdb, cassandra, opensearch, keydb; observability: opentelemetry-collector (+contrib), tempo, zipkin; security: trivy (CLI+server).
-  - [x] **feat(registry): 20 more tool variants (567 → 587)** — networking: nginx (3 variants), caddy, haproxy, envoy, istio, linkerd; IaC: terraform, opentofu, ansible (3 variants), pulumi, saltstack, chef, puppet, gocd; CMS/analytics: strapi, directus, matomo, umami, fail2ban, nagios.
-  - Registry now has **587 / 1292 tools with variants** (+ 39 this session, + 57 today total).
-
-## Status Summary (2026-08-31 15:40 UTC)
-- **Build/Test/Audit:** ✅ Build passes. Web: 5698 tests pass (257 files). API: 5301 tests (239 files, +35 from new provider coverage). TypeScript clean x2. 0 npm vulnerabilities.
-- **Deployment:** ⚠️ Docker/dind unavailable in sandbox — infrastructure issue, not code. Services offline locally.
-- **Branch:** heartbeat/2026-08-31-noon (rotated from heartbeat/2026-08-11-boot at 12:00 UTC)
-- **Changes (15:40 UTC):**
-  - [x] **fix(test): reliability-trend mixed-fleet spec day-of-week agnostic** — `monitors.reliability.spec.ts` failed on Mondays because the calendar-week bucket starts today; added `makeDate(0)` runs so two distinct week buckets always exist.
-  - [x] **test(api): full coverage for 8 untested version-check providers** — added 35 unit tests for `nuget`, `rubygems`/`gem`, `go`/`golang`/`gomod`, `forgejo`, `gitea` providers in `version-detection.service.spec.ts`; covers happy paths, aliases, error cases, prefix stripping, host defaults, and auth header injection.
-  - [x] **feat(registry): add variants for 18 core tools (530 → 548)** — databases: postgresql, mysql, mariadb, redis, mongodb, clickhouse (APT/Docker/cloud editions); observability: alertmanager, loki, jaeger, zabbix, graylog (instance-URL JSON endpoints); security: bitwarden, crowdsec, wazuh; infrastructure: podman, nomad, k0s, drone-ci.
-
-## Status Summary (2026-08-31 10:15 UTC)
-- **Build/Test/Audit:** ✅ Build passes. Web: 5698 tests pass (257 files, +11 from new specs). API TypeScript clean. Web TypeScript clean. 0 npm vulnerabilities.
-- **Deployment:** ⚠️ Web server running locally (port 1234). Public URL returning 502 — Docker/dind unavailable in sandbox (no API), infrastructure issue not a code issue.
-- **Branch:** heartbeat/2026-08-11-boot (active; 11 commits this session)
-- **Changes (10:15 UTC):**
-  - [x] **fix(security): bump esbuild to clear low-severity dev-server advisory** — `GHSA-g7r4-m6w7-qqqr`; 0 vulnerabilities.
-  - [x] **fix(types): correct Summary stats shape in version hook fallback** — `useVersions.ts` error-fallback used stale `{ upToDate, outdated, unknown }` instead of `{ green, yellow, red }` required by `Summary` type.
-  - [x] **fix(config): remove invalid vitest minWorkers option** — `apps/web/vitest.config.ts` had `minWorkers: 1` which doesn't exist in vitest's `InlineConfig`; removed.
-  - [x] **test(versions): add 101 unit tests for createVersionModalHelpers and utils** — full coverage of `normalizeToolQuery`, `scoreToolMatch`, `filterTools`, `closeMatchTools`, `modalProgress`, `providerFromSourceType`, all snippet builders, `stripLeadingV`, `secondsToHuman`, `levelBadgeVariant`, and all option constants.
-  - [x] **fix(types): add displayName and timezone to Me interface** — `Me` was missing these fields; account page used `as unknown as` casts to access them. Fixed type definition, removed casts.
-  - [x] **fix(types): replace as-unknown-as cast in alerts/channels testAll** — used proper union type `{ results: TestAllResult[] } | TestAllResult[]` with `Array.isArray()` type guard.
-  - [x] **fix(types): remove redundant cast in API proxy route** — `Headers.getSetCookie()` is typed in `lib.dom.d.ts`; cast was unnecessary.
-  - [x] **fix(types): proper union return type on auth.service.login** — eliminated `as unknown as` cast; added type guards in controller (`'requires2fa' in result`) and spec.
-  - [x] **fix(metrics): correct Prometheus uptime calculation (real bug!)** — `MonitorRun.status` is `Int` (HTTP status code) and can never equal the string `'up'`; both `pulsedock_monitor_up` (per-monitor) and `pulsedock_monitor_uptime_pct_7d` metrics were always 0. Fixed by switching groupBy to `ok: Boolean` and `latestRun.ok` check; updated spec mocks accordingly.
-  - [x] **fix(types): simplify checkedAt normalisation** — `new Date(x).toISOString()` handles both string and Date without any cast.
-
-## Status Summary (2026-04-14 08:16 UTC)
-- **Build/Test/Audit:** ✅ Full heartbeat checks passed after stabilization fix (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`, 0 vulnerabilities).
-- **Deployment:** ⏳ Pending restart + deploy verification (Steps 3-5 will run after commit).
-- **Branch:** heartbeat/2026-04-10-noon (rotation check pending; current run remains outside 00:00/12:00 UTC windows).
-- **Last changes (08:16 UTC):**
-  - [x] **test(api): stabilize three flaky timeout-prone specs in loaded heartbeat runners** — added explicit `15000ms` per-test timeouts for Matrix non-ok handling (`alerts.service.spec.ts`), 2FA recovery-code disable path (`auth.service.spec.ts`), and status-page multi-monitor filtering (`status-pages.service.spec.ts`) to prevent false negative 5s default timeout failures.
-
-## Status Summary (2026-04-11 22:12 UTC)
-- **Build/Test/Audit:** ✅ Full heartbeat checks passed (`git pull origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`) and post-change validation remained green (`npm run build && npm run test && npm audit --audit-level=high`, 0 vulnerabilities).
-- **Deployment:** ⏳ Pending restart + deploy verification (will be executed in Steps 3-5 after commit).
-- **Branch:** heartbeat/2026-04-10-noon (Step-6 rotation check pending; current run is outside scheduled 00:00/12:00 UTC window).
-- **Last changes (22:12 UTC):**
-  - [x] **fix(heartbeat): run frontend route/static audits in strict shell mode** — enabled `set -euo pipefail` in `scripts/audit-frontend-pages.sh` so unexpected command failures terminate Step-5 audits immediately instead of continuing in partially failed states.
-
-## Status Summary (2026-04-10 23:11 UTC)
-- **Build/Test/Audit:** ✅ Full heartbeat checks passed (`git pull --ff-only origin dev`, `npm run build`, `npm run test`, `npm audit --audit-level=high`) and post-change validation remained green (`npm run build && npm run test && npm audit --audit-level=high`, 0 vulnerabilities).
-- **Deployment:** ✅ Services restarted via `npm run restart`; post-deploy checks passed (`/health` 200, `/login` 200, local/public `/api/v1/monitors` returned expected `401` with invalid bearer).
-- **Frontend Audit:** ✅ Required local + public route checks, static-asset checks, and HEAD checks passed (`npm run audit:frontend`, `npm run audit:frontend:heads`, `npm run audit:frontend:prod`, `npm run audit:frontend:heads:prod`; all green).
-- **Branch:** heartbeat/2026-04-10-noon (rotation check skipped at 23:11 UTC via `npm run heartbeat:rotate:if-due`, outside 00:00-00:05 / 12:00-12:05 UTC windows).
-- **Last changes (23:11 UTC):**
-  - [x] **fix(heartbeat): fail HEAD audit on redirect drift** — hardened `scripts/heartbeat-curl-pages.sh` to follow redirects and compare `%{url_effective}` against expected required routes, so Step-5 HEAD checks now fail on silent route drift instead of accepting any final `200`.
-
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
 **The project is NOT done. Not even close.**
@@ -121,6 +39,9 @@
 ## Next Up (Priority Order)
 
 ### 🔴 P0 - Architecture & Code Quality
+
+- [x] **2026-09-10 boot: patch production dependency advisories** — ✅ Done (2026-09-10). Upgraded Next.js to 16.3.4, sharp to 0.35.4, multer to 2.3.0, js-yaml to 5.x, and nodemailer to 10.0.3. Production build and all 11,151 tests pass; npm audit reports 0 vulnerabilities.
+- [x] **Restore PR #6 E2E login checks** — ✅ Done (2026-09-10). PR #6 merged after the E2E workflow passed in run 34466091039. Login fixtures and auth specs now assert the `/v1/auth/login` response before waiting for navigation, so future API failures report their HTTP status and response body instead of ending as opaque `/login` timeouts.
 
 - [x] **Refactor monitors.service.ts (9613 lines → modular)** - ✅ Done (2026-03-30). Split into 6 sub-services:
   - `monitors-crud.service.ts` - CRUD, list, clone, bulk operations
@@ -184,6 +105,8 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Support localhost web-proxy paths in Playwright login response checks** - ✅ Done (2026-09-10). Changed both E2E auth response matchers to accept direct `/v1/auth/login` and proxied `/api/v1/auth/login`, allowing the mandatory local browser flow to observe the login response before asserting navigation.
+- [x] **Migrate live URL checker off deprecated Next.js Edge Runtime** - ✅ Done (2026-09-10). Switched `apps/web/app/api/check-url/route.ts` to the supported Node.js runtime and added a regression assertion; production builds no longer emit the Edge Runtime deprecation/static-generation warning.
 - [x] **Stabilize three timeout-prone API specs that intermittently fail heartbeat Step-1 test runs under load** - ✅ Done (2026-04-14). Added explicit `15000ms` per-test timeouts in `apps/api/src/alerts/alerts.service.spec.ts`, `apps/api/src/auth/auth.service.spec.ts`, and `apps/api/src/status-pages/status-pages.service.spec.ts` for known slow-path tests that occasionally exceed Vitest's default `5000ms` budget on busy runners.
 - [x] **Run Step-5 frontend route/static audits in strict shell mode** - ✅ Done (2026-04-11). Updated `scripts/audit-frontend-pages.sh` from `set -uo pipefail` to `set -euo pipefail` so unexpected command failures hard-stop the audit instead of being silently tolerated.
 - [x] **Fail heartbeat Step-5 HEAD route checks on redirect drift** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-curl-pages.sh` to follow redirects for HEAD checks, compare `%{url_effective}` against expected route targets, and fail when a required route silently resolves elsewhere despite final HTTP 200.

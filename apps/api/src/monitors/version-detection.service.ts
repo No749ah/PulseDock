@@ -352,7 +352,7 @@ export class VersionDetectionService {
       const data = await resp.json() as { versions?: string[] };
       const versions = data.versions ?? [];
       const stable = versions.filter((v) => !/(alpha|beta|preview|rc|pre)/i.test(v));
-      const latestVersion = stable.at(-1) ?? versions.at(-1) ?? null;
+      const latestVersion = stable[stable.length - 1] ?? versions[versions.length - 1] ?? null;
       if (!latestVersion) return { ok: false, message: 'No NuGet versions found.' };
       return { ok: true, message: 'NuGet API reachable', latestVersion };
     }

@@ -137,7 +137,9 @@ function queryWhoisServer(server: string, query: string, timeoutMs: number): Pro
     socket.once('connect', () => {
       socket.write(`${query}\r\n`);
     });
-    socket.on('data', (chunk) => chunks.push(chunk));
+    socket.on('data', (chunk: Buffer | string) => {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    });
     socket.once('end', () => done());
     socket.once('close', () => done());
     socket.once('timeout', () => done(new Error(`WHOIS timeout after ${timeoutMs}ms`)));

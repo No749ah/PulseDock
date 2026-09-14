@@ -55,7 +55,7 @@ Then stop. Authors never merge, push to `main`, or open PRs targeting `main`. De
 
 ## Integrator and releases
 
-The integrator follows `RELEASE_RUNBOOK.md`:
+The integrator follows the repository's release and branch-protection policy:
 
 1. Inventory branches and open PRs with `git fetch --all --prune` and `gh pr list --state open`.
 2. Open PRs to `dev` for branches that have no PR.
@@ -79,7 +79,7 @@ No one except Noah merges the release PR to `main`. After Noah merges it, the in
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env.local
 npm ci
-npx prisma generate --schema=apps/api/prisma/schema.prisma
+npx prisma generate --schema=prisma/schema.prisma
 ```
 
 See the guides in `docs/`, including `GETTING-STARTED.md`, `ARCHITECTURE.md`, `DEPLOYMENT.md`, `SECURITY.md`, and `E2E.md`. API defaults to port 4321 and Web to port 1234.

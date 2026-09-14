@@ -1,7 +1,7 @@
 "use client";
 
 import React from "react";
-import { API_BASE } from "../../../../lib/api";
+import { getApiBase } from "../../../../lib/api";
 import { Button } from "../../../components/Button";
 import { inputClass } from "../../constants";
 import type { MonitorFormData } from "../../types";
@@ -44,14 +44,14 @@ export function HeartbeatConfigSection({ formData, formErrors, onSetFormData, on
           <input
             type="text"
             readOnly
-            value={`${API_BASE}/v1/heartbeat/${formData.heartbeatToken || "<token>"}`}
+            value={`${getApiBase()}/v1/heartbeat/${formData.heartbeatToken || "<token>"}`}
             className={`${inputClass} font-mono text-xs`}
           />
           <Button
             type="button"
             variant="secondary"
             onClick={async () => {
-              const url = `${API_BASE}/v1/heartbeat/${formData.heartbeatToken || "<token>"}`;
+              const url = `${getApiBase()}/v1/heartbeat/${formData.heartbeatToken || "<token>"}`;
               await navigator.clipboard.writeText(url);
               onCopySuccess("Heartbeat URL copied");
             }}

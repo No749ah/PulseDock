@@ -262,7 +262,7 @@ export function HttpConfigSection({ formData, onSetFormData }: HttpConfigSection
 
       {/* Security Headers Audit */}
       <div className="flex items-start gap-3 p-3 rounded-lg bg-surface-2 border border-border">
-        <input type="checkbox" id="checkSecurityHeaders" checked={fd.checkSecurityHeaders ?? false} onChange={(e) => onSetFormData({ ...fd, checkSecurityHeaders: e.target.checked })} className="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent cursor-pointer" />
+        <input type="checkbox" id="checkSecurityHeaders" aria-label="Audit security headers" checked={fd.checkSecurityHeaders ?? false} onChange={(e) => onSetFormData({ ...fd, checkSecurityHeaders: e.target.checked })} className="mt-0.5 h-4 w-4 rounded border-border text-accent focus:ring-accent cursor-pointer" />
         <label htmlFor="checkSecurityHeaders" className="cursor-pointer select-none">
           <span className="text-sm font-medium text-text-primary flex items-center gap-1.5">🔒 Audit security headers</span>
           <span className="text-xs text-text-secondary mt-0.5 block">Checks for HSTS, CSP, X-Frame-Options, X-Content-Type-Options and more. Grades the response A–F and stores results per run.</span>

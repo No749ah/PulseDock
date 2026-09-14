@@ -109,8 +109,8 @@ export function useSla() {
   const handleDownloadCertificate = async (monitorId: string, months: number) => {
     try {
       setCertLoadingId(monitorId);
-      const { API_BASE } = await import('../../../../lib/api');
-      const res = await fetch(`${API_BASE}/v1/monitors/${monitorId}/uptime-certificate?months=${months}`, { credentials: 'include' });
+      const { getApiBase } = await import('../../../../lib/api');
+      const res = await fetch(`${getApiBase()}/v1/monitors/${monitorId}/uptime-certificate?months=${months}`, { credentials: 'include' });
       if (!res.ok) throw new Error('Failed to generate certificate');
       const html = await res.text();
       const blob = new Blob([html], { type: 'text/html' });

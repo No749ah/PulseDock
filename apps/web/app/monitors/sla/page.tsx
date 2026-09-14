@@ -563,10 +563,10 @@ export default function SlaPage() {
   const handleDownloadCertificate = async (monitorId: string, months: number) => {
     try {
       setCertLoadingId(monitorId);
-      const { API_BASE } = await import('../../../lib/api');
+      const { getApiBase } = await import('../../../lib/api');
       // Fetch the certificate HTML from the API using credentials (cookie-based auth)
       const res = await fetch(
-        `${API_BASE}/v1/monitors/${monitorId}/uptime-certificate?months=${months}`,
+        `${getApiBase()}/v1/monitors/${monitorId}/uptime-certificate?months=${months}`,
         { credentials: 'include' }
       );
       if (!res.ok) throw new Error('Failed to generate certificate');

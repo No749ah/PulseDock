@@ -2,14 +2,17 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 /**
  * Tests for the api.ts helper — CSRF handling, error parsing, and URL inference.
- * Since api.ts reads window/document at import-time for API_BASE, we use
- * vi.resetModules() + dynamic import for each test to get fresh evaluation.
+ * API URLs are resolved when used so host and environment changes are
+ * reflected without relying on module cache resets.
  */
 
 const fetchMock = vi.fn();
 
 beforeEach(() => {
   vi.resetModules();
+  // CI sets this for production-like builds; inference tests must exercise
+  // the host fallback independently of that process-wide setting.
+  vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "");
   vi.stubGlobal("fetch", fetchMock);
   vi.stubGlobal("window", {
     location: {
@@ -30,6 +33,7 @@ beforeEach(() => {
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  vi.unstubAllEnvs();
 });
 
 function ok(body: unknown, status = 200) {
@@ -205,37 +209,37 @@ describe("API_BASE inference", () => {
     vi.stubGlobal("window", {
       location: { host: "localhost:1234", protocol: "http:" },
     });
-    const { API_BASE } = await import("./api");
-    expect(API_BASE).toBe("http://localhost:4321");
+    const { getApiBase } = await import("./api");
+    expect(getApiBase()).toBe("http://localhost:4321");
   });
 
   it("resolves oc-dev-test.* to /api proxy", async () => {
     vi.stubGlobal("window", {
       location: { host: "oc-dev-test.no749ah.com", protocol: "https:" },
     });
-    const { API_BASE } = await import("./api");
-    expect(API_BASE).toBe("https://oc-dev-test.no749ah.com/api");
+    const { getApiBase } = await import("./api");
+    expect(getApiBase()).toBe("https://oc-dev-test.no749ah.com/api");
   });
 
   it("resolves oc-web-test.* to oc-api-test.*", async () => {
     vi.stubGlobal("window", {
       location: { host: "oc-web-test.no749ah.com", protocol: "https:" },
     });
-    const { API_BASE } = await import("./api");
-    expect(API_BASE).toBe("https://oc-api-test.no749ah.com");
+    const { getApiBase } = await import("./api");
+    expect(getApiBase()).toBe("https://oc-api-test.no749ah.com");
   });
 
   it("defaults to /api proxy for unknown hosts", async () => {
     vi.stubGlobal("window", {
       location: { host: "custom.example.com", protocol: "https:" },
     });
-    const { API_BASE } = await import("./api");
-    expect(API_BASE).toBe("https://custom.example.com/api");
+    const { getApiBase } = await import("./api");
+    expect(getApiBase()).toBe("https://custom.example.com/api");
   });
 
   it("uses NEXT_PUBLIC_API_BASE_URL env var when set", async () => {
     vi.stubEnv("NEXT_PUBLIC_API_BASE_URL", "https://api.example.com");
-    const { API_BASE } = await import("./api");
-    expect(API_BASE).toBe("https://api.example.com");
+    const { getApiBase } = await import("./api");
+    expect(getApiBase()).toBe("https://api.example.com");
   });
 });

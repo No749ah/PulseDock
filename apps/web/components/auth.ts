@@ -1,4 +1,4 @@
-import { API_BASE } from '../lib/api';
+import { getApiBase } from '../lib/api';
 
 export type SessionUser = { id: string; email: string; role: 'admin' | 'user'; name?: string };
 
@@ -26,7 +26,7 @@ export function clearLocalSession() {
 export async function clearSession() {
   clearLocalSession();
   try {
-    await fetch(`${API_BASE}/v1/auth/logout`, {
+    await fetch(`${getApiBase()}/v1/auth/logout`, {
       method: 'POST',
       credentials: 'include',
       headers: { 'content-type': 'application/json' },

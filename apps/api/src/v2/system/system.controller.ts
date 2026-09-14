@@ -1,8 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
-
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const pkg = require('../../../package.json') as { version: string; name: string };
+import { appMetadata } from '../../common/app-metadata';
 
 /**
  * V2 System Controller
@@ -28,7 +26,7 @@ export class V2SystemController {
   info() {
     return {
       service: 'pulsedock-api',
-      version: pkg.version,
+      version: appMetadata.version,
       apiVersions: {
         supported: ['v1', 'v2'],
         current: 'v2',
@@ -109,7 +107,7 @@ export class V2SystemController {
         {
           version: 'v2',
           status: 'stable',
-          introducedIn: pkg.version,
+          introducedIn: appMetadata.version,
           sunsetDate: null,
           breaking: false,
           features: [

@@ -1,8 +1,12 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { NextRequest } from 'next/server';
-import { GET } from './route';
+import { GET, runtime } from './route';
 
 describe('api/check-url route', () => {
+  it('uses the supported Node.js route runtime', () => {
+    expect(runtime).toBe('nodejs');
+  });
+
   beforeEach(() => {
     vi.restoreAllMocks();
   });

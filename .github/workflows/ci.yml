@@ -68,6 +68,9 @@ jobs:
       - name: Build production API image
         run: docker build --file apps/api/Dockerfile --tag pulsedock-api:ci .
 
+      - name: Verify production image startup and registry imports
+        run: bash scripts/smoke-api-image.sh pulsedock-api:ci
+
   audit:
     name: Security Audit
     runs-on: ubuntu-latest

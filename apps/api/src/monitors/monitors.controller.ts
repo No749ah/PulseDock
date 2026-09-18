@@ -33,6 +33,28 @@ export class MonitorsController {
     return this.crudService.list(req.user.id, tag);
   }
 
+  @Get('version-summary')
+  @ApiOperation({ summary: 'Version check summary', description: 'Returns aggregate stats and per-monitor version status (green/yellow/red).' })
+  @ApiResponse({ status: 200, description: 'Version summary returned.' })
+  versionSummary(@Req() req: { user: { id: string } }) {
+    return this.crudService.versionSummary(req.user.id);
+  }
+
+  @Get('version-drift')
+  @RequireScope(ApiKeyScope.READ)
+  @ApiOperation({ summary: 'Version drift report', description: 'Analyzes semver gap for each version monitor — shows which services are most out-of-date.' })
+  @ApiResponse({ status: 200, description: 'Drift report returned.' })
+  versionDriftReport(@Req() req: { user: { id: string } }) {
+    return this.crudService.versionDriftReport(req.user.id);
+  }
+
+  @Get('plugins')
+  @ApiOperation({ summary: 'List monitor plugins', description: 'Returns available monitor check plugins and their config field metadata.' })
+  @ApiResponse({ status: 200, description: 'Plugin metadata returned.' })
+  listPlugins() {
+    return this.crudService.listPlugins();
+  }
+
   @Get(':id')
   @RequireScope(ApiKeyScope.READ)
   @ApiOperation({ summary: 'Get a single monitor', description: 'Returns full monitor details including mute status and active acknowledgement.' })
@@ -184,30 +206,6 @@ export class MonitorsController {
   @ApiResponse({ status: 200, description: 'Discovery result returned.' })
   versionDiscover(@Body() body: DiscoverVersionDto) {
     return this.crudService.discoverCurrentVersion(body);
-  }
-
-  @Get('version-summary')
-  @ApiOperation({ summary: 'Version check summary', description: 'Returns aggregate stats and per-monitor version status (green/yellow/red).' })
-  @ApiResponse({ status: 200, description: 'Version summary returned.' })
-  versionSummary(@Req() req: { user: { id: string } }) {
-    return this.crudService.versionSummary(req.user.id);
-  }
-
-  @Get('version-drift')
-  @RequireScope(ApiKeyScope.READ)
-  @ApiOperation({ summary: 'Version drift report', description: 'Analyzes semver gap for each version monitor — shows which services are most out-of-date.' })
-  @ApiResponse({ status: 200, description: 'Drift report returned.' })
-  versionDriftReport(@Req() req: { user: { id: string } }) {
-    return this.crudService.versionDriftReport(req.user.id);
-  }
-
-  // ─── Plugins ──────────────────────────────────────────────────────────
-
-  @Get('plugins')
-  @ApiOperation({ summary: 'List monitor plugins', description: 'Returns available monitor check plugins and their config field metadata.' })
-  @ApiResponse({ status: 200, description: 'Plugin metadata returned.' })
-  listPlugins() {
-    return this.crudService.listPlugins();
   }
 
   // ─── Compare (POST — legacy) ─────────────────────────────────────────

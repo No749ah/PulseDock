@@ -1,7 +1,7 @@
 import { test, expect } from "@playwright/test";
 
 const E2E_EMAIL = process.env.E2E_EMAIL ?? "admin@example.com";
-const E2E_PASSWORD = process.env.E2E_PASSWORD ?? "admin123";
+const E2E_PASSWORD = process.env.E2E_PASSWORD ?? "Admin123456!";
 
 /**
  * Wait for the login form to be ready — the page fetches /setup-status first,
@@ -11,6 +11,24 @@ async function waitForLoginForm(page: Parameters<typeof test>[1] extends (args: 
   await page.waitForLoadState("networkidle").catch(() => null);
   await expect(page.locator("#email")).toBeVisible({ timeout: 20_000 });
   await expect(page.locator("#password")).toBeVisible({ timeout: 20_000 });
+}
+
+async function submitValidLogin(
+  page: Parameters<typeof test>[1] extends (args: { page: infer P }) => unknown ? P : never,
+) {
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.request().method() === "POST" &&
+      new URL(response.url()).pathname.endsWith("/v1/auth/login"),
+    { timeout: 20_000 },
+  );
+
+  await page.click('button[type="submit"]');
+  const response = await responsePromise;
+  expect(
+    response.ok(),
+    `Login failed with HTTP ${response.status()}: ${await response.text().catch(() => "response unavailable")}`,
+  ).toBe(true);
 }
 
 test.describe("Authentication flows", () => {
@@ -42,7 +60,7 @@ test.describe("Authentication flows", () => {
 
     await page.fill("#email", E2E_EMAIL);
     await page.fill("#password", E2E_PASSWORD);
-    await page.click('button[type="submit"]');
+    await submitValidLogin(page as never);
 
     // Wait for redirect — may go to /dashboard or stay on login with email verification
     await Promise.race([
@@ -62,7 +80,7 @@ test.describe("Authentication flows", () => {
 
     await page.fill("#email", E2E_EMAIL);
     await page.fill("#password", E2E_PASSWORD);
-    await page.click('button[type="submit"]');
+    await submitValidLogin(page as never);
 
     await Promise.race([
       page.waitForURL("**/dashboard", { timeout: 25_000 }),
@@ -71,9 +89,9 @@ test.describe("Authentication flows", () => {
 
     await page.waitForLoadState("networkidle").catch(() => null);
 
-    const body = await page.locator("body").innerText();
-    // Dashboard renders monitor stats, status, or navigation
-    expect(body.toLowerCase()).toMatch(/monitor|uptime|status|dashboard/i);
+    // Wait for the dashboard data state, not only the route transition. The
+    // shell is intentionally rendered while its client-side data is loading.
+    await expect(page.locator("main")).toContainText(/monitor|uptime|status/i, { timeout: 15_000 });
   });
 
   test("unauthenticated access to /dashboard redirects to login", async ({ page }) => {

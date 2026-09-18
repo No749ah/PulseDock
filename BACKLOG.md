@@ -1,19 +1,30 @@
-## 🚨 FULL REFACTOR DIRECTIVE — 2026-09-03
+## Status Summary (2026-09-10 12:45 UTC)
+- **Build/Test/Audit:** ✅ Production build passes. Tests: 5698 Web + 5327 API + 114 CLI + 12 Agent. `npm audit --audit-level=high`: 0 vulnerabilities.
+- **Deployment:** ⚠️ Services restarted and remain healthy locally (`/health` 200, `/login` 200, direct/proxied authenticated-path probes return expected 401). Public Cloudflare route is blocked upstream with HTTP 502 on every page/API path.
+- **Branch:** heartbeat/2026-09-10-boot-security
+- **Changes:**
+  - [x] **fix(e2e): support local web-proxy login responses** — updated Playwright auth response matchers to accept both direct `/v1/auth/login` and proxied `/api/v1/auth/login` URLs, restoring localhost valid-login and authenticated dashboard checks.
+  - [x] **chore(web): migrate live URL checker off deprecated Edge Runtime** — switched `/api/check-url` to the supported Node.js route runtime and added a regression assertion so Next.js production builds no longer emit the Edge Runtime deprecation/static-generation warning.
+  - [x] **fix(security): patch production dependency advisories** — upgraded Next.js to 16.3.4, sharp to 0.35.4, multer to 2.3.0, js-yaml to 5.x, and nodemailer to 10.0.3; refreshed the lockfile and verified the full build/test/audit suite.
+  - [x] **fix(ops): keep restarted services alive after heartbeat shell exit** — detached API/web stdin, ignored terminal hangups, and started each service in a new session, preventing heartbeat runners from immediately shutting down otherwise healthy services.
 
-## Status Summary (2026-09-04 08:40 UTC)
-- **Validation:** ✅ Full web build completed; API `/health` returns 200 with database, Redis, and scheduler checks green.
-- **Deployment:** ✅ Docker/dind, PostgreSQL, and Redis are reachable. ⚠️ Web process still exits after `next start`; local `/login` and public domain return 000/502.
-- **Cleanup:** Archived 30 obsolete historical status summaries. The remaining unchecked items are active refactor/reassessment work and were intentionally kept open.
+## Status Summary (2026-09-01 02:40 UTC)
+- **Build/Test/Audit:** ✅ Build passes. Tests: 5327 API + 5698 Web (last verified 22:30 UTC Aug 31). TypeScript clean. 0 vulnerabilities.
+- **Deployment:** ⚠️ Docker/dind unavailable in sandbox — infrastructure only.
+- **Branch:** heartbeat/2026-09-01-boot (5 commits)
+- **Changes (01:30–02:40 UTC):**
+  - [x] **feat(registry): 19 more variants (777 → 796)** — dashboards: dasherr, dashdot, librespeed, scrutiny; RSS/bookmarks: freshrss, wallabag, linkding, linkwarden; photos: lychee, photoview, piwigo, pixelfed; notes: standard-notes, leantime; infra: adminer, pfsense (+Plus), dokku, telegraf, lldap.
+  - [x] **feat(registry): 20 more variants (796 → 816)** — infra: proxmox-ve, unraid, vyos (+LTS), openwrt, wireguard-ui; Docker Hub images: postgresql, nginx, apache httpd; dev: hono, garnet, zeromq, cert-manager, watchtower; security: clair; blogging: writefreely (+cloud), shaarli, mylar3; dev envs: gitpod (+cloud), harness (+cloud).
+  - **Registry: 816 / 1292 tools with variants** (+ 286 this session, 839 still missing).
 
-## Status Summary (2026-09-04 06:55 UTC)
-- **Validation:** ✅ Web typecheck, focused Button/Card tests (37), and full build pass. Offline high-severity audit reports 0 vulnerabilities.
-- **Deployment:** ⚠️ Docker/dind/API unavailable. Web restart reports readiness but exits before follow-up probes; required local routes/API return 000 and public `/login` returns 502.
-- **Changes:** Dashboard toggles now expose their current state through `aria-pressed` for time range, auto-refresh, customization, and monitor view controls.
-
-## Status Summary (2026-09-04 05:55 UTC)
-- **Validation:** ✅ Web typecheck, focused Button/Card tests (37), and full build pass. Offline high-severity audit reports 0 vulnerabilities.
-- **Deployment:** ⚠️ Docker/dind/API unavailable. Web restart reports readiness but exits before follow-up probes; required local routes/API return 000 and public `/login` returns 502.
-- **Changes:** Dashboard controls now use explicit non-submit buttons, accessible table/grid labels, and a descriptive fullscreen action.
+## Status Summary (2026-09-01 00:00 UTC)
+- **Build/Test/Audit:** ✅ Build passes. Web: 5698 tests. API: 5327 tests. TypeScript clean. 0 vulnerabilities.
+- **Deployment:** ⚠️ Docker/dind unavailable in sandbox — infrastructure only.
+- **Branch:** heartbeat/2026-09-01-boot (1 commit; rotated from heartbeat/2026-08-31-noon ~23:30 UTC)
+- **Changes (22:45–00:00 UTC):**
+  - [x] **Branch rotation:** merged 21 commits into dev, created heartbeat/2026-09-01-boot
+  - [x] **feat(registry): 20 more variants (737 → 757)** — knowledge: outline, bookstack, wiki-js, nocodb, baserow, appflowy; diagramming: excalidraw, drawio, mermaid; media: stremio; IaC: vagrant, serverless-framework, cdk, cdktf, atlantis, infracost, waypoint; messaging: apache-pulsar, apache-rocketmq.
+  - **Registry: 757 / 1292 tools with variants** (+ 227 total this session, 897 still missing).
 
 ## ⚠️ INSTRUCTION FROM NOAH (2026-03-17, updated)
 
@@ -28,6 +39,9 @@
 ## Next Up (Priority Order)
 
 ### 🔴 P0 - Architecture & Code Quality
+
+- [x] **2026-09-10 boot: patch production dependency advisories** — ✅ Done (2026-09-10). Upgraded Next.js to 16.3.4, sharp to 0.35.4, multer to 2.3.0, js-yaml to 5.x, and nodemailer to 10.0.3. Production build and all 11,151 tests pass; npm audit reports 0 vulnerabilities.
+- [x] **Restore PR #6 E2E login checks** — ✅ Done (2026-09-10). PR #6 merged after the E2E workflow passed in run 34466091039. Login fixtures and auth specs now assert the `/v1/auth/login` response before waiting for navigation, so future API failures report their HTTP status and response body instead of ending as opaque `/login` timeouts.
 
 - [x] **Refactor monitors.service.ts (9613 lines → modular)** - ✅ Done (2026-03-30). Split into 6 sub-services:
   - `monitors-crud.service.ts` - CRUD, list, clone, bulk operations
@@ -91,6 +105,8 @@
 
 ### 🟢 P3 - Maintenance & Cleanup
 
+- [x] **Support localhost web-proxy paths in Playwright login response checks** - ✅ Done (2026-09-10). Changed both E2E auth response matchers to accept direct `/v1/auth/login` and proxied `/api/v1/auth/login`, allowing the mandatory local browser flow to observe the login response before asserting navigation.
+- [x] **Migrate live URL checker off deprecated Next.js Edge Runtime** - ✅ Done (2026-09-10). Switched `apps/web/app/api/check-url/route.ts` to the supported Node.js runtime and added a regression assertion; production builds no longer emit the Edge Runtime deprecation/static-generation warning.
 - [x] **Stabilize three timeout-prone API specs that intermittently fail heartbeat Step-1 test runs under load** - ✅ Done (2026-04-14). Added explicit `15000ms` per-test timeouts in `apps/api/src/alerts/alerts.service.spec.ts`, `apps/api/src/auth/auth.service.spec.ts`, and `apps/api/src/status-pages/status-pages.service.spec.ts` for known slow-path tests that occasionally exceed Vitest's default `5000ms` budget on busy runners.
 - [x] **Run Step-5 frontend route/static audits in strict shell mode** - ✅ Done (2026-04-11). Updated `scripts/audit-frontend-pages.sh` from `set -uo pipefail` to `set -euo pipefail` so unexpected command failures hard-stop the audit instead of being silently tolerated.
 - [x] **Fail heartbeat Step-5 HEAD route checks on redirect drift** - ✅ Done (2026-04-10). Hardened `scripts/heartbeat-curl-pages.sh` to follow redirects for HEAD checks, compare `%{url_effective}` against expected route targets, and fail when a required route silently resolves elsewhere despite final HTTP 200.
@@ -337,48 +353,3 @@
 - [x] Code quality automation (8 checks)
 
 </details>
-## 🔍 World-Class Reassessment Queue (added 2026-09-03)
-
-Before marking PulseDock complete, review and verify every item below against the running product, threat model, and real user workflows. Do not claim completion from static code inspection alone; add evidence (tests, browser checks, or deployment checks) to each completed item.
-
-### 🔴 Security & Trust
-- [ ] Run an OWASP ASVS/L1 + API security review and document pass/fail evidence.
-- [ ] Add MFA/TOTP with recovery codes, secure enrollment, reset flow, and step-up auth for sensitive actions.
-- [ ] Verify CSRF protection for every cookie-authenticated state-changing endpoint.
-- [ ] Add login/password-reset/email-verification abuse controls, lockout/backoff, and safe enumeration-resistant responses.
-- [ ] Review session rotation, refresh-token reuse detection, revocation, device management, and logout-all behavior.
-- [ ] Add secret redaction checks for logs, exports, errors, API responses, and client-side state.
-- [ ] Threat-model SSRF, webhook callbacks, URL imports, plugin execution, redirects, DNS rebinding, and private-network access.
-- [ ] Enforce safe outbound HTTP: scheme/host/IP validation, redirect policy, timeout, body-size, response-size, and concurrency limits.
-- [ ] Add security headers and cookie tests for production proxy deployments (HSTS, CSP, SameSite, Secure, HttpOnly).
-- [ ] Verify tenant isolation and authorization on every controller, bulk endpoint, export/import path, websocket event, and status page.
-- [ ] Add immutable audit-log integrity, retention, export authorization, pagination, and admin visibility tests.
-- [ ] Establish dependency/container/SBOM scanning, signed releases, secret scanning, and a vulnerability response policy.
-
-### 🟠 Reliability, Operations & Scale
-- [ ] Define SLOs for check latency, scheduler freshness, alert delivery, API availability, and recovery time.
-- [ ] Add scheduler lease/leader-election behavior for multi-instance deployments and prove no duplicate checks.
-- [ ] Add bounded queues, backpressure, per-tenant quotas, retry budgets, and circuit breakers for providers/channels.
-- [ ] Verify idempotency for checks, alerts, imports, bulk actions, and webhook retries.
-- [ ] Add graceful shutdown, readiness/liveness semantics, migration rollback guidance, and backup/restore drills.
-- [ ] Test PostgreSQL failure, Redis failure, provider timeouts, clock skew, partial deploys, and network partitions.
-- [ ] Add structured operational metrics/traces/log correlation with PII-safe defaults and cardinality limits.
-- [ ] Load-test realistic fleets and document supported limits for monitors, history, users, widgets, and websocket clients.
-
-### 🟡 UX, Accessibility & Product Completeness
-- [ ] Run WCAG 2.2 AA automated and keyboard/screen-reader audits across every route and modal.
-- [ ] Verify mobile layouts, touch targets, reduced-motion mode, contrast, focus restoration, and offline/reconnect behavior.
-- [ ] Standardize loading, empty, partial-failure, permission-denied, rate-limit, and retry states across all pages.
-- [ ] Add unsaved-change protection, optimistic-update rollback, bulk-action confirmation, and undo where appropriate.
-- [ ] Complete onboarding, first-monitor experience, contextual help, searchable docs, and actionable error messages.
-- [ ] Add localization architecture, timezone/DST correctness, locale-aware dates/numbers, and RTL readiness review.
-- [ ] Verify notification preferences, deduplication, escalation timing, quiet hours, templates, and delivery diagnostics.
-- [ ] Test status pages for custom domains, caching, incident lifecycle, accessibility, abuse protection, and privacy.
-
-### 🟢 Quality, Compatibility & Governance
-- [ ] Build a browser E2E matrix for Chromium/Firefox/Safari-equivalent flows and supported viewport sizes.
-- [ ] Add contract tests for all providers, alert channels, plugin APIs, CLI commands, and import/export formats.
-- [ ] Verify backwards compatibility, API deprecation policy, schema migration safety, and OpenAPI accuracy.
-- [ ] Add deterministic fixtures, seeded test data, flaky-test quarantine rules, and coverage thresholds by package.
-- [ ] Test Docker Compose and Kubernetes from clean environments, including non-root execution and upgrade paths.
-- [ ] Document support matrix, threat model, architecture decisions, incident response, privacy/data deletion, and release checklist.

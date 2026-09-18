@@ -44,3 +44,6 @@ scripts/screenshots/*.png
 /projects/PulseDock/.keys
 projects/PulseDock/.keys/*
 core.*
+
+# Nested project checkouts are local workspace material, not repository content.
+projects/

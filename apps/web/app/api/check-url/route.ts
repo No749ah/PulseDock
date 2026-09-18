@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 
-export const runtime = "edge";
+// Next.js 16 deprecates the Edge Runtime for route handlers. This endpoint
+// only relies on Web APIs that are also supported by the Node.js runtime.
+export const runtime = "nodejs";
 
 export async function GET(req: NextRequest) {
   const url = req.nextUrl.searchParams.get("url");

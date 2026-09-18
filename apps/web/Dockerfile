@@ -22,8 +22,6 @@ RUN npm ci --ignore-scripts
 
 # Copy web source and build
 COPY apps/web/ apps/web/
-COPY tsconfig.json ./
-
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 

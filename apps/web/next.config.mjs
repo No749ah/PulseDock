@@ -1,3 +1,29 @@
+const configuredApiOrigins = [
+  process.env.NEXT_PUBLIC_API_BASE_URL,
+  process.env.INTERNAL_API_URL,
+].flatMap((value) => {
+  if (!value) return [];
+  try {
+    return [new URL(value).origin];
+  } catch {
+    return [];
+  }
+});
+
+// The browser uses a direct API origin in local/E2E deployments. Keep that
+// origin in CSP even when production normally uses the same-origin /api proxy.
+// Otherwise the browser reports "Failed to fetch" before CORS or the login
+// controller can process the request.
+const connectSources = [
+  "'self'",
+  'wss:',
+  'ws:',
+  'https://cdn.simpleicons.org',
+  'http://localhost:4321',
+  'https://oc-api-test.no749ah.com',
+  ...configuredApiOrigins,
+].filter((source, index, sources) => sources.indexOf(source) === index);
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   // jsPDF (via fflate) uses Node.js Worker which Turbopack cannot resolve in SSR.
@@ -71,7 +97,7 @@ const nextConfig = {
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https: blob:",
               "font-src 'self' data:",
-              "connect-src 'self' wss: ws: https://cdn.simpleicons.org",
+              `connect-src ${connectSources.join(' ')}`,
               "frame-src 'self' https://www.youtube.com https://player.vimeo.com",
               "object-src 'none'",
               "base-uri 'self'",

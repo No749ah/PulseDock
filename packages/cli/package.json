@@ -1,6 +1,6 @@
 {
   "name": "@pulsedock/cli",
-  "version": "1.9.1",
+  "version": "1.9.3",
   "description": "PulseDock CLI — one-shot HTTP checker and monitor management tool",
   "keywords": [
     "pulsedock",

@@ -41,18 +41,24 @@ export function MonitorsSection({ monitors, runs, monitorView, setMonitorView, s
         </div>
         <div className="flex items-center gap-2">
           {monitors.length > 0 && (
-            <div className="flex items-center rounded-lg border border-border bg-surface overflow-hidden">
+            <div role="toolbar" aria-label="Monitor view" className="flex items-center rounded-lg border border-border bg-surface overflow-hidden">
               <button
+                type="button"
                 onClick={() => setMonitorView("table")}
+                aria-pressed={monitorView === "table"}
                 className={`p-1.5 transition-colors ${monitorView === "table" ? "bg-accent/10 text-accent" : "text-text-secondary hover:text-text-primary"}`}
                 title="Table view"
+                aria-label="Table view"
               >
                 <List className="w-4 h-4" />
               </button>
               <button
+                type="button"
                 onClick={() => setMonitorView("grid")}
+                aria-pressed={monitorView === "grid"}
                 className={`p-1.5 transition-colors ${monitorView === "grid" ? "bg-accent/10 text-accent" : "text-text-secondary hover:text-text-primary"}`}
                 title="Grid view"
+                aria-label="Grid view"
               >
                 <LayoutGrid className="w-4 h-4" />
               </button>
@@ -120,6 +126,7 @@ function GridView({ monitors, runs, onNavigate }: { monitors: Monitor[]; runs: M
         return (
           <button
             key={monitor.id}
+            type="button"
             onClick={() => onNavigate(monitor.id, isVersion)}
             className={`flex flex-col gap-2 rounded-xl border bg-surface p-3 text-left hover:bg-surface-elevated transition-colors ${statusColor}`}
           >

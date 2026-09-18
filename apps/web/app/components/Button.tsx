@@ -1,17 +1,16 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { ButtonHTMLAttributes, ReactNode } from "react";
+import { BUTTON_BASE } from "../design-tokens";
 
-interface ButtonProps {
+export interface ButtonProps extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "className" | "children"> {
   children: ReactNode;
   variant?: "primary" | "secondary" | "ghost";
   size?: "sm" | "md" | "lg";
   disabled?: boolean;
   loading?: boolean;
-  onClick?: () => void;
+  onClick?: ButtonHTMLAttributes<HTMLButtonElement>["onClick"];
   className?: string;
-  type?: "button" | "submit" | "reset";
-  title?: string;
 }
 
 const variants = {
@@ -38,15 +37,16 @@ export function Button({
   onClick,
   className = "",
   type = "button",
-  title,
+  ...props
 }: ButtonProps) {
   return (
     <button
       type={type}
+      {...props}
       onClick={onClick}
       disabled={disabled || loading}
-      title={title}
-      className={`font-semibold rounded-lg transition-all active:scale-[0.97] active:brightness-90 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100 ${variants[variant]} ${sizes[size]} ${className}`}
+      aria-busy={loading || undefined}
+      className={`${BUTTON_BASE} ${variants[variant]} ${sizes[size]} ${className}`}
     >
       {children}
     </button>

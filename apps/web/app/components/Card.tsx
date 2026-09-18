@@ -1,6 +1,7 @@
 "use client";
 
-import type { ReactNode } from "react";
+import type { KeyboardEvent, ReactNode } from "react";
+import { CARD_BASE, CARD_HOVER } from "../design-tokens";
 
 interface CardProps {
   children: ReactNode;
@@ -10,14 +11,19 @@ interface CardProps {
 }
 
 export function Card({ children, className = "", hover = false, onClick }: CardProps) {
+  const handleKeyDown = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (!onClick || (event.key !== "Enter" && event.key !== " ")) return;
+    event.preventDefault();
+    onClick();
+  };
+
   return (
     <div
       onClick={onClick}
-      className={`rounded-2xl border border-border bg-surface p-6 transition-all duration-200 ${
-        hover
-          ? "hover:border-border-hover hover:bg-surface-elevated hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/20 cursor-pointer"
-          : ""
-      } ${className}`}
+      onKeyDown={handleKeyDown}
+      role={onClick ? "button" : undefined}
+      tabIndex={onClick ? 0 : undefined}
+      className={`${CARD_BASE} ${hover ? CARD_HOVER : ""} ${className}`}
     >
       {children}
     </div>

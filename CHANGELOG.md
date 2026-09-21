@@ -11,10 +11,11 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 
 ### Fixed
 - Copy the tool-registry sources before compiling the production API image, so clean Docker builds include the imported workspace modules.
+- Share the API image dependency layer between build and runtime stages instead of recursively copying the full dependency tree on slow nested Docker storage.
 - Enforce high/critical dependency audit failures in CI instead of masking their exit status.
 
 ### Changed
-- Build the production API Docker image on pull requests and main/dev pushes to catch packaging regressions before release.
+- Build and smoke-test the production API Docker image on pull requests and main/dev pushes to catch packaging, startup, and registry-import regressions before release.
 
 ## [1.7.0] — 2026-04-04
 

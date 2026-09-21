@@ -1,6 +1,6 @@
 {
   "name": "@pulsedock/e2e",
-  "version": "1.9.9",
+  "version": "1.9.10",
   "private": true,
   "description": "Playwright E2E tests for PulseDock",
   "scripts": {

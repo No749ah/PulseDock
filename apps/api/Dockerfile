@@ -3,8 +3,8 @@
 # Build context must be the repository root:
 #   docker build -f apps/api/Dockerfile -t pulsedock-api .
 
-# ── Stage 1: Install + Build ──
-FROM node:22-alpine AS builder
+# ── Shared dependencies (inherited, not copied between stages) ──
+FROM node:22-alpine AS dependencies
 WORKDIR /app
 
 # Install OpenSSL for Prisma
@@ -26,6 +26,9 @@ RUN npm ci --ignore-scripts
 COPY prisma ./prisma/
 RUN npx prisma generate
 
+# ── Compile application sources ──
+FROM dependencies AS builder
+
 # The API imports registry TypeScript sources via relative workspace paths.
 # Copy them before compilation so clean image builds emit the shared modules.
 COPY packages/tool-registry/ packages/tool-registry/
@@ -33,21 +36,19 @@ COPY apps/api/ apps/api/
 RUN cd apps/api && npm run build
 
 # ── Stage 2: Production Runtime ──
-FROM node:22-alpine AS runner
+FROM dependencies AS runner
 WORKDIR /app
 
-RUN apk add --no-cache openssl wget
+RUN apk add --no-cache wget
 
 # Create non-root user
 RUN addgroup -g 1001 -S pulsedock && adduser -S pulsedock -u 1001
 
-# Copy built output
-COPY --from=builder /app/node_modules ./node_modules
+# Inherit the immutable dependency layer instead of recursively copying the
+# entire workspace node_modules tree (expensive on nested/slow Docker storage).
+# Only compiled application output and runtime registry sources cross stages.
 COPY --from=builder /app/apps/api/dist ./apps/api/dist
-COPY --from=builder /app/apps/api/package.json ./apps/api/
-COPY --from=builder /app/prisma ./prisma
 COPY --from=builder /app/packages/tool-registry ./packages/tool-registry
-COPY --from=builder /app/package.json ./
 
 ENV NODE_ENV=production
 ENV API_PORT=4321

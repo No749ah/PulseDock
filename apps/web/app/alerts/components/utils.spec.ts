@@ -18,40 +18,54 @@ describe('alerts/utils — relativeTime', () => {
   }
 
   it('returns "just now" for < 1 minute ago', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
     expect(relativeTime(msAgo(30_000))).toBe('just now');
     expect(relativeTime(msAgo(0))).toBe('just now');
     expect(relativeTime(msAgo(59_999))).toBe('just now');
   });
 
   it('returns minutes for < 1 hour', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
     expect(relativeTime(msAgo(60_000))).toBe('1m ago');
     expect(relativeTime(msAgo(5 * 60_000))).toBe('5m ago');
     expect(relativeTime(msAgo(59 * 60_000))).toBe('59m ago');
   });
 
   it('returns hours for < 24 hours', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
     expect(relativeTime(msAgo(60 * 60_000))).toBe('1h ago');
     expect(relativeTime(msAgo(6 * 60 * 60_000))).toBe('6h ago');
     expect(relativeTime(msAgo(23 * 60 * 60_000))).toBe('23h ago');
   });
 
   it('returns days for >= 24 hours', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
     expect(relativeTime(msAgo(24 * 60 * 60_000))).toBe('1d ago');
     expect(relativeTime(msAgo(48 * 60 * 60_000))).toBe('2d ago');
     expect(relativeTime(msAgo(7 * 24 * 60 * 60_000))).toBe('7d ago');
   });
 
   it('floors minutes (does not round up to next minute)', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
     // 89.9 seconds = 1 minute + 29.9 seconds → 1m ago
     expect(relativeTime(msAgo(89_900))).toBe('1m ago');
   });
 
   it('floors hours (does not round up)', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
     // 1h 59m → 1h ago
     expect(relativeTime(msAgo(119 * 60_000))).toBe('1h ago');
   });
 
   it('floors days (does not round up)', () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-01-01T00:00:00.000Z'));
     // 1d 23h → 1d ago
     expect(relativeTime(msAgo(47 * 60 * 60_000))).toBe('1d ago');
   });

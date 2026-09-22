@@ -8,6 +8,7 @@ function makePrisma() {
       findUniqueOrThrow: vi.fn(),
       findMany: vi.fn(),
       create: vi.fn(),
+      upsert: vi.fn(),
     },
     userPlan: {
       findUnique: vi.fn(),
@@ -176,19 +177,19 @@ describe('PlanService', () => {
 
   describe('onModuleInit', () => {
     it('seeds default plans when they do not exist', async () => {
-      prisma.plan.findUnique.mockResolvedValue(null)
-      prisma.plan.create.mockResolvedValue({})
+      prisma.plan.upsert.mockImplementation(async ({ create }: { create: { name: string } }) => create)
       await service.onModuleInit()
       // 3 plans: COMMUNITY, PRO, ENTERPRISE
-      expect(prisma.plan.findUnique).toHaveBeenCalledTimes(3)
-      expect(prisma.plan.create).toHaveBeenCalledTimes(3)
+      expect(prisma.plan.upsert).toHaveBeenCalledTimes(3)
     })
 
-    it('skips seeding when plans already exist', async () => {
-      prisma.plan.findUnique.mockResolvedValue({ id: 'existing' })
+    it('keeps existing plans unchanged', async () => {
+      prisma.plan.upsert.mockResolvedValue({ id: 'existing', name: 'COMMUNITY' })
       await service.onModuleInit()
-      expect(prisma.plan.findUnique).toHaveBeenCalledTimes(3)
-      expect(prisma.plan.create).not.toHaveBeenCalled()
+      expect(prisma.plan.upsert).toHaveBeenCalledTimes(3)
+      expect(prisma.plan.upsert).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { name: 'COMMUNITY' }, update: {} }),
+      )
     })
   })
 

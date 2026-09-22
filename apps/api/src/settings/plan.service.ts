@@ -1,4 +1,5 @@
 import { Injectable, Logger, OnModuleInit } from '@nestjs/common'
+import { Prisma } from '@prisma/client'
 import { PrismaService } from '../common/prisma.service'
 
 /** Resource types that have plan limits. */
@@ -62,14 +63,24 @@ export class PlanService implements OnModuleInit {
 
   constructor(private readonly prisma: PrismaService) {}
 
-  /** Seeds the default plans on module startup if they don't already exist. */
+  /** Seeds the default plans on module startup. */
   async onModuleInit(): Promise<void> {
     for (const seed of SEED_PLANS) {
-      const exists = await this.prisma.plan.findUnique({ where: { name: seed.name } })
-      if (!exists) {
-        await this.prisma.plan.create({ data: seed })
-        this.logger.log(`Seeded plan: ${seed.name}`)
+      let plan
+      try {
+        plan = await this.prisma.plan.upsert({
+          where: { name: seed.name },
+          create: seed,
+          update: {},
+        })
+      } catch (error: unknown) {
+        // Concurrent app startups can race on Prisma's upsert emulation.
+        if (!(error instanceof Prisma.PrismaClientKnownRequestError) || error.code !== 'P2002') {
+          throw error
+        }
+        plan = await this.prisma.plan.findUniqueOrThrow({ where: { name: seed.name } })
       }
+      this.logger.debug(`Ensured plan exists: ${plan.name}`)
     }
   }
 

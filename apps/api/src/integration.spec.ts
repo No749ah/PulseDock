@@ -204,6 +204,7 @@ const mockPrisma = {
   plan: {
     findUnique: vi.fn().mockResolvedValue({ id: 'plan-community', name: 'COMMUNITY', maxMonitors: -1, maxChecksPerDay: -1, maxTeamMembers: -1, maxStatusPages: -1, maxAlertChannels: -1, isCustom: false, createdAt: new Date() }),
     findUniqueOrThrow: vi.fn().mockResolvedValue({ id: 'plan-community', name: 'COMMUNITY', maxMonitors: -1, maxChecksPerDay: -1, maxTeamMembers: -1, maxStatusPages: -1, maxAlertChannels: -1, isCustom: false, createdAt: new Date() }),
+    upsert: vi.fn().mockResolvedValue({ id: 'plan-community', name: 'COMMUNITY' }),
     findMany: vi.fn().mockResolvedValue([]),
     create: vi.fn().mockResolvedValue({}),
   },

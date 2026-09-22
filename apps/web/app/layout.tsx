@@ -6,7 +6,6 @@ export const dynamic = 'force-dynamic';
 import "./globals.css";
 import type { ReactNode } from "react";
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
 import { brand } from "../lib/brand";
 import { ThemeProvider } from "../components/theme-provider";
 import { ToastProvider } from "../components/ui/toast";
@@ -14,18 +13,6 @@ import { SWRegister } from "../components/sw-register";
 import { I18nProvider } from "../components/i18n-provider";
 import { PageTransition } from "../components/page-transition";
 import { ClientOverlays } from "../components/client-overlays";
-
-const inter = Inter({
-  subsets: ["latin"],
-  weight: ["400", "500", "600", "700", "800"],
-  display: "swap",
-  variable: "--font-inter",
-  // preload: true emits <link rel="preload"> hints that the browser warns about
-  // when heavy JS bundles (like the status-page editor) delay font usage past
-  // the browser's threshold. display:"swap" ensures text is visible immediately
-  // via the fallback font — no need for aggressive preloading.
-  preload: false,
-});
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -114,7 +101,7 @@ const jsonLd = {
 
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
-    <html lang="en" className={`dark ${inter.variable}`}>
+    <html lang="en" className="dark">
       <head>
         {/* Favicon — supports white-label override via NEXT_PUBLIC_APP_FAVICON_URL */}
         {brand.faviconUrl ? (

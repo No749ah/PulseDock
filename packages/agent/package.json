@@ -1,6 +1,6 @@
 {
   "name": "@pulsedock/agent",
-  "version": "1.9.14",
+  "version": "1.9.15",
   "description": "PulseDock Agent — reports local tool versions to PulseDock",
   "main": "dist/index.js",
   "bin": {

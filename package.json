@@ -1,7 +1,7 @@
 {
   "name": "pulsedock",
   "private": true,
-  "version": "1.9.15",
+  "version": "1.9.16",
   "description": "PulseDock - Version intelligence dashboard",
   "workspaces": [
     "apps/*",

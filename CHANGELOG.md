@@ -10,6 +10,7 @@ Versioning: [Semantic Versioning](https://semver.org/spec/v2.0.0.html)
 ## [Unreleased]
 
 ### Fixed
+- Update vulnerable dependency overrides and direct dependencies (multer, js-yaml, Next.js, and Nodemailer), and refresh the lockfile so the dependency audit is clean.
 - Copy the tool-registry sources before compiling the production API image, so clean Docker builds include the imported workspace modules.
 - Share the API image dependency layer between build and runtime stages instead of recursively copying the full dependency tree on slow nested Docker storage.
 - Enforce high/critical dependency audit failures in CI instead of masking their exit status.

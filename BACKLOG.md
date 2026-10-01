@@ -40,6 +40,8 @@
 
 ### 🔴 P0 - Architecture & Code Quality
 
+- [x] **2026-10-01 dependency advisories** — Updated vulnerable multer/js-yaml overrides, patched Next.js and Nodemailer, refreshed transitive dependencies, and verified a clean npm audit, API/web builds and tests, and local web login smoke.
+
 - [x] **2026-09-10 boot: patch production dependency advisories** — ✅ Done (2026-09-10). Upgraded Next.js to 16.3.4, sharp to 0.35.4, multer to 2.3.0, js-yaml to 5.x, and nodemailer to 10.0.3. Production build and all 11,151 tests pass; npm audit reports 0 vulnerabilities.
 - [x] **Restore PR #6 E2E login checks** — ✅ Done (2026-09-10). PR #6 merged after the E2E workflow passed in run 34466091039. Login fixtures and auth specs now assert the `/v1/auth/login` response before waiting for navigation, so future API failures report their HTTP status and response body instead of ending as opaque `/login` timeouts.
 
